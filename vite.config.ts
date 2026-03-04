@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 
 export default defineConfig({
-  base: '/long-term-asset/',
+  base: '/engagements/COM-CON-Dec312024/long-term-asset/',
   plugins: [react()],
   resolve: {
     alias: {
