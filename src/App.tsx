@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 
@@ -60,7 +60,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <BrowserRouter>
+        <HashRouter>
           <Routes>
             {/* ── Working-Papers Portal routes ── */}
             <Route
@@ -79,7 +79,7 @@ export default function App() {
             {/* ── Loan Debt Tool (default, catches everything else) ── */}
             <Route path="*" element={<LoanDebtTool />} />
           </Routes>
-        </BrowserRouter>
+        </HashRouter>
       </ThemeProvider>
     </QueryClientProvider>
   );
