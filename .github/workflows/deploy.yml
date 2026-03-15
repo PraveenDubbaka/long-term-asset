@@ -31,8 +31,13 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Add 404.html for SPA routing
-        run: cp dist/index.html dist/404.html
+      - name: Create route index files for GitHub Pages SPA
+        run: |
+          mkdir -p dist/long-term-asset dist/capital-asset dist/investment
+          cp dist/index.html dist/long-term-asset/index.html
+          cp dist/index.html dist/capital-asset/index.html
+          cp dist/index.html dist/investment/index.html
+          cp dist/index.html dist/404.html
 
       - name: Deploy to praveendubbaka.github.io
         uses: peaceiris/actions-gh-pages@v4
