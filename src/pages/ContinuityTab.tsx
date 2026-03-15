@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { ActivityTab } from './ActivityTab';
 import { Plus, Download, Edit3, Trash2, ChevronDown, Check, Search, FileText, X } from 'lucide-react';
 import { exportToExcel } from '../lib/utils';
 import { useStore } from '../store/useStore';
@@ -7,7 +8,7 @@ import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
 import { StyledCard } from '@/components/wp-ui/card';
 import { Modal, Input, Select } from '../components/ui';
-import type { ContinuityRow } from '../types';
+import type { Loan, ContinuityRow } from '../types';
 import toast from 'react-hot-toast';
 
 const MONTHS = ['2024-01','2024-02','2024-03','2024-04','2024-05','2024-06','2024-07','2024-08','2024-09','2024-10','2024-11','2024-12'];
@@ -33,6 +34,62 @@ const FS_ITEMS = [
   'Principal repayments',
 ];
 
+/** Principal due in next 12 months from the end of `period` (YYYY-MM). */
+function calcCurrentPortion(loan: Loan, closingBalance: number, period: string): number {
+  if (closingBalance <= 0) return 0;
+  if (loan.type === 'LOC' || loan.type === 'Revolver') return closingBalance;
+  const [y, m] = period.split('-').map(Number);
+  const maturity = new Date(loan.maturityDate);
+  const monthsToMaturity = Math.max(0,
+    (maturity.getFullYear() - y) * 12 + (maturity.getMonth() + 1 - m));
+  if (monthsToMaturity <= 12) return closingBalance;
+  if (loan.paymentType === 'Interest-only' || loan.paymentType === 'Balloon') return 0;
+  const r = loan.rate / 100 / 12;
+  const n = monthsToMaturity;
+  if (r === 0) return Math.round((closingBalance / n) * 12);
+  const pmt = closingBalance * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+  let bal = closingBalance;
+  let sum = 0;
+  for (let i = 0; i < 12; i++) {
+    const interest = bal * r;
+    const principal = Math.min(pmt - interest, bal);
+    sum += principal;
+    bal -= principal;
+    if (bal <= 0.01) break;
+  }
+  return Math.round(sum);
+}
+
+/** Returns [yr1, yr2, yr3, yr4, yr5, thereafter] principal amounts from `yearEndPeriod`. */
+function calcMaturityLadder(loan: Loan, closingBalance: number, yearEndPeriod: string): number[] {
+  const result = [0, 0, 0, 0, 0, 0];
+  if (closingBalance <= 0) return result;
+  const [y, m] = yearEndPeriod.split('-').map(Number);
+  const maturity = new Date(loan.maturityDate);
+  const monthsToMaturity = Math.max(0,
+    (maturity.getFullYear() - y) * 12 + (maturity.getMonth() + 1 - m));
+  if (loan.type === 'LOC' || loan.type === 'Revolver') { result[0] = closingBalance; return result; }
+  if (loan.paymentType === 'Interest-only' || loan.paymentType === 'Balloon') {
+    const idx = Math.min(Math.max(0, Math.ceil(monthsToMaturity / 12) - 1), 5);
+    result[idx] = closingBalance;
+    return result;
+  }
+  const r = loan.rate / 100 / 12;
+  const n = monthsToMaturity;
+  if (n <= 0) { result[0] = closingBalance; return result; }
+  const pmt = r === 0 ? closingBalance / n : closingBalance * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+  let bal = closingBalance;
+  for (let mo = 1; mo <= n; mo++) {
+    const interest = bal * r;
+    const principal = Math.min(pmt - interest, bal);
+    const idx = Math.min(Math.ceil(mo / 12) - 1, 5);
+    result[idx] += principal;
+    bal -= principal;
+    if (bal <= 0.01) break;
+  }
+  return result.map(v => Math.round(v));
+}
+
 export function ContinuityTab() {
   const { loans, continuity, addContinuityRow, updateContinuityRow, deleteContinuityRow } = useStore(s => ({
     loans: s.loans,
@@ -42,6 +99,7 @@ export function ContinuityTab() {
     deleteContinuityRow: s.deleteContinuityRow,
   }));
 
+  const [subTab, setSubTab] = useState<'continuity' | 'activity'>('continuity');
   const [view, setView] = useState<'by-loan' | 'consolidated'>('by-loan');
   const [selectedLoanId, setSelectedLoanId] = useState<string>(loans[0]?.id || '');
   const [selectedLoanIds, setSelectedLoanIds] = useState<string[]>(loans.map(l => l.id));
@@ -147,13 +205,69 @@ export function ContinuityTab() {
     newBorrowings: loanRows.reduce((s, r) => s + r.newBorrowings, 0),
     repayments: loanRows.reduce((s, r) => s + r.repayments, 0),
     fxTranslation: loanRows.reduce((s, r) => s + r.fxTranslation, 0),
+    principalRepayments: loanRows.reduce((s, r) => {
+      const loan = loans.find(l => l.id === r.loanId);
+      const interest = (loan && r.repayments > 0) ? Math.round(r.openingBalance * (loan.rate / 100 / 12)) : 0;
+      return s + (r.principalRepayments ?? (r.repayments - interest));
+    }, 0),
+    interestRepayments: loanRows.reduce((s, r) => {
+      const loan = loans.find(l => l.id === r.loanId);
+      const interest = (loan && r.repayments > 0) ? Math.round(r.openingBalance * (loan.rate / 100 / 12)) : 0;
+      return s + (r.interestRepayments ?? interest);
+    }, 0),
   } : null;
 
   const opening = loanRows[0];
   const closing = loanRows[loanRows.length - 1];
 
+  const closingCurrentPortion = (closing && selectedLoan) ? calcCurrentPortion(selectedLoan, closing.closingBalance, closing.period) : 0;
+  const closingLongTerm = closing ? closing.closingBalance - closingCurrentPortion : 0;
+
+  const YEAR_END_PERIOD = '2024-12';
+  const baseYear = 2025;
+  const yearLabels = Array.from({ length: 5 }, (_, i) => `Year ${i + 1} (${baseYear + i})`).concat(['Thereafter']);
+  const maturityLadderRows = loans
+    .filter(l => l.status === 'Active')
+    .map(l => {
+      const lRows = continuity.filter(r => r.loanId === l.id).sort((a, b) => b.period.localeCompare(a.period));
+      const cb = lRows[0]?.closingBalance ?? l.currentBalance;
+      const ladder = calcMaturityLadder(l, cb, YEAR_END_PERIOD);
+      return { loan: l, ladder, total: ladder.reduce((s, v) => s + v, 0) };
+    });
+  const ladderColTotals = [0, 1, 2, 3, 4, 5].map(i => maturityLadderRows.reduce((s, d) => s + d.ladder[i], 0));
+  const ladderGrandTotal = ladderColTotals.reduce((s, v) => s + v, 0);
+
+  const subTabBar = (
+    <div className="px-6 pt-4 pb-0 flex items-center gap-1 border-b border-border">
+      {(['continuity', 'activity'] as const).map(t => (
+        <button
+          key={t}
+          onClick={() => setSubTab(t)}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            subTab === t
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          {t === 'continuity' ? 'Continuity' : 'Activity'}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (subTab === 'activity') {
+    return (
+      <div>
+        {subTabBar}
+        <ActivityTab />
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 space-y-5">
+    <div>
+      {subTabBar}
+      <div className="p-6 space-y-5">
       {/* Section Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -263,7 +377,7 @@ export function ContinuityTab() {
               <table className="w-full text-sm">
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-muted border-b border-border">
-                    {['Period','Opening Balance','+ New Borr.','− Repayments','± FX','Closing Balance','Current Portion','Long-Term','Accrued Int.','Notes',''].map(h => (
+                    {['Period','Opening Balance','+ New Borr.','− Principal','− Interest','± FX','Closing Balance','Current Portion','Long-Term','Accrued Int.','Notes',''].map(h => (
                       <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -272,6 +386,15 @@ export function ContinuityTab() {
                   {loanRows.map(row => {
                     const isEditing = inlineEdit === row.id;
                     const iv = inlineValues as typeof row;
+                    const loan = loans.find(l => l.id === row.loanId);
+                    const computedInterest = (loan && row.repayments > 0)
+                      ? Math.round(row.openingBalance * (loan.rate / 100 / 12))
+                      : 0;
+                    const computedPrincipal = row.repayments > 0
+                      ? row.repayments - computedInterest
+                      : 0;
+                    const computedCurrentPortion = loan ? calcCurrentPortion(loan, row.closingBalance, row.period) : row.currentPortion;
+                    const computedLongTerm = row.closingBalance - computedCurrentPortion;
 
                     return (
                       <tr
@@ -279,59 +402,113 @@ export function ContinuityTab() {
                         className={`border-b border-border hover:bg-muted/30 transition-colors ${row.isManualAdjustment ? 'bg-amber-50/60 dark:bg-amber-900/10' : ''}`}
                       >
                         <td className="px-3 py-2 font-medium text-foreground whitespace-nowrap">{formatPeriod(row.period)}</td>
-                        {(['openingBalance','newBorrowings','repayments','fxTranslation','closingBalance','currentPortion','longTermPortion','accruedInterest'] as const).map(field => (
+                        {(['openingBalance','newBorrowings'] as const).map(field => (
                           <td key={field} className="px-3 py-2 tabular-nums text-right">
-                            {isEditing && field !== 'openingBalance' && field !== 'closingBalance' ? (
-                              <input
-                                type="number"
-                                value={(iv as unknown as Record<string, number>)[field]}
+                            {isEditing && field !== 'openingBalance' ? (
+                              <input type="number" value={(iv as unknown as Record<string, number>)[field]}
                                 onChange={e => setInlineValues({ ...inlineValues, [field]: parseFloat(e.target.value) || 0 })}
-                                className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/30"
-                              />
+                                className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/30" />
                             ) : (
-                              <span className={
-                                field === 'repayments' && row.repayments > 0 ? 'text-green-600' :
-                                field === 'fxTranslation' ? (row.fxTranslation < 0 ? 'text-destructive' : 'text-blue-600') :
-                                field === 'accruedInterest' ? 'text-amber-600' :
-                                'text-foreground'
-                              }>
-                                {field === 'repayments' && row.repayments > 0 ? '(' : ''}
+                              <span className="text-foreground">{fmtNumber((row as unknown as Record<string, number>)[field])}</span>
+                            )}
+                          </td>
+                        ))}
+                        {/* − Principal */}
+                        <td className="px-3 py-2 tabular-nums text-right">
+                          {isEditing ? (
+                            <input type="number" value={iv.principalRepayments ?? computedPrincipal}
+                              onChange={e => setInlineValues({ ...inlineValues, principalRepayments: parseFloat(e.target.value) || 0 })}
+                              className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                          ) : (
+                            <span className="text-green-600">
+                              {(() => { const v = row.principalRepayments ?? computedPrincipal; return v > 0 ? `(${fmtNumber(v)})` : '—'; })()}
+                            </span>
+                          )}
+                        </td>
+                        {/* − Interest */}
+                        <td className="px-3 py-2 tabular-nums text-right">
+                          {isEditing ? (
+                            <input type="number" value={iv.interestRepayments ?? computedInterest}
+                              onChange={e => setInlineValues({ ...inlineValues, interestRepayments: parseFloat(e.target.value) || 0 })}
+                              className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                          ) : (
+                            <span className="text-amber-600">
+                              {(() => { const v = row.interestRepayments ?? computedInterest; return v > 0 ? `(${fmtNumber(v)})` : '—'; })()}
+                            </span>
+                          )}
+                        </td>
+                        {(['fxTranslation', 'closingBalance'] as const).map(field => (
+                          <td key={field} className="px-3 py-2 tabular-nums text-right">
+                            {isEditing && field !== 'closingBalance' ? (
+                              <input type="number" value={(iv as unknown as Record<string, number>)[field]}
+                                onChange={e => setInlineValues({ ...inlineValues, [field]: parseFloat(e.target.value) || 0 })}
+                                className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                            ) : (
+                              <span className={field === 'fxTranslation' ? (row.fxTranslation < 0 ? 'text-destructive' : row.fxTranslation > 0 ? 'text-blue-600' : 'text-foreground') : 'text-foreground'}>
                                 {fmtNumber((row as unknown as Record<string, number>)[field])}
-                                {field === 'repayments' && row.repayments > 0 ? ')' : ''}
                               </span>
                             )}
                           </td>
                         ))}
-                        <td className="px-3 py-2 min-w-[100px]">
-                          <div className="flex items-center gap-1 flex-wrap">
-                            {/* + link button */}
-                            <button
-                              onClick={() => openNotesPanel(row.id)}
-                              title="Link financial statement notes"
-                              className="p-0.5 rounded hover:bg-primary/10 transition-colors group"
-                            >
-                              <Plus className="w-3.5 h-3.5 text-muted-foreground/50 group-hover:text-primary transition-colors" />
-                            </button>
-                            {/* linked note chips with hover popover */}
-                            {(rowLinkedNotes[row.id] ?? []).sort((a, b) => a - b).map(noteId => {
-                              const note = DISCLOSURE_NOTES.find(n => n.id === noteId);
-                              if (!note) return null;
-                              return (
-                                <span
-                                  key={noteId}
-                                  onMouseEnter={e => {
-                                    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                                    setHoveredNote({ rowId: row.id, noteId, x: r.left, y: r.top });
-                                  }}
-                                  onMouseLeave={() => setHoveredNote(null)}
-                                  className="inline-flex items-center text-[11px] font-semibold text-primary bg-primary/10 hover:bg-primary/20 rounded px-1.5 py-0.5 cursor-default transition-colors leading-none"
-                                >
-                                  {noteId}
-                                </span>
-                              );
-                            })}
-                            {row.isManualAdjustment && <Badge variant="warning">Adj</Badge>}
-                          </div>
+                        <td className="px-3 py-2 tabular-nums text-right">
+                          {isEditing ? (
+                            <input type="number" value={iv.currentPortion ?? computedCurrentPortion}
+                              onChange={e => setInlineValues({ ...inlineValues, currentPortion: parseFloat(e.target.value) || 0 })}
+                              className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                          ) : (
+                            <span className="text-foreground">{fmtNumber(computedCurrentPortion)}</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 tabular-nums text-right">
+                          {isEditing ? (
+                            <input type="number" value={iv.longTermPortion ?? computedLongTerm}
+                              onChange={e => setInlineValues({ ...inlineValues, longTermPortion: parseFloat(e.target.value) || 0 })}
+                              className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                          ) : (
+                            <span className="text-foreground">{fmtNumber(computedLongTerm)}</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 tabular-nums text-right">
+                          {isEditing ? (
+                            <input type="number" value={(iv as unknown as Record<string, number>)['accruedInterest']}
+                              onChange={e => setInlineValues({ ...inlineValues, accruedInterest: parseFloat(e.target.value) || 0 })}
+                              className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                          ) : (
+                            <span className="text-amber-600">{fmtNumber(row.accruedInterest)}</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 min-w-[120px]">
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={iv.notes ?? ''}
+                              onChange={e => setInlineValues({ ...inlineValues, notes: e.target.value })}
+                              placeholder="Notes…"
+                              className="w-full text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            />
+                          ) : (
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {(rowLinkedNotes[row.id] ?? []).sort((a, b) => a - b).map(noteId => {
+                                const note = DISCLOSURE_NOTES.find(n => n.id === noteId);
+                                if (!note) return null;
+                                return (
+                                  <span
+                                    key={noteId}
+                                    onMouseEnter={e => {
+                                      const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                      setHoveredNote({ rowId: row.id, noteId, x: r.left, y: r.top });
+                                    }}
+                                    onMouseLeave={() => setHoveredNote(null)}
+                                    className="inline-flex items-center text-[11px] font-semibold text-primary bg-primary/10 hover:bg-primary/20 rounded px-1.5 py-0.5 cursor-default transition-colors leading-none"
+                                  >
+                                    {noteId}
+                                  </span>
+                                );
+                              })}
+                              {row.isManualAdjustment && <Badge variant="warning">Adj</Badge>}
+                              {row.notes && <span className="text-[11px] text-foreground/55 truncate max-w-[72px]" title={row.notes}>{row.notes}</span>}
+                            </div>
+                          )}
                         </td>
                         <td className="px-3 py-2">
                           {isEditing ? (
@@ -368,11 +545,12 @@ export function ContinuityTab() {
                       <td className="px-3 py-2.5 text-foreground">FY2024 Total</td>
                       <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(opening?.openingBalance || 0)}</td>
                       <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(totals.newBorrowings)}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-green-600">({fmtNumber(totals.repayments)})</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-green-600">{totals.principalRepayments > 0 ? `(${fmtNumber(totals.principalRepayments)})` : '—'}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-amber-600">{totals.interestRepayments > 0 ? `(${fmtNumber(totals.interestRepayments)})` : '—'}</td>
                       <td className="px-3 py-2.5 text-right tabular-nums text-blue-600">{fmtNumber(totals.fxTranslation)}</td>
                       <td className="px-3 py-2.5 text-right tabular-nums font-bold text-primary">{fmtNumber(closing?.closingBalance || 0)}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(closing?.currentPortion || 0)}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(closing?.longTermPortion || 0)}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(closingCurrentPortion)}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(closingLongTerm)}</td>
                       <td className="px-3 py-2.5 text-right tabular-nums text-amber-600">{fmtNumber(closing?.accruedInterest || 0)}</td>
                       <td colSpan={2} />
                     </tr>
@@ -393,6 +571,47 @@ export function ContinuityTab() {
           )}
         </div>
       )}
+
+      {/* ── Maturity Ladder ─────────────────────────────────────── */}
+      <StyledCard className="overflow-hidden">
+        <div className="px-4 py-3 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground">Principal Repayment Schedule</h3>
+          <p className="text-xs text-foreground/60 mt-0.5">As at Dec 31, 2024 · Scheduled principal repayments by fiscal year</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-muted border-b border-border">
+                <th className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-left">Facility</th>
+                {yearLabels.map(lbl => (
+                  <th key={lbl} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right whitespace-nowrap">{lbl}</th>
+                ))}
+                <th className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {maturityLadderRows.map(({ loan: l, ladder, total }) => (
+                <tr key={l.id} className="border-b border-border hover:bg-muted/30 transition-colors">
+                  <td className="px-4 py-2.5 font-medium text-foreground">{l.name}</td>
+                  {ladder.map((v, i) => (
+                    <td key={i} className="px-4 py-2.5 text-right tabular-nums text-foreground">{v > 0 ? fmtNumber(v) : '—'}</td>
+                  ))}
+                  <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-foreground">{fmtNumber(total)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-muted/80 border-t-2 border-primary/20 font-semibold">
+                <td className="px-4 py-2.5 text-foreground">Total</td>
+                {ladderColTotals.map((v, i) => (
+                  <td key={i} className="px-4 py-2.5 text-right tabular-nums text-foreground">{v > 0 ? fmtNumber(v) : '—'}</td>
+                ))}
+                <td className="px-4 py-2.5 text-right tabular-nums font-bold text-primary">{fmtNumber(ladderGrandTotal)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </StyledCard>
 
       {view === 'consolidated' && (
         <StyledCard className="overflow-hidden">
@@ -529,6 +748,7 @@ export function ContinuityTab() {
         loanId={selectedLoanId}
         onSave={(row) => { addContinuityRow(row); toast.success('Row added'); setAddOpen(false); }}
       />
+      </div>
     </div>
   );
 }

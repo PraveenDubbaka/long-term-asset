@@ -10,11 +10,13 @@ import { Button } from "@/components/wp-ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/wp-ui/dropdown-menu";
-import { CapAssetScheduleTab }  from "./CapAssetScheduleTab";
-import { CapAssetAmortTab }     from "./CapAssetAmortTab";
-import { CapAssetDisposalsTab } from "./CapAssetDisposalsTab";
-import { CapAssetAJEsTab }      from "./CapAssetAJEsTab";
-import { CapAssetDashboardTab } from "./CapAssetDashboardTab";
+import { InvHoldingsTab }     from "./InvHoldingsTab";
+import { InvTransactionsTab } from "./InvTransactionsTab";
+import { InvWACTab }          from "./InvWACTab";
+import { InvGainLossTab }     from "./InvGainLossTab";
+import { InvFXTab }           from "./InvFXTab";
+import { InvAJEsTab }         from "./InvAJEsTab";
+import { InvDashboardTab }    from "./InvDashboardTab";
 
 const engagementsData: Record<string, { client: string; yearEnd: string; status: string }> = {
   "COM-CON-Dec312024": { client: "Shipping Line Inc.", yearEnd: "Dec 31, 2024", status: "In Progress" },
@@ -30,27 +32,29 @@ const headerActions = [
 ];
 
 const tabs = [
-  { id: "schedule",     label: "Schedule"     },
-  { id: "amortization", label: "Amortization" },
-  { id: "disposals",    label: "Disposals"    },
+  { id: "holdings",     label: "Holdings"     },
+  { id: "transactions", label: "Transactions" },
+  { id: "wac",          label: "WAC Schedule" },
+  { id: "gainloss",     label: "Gain / Loss"  },
+  { id: "fx",           label: "FX Schedule"  },
   { id: "ajes",         label: "AJEs"         },
   { id: "dashboard",    label: "Dashboard"    },
 ];
 
-const CapitalAsset = () => {
+const InvestmentPage = () => {
   const { engagementId } = useParams<{ engagementId: string }>();
-  const [activeTab, setActiveTab] = useState("schedule");
+  const [activeTab, setActiveTab] = useState("holdings");
 
   const eng = engagementsData[engagementId ?? ""] ?? {
-    client: "Shipping Line Inc.",
-    yearEnd: "Oct 31, 2024",
+    client: "Countable Holdings Corp.",
+    yearEnd: "Dec 31, 2025",
     status: "In Progress",
   };
 
   const statusVariant = eng.status === "Completed" ? "completed" : "inProgress";
 
   return (
-    <WpLayout title="Capital Asset">
+    <WpLayout title="Investment">
       <div className="flex h-full overflow-hidden bg-background">
         <div className="flex-1 overflow-y-auto flex flex-col min-w-0">
 
@@ -70,8 +74,7 @@ const CapitalAsset = () => {
                 <DropdownMenuContent align="start" className="w-52">
                   {[...new Set(Object.values(engagementsData).map(e => e.client))].map(c => (
                     <DropdownMenuItem key={c} className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4" />
-                      <span>{c}</span>
+                      <Building2 className="h-4 w-4" /><span>{c}</span>
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
@@ -118,8 +121,7 @@ const CapitalAsset = () => {
               <DropdownMenuContent align="end" className="w-48">
                 {headerActions.map(action => (
                   <DropdownMenuItem key={action.id} className="flex items-center gap-2">
-                    <action.icon className="h-4 w-4" />
-                    <span>{action.label}</span>
+                    <action.icon className="h-4 w-4" /><span>{action.label}</span>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -128,7 +130,7 @@ const CapitalAsset = () => {
 
           {/* ── Tab bar ─────────────────────────────────────────────── */}
           <div className="px-6 pt-5 pb-2 flex-shrink-0">
-            <div className="flex items-center gap-1 bg-card rounded-lg border border-border p-1 w-fit">
+            <div className="flex items-center gap-1 bg-card rounded-lg border border-border p-1 w-fit flex-wrap">
               {tabs.map(tab => (
                 <button
                   key={tab.id}
@@ -147,11 +149,13 @@ const CapitalAsset = () => {
 
           {/* ── Active tab ──────────────────────────────────────────── */}
           <div className="flex-1">
-            {activeTab === "schedule"     && <CapAssetScheduleTab />}
-            {activeTab === "amortization" && <CapAssetAmortTab />}
-            {activeTab === "disposals"    && <CapAssetDisposalsTab />}
-            {activeTab === "ajes"         && <CapAssetAJEsTab />}
-            {activeTab === "dashboard"    && <CapAssetDashboardTab />}
+            {activeTab === "holdings"     && <InvHoldingsTab />}
+            {activeTab === "transactions" && <InvTransactionsTab />}
+            {activeTab === "wac"          && <InvWACTab />}
+            {activeTab === "gainloss"     && <InvGainLossTab />}
+            {activeTab === "fx"           && <InvFXTab />}
+            {activeTab === "ajes"         && <InvAJEsTab />}
+            {activeTab === "dashboard"    && <InvDashboardTab />}
           </div>
 
         </div>
@@ -160,4 +164,4 @@ const CapitalAsset = () => {
   );
 };
 
-export default CapitalAsset;
+export default InvestmentPage;

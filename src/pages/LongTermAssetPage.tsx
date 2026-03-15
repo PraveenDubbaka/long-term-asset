@@ -10,11 +10,12 @@ import { Button } from "@/components/wp-ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/wp-ui/dropdown-menu";
-import { CapAssetScheduleTab }  from "./CapAssetScheduleTab";
-import { CapAssetAmortTab }     from "./CapAssetAmortTab";
-import { CapAssetDisposalsTab } from "./CapAssetDisposalsTab";
-import { CapAssetAJEsTab }      from "./CapAssetAJEsTab";
-import { CapAssetDashboardTab } from "./CapAssetDashboardTab";
+import { DashboardTab }    from "./DashboardTab";
+import { LoansTab }        from "./LoansTab";
+import { ContinuityTab }   from "./ContinuityTab";
+import { AmortizationTab } from "./AmortizationTab";
+import { CovenantsTab }    from "./CovenantsTab";
+import { AJEsTab }         from "./AJEsTab";
 
 const engagementsData: Record<string, { client: string; yearEnd: string; status: string }> = {
   "COM-CON-Dec312024": { client: "Shipping Line Inc.", yearEnd: "Dec 31, 2024", status: "In Progress" },
@@ -30,27 +31,28 @@ const headerActions = [
 ];
 
 const tabs = [
-  { id: "schedule",     label: "Schedule"     },
+  { id: "loans",        label: "Loans"        },
+  { id: "continuity",   label: "Continuity"   },
   { id: "amortization", label: "Amortization" },
-  { id: "disposals",    label: "Disposals"    },
+  { id: "covenants",    label: "Covenants"    },
   { id: "ajes",         label: "AJEs"         },
   { id: "dashboard",    label: "Dashboard"    },
 ];
 
-const CapitalAsset = () => {
+const LongTermAssetPage = () => {
   const { engagementId } = useParams<{ engagementId: string }>();
-  const [activeTab, setActiveTab] = useState("schedule");
+  const [activeTab, setActiveTab] = useState("loans");
 
   const eng = engagementsData[engagementId ?? ""] ?? {
     client: "Shipping Line Inc.",
-    yearEnd: "Oct 31, 2024",
+    yearEnd: "Dec 31, 2024",
     status: "In Progress",
   };
 
   const statusVariant = eng.status === "Completed" ? "completed" : "inProgress";
 
   return (
-    <WpLayout title="Capital Asset">
+    <WpLayout title="Long-term Asset">
       <div className="flex h-full overflow-hidden bg-background">
         <div className="flex-1 overflow-y-auto flex flex-col min-w-0">
 
@@ -147,11 +149,12 @@ const CapitalAsset = () => {
 
           {/* ── Active tab ──────────────────────────────────────────── */}
           <div className="flex-1">
-            {activeTab === "schedule"     && <CapAssetScheduleTab />}
-            {activeTab === "amortization" && <CapAssetAmortTab />}
-            {activeTab === "disposals"    && <CapAssetDisposalsTab />}
-            {activeTab === "ajes"         && <CapAssetAJEsTab />}
-            {activeTab === "dashboard"    && <CapAssetDashboardTab />}
+            {activeTab === "loans"        && <LoansTab />}
+            {activeTab === "continuity"   && <ContinuityTab />}
+            {activeTab === "amortization" && <AmortizationTab />}
+            {activeTab === "covenants"    && <CovenantsTab />}
+            {activeTab === "ajes"         && <AJEsTab />}
+            {activeTab === "dashboard"    && <DashboardTab />}
           </div>
 
         </div>
@@ -160,4 +163,4 @@ const CapitalAsset = () => {
   );
 };
 
-export default CapitalAsset;
+export default LongTermAssetPage;

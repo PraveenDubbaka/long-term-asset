@@ -18,7 +18,9 @@ import { ReportsTab }       from './pages/ReportsTab';
 import { SettingsTab }      from './pages/SettingsTab';
 
 /* ── Working-Papers Portal ── */
-import CapitalAsset from './pages/CapitalAsset';
+import LongTermAssetPage from './pages/LongTermAssetPage';
+import CapitalAsset      from './pages/CapitalAsset';
+import InvestmentPage    from './pages/InvestmentPage';
 
 const queryClient = new QueryClient();
 
@@ -63,11 +65,15 @@ export default function App() {
             {/* ── Working-Papers Portal routes ── */}
             <Route
               path="/engagements/:engagementId/long-term-asset"
-              element={<CapitalAsset />}
+              element={<LongTermAssetPage />}
             />
             <Route
               path="/engagements/:engagementId/capital-asset"
               element={<CapitalAsset />}
+            />
+            <Route
+              path="/engagements/:engagementId/investment"
+              element={<InvestmentPage />}
             />
 
             {/* ── Loan Debt Tool (default, catches everything else) ── */}

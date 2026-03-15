@@ -60,6 +60,7 @@ interface Store {
   advanceJEStatus: (id: string, status: JEStatus, user: string) => void;
   addJE: (je: JEProposal) => void;
   deleteJE: (id: string) => void;
+  restoreJE: (id: string) => void;
 
   resolveReviewItem: (id: string) => void;
   updateSettings: (updates: Partial<EngagementSettings>) => void;
@@ -147,7 +148,8 @@ export const useStore = create<Store>((set) => ({
     } : j)
   })),
   addJE: (je) => set(s => ({ jes: [...s.jes, je] })),
-  deleteJE: (id) => set(s => ({ jes: s.jes.filter(j => j.id !== id) })),
+  deleteJE:  (id) => set(s => ({ jes: s.jes.map(j => j.id === id ? { ...j, deleted: true, deletedAt: new Date().toISOString() } : j) })),
+  restoreJE: (id) => set(s => ({ jes: s.jes.map(j => j.id === id ? { ...j, deleted: false, deletedAt: undefined } : j) })),
 
   resolveReviewItem: (id) => set(s => ({ reviewQueue: s.reviewQueue.filter(r => r.id !== id) })),
   updateSettings: (updates) => set(s => ({ settings: { ...s.settings, ...updates } })),

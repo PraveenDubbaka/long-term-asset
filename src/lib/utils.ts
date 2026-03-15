@@ -251,6 +251,13 @@ export function buildMaturityLadder(
 }
 
 // ─── EXCEL EXPORT ─────────────────────────────────────────────────────────────
+/** Convert an array of plain objects to headers + rows (AOA format for XLSX) */
+export function objsToAOA(rows: Record<string, unknown>[]): unknown[][] {
+  if (rows.length === 0) return [];
+  const headers = Object.keys(rows[0]);
+  return [headers, ...rows.map(r => headers.map(h => r[h] ?? ''))];
+}
+
 export async function exportToExcel(data: Record<string, unknown[][]>, filename: string) {
   const XLSX = await import('xlsx');
   const wb = XLSX.utils.book_new();

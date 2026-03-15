@@ -46,6 +46,7 @@ export interface Loan {
   notes?: string;
   attachments: string[];
   fxRateToCAD?: number; // for non-CAD loans
+  monthlyPayment?: number; // manual override; if absent, computed from PMT
 }
 
 export interface AmortizationRow {
@@ -67,7 +68,9 @@ export interface ContinuityRow {
   period: string; // 'YYYY-MM'
   openingBalance: number;
   newBorrowings: number;
-  repayments: number;
+  repayments: number;          // total P&I (legacy / fallback)
+  principalRepayments?: number; // principal portion
+  interestRepayments?: number;  // interest portion
   fxTranslation: number;
   closingBalance: number;
   currentPortion: number;
@@ -151,6 +154,7 @@ export interface JELine {
   debit: number;
   credit: number;
   loanId?: string;
+  reference?: string; // source / destination audit trail
 }
 
 export interface JEProposal {
@@ -162,10 +166,13 @@ export interface JEProposal {
   preparedBy?: string;
   approvedBy?: string;
   fiscalYear: string;
+  date?: string;       // effective date (defaults to year-end)
   loanId?: string;
   createdAt: string;
   approvedAt?: string;
   postedAt?: string;
+  deleted?: boolean;  // soft-delete — retained for audit / restore
+  deletedAt?: string;
 }
 
 export interface FXRate {
