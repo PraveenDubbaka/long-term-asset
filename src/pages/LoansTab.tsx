@@ -453,10 +453,17 @@ export function LoansTab() {
                           ? <select className={`${IIC} cursor-pointer`} value={inlineVals.interestType ?? 'Fixed'} onChange={e => setInlineVals(v => ({ ...v, interestType: e.target.value as InterestType }))} onClick={e => e.stopPropagation()}>
                               <option value="Fixed">Fixed</option>
                               <option value="Variable">Variable</option>
+                              <option value="Floating">Floating (Prime-based)</option>
+                              <option value="Hybrid">Hybrid (Fixed → Variable)</option>
+                              <option value="Step Rate">Step Rate</option>
                             </select>
-                          : l.interestType === 'Variable'
-                            ? <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">Variable</span>
-                            : <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground border border-border whitespace-nowrap">Fixed</span>}
+                          : ({
+                              Fixed:      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground border border-border whitespace-nowrap">Fixed</span>,
+                              Variable:   <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">Variable</span>,
+                              Floating:   <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 whitespace-nowrap">Floating</span>,
+                              Hybrid:     <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap">Hybrid</span>,
+                              'Step Rate':<span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-teal-50 text-teal-700 border border-teal-200 whitespace-nowrap">Step Rate</span>,
+                            } as Record<string, React.ReactElement>)[l.interestType] ?? <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground border border-border whitespace-nowrap">{l.interestType}</span>}
                       </td>
                     )}
                     {/* Mo. Payment */}
@@ -1126,7 +1133,7 @@ function LoanFormModal({ open, onClose, form, setForm, onSave, isEdit }: {
         {/* Row 2: Int. Rate + Mo. Payment preview */}
         <div className="col-span-2 grid grid-cols-3 gap-2">
           <Select label="Interest Type" value={form.interestType || 'Fixed'} onChange={f('interestType')} options={[
-            { value: 'Fixed', label: 'Fixed Rate' }, { value: 'Variable', label: 'Variable Rate' },
+            { value: 'Fixed', label: 'Fixed Rate' }, { value: 'Variable', label: 'Variable Rate' }, { value: 'Floating', label: 'Floating (Prime-based)' }, { value: 'Hybrid', label: 'Hybrid (Fixed → Variable)' }, { value: 'Step Rate', label: 'Step Rate' },
           ]} />
           <Input label="Int. Rate (%)" type="number" value={form.rate || ''} onChange={fn('rate')} suffix="%" />
           <Input label="Mo. Payment" type="number" value={form.monthlyPayment ?? ''} onChange={fn('monthlyPayment')} prefix="$" placeholder={computedMoPayment || '0'} />
