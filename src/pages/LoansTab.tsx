@@ -302,6 +302,20 @@ export function LoansTab() {
         </div>
       </div>
 
+      {/* Datalist for loan type combo — rendered once to avoid duplicate-id issues */}
+      <datalist id="loan-type-options">
+        <option value="Term" />
+        <option value="LOC" />
+        <option value="Revolver" />
+        <option value="Mortgage" />
+        <option value="Bridge" />
+        <option value="Demand" />
+        <option value="Construction" />
+        <option value="Mezzanine" />
+        <option value="Subordinated" />
+        <option value="Equipment" />
+      </datalist>
+
       {/* Loan Table */}
       <div className="px-6">
         <StyledCard className="overflow-hidden">
@@ -514,28 +528,14 @@ export function LoansTab() {
                     {isVisible('type') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <>
-                              <input
-                                list="loan-type-options"
-                                className={IIC}
-                                value={inlineVals.type ?? l.type}
-                                onChange={e => setInlineVals(v => ({ ...v, type: e.target.value as LoanType }))}
-                                onClick={e => e.stopPropagation()}
-                                placeholder="Type or select…"
-                              />
-                              <datalist id="loan-type-options">
-                                <option value="Term" />
-                                <option value="LOC" />
-                                <option value="Revolver" />
-                                <option value="Mortgage" />
-                                <option value="Bridge" />
-                                <option value="Demand" />
-                                <option value="Construction" />
-                                <option value="Mezzanine" />
-                                <option value="Subordinated" />
-                                <option value="Equipment" />
-                              </datalist>
-                            </>
+                          ? <input
+                              list="loan-type-options"
+                              className={IIC}
+                              value={inlineVals.type ?? l.type}
+                              onChange={e => setInlineVals(v => ({ ...v, type: e.target.value as LoanType }))}
+                              onClick={e => e.stopPropagation()}
+                              placeholder="Type or select…"
+                            />
                           : typeBadge(l.type)}
                       </td>
                     )}
