@@ -51,16 +51,17 @@ function LoanTypeCombo({ value, iic, onChange, onClick }: {
 }) {
   const [open, setOpen] = useState(false);
   const [inputVal, setInputVal] = useState(value);
+  const [typed, setTyped] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
 
-  useEffect(() => { setInputVal(value); }, [value]);
+  useEffect(() => { setInputVal(value); setTyped(false); }, [value]);
 
   const openDrop = () => {
     if (inputRef.current) {
       const r = inputRef.current.getBoundingClientRect();
-      setPos({ top: r.bottom + 2, left: r.left, width: Math.max(r.width, 140) });
+      setPos({ top: r.bottom + 2, left: r.left, width: Math.max(r.width, 160) });
     }
     setOpen(true);
   };
@@ -70,15 +71,17 @@ function LoanTypeCombo({ value, iic, onChange, onClick }: {
     const close = (e: MouseEvent) => {
       if (!inputRef.current?.contains(e.target as Node) && !dropRef.current?.contains(e.target as Node)) {
         setOpen(false);
+        setTyped(false);
       }
     };
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, [open]);
 
-  const filtered = LOAN_TYPE_SUGGESTIONS.filter(o =>
-    !inputVal || o.toLowerCase().includes(inputVal.toLowerCase())
-  );
+  // Show all options on open; filter only once user starts typing
+  const filtered = typed
+    ? LOAN_TYPE_SUGGESTIONS.filter(o => o.toLowerCase().includes(inputVal.toLowerCase()))
+    : LOAN_TYPE_SUGGESTIONS;
 
   return (
     <>
@@ -87,7 +90,7 @@ function LoanTypeCombo({ value, iic, onChange, onClick }: {
         className={iic}
         value={inputVal}
         placeholder="Type or select…"
-        onChange={e => { setInputVal(e.target.value); onChange(e.target.value); }}
+        onChange={e => { setInputVal(e.target.value); onChange(e.target.value); setTyped(true); }}
         onFocus={openDrop}
         onClick={(e) => { onClick(e); openDrop(); }}
       />
@@ -100,8 +103,8 @@ function LoanTypeCombo({ value, iic, onChange, onClick }: {
           {filtered.map(opt => (
             <div
               key={opt}
-              className="px-3 py-1.5 text-sm cursor-pointer hover:bg-muted text-foreground"
-              onMouseDown={e => { e.preventDefault(); setInputVal(opt); onChange(opt); setOpen(false); }}
+              className={`px-3 py-1.5 text-sm cursor-pointer text-foreground ${opt === inputVal ? 'bg-primary/10 font-medium' : 'hover:bg-muted'}`}
+              onMouseDown={e => { e.preventDefault(); setInputVal(opt); onChange(opt); setTyped(false); setOpen(false); }}
             >
               {opt}
             </div>
