@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   Building2, ChevronDown, ChevronRight, FileText, Settings2,
-  Landmark, PencilLine, FileSpreadsheet, ClipboardCheck,
+  Landmark, PencilLine, FileSpreadsheet, ClipboardCheck, DollarSign,
 } from "lucide-react";
 import { WpLayout } from "@/components/WpLayout";
 import { Badge } from "@/components/wp-ui/badge";
@@ -129,7 +129,7 @@ const LongTermAssetPage = () => {
           </div>
 
           {/* ── Tab bar ─────────────────────────────────────────────── */}
-          <div className="px-6 pt-5 pb-2 flex-shrink-0">
+          <div className="px-6 pt-5 pb-2 flex-shrink-0 flex items-center justify-between">
             <div className="flex items-center gap-1 bg-card rounded-lg border border-border p-1 w-fit">
               {tabs.map(tab => (
                 <button
@@ -144,6 +144,13 @@ const LongTermAssetPage = () => {
                   {tab.label}
                 </button>
               ))}
+            </div>
+
+            {/* Reporting currency indicator */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700">
+              <DollarSign className="w-3 h-3" />
+              <span className="text-[11px] font-semibold tracking-wide">Reporting Currency: CAD</span>
+              <span className="text-[10px] text-emerald-600/70 font-normal">Canadian Dollar</span>
             </div>
           </div>
 
