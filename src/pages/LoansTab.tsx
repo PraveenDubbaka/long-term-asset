@@ -61,7 +61,7 @@ const LOANS_COLS: ColDef<LoansColId>[] = [
   { id: 'currency',      label: 'CCY' },
   { id: 'origAmt',       label: 'Orig. Loan Amt' },
   { id: 'fxRate',        label: 'FX Rate' },
-  { id: 'balance',       label: 'Bal. Loan Amt' },
+  { id: 'balance',       label: 'Converted Amt' },
   { id: 'glPrincipal',   label: 'GL Principal' },
   { id: 'dayCount',      label: 'Day Count' },
   { id: 'paymentType',   label: 'Payment Type' },
@@ -366,7 +366,7 @@ export function LoansTab() {
                     </ThResizable>
                   )}
                   {isVisible('balance') && (
-                    <ThResizable colId="balance" width={getWidth('balance')} onResizeStart={rh('balance')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Bal. Loan Amt</ThResizable>
+                    <ThResizable colId="balance" width={getWidth('balance')} onResizeStart={rh('balance')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Converted Amt</ThResizable>
                   )}
                   {isVisible('glPrincipal') && (
                     <ThResizable colId="glPrincipal" width={getWidth('glPrincipal')} onResizeStart={rh('glPrincipal')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
@@ -565,7 +565,7 @@ export function LoansTab() {
                       <td className="px-3 py-1.5">
                         {ie
                           ? <input type="number" className={`${IIC} text-right`} value={inlineVals.currentBalance ?? ''} onChange={ivNum('currentBalance')} onClick={e => e.stopPropagation()} />
-                          : <span className="tabular-nums font-semibold text-foreground whitespace-nowrap float-right">{fmtCurrency(l.currentBalance, l.currency)}</span>}
+                          : <span className="tabular-nums font-semibold text-foreground whitespace-nowrap float-right">{fmtCurrency(l.currentBalance * getFxRate(l), 'CAD')}</span>}
                       </td>
                     )}
                     {/* GL Principal */}
