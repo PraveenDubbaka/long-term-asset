@@ -565,7 +565,7 @@ export function LoansTab() {
                       <td className="px-3 py-1.5">
                         {ie
                           ? <input type="number" className={`${IIC} text-right`} value={inlineVals.currentBalance ?? ''} onChange={ivNum('currentBalance')} onClick={e => e.stopPropagation()} />
-                          : <span className="tabular-nums font-semibold text-foreground whitespace-nowrap float-right">{fmtCurrency(l.currentBalance * getFxRate(l), 'CAD')}</span>}
+                          : <span className="tabular-nums font-semibold text-foreground whitespace-nowrap float-right">{fmtCurrency(l.originalPrincipal * getFxRate(l), 'CAD')}</span>}
                       </td>
                     )}
                     {/* GL Principal */}
