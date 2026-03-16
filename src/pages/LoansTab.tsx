@@ -474,7 +474,7 @@ export function LoansTab() {
                       <td className="px-3 py-1.5">
                         {ie
                           ? <input type="date" className={IIC} value={inlineVals.startDate ?? ''} onChange={iv('startDate')} onClick={e => e.stopPropagation()} />
-                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{l.startDate || '—'}</span>}
+                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{fmtDateDisplay(l.startDate || '')}</span>}
                       </td>
                     )}
                     {/* Maturity */}
@@ -482,7 +482,7 @@ export function LoansTab() {
                       <td className="px-3 py-1.5">
                         {ie
                           ? <input type="date" className={IIC} value={inlineVals.maturityDate ?? ''} onChange={iv('maturityDate')} onClick={e => e.stopPropagation()} />
-                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{l.maturityDate}</span>}
+                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{fmtDateDisplay(l.maturityDate)}</span>}
                       </td>
                     )}
                     {/* Current Collateral */}

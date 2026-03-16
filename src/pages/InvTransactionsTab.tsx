@@ -4,6 +4,7 @@ import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
 import { StyledCard } from '@/components/wp-ui/card';
 import { transactions } from '../data/investmentData';
+import { fmtDateDisplay } from '../lib/utils';
 import type { TxnType } from '../types/investmentTypes';
 import toast from 'react-hot-toast';
 
@@ -159,7 +160,7 @@ export function InvTransactionsTab() {
             <tbody className="divide-y divide-border">
               {filtered.map(t => (
                 <tr key={t.id} className={`hover:bg-muted/30 transition-colors ${t.flag ? 'bg-amber-50/60' : ''}`}>
-                  <td className="px-3 py-2 text-xs tabular-nums font-mono text-muted-foreground">{t.date}</td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">{fmtDateDisplay(t.date)}</td>
                   <td className="px-3 py-2">
                     <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{t.source}</span>
                   </td>

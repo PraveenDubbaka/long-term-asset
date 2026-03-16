@@ -76,7 +76,13 @@ export default function App() {
               element={<InvestmentPage />}
             />
 
-            {/* ── Loan Debt Tool (default, catches everything else) ── */}
+            {/* ── Default: redirect root to long-term-asset ── */}
+            <Route
+              path="/"
+              element={<Navigate to="/engagements/COM-CON-Dec312024/long-term-asset" replace />}
+            />
+
+            {/* ── Loan Debt Tool (catches everything else) ── */}
             <Route path="*" element={<LoanDebtTool />} />
           </Routes>
         </HashRouter>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Upload, Plus, CheckCircle, AlertTriangle, Zap, AlertCircle, Download } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { fmtCurrency, exportToExcel, buildActivityExport } from '../lib/utils';
+import { fmtCurrency, fmtDateDisplay, exportToExcel, buildActivityExport } from '../lib/utils';
 import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
 import { StyledCard } from '@/components/wp-ui/card';
@@ -161,7 +161,7 @@ export function ActivityTab() {
                     key={item.id}
                     className={`border-b border-border hover:bg-muted/30 transition-colors ${hasAI ? 'bg-primary/[0.03]' : ''}`}
                   >
-                    <td className="px-4 py-2 font-mono text-foreground/60 whitespace-nowrap">{item.date}</td>
+                    <td className="px-4 py-2 text-foreground/60 whitespace-nowrap">{fmtDateDisplay(item.date)}</td>
                     <td className="px-4 py-2 font-medium text-foreground whitespace-nowrap">{loan?.name || '—'}</td>
                     <td className="px-4 py-2 text-foreground/60 max-w-[200px] truncate">
                       {item.description}

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Edit3, Lock, Unlock, Download, ChevronDown } from 'lucide-react';
 import { useTableColumns, ColumnToggleButton, useColumnResize, ThResizable, type ColDef } from '@/components/table-utils';
 import { useStore } from '../store/useStore';
-import { fmtCurrency, fmtNumber, buildMaturityLadder, exportToExcel, buildAmortizationExport } from '../lib/utils';
+import { fmtCurrency, fmtNumber, fmtDateDisplay, buildMaturityLadder, exportToExcel, buildAmortizationExport } from '../lib/utils';
 import { Button } from '@/components/wp-ui/button';
 import { StyledCard } from '@/components/wp-ui/card';
 import toast from 'react-hot-toast';
@@ -160,7 +160,7 @@ export function AmortizationTab() {
               { label: 'Remaining Balance',        value: fmtCurrency(selectedLoan.currentBalance, selectedLoan.currency), sub: 'Opening balance' },
               { label: 'Total Interest Remaining', value: fmtCurrency(totals.interest, selectedLoan.currency, true),        sub: 'Full schedule' },
               { label: 'Monthly Payment',          value: loanRows[0] ? fmtCurrency(loanRows[0].payment, selectedLoan.currency) : '—', sub: selectedLoan.paymentType },
-              { label: 'Maturity',                 value: selectedLoan.maturityDate, sub: `${selectedLoan.rate}% ${selectedLoan.dayCountBasis}` },
+              { label: 'Maturity',                 value: fmtDateDisplay(selectedLoan.maturityDate), sub: `${selectedLoan.rate}% ${selectedLoan.dayCountBasis}` },
             ].map(s => (
               <div key={s.label} className="px-5 py-4 bg-card border border-border shadow-sm" style={{ borderRadius: '12px' }}>
                 <div className="text-[11px] font-medium text-foreground/60 mb-1 whitespace-nowrap">{s.label}</div>

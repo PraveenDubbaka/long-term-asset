@@ -2,7 +2,7 @@ import React from 'react';
 import { TrendingDown, TrendingUp, DollarSign, AlertTriangle, CheckCircle, Clock, FileText, CalendarClock, ShieldAlert, Minus, Download } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useStore } from '../store/useStore';
-import { fmtCurrency, fmtPct, buildMaturityLadder, exportToExcel, buildDashboardExport } from '../lib/utils';
+import { fmtCurrency, fmtPct, fmtDateDisplay, buildMaturityLadder, exportToExcel, buildDashboardExport } from '../lib/utils';
 import { getProjectedStatus } from '../lib/covenantTemplates';
 import { StyledCard } from '@/components/wp-ui/card';
 import { Badge } from '@/components/wp-ui/badge';
@@ -304,7 +304,7 @@ export function DashboardTab() {
                     <div className="flex items-center gap-1.5">
                       <CalendarClock className={`w-3 h-3 ${maxDays <= 90 ? 'text-red-500' : 'text-amber-500'}`} />
                       <span className="text-foreground/70">{l.name}</span>
-                      <span className="text-foreground/40">{l.maturityDate}</span>
+                      <span className="text-foreground/40">{fmtDateDisplay(l.maturityDate)}</span>
                     </div>
                     <span className="tabular-nums font-medium text-foreground/80">{fmtCurrency(l.currentBalance, l.currency)}</span>
                   </div>
@@ -380,7 +380,7 @@ export function DashboardTab() {
                 key={l.id}
                 icon={<CalendarClock className="w-3.5 h-3.5 text-red-500" />}
                 label={`${l.name} matures ${maturityLabel(l.daysUntilMaturity)}`}
-                detail={`${l.maturityDate} · ${fmtCurrency(l.currentBalance, l.currency)} outstanding`}
+                detail={`${fmtDateDisplay(l.maturityDate)} · ${fmtCurrency(l.currentBalance, l.currency)} outstanding`}
                 severity={l.daysUntilMaturity <= 90 ? 'danger' : 'warning'}
               />
             ))}

@@ -4,6 +4,7 @@ import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
 import { StyledCard } from '@/components/wp-ui/card';
 import { wacGroups } from '../data/investmentData';
+import { fmtDateDisplay } from '../lib/utils';
 import type { WACGroup } from '../types/investmentTypes';
 import toast from 'react-hot-toast';
 
@@ -131,7 +132,7 @@ export function InvWACTab() {
                     <tbody className="divide-y divide-border">
                       {g.rows.map(r => (
                         <tr key={r.id} className={`hover:bg-muted/20 ${r.txnType === 'Closing' ? 'bg-muted/30 font-medium' : ''}`}>
-                          <td className="px-4 py-2 text-xs font-mono tabular-nums text-muted-foreground">{r.date}</td>
+                          <td className="px-4 py-2 text-xs text-muted-foreground whitespace-nowrap">{fmtDateDisplay(r.date)}</td>
                           <td className="px-3 py-2">
                             <Badge variant={(TXN_COLORS[r.txnType] ?? 'outline') as Parameters<typeof Badge>[0]['variant']} className="text-xs whitespace-nowrap">
                               {r.txnType}

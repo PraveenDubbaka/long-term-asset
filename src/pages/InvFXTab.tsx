@@ -4,6 +4,7 @@ import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
 import { StyledCard } from '@/components/wp-ui/card';
 import { fxRates, fxSchedule } from '../data/investmentData';
+import { fmtDateDisplay } from '../lib/utils';
 import toast from 'react-hot-toast';
 
 function fmt(n: number, d = 4) { return n.toLocaleString('en-CA', { minimumFractionDigits: d, maximumFractionDigits: d }); }
@@ -169,7 +170,7 @@ export function InvFXTab() {
               <tbody className="divide-y divide-border">
                 {fxRates.map((r, i) => (
                   <tr key={i} className={`hover:bg-muted/20 ${r.notes?.includes('Year-end') ? 'bg-primary/5 font-semibold' : ''}`}>
-                    <td className="px-4 py-2 text-xs font-mono tabular-nums text-muted-foreground">{r.date}</td>
+                    <td className="px-4 py-2 text-xs text-muted-foreground whitespace-nowrap">{fmtDateDisplay(r.date)}</td>
                     <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{fmt(r.usdCad)}</td>
                     <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{fmt(r.eurCad)}</td>
                     <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{fmt(r.gbpCad)}</td>

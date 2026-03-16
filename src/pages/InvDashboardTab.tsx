@@ -4,6 +4,7 @@ import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
 import { StyledCard } from '@/components/wp-ui/card';
 import { glSummaryRows, realizedRows, dividendRows, unrealizedRows, holdings } from '../data/investmentData';
+import { fmtDateDisplay } from '../lib/utils';
 import toast from 'react-hot-toast';
 
 function fmt(n: number, d = 2) { return n.toLocaleString('en-CA', { minimumFractionDigits: d, maximumFractionDigits: d }); }
@@ -97,7 +98,7 @@ export function InvDashboardTab() {
           <div className="mt-2 space-y-1">
             {realizedRows.map(r => (
               <div key={r.id} className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">{r.ticker} ({r.date})</span>
+                <span className="text-muted-foreground">{r.ticker} ({fmtDateDisplay(r.date)})</span>
                 <span className={`tabular-nums ${glColor(r.realizedGL_CAD)}`}>
                   {r.realizedGL_CAD >= 0 ? '+$' : '($'}{fmt(Math.abs(r.realizedGL_CAD))}{r.realizedGL_CAD < 0 ? ')' : ''}
                 </span>

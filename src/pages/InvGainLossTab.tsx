@@ -4,6 +4,7 @@ import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
 import { StyledCard } from '@/components/wp-ui/card';
 import { realizedRows, dividendRows, unrealizedRows } from '../data/investmentData';
+import { fmtDateDisplay } from '../lib/utils';
 import toast from 'react-hot-toast';
 
 function fmt(n: number, d = 2) { return n.toLocaleString('en-CA', { minimumFractionDigits: d, maximumFractionDigits: d }); }
@@ -112,7 +113,7 @@ export function InvGainLossTab() {
                       <div className="text-xs font-mono text-muted-foreground">{r.ticker}</div>
                     </td>
                     <td className="px-3 py-2.5 text-xs text-foreground">{r.broker.split(' ')[0]}</td>
-                    <td className="px-3 py-2.5 text-xs font-mono text-muted-foreground tabular-nums">{r.date}</td>
+                    <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{fmtDateDisplay(r.date)}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">{fmt(r.unitsSold, 0)}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">{fmt(r.proceedsLocal)}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-muted-foreground">{fmt(r.wacCostLocal)}</td>
