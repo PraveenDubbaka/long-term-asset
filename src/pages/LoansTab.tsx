@@ -462,12 +462,23 @@ export function LoansTab() {
                     {/* Mo. Payment */}
                     {isVisible('monthlyPayment') && (
                       <td className="px-3 py-1.5 text-right">
-                        {(() => {
-                          const pmt = calcMonthlyPayment(l);
-                          return pmt !== null
-                            ? <span className="tabular-nums font-mono text-sm text-foreground whitespace-nowrap">{fmtCurrency(pmt, l.currency)}</span>
-                            : <span className="text-muted-foreground/50 text-xs">—</span>;
-                        })()}
+                        {ie
+                          ? <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              className="h-7 w-28 px-1.5 text-sm text-right border border-border rounded bg-background focus:outline-none focus:border-primary/40 font-mono"
+                              value={inlineVals.monthlyPayment ?? ''}
+                              placeholder={(() => { const p = calcMonthlyPayment(l); return p ? Math.round(p).toString() : ''; })()}
+                              onChange={ivNum('monthlyPayment')}
+                              onClick={e => e.stopPropagation()}
+                            />
+                          : (() => {
+                              const pmt = calcMonthlyPayment(l);
+                              return pmt !== null
+                                ? <span className="tabular-nums font-mono text-sm text-foreground whitespace-nowrap">{fmtCurrency(pmt, l.currency)}{l.monthlyPayment ? '' : <span className="text-muted-foreground/40 text-[10px] ml-1" title="Auto-calculated">~</span>}</span>
+                                : <span className="text-muted-foreground/50 text-xs">—</span>;
+                            })()}
                       </td>
                     )}
                     {/* Start Date */}
