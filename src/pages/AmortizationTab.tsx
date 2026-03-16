@@ -1,10 +1,23 @@
 import React, { useState } from 'react';
 import { Edit3, Lock, Unlock, Download, ChevronDown } from 'lucide-react';
+import { useTableColumns, ColumnToggleButton, useColumnResize, ThResizable, type ColDef } from '@/components/table-utils';
 import { useStore } from '../store/useStore';
 import { fmtCurrency, fmtNumber, buildMaturityLadder, exportToExcel, buildAmortizationExport } from '../lib/utils';
 import { Button } from '@/components/wp-ui/button';
 import { StyledCard } from '@/components/wp-ui/card';
 import toast from 'react-hot-toast';
+
+type AmortColId = 'period' | 'openingBalance' | 'interest' | 'payment' | 'principal' | 'endingBalance' | 'actions';
+
+const AMORT_COLS: ColDef<AmortColId>[] = [
+  { id: 'period',         label: 'Period',          pinned: true },
+  { id: 'openingBalance', label: 'Opening Balance' },
+  { id: 'interest',       label: 'Interest' },
+  { id: 'payment',        label: 'Payment' },
+  { id: 'principal',      label: 'Principal' },
+  { id: 'endingBalance',  label: 'Ending Balance' },
+  { id: 'actions',        label: '',                pinned: true },
+];
 
 export function AmortizationTab() {
   const { loans, amortization, settings, updateAmortRow } = useStore(s => ({
@@ -19,6 +32,10 @@ export function AmortizationTab() {
   const [editRowId, setEditRowId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<{ payment: number; principal: number; interest: number }>({ payment: 0, principal: 0, interest: 0 });
   const [lockedRows, setLockedRows] = useState<Set<string>>(new Set());
+
+  const { isVisible: amortVisible, toggle: amortToggle, setWidth: amortSetWidth, getWidth: amortGetWidth } = useTableColumns('amortization', AMORT_COLS);
+  const { onResizeStart: amortResizeStart } = useColumnResize(amortSetWidth);
+  const arh = (id: AmortColId) => (e: React.MouseEvent) => amortResizeStart(id, e, amortGetWidth(id) ?? 120);
 
   const selectedLoan = loans.find(l => l.id === selectedLoanId);
   const loanRows = amortization.filter(r => r.loanId === selectedLoanId).sort((a, b) => a.periodDate.localeCompare(b.periodDate));
@@ -97,7 +114,10 @@ export function AmortizationTab() {
           <h2 className="text-base font-semibold text-foreground">Amortization Schedules</h2>
           <p className="text-xs text-foreground/60 mt-0.5">Per-loan schedules, interest split, and maturity ladder</p>
         </div>
-        <Button variant="secondary" size="sm" onClick={exportAll}><Download className="w-3.5 h-3.5 mr-1" /> Export All</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={exportAll}><Download className="w-3.5 h-3.5 mr-1" /> Export All</Button>
+          <ColumnToggleButton columns={AMORT_COLS} isVisible={amortVisible} onToggle={amortToggle} />
+        </div>
       </div>
 
       {/* Tab Bar */}
@@ -165,9 +185,13 @@ export function AmortizationTab() {
               <table className="w-full text-sm">
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-muted border-b border-border">
-                    {['Period','Opening Balance','Interest','Payment','Principal','Ending Balance',''].map(h => (
-                      <th key={h} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right first:text-left last:text-center whitespace-nowrap">{h}</th>
-                    ))}
+                    <ThResizable colId="period" width={amortGetWidth('period')} onResizeStart={arh('period')} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-left whitespace-nowrap">Period</ThResizable>
+                    {amortVisible('openingBalance') && <ThResizable colId="openingBalance" width={amortGetWidth('openingBalance')} onResizeStart={arh('openingBalance')} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right whitespace-nowrap">Opening Balance</ThResizable>}
+                    {amortVisible('interest') && <ThResizable colId="interest" width={amortGetWidth('interest')} onResizeStart={arh('interest')} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right whitespace-nowrap">Interest</ThResizable>}
+                    {amortVisible('payment') && <ThResizable colId="payment" width={amortGetWidth('payment')} onResizeStart={arh('payment')} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right whitespace-nowrap">Payment</ThResizable>}
+                    {amortVisible('principal') && <ThResizable colId="principal" width={amortGetWidth('principal')} onResizeStart={arh('principal')} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right whitespace-nowrap">Principal</ThResizable>}
+                    {amortVisible('endingBalance') && <ThResizable colId="endingBalance" width={amortGetWidth('endingBalance')} onResizeStart={arh('endingBalance')} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right whitespace-nowrap">Ending Balance</ThResizable>}
+                    <ThResizable colId="actions" width={amortGetWidth('actions')} onResizeStart={arh('actions')} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-center whitespace-nowrap"></ThResizable>
                   </tr>
                 </thead>
                 <tbody>
@@ -180,26 +204,36 @@ export function AmortizationTab() {
                         className={`border-b border-border hover:bg-muted/30 transition-colors ${row.isManualOverride ? 'bg-amber-50/60 dark:bg-amber-900/10' : ''}`}
                       >
                         <td className="px-4 py-2 font-mono text-foreground/60 whitespace-nowrap">{row.periodDate}</td>
-                        <td className="px-4 py-2 text-right tabular-nums text-foreground whitespace-nowrap">{fmtNumber(row.openingBalance)}</td>
-                        <td className="px-4 py-2 text-right tabular-nums text-amber-600 whitespace-nowrap">
-                          {isEditing
-                            ? <input type="number" value={editValues.interest} onChange={e => setEditValues(p => ({ ...p, interest: parseFloat(e.target.value) || 0 }))}
-                                className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none" />
-                            : fmtNumber(row.interest)}
-                        </td>
-                        <td className="px-4 py-2 text-right tabular-nums text-foreground whitespace-nowrap">
-                          {isEditing
-                            ? <input type="number" value={editValues.payment} onChange={e => setEditValues(p => ({ ...p, payment: parseFloat(e.target.value) || 0 }))}
-                                className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none" />
-                            : fmtNumber(row.payment)}
-                        </td>
-                        <td className="px-4 py-2 text-right tabular-nums text-green-600 whitespace-nowrap">
-                          {isEditing
-                            ? <input type="number" value={editValues.principal} onChange={e => setEditValues(p => ({ ...p, principal: parseFloat(e.target.value) || 0 }))}
-                                className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none" />
-                            : fmtNumber(row.principal)}
-                        </td>
-                        <td className="px-4 py-2 text-right tabular-nums font-semibold text-foreground whitespace-nowrap">{fmtNumber(row.endingBalance)}</td>
+                        {amortVisible('openingBalance') && (
+                          <td className="px-4 py-2 text-right tabular-nums text-foreground whitespace-nowrap">{fmtNumber(row.openingBalance)}</td>
+                        )}
+                        {amortVisible('interest') && (
+                          <td className="px-4 py-2 text-right tabular-nums text-amber-600 whitespace-nowrap">
+                            {isEditing
+                              ? <input type="number" value={editValues.interest} onChange={e => setEditValues(p => ({ ...p, interest: parseFloat(e.target.value) || 0 }))}
+                                  className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none" />
+                              : fmtNumber(row.interest)}
+                          </td>
+                        )}
+                        {amortVisible('payment') && (
+                          <td className="px-4 py-2 text-right tabular-nums text-foreground whitespace-nowrap">
+                            {isEditing
+                              ? <input type="number" value={editValues.payment} onChange={e => setEditValues(p => ({ ...p, payment: parseFloat(e.target.value) || 0 }))}
+                                  className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none" />
+                              : fmtNumber(row.payment)}
+                          </td>
+                        )}
+                        {amortVisible('principal') && (
+                          <td className="px-4 py-2 text-right tabular-nums text-green-600 whitespace-nowrap">
+                            {isEditing
+                              ? <input type="number" value={editValues.principal} onChange={e => setEditValues(p => ({ ...p, principal: parseFloat(e.target.value) || 0 }))}
+                                  className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none" />
+                              : fmtNumber(row.principal)}
+                          </td>
+                        )}
+                        {amortVisible('endingBalance') && (
+                          <td className="px-4 py-2 text-right tabular-nums font-semibold text-foreground whitespace-nowrap">{fmtNumber(row.endingBalance)}</td>
+                        )}
                         <td className="px-4 py-2 text-center">
                           <div className="flex items-center justify-center gap-0.5">
                             {isEditing ? (
@@ -227,11 +261,11 @@ export function AmortizationTab() {
                 <tfoot className="sticky bottom-0 z-10">
                   <tr className="bg-muted/80 border-t-2 border-primary/20 font-semibold">
                     <td className="px-4 py-2.5 text-foreground">Schedule Total</td>
-                    <td className="px-4 py-2.5" />
-                    <td className="px-4 py-2.5 text-right tabular-nums text-amber-600">{fmtNumber(totals.interest)}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(totals.payment)}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-green-600">{fmtNumber(totals.principal)}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-foreground/60">—</td>
+                    {amortVisible('openingBalance') && <td className="px-4 py-2.5" />}
+                    {amortVisible('interest') && <td className="px-4 py-2.5 text-right tabular-nums text-amber-600">{fmtNumber(totals.interest)}</td>}
+                    {amortVisible('payment') && <td className="px-4 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(totals.payment)}</td>}
+                    {amortVisible('principal') && <td className="px-4 py-2.5 text-right tabular-nums text-green-600">{fmtNumber(totals.principal)}</td>}
+                    {amortVisible('endingBalance') && <td className="px-4 py-2.5 text-right tabular-nums text-foreground/60">—</td>}
                     <td />
                   </tr>
                 </tfoot>

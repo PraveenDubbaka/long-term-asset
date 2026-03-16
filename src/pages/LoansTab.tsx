@@ -9,6 +9,7 @@ import { StyledCard } from '@/components/wp-ui/card';
 import { Modal, Input, Select, Textarea, Tooltip } from '../components/ui';
 import type { Loan, LoanType, LoanStatus, InterestType, Currency, DayCountBasis, PaymentType } from '../types';
 import toast from 'react-hot-toast';
+import { useTableColumns, ColumnToggleButton, useColumnResize, ThResizable, type ColDef } from '@/components/table-utils';
 
 const LOAN_TYPES: { value: string; label: string }[] = [
   { value: 'Term', label: 'Term Loan' },
@@ -40,6 +41,34 @@ function typeBadge(t: LoanType) {
   return <Badge variant="outline">{t}</Badge>;
 }
 
+type LoansColId =
+  | 'name' | 'lender' | 'rate' | 'interestType' | 'monthlyPayment'
+  | 'startDate' | 'maturity' | 'collateral' | 'type' | 'currency'
+  | 'origAmt' | 'fxRate' | 'balance' | 'glPrincipal' | 'dayCount'
+  | 'paymentType' | 'status' | 'attachments' | 'actions';
+
+const LOANS_COLS: ColDef<LoansColId>[] = [
+  { id: 'name',          label: 'Loan Name',      pinned: true },
+  { id: 'lender',        label: 'Lender' },
+  { id: 'rate',          label: 'Int. Rate' },
+  { id: 'interestType',  label: 'Rate Type' },
+  { id: 'monthlyPayment',label: 'Mo. Payment' },
+  { id: 'startDate',     label: 'Start' },
+  { id: 'maturity',      label: 'Maturity' },
+  { id: 'collateral',    label: 'Collateral' },
+  { id: 'type',          label: 'Type' },
+  { id: 'currency',      label: 'CCY' },
+  { id: 'origAmt',       label: 'Orig. Loan Amt' },
+  { id: 'fxRate',        label: 'FX Rate' },
+  { id: 'balance',       label: 'Bal. Loan Amt' },
+  { id: 'glPrincipal',   label: 'GL Principal' },
+  { id: 'dayCount',      label: 'Day Count' },
+  { id: 'paymentType',   label: 'Payment Type' },
+  { id: 'status',        label: 'Status' },
+  { id: 'attachments',   label: 'Attachments',    pinned: true },
+  { id: 'actions',       label: 'Actions',         pinned: true },
+];
+
 export function LoansTab() {
   const { loans, addLoan, updateLoan, deleteLoan } = useStore(s => ({
     loans: s.loans,
@@ -59,6 +88,10 @@ export function LoansTab() {
   const attachFileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<Partial<Loan>>(defaultLoan);
   const [openFilter, setOpenFilter] = useState<string | null>(null);
+
+  const { isVisible, toggle, setWidth, getWidth, visibleCount } = useTableColumns('loans', LOANS_COLS);
+  const { onResizeStart } = useColumnResize(setWidth);
+  const rh = (id: LoansColId) => (e: React.MouseEvent) => onResizeStart(id, e, getWidth(id) ?? 120);
 
   // Live FX rates (CAD base): fetched once on mount, user can override per-loan via inline edit
   const [liveRates, setLiveRates] = useState<Record<string, number>>({ USD: 1.3530, EUR: 1.4720, GBP: 1.7100 });
@@ -261,6 +294,7 @@ export function LoansTab() {
           <Button variant="secondary" size="sm" onClick={handleExport}>
             <Download className="w-3.5 h-3.5 mr-1" /> Export
           </Button>
+          <ColumnToggleButton columns={LOANS_COLS} isVisible={isVisible} onToggle={toggle} />
           <Button variant="default" size="sm" onClick={openAdd}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Add Loan
           </Button>
@@ -274,73 +308,105 @@ export function LoansTab() {
             <table className="w-full text-sm">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-muted border-b border-border">
-                  <th className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
+                  <ThResizable colId="name" width={getWidth('name')} onResizeStart={rh('name')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
                     <div className="flex items-center gap-1 group/th">Loan Name
                       <FilterPopover value={filters.name} onChange={v => setFilter('name', v)} placeholder="Loan name…" isOpen={openFilter === 'name'} onToggle={() => setOpenFilter(p => p === 'name' ? null : 'name')} onClose={() => setOpenFilter(null)} />
                     </div>
-                  </th>
-                  <th className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
-                    <div className="flex items-center gap-1 group/th">Lender
-                      <FilterPopover value={filters.lender} onChange={v => setFilter('lender', v)} placeholder="Lender name…" isOpen={openFilter === 'lender'} onToggle={() => setOpenFilter(p => p === 'lender' ? null : 'lender')} onClose={() => setOpenFilter(null)} />
-                    </div>
-                  </th>
-                  <th className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Int. Rate</th>
-                  <th className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Rate Type</th>
-                  <th className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Mo. Payment</th>
-                  <th className="hidden xl:table-cell text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Start</th>
-                  <th className="hidden lg:table-cell text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
-                    <div className="flex items-center gap-1 group/th">Maturity
-                      <FilterPopover value={filters.maturityDate} onChange={v => setFilter('maturityDate', v)} placeholder="e.g. 2026" isOpen={openFilter === 'maturityDate'} onToggle={() => setOpenFilter(p => p === 'maturityDate' ? null : 'maturityDate')} onClose={() => setOpenFilter(null)} />
-                    </div>
-                  </th>
-                  <th className="hidden xl:table-cell text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Current Collateral</th>
-                  <th className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
-                    <div className="flex items-center gap-1 group/th">Type
-                      <FilterPopover value={filters.type} onChange={v => setFilter('type', v)} type="select" options={[{value:'',label:'All Types'},{value:'Term',label:'Term'},{value:'LOC',label:'LOC'},{value:'Revolver',label:'Revolver'},{value:'Mortgage',label:'Mortgage'},{value:'Bridge',label:'Bridge'}]} isOpen={openFilter === 'type'} onToggle={() => setOpenFilter(p => p === 'type' ? null : 'type')} onClose={() => setOpenFilter(null)} />
-                    </div>
-                  </th>
-                  <th className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
-                    <div className="flex items-center gap-1 group/th">CCY
-                      <FilterPopover value={filters.currency} onChange={v => setFilter('currency', v)} type="select" options={[{value:'',label:'All'},{value:'CAD',label:'CAD'},{value:'USD',label:'USD'},{value:'EUR',label:'EUR'},{value:'GBP',label:'GBP'}]} isOpen={openFilter === 'currency'} onToggle={() => setOpenFilter(p => p === 'currency' ? null : 'currency')} onClose={() => setOpenFilter(null)} />
-                    </div>
-                  </th>
-                  <th className="hidden xl:table-cell text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Orig. Loan Amt</th>
-                  <th className="hidden xl:table-cell text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
-                    <span title="FX rate to CAD (editable per loan)">FX Rate{ratesLoading && <span className="ml-1 text-muted-foreground/50">…</span>}</span>
-                  </th>
-                  <th className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Bal. Loan Amt</th>
-                  <th className="hidden xl:table-cell text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
-                    <div className="flex items-center gap-1 group/th">GL Principal
-                      <FilterPopover
-                        type="multicheck"
-                        multiValues={filters.glCodes}
-                        onMultiChange={v => setFilters(f => ({ ...f, glCodes: v }))}
-                        options={uniqueGLCodes.map(c => ({ value: c, label: c }))}
-                        isOpen={openFilter === 'glPrincipalAccount'}
-                        onToggle={() => setOpenFilter(p => p === 'glPrincipalAccount' ? null : 'glPrincipalAccount')}
-                        onClose={() => setOpenFilter(null)}
-                      />
-                    </div>
-                  </th>
-                  <th className="hidden xl:table-cell text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Day Count</th>
-                  <th className="hidden xl:table-cell text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
-                    <div className="flex items-center gap-1 group/th">Payment Type
-                      <FilterPopover value={filters.paymentType} onChange={v => setFilter('paymentType', v)} type="select" options={[{value:'',label:'All'},{value:'P&I',label:'P&I'},{value:'Interest-only',label:'Interest-only'},{value:'Balloon',label:'Balloon'}]} isOpen={openFilter === 'paymentType'} onToggle={() => setOpenFilter(p => p === 'paymentType' ? null : 'paymentType')} onClose={() => setOpenFilter(null)} />
-                    </div>
-                  </th>
-                  <th className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
-                    <div className="flex items-center gap-1 group/th">Status
-                      <FilterPopover value={filters.status} onChange={v => setFilter('status', v)} type="select" options={[{value:'',label:'All Statuses'},{value:'Active',label:'Active'},{value:'Closed',label:'Closed'},{value:'Replaced',label:'Replaced'},{value:'Refinanced',label:'Refinanced'}]} isOpen={openFilter === 'status'} onToggle={() => setOpenFilter(p => p === 'status' ? null : 'status')} onClose={() => setOpenFilter(null)} align="right" />
-                    </div>
-                  </th>
-                  <th className="px-3 py-3 w-10 text-center" title="Attachments"><Paperclip className="w-3.5 h-3.5 text-muted-foreground mx-auto" /></th>
-                  <th className="px-3 py-3 w-16"></th>
+                  </ThResizable>
+                  {isVisible('lender') && (
+                    <ThResizable colId="lender" width={getWidth('lender')} onResizeStart={rh('lender')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
+                      <div className="flex items-center gap-1 group/th">Lender
+                        <FilterPopover value={filters.lender} onChange={v => setFilter('lender', v)} placeholder="Lender name…" isOpen={openFilter === 'lender'} onToggle={() => setOpenFilter(p => p === 'lender' ? null : 'lender')} onClose={() => setOpenFilter(null)} />
+                      </div>
+                    </ThResizable>
+                  )}
+                  {isVisible('rate') && (
+                    <ThResizable colId="rate" width={getWidth('rate')} onResizeStart={rh('rate')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Int. Rate</ThResizable>
+                  )}
+                  {isVisible('interestType') && (
+                    <ThResizable colId="interestType" width={getWidth('interestType')} onResizeStart={rh('interestType')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Rate Type</ThResizable>
+                  )}
+                  {isVisible('monthlyPayment') && (
+                    <ThResizable colId="monthlyPayment" width={getWidth('monthlyPayment')} onResizeStart={rh('monthlyPayment')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Mo. Payment</ThResizable>
+                  )}
+                  {isVisible('startDate') && (
+                    <ThResizable colId="startDate" width={getWidth('startDate')} onResizeStart={rh('startDate')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Start</ThResizable>
+                  )}
+                  {isVisible('maturity') && (
+                    <ThResizable colId="maturity" width={getWidth('maturity')} onResizeStart={rh('maturity')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
+                      <div className="flex items-center gap-1 group/th">Maturity
+                        <FilterPopover value={filters.maturityDate} onChange={v => setFilter('maturityDate', v)} placeholder="e.g. 2026" isOpen={openFilter === 'maturityDate'} onToggle={() => setOpenFilter(p => p === 'maturityDate' ? null : 'maturityDate')} onClose={() => setOpenFilter(null)} />
+                      </div>
+                    </ThResizable>
+                  )}
+                  {isVisible('collateral') && (
+                    <ThResizable colId="collateral" width={getWidth('collateral')} onResizeStart={rh('collateral')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Current Collateral</ThResizable>
+                  )}
+                  {isVisible('type') && (
+                    <ThResizable colId="type" width={getWidth('type')} onResizeStart={rh('type')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
+                      <div className="flex items-center gap-1 group/th">Type
+                        <FilterPopover value={filters.type} onChange={v => setFilter('type', v)} type="select" options={[{value:'',label:'All Types'},{value:'Term',label:'Term'},{value:'LOC',label:'LOC'},{value:'Revolver',label:'Revolver'},{value:'Mortgage',label:'Mortgage'},{value:'Bridge',label:'Bridge'}]} isOpen={openFilter === 'type'} onToggle={() => setOpenFilter(p => p === 'type' ? null : 'type')} onClose={() => setOpenFilter(null)} />
+                      </div>
+                    </ThResizable>
+                  )}
+                  {isVisible('currency') && (
+                    <ThResizable colId="currency" width={getWidth('currency')} onResizeStart={rh('currency')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
+                      <div className="flex items-center gap-1 group/th">CCY
+                        <FilterPopover value={filters.currency} onChange={v => setFilter('currency', v)} type="select" options={[{value:'',label:'All'},{value:'CAD',label:'CAD'},{value:'USD',label:'USD'},{value:'EUR',label:'EUR'},{value:'GBP',label:'GBP'}]} isOpen={openFilter === 'currency'} onToggle={() => setOpenFilter(p => p === 'currency' ? null : 'currency')} onClose={() => setOpenFilter(null)} />
+                      </div>
+                    </ThResizable>
+                  )}
+                  {isVisible('origAmt') && (
+                    <ThResizable colId="origAmt" width={getWidth('origAmt')} onResizeStart={rh('origAmt')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Orig. Loan Amt</ThResizable>
+                  )}
+                  {isVisible('fxRate') && (
+                    <ThResizable colId="fxRate" width={getWidth('fxRate')} onResizeStart={rh('fxRate')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
+                      <span title="FX rate to CAD (editable per loan)">FX Rate{ratesLoading && <span className="ml-1 text-muted-foreground/50">…</span>}</span>
+                    </ThResizable>
+                  )}
+                  {isVisible('balance') && (
+                    <ThResizable colId="balance" width={getWidth('balance')} onResizeStart={rh('balance')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Bal. Loan Amt</ThResizable>
+                  )}
+                  {isVisible('glPrincipal') && (
+                    <ThResizable colId="glPrincipal" width={getWidth('glPrincipal')} onResizeStart={rh('glPrincipal')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
+                      <div className="flex items-center gap-1 group/th">GL Principal
+                        <FilterPopover
+                          type="multicheck"
+                          multiValues={filters.glCodes}
+                          onMultiChange={v => setFilters(f => ({ ...f, glCodes: v }))}
+                          options={uniqueGLCodes.map(c => ({ value: c, label: c }))}
+                          isOpen={openFilter === 'glPrincipalAccount'}
+                          onToggle={() => setOpenFilter(p => p === 'glPrincipalAccount' ? null : 'glPrincipalAccount')}
+                          onClose={() => setOpenFilter(null)}
+                        />
+                      </div>
+                    </ThResizable>
+                  )}
+                  {isVisible('dayCount') && (
+                    <ThResizable colId="dayCount" width={getWidth('dayCount')} onResizeStart={rh('dayCount')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Day Count</ThResizable>
+                  )}
+                  {isVisible('paymentType') && (
+                    <ThResizable colId="paymentType" width={getWidth('paymentType')} onResizeStart={rh('paymentType')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
+                      <div className="flex items-center gap-1 group/th">Payment Type
+                        <FilterPopover value={filters.paymentType} onChange={v => setFilter('paymentType', v)} type="select" options={[{value:'',label:'All'},{value:'P&I',label:'P&I'},{value:'Interest-only',label:'Interest-only'},{value:'Balloon',label:'Balloon'}]} isOpen={openFilter === 'paymentType'} onToggle={() => setOpenFilter(p => p === 'paymentType' ? null : 'paymentType')} onClose={() => setOpenFilter(null)} />
+                      </div>
+                    </ThResizable>
+                  )}
+                  {isVisible('status') && (
+                    <ThResizable colId="status" width={getWidth('status')} onResizeStart={rh('status')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
+                      <div className="flex items-center gap-1 group/th">Status
+                        <FilterPopover value={filters.status} onChange={v => setFilter('status', v)} type="select" options={[{value:'',label:'All Statuses'},{value:'Active',label:'Active'},{value:'Closed',label:'Closed'},{value:'Replaced',label:'Replaced'},{value:'Refinanced',label:'Refinanced'}]} isOpen={openFilter === 'status'} onToggle={() => setOpenFilter(p => p === 'status' ? null : 'status')} onClose={() => setOpenFilter(null)} align="right" />
+                      </div>
+                    </ThResizable>
+                  )}
+                  <ThResizable colId="attachments" width={getWidth('attachments')} onResizeStart={rh('attachments')} className="px-3 py-3 w-10 text-center" title="Attachments"><Paperclip className="w-3.5 h-3.5 text-muted-foreground mx-auto" /></ThResizable>
+                  <ThResizable colId="actions" width={getWidth('actions')} onResizeStart={rh('actions')} className="px-3 py-3 w-16"></ThResizable>
                 </tr>
               </thead>
               <tbody>
                 {filteredLoans.length === 0 && (
                   <tr>
-                    <td colSpan={19} className="px-3 py-10 text-center text-sm text-muted-foreground">
+                    <td colSpan={visibleCount} className="px-3 py-10 text-center text-sm text-muted-foreground">
                       No loans match the current filters.{' '}
                       <button onClick={clearFilters} className="text-primary hover:underline">Clear filters</button>
                     </td>
@@ -364,144 +430,176 @@ export function LoansTab() {
                         : <span className="font-medium text-foreground break-words leading-tight">{l.name}</span>}
                     </td>
                     {/* Lender */}
-                    <td className="px-3 py-1.5 min-w-[100px] max-w-[150px]">
-                      {ie
-                        ? <input className={IIC} value={inlineVals.lender ?? ''} onChange={iv('lender')} onClick={e => e.stopPropagation()} />
-                        : <span className="text-muted-foreground break-words leading-tight block">{l.lender}</span>}
-                    </td>
+                    {isVisible('lender') && (
+                      <td className="px-3 py-1.5 min-w-[100px] max-w-[150px]">
+                        {ie
+                          ? <input className={IIC} value={inlineVals.lender ?? ''} onChange={iv('lender')} onClick={e => e.stopPropagation()} />
+                          : <span className="text-muted-foreground break-words leading-tight block">{l.lender}</span>}
+                      </td>
+                    )}
                     {/* Int. Rate */}
-                    <td className="px-3 py-1.5">
-                      {ie
-                        ? <input type="number" step="0.01" className="h-7 w-20 px-1.5 text-sm text-right border border-border rounded bg-background focus:outline-none focus:border-primary/40" value={inlineVals.rate ?? ''} onChange={ivNum('rate')} onClick={e => e.stopPropagation()} />
-                        : <span className="tabular-nums text-foreground whitespace-nowrap float-right">{fmtPct(l.rate)}</span>}
-                    </td>
+                    {isVisible('rate') && (
+                      <td className="px-3 py-1.5">
+                        {ie
+                          ? <input type="number" step="0.01" className="h-7 w-20 px-1.5 text-sm text-right border border-border rounded bg-background focus:outline-none focus:border-primary/40" value={inlineVals.rate ?? ''} onChange={ivNum('rate')} onClick={e => e.stopPropagation()} />
+                          : <span className="tabular-nums text-foreground whitespace-nowrap float-right">{fmtPct(l.rate)}</span>}
+                      </td>
+                    )}
                     {/* Rate Type */}
-                    <td className="px-3 py-1.5">
-                      {ie
-                        ? <select className={`${IIC} cursor-pointer`} value={inlineVals.interestType ?? 'Fixed'} onChange={e => setInlineVals(v => ({ ...v, interestType: e.target.value as InterestType }))} onClick={e => e.stopPropagation()}>
-                            <option value="Fixed">Fixed</option>
-                            <option value="Variable">Variable</option>
-                          </select>
-                        : l.interestType === 'Variable'
-                          ? <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">Variable</span>
-                          : <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground border border-border whitespace-nowrap">Fixed</span>}
-                    </td>
+                    {isVisible('interestType') && (
+                      <td className="px-3 py-1.5">
+                        {ie
+                          ? <select className={`${IIC} cursor-pointer`} value={inlineVals.interestType ?? 'Fixed'} onChange={e => setInlineVals(v => ({ ...v, interestType: e.target.value as InterestType }))} onClick={e => e.stopPropagation()}>
+                              <option value="Fixed">Fixed</option>
+                              <option value="Variable">Variable</option>
+                            </select>
+                          : l.interestType === 'Variable'
+                            ? <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">Variable</span>
+                            : <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground border border-border whitespace-nowrap">Fixed</span>}
+                      </td>
+                    )}
                     {/* Mo. Payment */}
-                    <td className="px-3 py-1.5 text-right">
-                      {(() => {
-                        const pmt = calcMonthlyPayment(l);
-                        return pmt !== null
-                          ? <span className="tabular-nums font-mono text-sm text-foreground whitespace-nowrap">{fmtCurrency(pmt, l.currency)}</span>
-                          : <span className="text-muted-foreground/50 text-xs">—</span>;
-                      })()}
-                    </td>
+                    {isVisible('monthlyPayment') && (
+                      <td className="px-3 py-1.5 text-right">
+                        {(() => {
+                          const pmt = calcMonthlyPayment(l);
+                          return pmt !== null
+                            ? <span className="tabular-nums font-mono text-sm text-foreground whitespace-nowrap">{fmtCurrency(pmt, l.currency)}</span>
+                            : <span className="text-muted-foreground/50 text-xs">—</span>;
+                        })()}
+                      </td>
+                    )}
                     {/* Start Date */}
-                    <td className="hidden xl:table-cell px-3 py-1.5">
-                      {ie
-                        ? <input type="date" className={IIC} value={inlineVals.startDate ?? ''} onChange={iv('startDate')} onClick={e => e.stopPropagation()} />
-                        : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{l.startDate || '—'}</span>}
-                    </td>
+                    {isVisible('startDate') && (
+                      <td className="px-3 py-1.5">
+                        {ie
+                          ? <input type="date" className={IIC} value={inlineVals.startDate ?? ''} onChange={iv('startDate')} onClick={e => e.stopPropagation()} />
+                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{l.startDate || '—'}</span>}
+                      </td>
+                    )}
                     {/* Maturity */}
-                    <td className="hidden lg:table-cell px-3 py-1.5">
-                      {ie
-                        ? <input type="date" className={IIC} value={inlineVals.maturityDate ?? ''} onChange={iv('maturityDate')} onClick={e => e.stopPropagation()} />
-                        : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{l.maturityDate}</span>}
-                    </td>
+                    {isVisible('maturity') && (
+                      <td className="px-3 py-1.5">
+                        {ie
+                          ? <input type="date" className={IIC} value={inlineVals.maturityDate ?? ''} onChange={iv('maturityDate')} onClick={e => e.stopPropagation()} />
+                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{l.maturityDate}</span>}
+                      </td>
+                    )}
                     {/* Current Collateral */}
-                    <td className="hidden xl:table-cell px-3 py-1.5 max-w-[180px]">
-                      <span className="text-muted-foreground text-xs leading-tight line-clamp-2">{l.securityDescription || '—'}</span>
-                    </td>
+                    {isVisible('collateral') && (
+                      <td className="px-3 py-1.5 max-w-[180px]">
+                        <span className="text-muted-foreground text-xs leading-tight line-clamp-2">{l.securityDescription || '—'}</span>
+                      </td>
+                    )}
                     {/* Type */}
-                    <td className="px-3 py-1.5">
-                      {ie
-                        ? <select className={`${IIC} cursor-pointer`} value={inlineVals.type ?? l.type} onChange={e => setInlineVals(v => ({ ...v, type: e.target.value as LoanType }))} onClick={e => e.stopPropagation()}>
-                            <option value="Term">Term</option>
-                            <option value="LOC">LOC</option>
-                            <option value="Revolver">Revolver</option>
-                            <option value="Mortgage">Mortgage</option>
-                            <option value="Bridge">Bridge</option>
-                          </select>
-                        : typeBadge(l.type)}
-                    </td>
+                    {isVisible('type') && (
+                      <td className="px-3 py-1.5">
+                        {ie
+                          ? <select className={`${IIC} cursor-pointer`} value={inlineVals.type ?? l.type} onChange={e => setInlineVals(v => ({ ...v, type: e.target.value as LoanType }))} onClick={e => e.stopPropagation()}>
+                              <option value="Term">Term</option>
+                              <option value="LOC">LOC</option>
+                              <option value="Revolver">Revolver</option>
+                              <option value="Mortgage">Mortgage</option>
+                              <option value="Bridge">Bridge</option>
+                            </select>
+                          : typeBadge(l.type)}
+                      </td>
+                    )}
                     {/* Currency */}
-                    <td className="px-3 py-1.5">
-                      {ie
-                        ? <select className={`${IIC} cursor-pointer`} value={inlineVals.currency ?? l.currency} onChange={e => setInlineVals(v => ({ ...v, currency: e.target.value as Currency }))} onClick={e => e.stopPropagation()}>
-                            <option value="CAD">CAD</option>
-                            <option value="USD">USD</option>
-                            <option value="EUR">EUR</option>
-                            <option value="GBP">GBP</option>
-                          </select>
-                        : <Badge variant="outline">{l.currency}</Badge>}
-                    </td>
+                    {isVisible('currency') && (
+                      <td className="px-3 py-1.5">
+                        {ie
+                          ? <select className={`${IIC} cursor-pointer`} value={inlineVals.currency ?? l.currency} onChange={e => setInlineVals(v => ({ ...v, currency: e.target.value as Currency }))} onClick={e => e.stopPropagation()}>
+                              <option value="CAD">CAD</option>
+                              <option value="USD">USD</option>
+                              <option value="EUR">EUR</option>
+                              <option value="GBP">GBP</option>
+                            </select>
+                          : <Badge variant="outline">{l.currency}</Badge>}
+                      </td>
+                    )}
                     {/* Original */}
-                    <td className="hidden xl:table-cell px-3 py-1.5">
-                      {ie
-                        ? <input type="number" className={`${IIC} text-right`} value={inlineVals.originalPrincipal ?? ''} onChange={ivNum('originalPrincipal')} onClick={e => e.stopPropagation()} />
-                        : <span className="tabular-nums text-muted-foreground whitespace-nowrap float-right">{fmtCurrency(l.originalPrincipal, 'CAD')}</span>}
-                    </td>
+                    {isVisible('origAmt') && (
+                      <td className="px-3 py-1.5">
+                        {ie
+                          ? <input type="number" className={`${IIC} text-right`} value={inlineVals.originalPrincipal ?? ''} onChange={ivNum('originalPrincipal')} onClick={e => e.stopPropagation()} />
+                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap float-right">{fmtCurrency(l.originalPrincipal, 'CAD')}</span>}
+                      </td>
+                    )}
                     {/* FX Rate */}
-                    <td className="hidden xl:table-cell px-3 py-1.5 text-right" onClick={e => e.stopPropagation()}>
-                      {l.currency === 'CAD'
-                        ? <span className="text-muted-foreground/50 text-xs tabular-nums">—</span>
-                        : ie
-                          ? <div className="flex flex-col items-end gap-0.5">
-                              <span className="text-xs text-muted-foreground/60">{l.currency}/CAD</span>
-                              <input
-                                type="number" step="0.0001" min="0.0001"
-                                className={`${IIC} text-right w-24`}
-                                value={inlineVals.fxRateToCAD ?? getFxRate(l)}
-                                onChange={e => setInlineVals(v => ({ ...v, fxRateToCAD: parseFloat(e.target.value) || getFxRate(l) }))}
-                              />
-                            </div>
-                          : <div className="flex flex-col items-end">
-                              <span className="text-xs text-muted-foreground/60">{l.currency}/CAD</span>
-                              <span className="tabular-nums font-mono text-sm">{getFxRate(l).toFixed(4)}</span>
-                            </div>}
-                    </td>
+                    {isVisible('fxRate') && (
+                      <td className="px-3 py-1.5 text-right" onClick={e => e.stopPropagation()}>
+                        {l.currency === 'CAD'
+                          ? <span className="text-muted-foreground/50 text-xs tabular-nums">—</span>
+                          : ie
+                            ? <div className="flex flex-col items-end gap-0.5">
+                                <span className="text-xs text-muted-foreground/60">{l.currency}/CAD</span>
+                                <input
+                                  type="number" step="0.0001" min="0.0001"
+                                  className={`${IIC} text-right w-24`}
+                                  value={inlineVals.fxRateToCAD ?? getFxRate(l)}
+                                  onChange={e => setInlineVals(v => ({ ...v, fxRateToCAD: parseFloat(e.target.value) || getFxRate(l) }))}
+                                />
+                              </div>
+                            : <div className="flex flex-col items-end">
+                                <span className="text-xs text-muted-foreground/60">{l.currency}/CAD</span>
+                                <span className="tabular-nums font-mono text-sm">{getFxRate(l).toFixed(4)}</span>
+                              </div>}
+                      </td>
+                    )}
                     {/* Balance */}
-                    <td className="px-3 py-1.5">
-                      {ie
-                        ? <input type="number" className={`${IIC} text-right`} value={inlineVals.currentBalance ?? ''} onChange={ivNum('currentBalance')} onClick={e => e.stopPropagation()} />
-                        : <span className="tabular-nums font-semibold text-foreground whitespace-nowrap float-right">{fmtCurrency(l.currentBalance, l.currency)}</span>}
-                    </td>
+                    {isVisible('balance') && (
+                      <td className="px-3 py-1.5">
+                        {ie
+                          ? <input type="number" className={`${IIC} text-right`} value={inlineVals.currentBalance ?? ''} onChange={ivNum('currentBalance')} onClick={e => e.stopPropagation()} />
+                          : <span className="tabular-nums font-semibold text-foreground whitespace-nowrap float-right">{fmtCurrency(l.currentBalance, l.currency)}</span>}
+                      </td>
+                    )}
                     {/* GL Principal */}
-                    <td className="hidden xl:table-cell px-3 py-1.5">
-                      {ie
-                        ? <input className={`${IIC} font-mono`} value={inlineVals.glPrincipalAccount ?? ''} onChange={iv('glPrincipalAccount')} onClick={e => e.stopPropagation()} />
-                        : <span className="text-muted-foreground whitespace-nowrap">{l.glPrincipalAccount}</span>}
-                    </td>
+                    {isVisible('glPrincipal') && (
+                      <td className="px-3 py-1.5">
+                        {ie
+                          ? <input className={`${IIC} font-mono`} value={inlineVals.glPrincipalAccount ?? ''} onChange={iv('glPrincipalAccount')} onClick={e => e.stopPropagation()} />
+                          : <span className="text-muted-foreground whitespace-nowrap">{l.glPrincipalAccount}</span>}
+                      </td>
+                    )}
                     {/* Day Count */}
-                    <td className="hidden xl:table-cell px-3 py-1.5">
-                      {ie
-                        ? <select className={`${IIC} cursor-pointer font-mono`} value={inlineVals.dayCountBasis ?? l.dayCountBasis} onChange={e => setInlineVals(v => ({ ...v, dayCountBasis: e.target.value as DayCountBasis }))} onClick={e => e.stopPropagation()}>
-                            <option value="ACT/365">ACT/365</option>
-                            <option value="ACT/360">ACT/360</option>
-                            <option value="30/360">30/360</option>
-                          </select>
-                        : <span className="text-muted-foreground whitespace-nowrap font-mono">{l.dayCountBasis}</span>}
-                    </td>
+                    {isVisible('dayCount') && (
+                      <td className="px-3 py-1.5">
+                        {ie
+                          ? <select className={`${IIC} cursor-pointer font-mono`} value={inlineVals.dayCountBasis ?? l.dayCountBasis} onChange={e => setInlineVals(v => ({ ...v, dayCountBasis: e.target.value as DayCountBasis }))} onClick={e => e.stopPropagation()}>
+                              <option value="ACT/365">ACT/365</option>
+                              <option value="ACT/360">ACT/360</option>
+                              <option value="30/360">30/360</option>
+                            </select>
+                          : <span className="text-muted-foreground whitespace-nowrap font-mono">{l.dayCountBasis}</span>}
+                      </td>
+                    )}
                     {/* Payment Type */}
-                    <td className="hidden xl:table-cell px-3 py-1.5">
-                      {ie
-                        ? <select className={`${IIC} cursor-pointer`} value={inlineVals.paymentType ?? l.paymentType} onChange={e => setInlineVals(v => ({ ...v, paymentType: e.target.value as PaymentType }))} onClick={e => e.stopPropagation()}>
-                            <option value="P&I">P&amp;I</option>
-                            <option value="Interest-only">Interest-only</option>
-                            <option value="Balloon">Balloon</option>
-                          </select>
-                        : <span className="text-muted-foreground whitespace-nowrap">{l.paymentType}</span>}
-                    </td>
+                    {isVisible('paymentType') && (
+                      <td className="px-3 py-1.5">
+                        {ie
+                          ? <select className={`${IIC} cursor-pointer`} value={inlineVals.paymentType ?? l.paymentType} onChange={e => setInlineVals(v => ({ ...v, paymentType: e.target.value as PaymentType }))} onClick={e => e.stopPropagation()}>
+                              <option value="P&I">P&amp;I</option>
+                              <option value="Interest-only">Interest-only</option>
+                              <option value="Balloon">Balloon</option>
+                            </select>
+                          : <span className="text-muted-foreground whitespace-nowrap">{l.paymentType}</span>}
+                      </td>
+                    )}
                     {/* Status */}
-                    <td className="px-3 py-1.5">
-                      {ie
-                        ? <select className={`${IIC} cursor-pointer`} value={inlineVals.status ?? l.status} onChange={e => setInlineVals(v => ({ ...v, status: e.target.value as LoanStatus }))} onClick={e => e.stopPropagation()}>
-                            <option value="Active">Active</option>
-                            <option value="Closed">Closed</option>
-                            <option value="Replaced">Replaced</option>
-                            <option value="Refinanced">Refinanced</option>
-                          </select>
-                        : statusBadge(l.status)}
-                    </td>
+                    {isVisible('status') && (
+                      <td className="px-3 py-1.5">
+                        {ie
+                          ? <select className={`${IIC} cursor-pointer`} value={inlineVals.status ?? l.status} onChange={e => setInlineVals(v => ({ ...v, status: e.target.value as LoanStatus }))} onClick={e => e.stopPropagation()}>
+                              <option value="Active">Active</option>
+                              <option value="Closed">Closed</option>
+                              <option value="Replaced">Replaced</option>
+                              <option value="Refinanced">Refinanced</option>
+                            </select>
+                          : statusBadge(l.status)}
+                      </td>
+                    )}
                     {/* Attachments */}
                     <td className="px-3 py-1.5 text-center w-10" onClick={e => e.stopPropagation()}>
                       {(() => {
@@ -559,10 +657,12 @@ export function LoansTab() {
                       {fmtCurrency(totalMonthlyPayment, 'CAD')}
                     </td>
                     <td colSpan={5} />
-                    <td className="hidden xl:table-cell px-3 py-2 text-right tabular-nums text-sm font-semibold text-muted-foreground whitespace-nowrap">
-                      {fmtCurrency(glGrand.totalOriginal, 'CAD')}
-                    </td>
-                    <td className="hidden xl:table-cell px-3 py-2" />
+                    {isVisible('origAmt') && (
+                      <td className="px-3 py-2 text-right tabular-nums text-sm font-semibold text-muted-foreground whitespace-nowrap">
+                        {fmtCurrency(glGrand.totalOriginal, 'CAD')}
+                      </td>
+                    )}
+                    {isVisible('fxRate') && <td className="px-3 py-2" />}
                     <td className="px-3 py-2 text-right tabular-nums text-sm font-bold text-foreground whitespace-nowrap">
                       {fmtCurrency(glGrand.totalBalance, 'CAD')}
                     </td>

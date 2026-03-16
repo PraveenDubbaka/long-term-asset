@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Download, Plus, TrendingUp, TrendingDown, DollarSign, BarChart3 } from 'lucide-react';
+import { useTableColumns, ColumnToggleButton, useColumnResize, ThResizable, type ColDef } from '@/components/table-utils';
 import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
 import { StyledCard } from '@/components/wp-ui/card';
@@ -21,12 +22,37 @@ function glBadge(gl: number) {
   return <Badge variant="outline" className="text-xs">—</Badge>;
 }
 
+type InvColId =
+  | 'security' | 'broker' | 'currency' | 'units' | 'wac'
+  | 'costLocal' | 'acqRate' | 'bookValueCAD' | 'yeRate'
+  | 'fmvLocal' | 'fmvCAD' | 'unrealizedGL' | 'glAcct';
+
+const INV_COLS: ColDef<InvColId>[] = [
+  { id: 'security',     label: 'Security',         pinned: true },
+  { id: 'broker',       label: 'Broker / Acct' },
+  { id: 'currency',     label: 'CCY' },
+  { id: 'units',        label: 'Units' },
+  { id: 'wac',          label: 'WAC / Unit' },
+  { id: 'costLocal',    label: 'Cost (Local)' },
+  { id: 'acqRate',      label: 'Acq. Rate' },
+  { id: 'bookValueCAD', label: 'Book Value (CAD)' },
+  { id: 'yeRate',       label: 'YE Rate' },
+  { id: 'fmvLocal',     label: 'FMV (Local)' },
+  { id: 'fmvCAD',       label: 'FMV (CAD)' },
+  { id: 'unrealizedGL', label: 'Unrealized G/L' },
+  { id: 'glAcct',       label: 'GL Acct' },
+];
+
 export function InvHoldingsTab() {
   const [search, setSearch] = useState('');
   const [filterCcy, setFilterCcy] = useState('All');
   const [filterBroker, setFilterBroker] = useState('All');
   const [liveRates, setLiveRates] = useState<Record<string, number>>({ USD: 1.4420, EUR: 1.5580, GBP: 1.8120 });
   const [ratesLoading, setRatesLoading] = useState(true);
+
+  const { isVisible: invVisible, toggle: invToggle, setWidth: invSetWidth, getWidth: invGetWidth } = useTableColumns('inv-holdings', INV_COLS);
+  const { onResizeStart: invResizeStart } = useColumnResize(invSetWidth);
+  const irh = (id: InvColId) => (e: React.MouseEvent) => invResizeStart(id, e, invGetWidth(id) ?? 120);
 
   useEffect(() => {
     fetch('https://open.er-api.com/v6/latest/CAD')
@@ -94,6 +120,7 @@ export function InvHoldingsTab() {
           <Button variant="secondary" size="sm" onClick={handleExport}>
             <Download className="w-3.5 h-3.5" /> Export
           </Button>
+          <ColumnToggleButton columns={INV_COLS} isVisible={invVisible} onToggle={invToggle} />
           <Button variant="default" size="sm" onClick={() => toast.success('Use Import Excel to add positions')}>
             <Plus className="w-3.5 h-3.5" /> Add Holding
           </Button>
@@ -162,19 +189,19 @@ export function InvHoldingsTab() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/50">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Security</th>
-                <th className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Broker / Acct</th>
-                <th className="text-center px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">CCY</th>
-                <th className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Units</th>
-                <th className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">WAC / Unit</th>
-                <th className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Cost (Local)</th>
-                <th className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Acq. Rate</th>
-                <th className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Book Value (CAD)</th>
-                <th className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">YE Rate</th>
-                <th className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">FMV (Local)</th>
-                <th className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">FMV (CAD) ①</th>
-                <th className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Unrealized G/L ①</th>
-                <th className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">GL Acct</th>
+                <ThResizable colId="security" width={invGetWidth('security')} onResizeStart={irh('security')} className="text-left px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Security</ThResizable>
+                {invVisible('broker') && <ThResizable colId="broker" width={invGetWidth('broker')} onResizeStart={irh('broker')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Broker / Acct</ThResizable>}
+                {invVisible('currency') && <ThResizable colId="currency" width={invGetWidth('currency')} onResizeStart={irh('currency')} className="text-center px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">CCY</ThResizable>}
+                {invVisible('units') && <ThResizable colId="units" width={invGetWidth('units')} onResizeStart={irh('units')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">Units</ThResizable>}
+                {invVisible('wac') && <ThResizable colId="wac" width={invGetWidth('wac')} onResizeStart={irh('wac')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">WAC / Unit</ThResizable>}
+                {invVisible('costLocal') && <ThResizable colId="costLocal" width={invGetWidth('costLocal')} onResizeStart={irh('costLocal')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Cost (Local)</ThResizable>}
+                {invVisible('acqRate') && <ThResizable colId="acqRate" width={invGetWidth('acqRate')} onResizeStart={irh('acqRate')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Acq. Rate</ThResizable>}
+                {invVisible('bookValueCAD') && <ThResizable colId="bookValueCAD" width={invGetWidth('bookValueCAD')} onResizeStart={irh('bookValueCAD')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Book Value (CAD)</ThResizable>}
+                {invVisible('yeRate') && <ThResizable colId="yeRate" width={invGetWidth('yeRate')} onResizeStart={irh('yeRate')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">YE Rate</ThResizable>}
+                {invVisible('fmvLocal') && <ThResizable colId="fmvLocal" width={invGetWidth('fmvLocal')} onResizeStart={irh('fmvLocal')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">FMV (Local)</ThResizable>}
+                {invVisible('fmvCAD') && <ThResizable colId="fmvCAD" width={invGetWidth('fmvCAD')} onResizeStart={irh('fmvCAD')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">FMV (CAD) ①</ThResizable>}
+                {invVisible('unrealizedGL') && <ThResizable colId="unrealizedGL" width={invGetWidth('unrealizedGL')} onResizeStart={irh('unrealizedGL')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Unrealized G/L ①</ThResizable>}
+                {invVisible('glAcct') && <ThResizable colId="glAcct" width={invGetWidth('glAcct')} onResizeStart={irh('glAcct')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider">GL Acct</ThResizable>}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -187,56 +214,70 @@ export function InvHoldingsTab() {
                       <div className="text-xs text-muted-foreground font-mono">{h.ticker}</div>
                       {h.notes && <div className="text-xs text-amber-600 mt-0.5">{h.notes}</div>}
                     </td>
-                    <td className="px-3 py-2.5">
-                      <div className="text-sm text-foreground">{h.broker}</div>
-                      <div className="text-xs text-muted-foreground">…{h.acctLast4}</div>
-                    </td>
-                    <td className="px-3 py-2.5 text-center">
-                      <Badge variant="outline">{h.currency}</Badge>
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums font-mono">{fmt(h.units, 0)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums font-mono text-xs">{fmt(h.wacLocal, 4)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">{fmt(h.costLocal)}</td>
-                    <td className="px-3 py-2.5 text-right">
-                      {h.currency === 'CAD'
-                        ? <span className="text-muted-foreground text-xs">—</span>
-                        : <div className="flex flex-col items-end">
-                            <span className="text-xs text-muted-foreground/60">{h.currency}/CAD</span>
-                            <span className="tabular-nums font-mono text-sm">{fmt(h.acqFxRate, 4)}</span>
-                          </div>}
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums font-mono font-semibold text-sm">{fmtCAD(h.costCAD)}</td>
-                    <td className="px-3 py-2.5 text-right">
-                      {h.currency === 'CAD'
-                        ? <span className="text-muted-foreground text-xs">—</span>
-                        : <div className="flex flex-col items-end">
-                            <span className="text-xs text-muted-foreground/60">{h.currency}/CAD</span>
-                            <span className="tabular-nums font-mono text-sm">{fmt(fxRate, 4)}</span>
-                          </div>}
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-muted-foreground">{fmt(h.fmvLocal)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-muted-foreground">{fmtCAD(h.fmvCAD)}</td>
-                    <td className="px-3 py-2.5 text-right">{glBadge(h.unrealizedGL_CAD)}</td>
-                    <td className="px-3 py-2.5">
-                      <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{h.glAccount}</span>
-                    </td>
+                    {invVisible('broker') && (
+                      <td className="px-3 py-2.5">
+                        <div className="text-sm text-foreground">{h.broker}</div>
+                        <div className="text-xs text-muted-foreground">…{h.acctLast4}</div>
+                      </td>
+                    )}
+                    {invVisible('currency') && (
+                      <td className="px-3 py-2.5 text-center">
+                        <Badge variant="outline">{h.currency}</Badge>
+                      </td>
+                    )}
+                    {invVisible('units') && <td className="px-3 py-2.5 text-right tabular-nums font-mono">{fmt(h.units, 0)}</td>}
+                    {invVisible('wac') && <td className="px-3 py-2.5 text-right tabular-nums font-mono text-xs">{fmt(h.wacLocal, 4)}</td>}
+                    {invVisible('costLocal') && <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">{fmt(h.costLocal)}</td>}
+                    {invVisible('acqRate') && (
+                      <td className="px-3 py-2.5 text-right">
+                        {h.currency === 'CAD'
+                          ? <span className="text-muted-foreground text-xs">—</span>
+                          : <div className="flex flex-col items-end">
+                              <span className="text-xs text-muted-foreground/60">{h.currency}/CAD</span>
+                              <span className="tabular-nums font-mono text-sm">{fmt(h.acqFxRate, 4)}</span>
+                            </div>}
+                      </td>
+                    )}
+                    {invVisible('bookValueCAD') && <td className="px-3 py-2.5 text-right tabular-nums font-mono font-semibold text-sm">{fmtCAD(h.costCAD)}</td>}
+                    {invVisible('yeRate') && (
+                      <td className="px-3 py-2.5 text-right">
+                        {h.currency === 'CAD'
+                          ? <span className="text-muted-foreground text-xs">—</span>
+                          : <div className="flex flex-col items-end">
+                              <span className="text-xs text-muted-foreground/60">{h.currency}/CAD</span>
+                              <span className="tabular-nums font-mono text-sm">{fmt(fxRate, 4)}</span>
+                            </div>}
+                      </td>
+                    )}
+                    {invVisible('fmvLocal') && <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-muted-foreground">{fmt(h.fmvLocal)}</td>}
+                    {invVisible('fmvCAD') && <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-muted-foreground">{fmtCAD(h.fmvCAD)}</td>}
+                    {invVisible('unrealizedGL') && <td className="px-3 py-2.5 text-right">{glBadge(h.unrealizedGL_CAD)}</td>}
+                    {invVisible('glAcct') && (
+                      <td className="px-3 py-2.5">
+                        <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{h.glAccount}</span>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-border bg-muted/60">
-                <td colSpan={7} className="px-4 py-2.5 text-xs font-semibold text-foreground">
+                <td className="px-4 py-2.5 text-xs font-semibold text-foreground">
                   Total — {filtered.length} position{filtered.length !== 1 ? 's' : ''}
                 </td>
-                <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm">{fmtCAD(totalCostCAD)}</td>
-                <td />
-                <td className="px-3 py-2.5 text-right tabular-nums font-mono text-muted-foreground text-sm">—</td>
-                <td className="px-3 py-2.5 text-right tabular-nums font-mono text-muted-foreground text-sm">{fmtCAD(totalFmvCAD)}</td>
-                <td className="px-3 py-2.5 text-right">
-                  {glBadge(totalUnrealizedGL)}
-                </td>
-                <td />
+                {invVisible('broker') && <td />}
+                {invVisible('currency') && <td />}
+                {invVisible('units') && <td />}
+                {invVisible('wac') && <td />}
+                {invVisible('costLocal') && <td />}
+                {invVisible('acqRate') && <td />}
+                {invVisible('bookValueCAD') && <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm">{fmtCAD(totalCostCAD)}</td>}
+                {invVisible('yeRate') && <td />}
+                {invVisible('fmvLocal') && <td className="px-3 py-2.5 text-right tabular-nums font-mono text-muted-foreground text-sm">—</td>}
+                {invVisible('fmvCAD') && <td className="px-3 py-2.5 text-right tabular-nums font-mono text-muted-foreground text-sm">{fmtCAD(totalFmvCAD)}</td>}
+                {invVisible('unrealizedGL') && <td className="px-3 py-2.5 text-right">{glBadge(totalUnrealizedGL)}</td>}
+                {invVisible('glAcct') && <td />}
               </tr>
             </tfoot>
           </table>
