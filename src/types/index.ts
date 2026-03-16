@@ -1,5 +1,5 @@
 export type Currency = 'CAD' | 'USD' | 'EUR' | 'GBP';
-export type LoanType = 'Term' | 'LOC' | 'Revolver' | 'Mortgage' | 'Bridge';
+export type LoanType = 'Term' | 'LOC' | 'Revolver' | 'Mortgage' | 'Bridge' | (string & {});
 export type LoanStatus = 'Active' | 'Closed' | 'Replaced' | 'Refinanced';
 export type PaymentType = 'P&I' | 'Interest-only' | 'Balloon';
 export type DayCountBasis = 'ACT/365' | 'ACT/360' | '30/360';

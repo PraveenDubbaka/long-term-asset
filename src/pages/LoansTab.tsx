@@ -514,13 +514,28 @@ export function LoansTab() {
                     {isVisible('type') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <select className={`${IIC} cursor-pointer`} value={inlineVals.type ?? l.type} onChange={e => setInlineVals(v => ({ ...v, type: e.target.value as LoanType }))} onClick={e => e.stopPropagation()}>
-                              <option value="Term">Term</option>
-                              <option value="LOC">LOC</option>
-                              <option value="Revolver">Revolver</option>
-                              <option value="Mortgage">Mortgage</option>
-                              <option value="Bridge">Bridge</option>
-                            </select>
+                          ? <>
+                              <input
+                                list="loan-type-options"
+                                className={IIC}
+                                value={inlineVals.type ?? l.type}
+                                onChange={e => setInlineVals(v => ({ ...v, type: e.target.value as LoanType }))}
+                                onClick={e => e.stopPropagation()}
+                                placeholder="Type or select…"
+                              />
+                              <datalist id="loan-type-options">
+                                <option value="Term" />
+                                <option value="LOC" />
+                                <option value="Revolver" />
+                                <option value="Mortgage" />
+                                <option value="Bridge" />
+                                <option value="Demand" />
+                                <option value="Construction" />
+                                <option value="Mezzanine" />
+                                <option value="Subordinated" />
+                                <option value="Equipment" />
+                              </datalist>
+                            </>
                           : typeBadge(l.type)}
                       </td>
                     )}
