@@ -238,9 +238,8 @@ export function LoansTab() {
   };
 
   // ── GL Account Summary (computed from filteredLoans, live) ────────────────
-  const usdToCAD = 1.3530;
   const toGL = (l: Loan, field: keyof Loan) =>
-    (l[field] as number) * (l.currency === 'USD' ? usdToCAD : 1);
+    (l[field] as number) * getFxRate(l);
 
   const glGroups = filteredLoans.reduce<Record<string, Loan[]>>((acc, l) => {
     const code = l.glPrincipalAccount || '(untagged)';
@@ -273,6 +272,7 @@ export function LoansTab() {
     { count: 0, totalOriginal: 0, totalBalance: 0, totalCurrent: 0, totalLT: 0, totalAccrued: 0 }
   );
   const glBalanced = Math.abs((glGrand.totalCurrent + glGrand.totalLT) - glGrand.totalBalance) < 1;
+  const totalConvertedAmt = filteredLoans.reduce((s, l) => s + l.originalPrincipal * getFxRate(l), 0);
   const totalMonthlyPayment = filteredLoans.reduce((s, l) => {
     const pmt = calcMonthlyPayment(l);
     return s + (pmt !== null ? pmt * getFxRate(l) : 0);
@@ -681,7 +681,7 @@ export function LoansTab() {
                     )}
                     {isVisible('fxRate') && <td className="px-3 py-2" />}
                     <td className="px-3 py-2 text-right tabular-nums text-sm font-bold text-foreground whitespace-nowrap">
-                      {fmtCurrency(glGrand.totalBalance, 'CAD')}
+                      {fmtCurrency(totalConvertedAmt, 'CAD')}
                     </td>
                     <td colSpan={6} className="px-3 py-2 text-right text-xs text-muted-foreground italic whitespace-nowrap">
                       CAD equiv. · all currencies
