@@ -10,6 +10,7 @@ import { Modal, Input, Select, Textarea, Tooltip } from '../components/ui';
 import type { Loan, LoanType, LoanStatus, InterestType, Currency, DayCountBasis, PaymentType } from '../types';
 import toast from 'react-hot-toast';
 import { useTableColumns, ColumnToggleButton, useColumnResize, ThResizable, type ColDef } from '@/components/table-utils';
+import { accountMappings as allGLAccounts } from '../data/mockData';
 
 const LOAN_TYPES: { value: string; label: string }[] = [
   { value: 'Term', label: 'Term Loan' },
@@ -559,8 +560,12 @@ export function LoansTab() {
                     {isVisible('glPrincipal') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input className={`${IIC} font-mono`} value={inlineVals.glPrincipalAccount ?? ''} onChange={iv('glPrincipalAccount')} onClick={e => e.stopPropagation()} />
-                          : <span className="text-muted-foreground whitespace-nowrap">{l.glPrincipalAccount}</span>}
+                          ? <select className={`${IIC} font-mono cursor-pointer`} value={inlineVals.glPrincipalAccount ?? ''} onChange={ivSel('glPrincipalAccount')} onClick={e => e.stopPropagation()}>
+                              {allGLAccounts.map(a => (
+                                <option key={a.code} value={a.code}>{a.code} — {a.name}</option>
+                              ))}
+                            </select>
+                          : <span className="text-muted-foreground whitespace-nowrap font-mono">{l.glPrincipalAccount}</span>}
                       </td>
                     )}
                     {/* Day Count */}
@@ -1160,9 +1165,9 @@ function LoanFormModal({ open, onClose, form, setForm, onSave, isEdit }: {
         <div className="col-span-2 border-t border-border pt-3 mt-1">
           <div className="text-xs font-semibold text-foreground/60 uppercase tracking-wider mb-3">GL Mappings</div>
           <div className="grid grid-cols-3 gap-3">
-            <Input label="GL Principal" value={form.glPrincipalAccount || ''} onChange={f('glPrincipalAccount')} placeholder="e.g. 2100" />
-            <Input label="GL Accrued Interest" value={form.glAccruedInterestAccount || ''} onChange={f('glAccruedInterestAccount')} placeholder="e.g. 2300" />
-            <Input label="GL Interest Expense" value={form.glInterestExpenseAccount || ''} onChange={f('glInterestExpenseAccount')} placeholder="e.g. 7100" />
+            <Select label="GL Principal" value={form.glPrincipalAccount || ''} onChange={f('glPrincipalAccount')} options={allGLAccounts.map(a => ({ value: a.code, label: `${a.code} — ${a.name}` }))} />
+            <Select label="GL Accrued Interest" value={form.glAccruedInterestAccount || ''} onChange={f('glAccruedInterestAccount')} options={allGLAccounts.map(a => ({ value: a.code, label: `${a.code} — ${a.name}` }))} />
+            <Select label="GL Interest Expense" value={form.glInterestExpenseAccount || ''} onChange={f('glInterestExpenseAccount')} options={allGLAccounts.map(a => ({ value: a.code, label: `${a.code} — ${a.name}` }))} />
           </div>
         </div>
         <div className="col-span-2">
@@ -1691,9 +1696,9 @@ function AddLoanFormContent({ form, setForm }: { form: Partial<Loan>; setForm: (
       <div className="col-span-2 border-t border-border pt-3 mt-1">
         <div className="text-xs font-semibold text-foreground/60 uppercase tracking-wider mb-3">GL Mappings</div>
         <div className="grid grid-cols-3 gap-3">
-          <Input label="GL Principal" value={form.glPrincipalAccount || ''} onChange={f('glPrincipalAccount')} placeholder="e.g. 2100" />
-          <Input label="GL Accrued Interest" value={form.glAccruedInterestAccount || ''} onChange={f('glAccruedInterestAccount')} placeholder="e.g. 2300" />
-          <Input label="GL Interest Expense" value={form.glInterestExpenseAccount || ''} onChange={f('glInterestExpenseAccount')} placeholder="e.g. 7100" />
+          <Select label="GL Principal" value={form.glPrincipalAccount || ''} onChange={f('glPrincipalAccount')} options={allGLAccounts.map(a => ({ value: a.code, label: `${a.code} — ${a.name}` }))} />
+          <Select label="GL Accrued Interest" value={form.glAccruedInterestAccount || ''} onChange={f('glAccruedInterestAccount')} options={allGLAccounts.map(a => ({ value: a.code, label: `${a.code} — ${a.name}` }))} />
+          <Select label="GL Interest Expense" value={form.glInterestExpenseAccount || ''} onChange={f('glInterestExpenseAccount')} options={allGLAccounts.map(a => ({ value: a.code, label: `${a.code} — ${a.name}` }))} />
         </div>
       </div>
       <div className="col-span-2">
