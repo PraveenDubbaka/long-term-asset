@@ -42,6 +42,77 @@ function typeBadge(t: LoanType) {
   return <Badge variant="outline">{t}</Badge>;
 }
 
+const LOAN_TYPE_SUGGESTIONS = ['Term','LOC','Revolver','Mortgage','Bridge','Demand','Construction','Mezzanine','Subordinated','Equipment'];
+
+function LoanTypeCombo({ value, iic, onChange, onClick }: {
+  value: string; iic: string;
+  onChange: (v: string) => void;
+  onClick: (e: React.MouseEvent) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [inputVal, setInputVal] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+
+  useEffect(() => { setInputVal(value); }, [value]);
+
+  const openDrop = () => {
+    if (inputRef.current) {
+      const r = inputRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 2, left: r.left, width: Math.max(r.width, 140) });
+    }
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (!inputRef.current?.contains(e.target as Node) && !dropRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  const filtered = LOAN_TYPE_SUGGESTIONS.filter(o =>
+    !inputVal || o.toLowerCase().includes(inputVal.toLowerCase())
+  );
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        className={iic}
+        value={inputVal}
+        placeholder="Type or select…"
+        onChange={e => { setInputVal(e.target.value); onChange(e.target.value); }}
+        onFocus={openDrop}
+        onClick={(e) => { onClick(e); openDrop(); }}
+      />
+      {open && filtered.length > 0 && ReactDOM.createPortal(
+        <div
+          ref={dropRef}
+          style={{ position: 'fixed', top: pos.top, left: pos.left, width: pos.width, zIndex: 9999 }}
+          className="bg-background border border-border rounded-md shadow-lg py-1 max-h-52 overflow-y-auto"
+        >
+          {filtered.map(opt => (
+            <div
+              key={opt}
+              className="px-3 py-1.5 text-sm cursor-pointer hover:bg-muted text-foreground"
+              onMouseDown={e => { e.preventDefault(); setInputVal(opt); onChange(opt); setOpen(false); }}
+            >
+              {opt}
+            </div>
+          ))}
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
+
 type LoansColId =
   | 'name' | 'lender' | 'rate' | 'interestType' | 'monthlyPayment'
   | 'startDate' | 'maturity' | 'collateral' | 'type' | 'currency'
@@ -302,20 +373,6 @@ export function LoansTab() {
         </div>
       </div>
 
-      {/* Datalist for loan type combo — rendered once to avoid duplicate-id issues */}
-      <datalist id="loan-type-options">
-        <option value="Term" />
-        <option value="LOC" />
-        <option value="Revolver" />
-        <option value="Mortgage" />
-        <option value="Bridge" />
-        <option value="Demand" />
-        <option value="Construction" />
-        <option value="Mezzanine" />
-        <option value="Subordinated" />
-        <option value="Equipment" />
-      </datalist>
-
       {/* Loan Table */}
       <div className="px-6">
         <StyledCard className="overflow-hidden">
@@ -528,13 +585,11 @@ export function LoansTab() {
                     {isVisible('type') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input
-                              list="loan-type-options"
-                              className={IIC}
+                          ? <LoanTypeCombo
+                              iic={IIC}
                               value={inlineVals.type ?? l.type}
-                              onChange={e => setInlineVals(v => ({ ...v, type: e.target.value as LoanType }))}
+                              onChange={val => setInlineVals(v => ({ ...v, type: val as LoanType }))}
                               onClick={e => e.stopPropagation()}
-                              placeholder="Type or select…"
                             />
                           : typeBadge(l.type)}
                       </td>
