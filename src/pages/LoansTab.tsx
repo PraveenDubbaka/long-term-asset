@@ -154,8 +154,8 @@ export function LoansTab() {
 
   const [editLoan, setEditLoan] = useState<Loan | null>(null);
   const [viewLoan, setViewLoan] = useState<Loan | null>(null);
-  const [inlineEdit, setInlineEdit] = useState<string | null>(null);
-  const [inlineVals, setInlineVals] = useState<Partial<Loan>>({});
+  const [tableEditMode, setTableEditMode] = useState(false);
+  const [tableEdits, setTableEdits] = useState<Record<string, Partial<Loan>>>({});
   const [pageView, setPageView] = useState<'list' | 'add'>('list');
   const [addTab, setAddTab] = useState<'import' | 'ocr' | 'manual'>('import');
   const [attachDrawerLoan, setAttachDrawerLoan] = useState<Loan | null>(null);
@@ -238,14 +238,16 @@ export function LoansTab() {
   const openAdd = () => { setForm(defaultLoan); setAddTab('import'); setPageView('add'); };
   const openEdit = (loan: Loan) => { setEditLoan(loan); setForm({ ...loan }); };
 
-  const startInlineEdit = (l: Loan) => { setInlineEdit(l.id); setInlineVals({ ...l }); };
-  const saveInlineEdit  = () => {
-    if (!inlineEdit) return;
-    updateLoan(inlineEdit, inlineVals);
-    toast.success('Loan updated');
-    setInlineEdit(null);
+  const enterEditMode  = () => { setTableEditMode(true); setTableEdits({}); };
+  const saveAllEdits   = () => {
+    const changed = Object.entries(tableEdits);
+    changed.forEach(([id, vals]) => updateLoan(id, vals));
+    toast.success(changed.length > 0 ? `${changed.length} loan${changed.length !== 1 ? 's' : ''} updated` : 'No changes');
+    setTableEditMode(false); setTableEdits({});
   };
-  const cancelInlineEdit = () => setInlineEdit(null);
+  const cancelEditMode = () => { setTableEditMode(false); setTableEdits({}); };
+  const setEdit = (loanId: string, field: keyof Loan, value: unknown) =>
+    setTableEdits(prev => ({ ...prev, [loanId]: { ...(prev[loanId] ?? {}), [field]: value } }));
 
   const handleExport = async () => {
     await exportToExcel({ 'Loan Register': buildLoanRegisterExport(filteredLoans) }, 'Loan_Register.xlsx');
@@ -254,12 +256,9 @@ export function LoansTab() {
 
   // Shared inline input / select class
   const IIC = 'h-7 w-full min-w-0 px-1.5 text-sm border border-border rounded bg-background focus:outline-none focus:border-primary/40 focus:ring-0';
-  const iv = (f: keyof Loan) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setInlineVals(v => ({ ...v, [f]: e.target.value }));
-  const ivNum = (f: keyof Loan) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setInlineVals(v => ({ ...v, [f]: parseFloat(e.target.value) || 0 }));
-  const ivSel = (f: keyof Loan) => (e: React.ChangeEvent<HTMLSelectElement>) =>
-    setInlineVals(v => ({ ...v, [f]: e.target.value }));
+  const iv    = (id: string, f: keyof Loan) => (e: React.ChangeEvent<HTMLInputElement>) => setEdit(id, f, e.target.value);
+  const ivNum = (id: string, f: keyof Loan) => (e: React.ChangeEvent<HTMLInputElement>) => setEdit(id, f, parseFloat(e.target.value) || 0);
+  const ivSel = (id: string, f: keyof Loan) => (e: React.ChangeEvent<HTMLSelectElement>) => setEdit(id, f, e.target.value);
 
   const handleSave = () => {
     if (!form.name || !form.lender) { toast.error('Name and lender are required'); return; }
@@ -370,9 +369,21 @@ export function LoansTab() {
             <Download className="w-3.5 h-3.5 mr-1" /> Export
           </Button>
           <ColumnToggleButton columns={LOANS_COLS} isVisible={isVisible} onToggle={toggle} />
-          <Button variant="default" size="sm" onClick={openAdd}>
-            <Plus className="w-3.5 h-3.5 mr-1" /> Add Loan
-          </Button>
+          {tableEditMode ? (<>
+            <Button variant="default" size="sm" onClick={saveAllEdits}>
+              <Check className="w-3.5 h-3.5 mr-1" /> Save
+            </Button>
+            <Button variant="secondary" size="sm" onClick={cancelEditMode}>
+              <X className="w-3.5 h-3.5 mr-1" /> Cancel
+            </Button>
+          </>) : (<>
+            <Button variant="secondary" size="sm" onClick={enterEditMode}>
+              <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit
+            </Button>
+            <Button variant="default" size="sm" onClick={openAdd}>
+              <Plus className="w-3.5 h-3.5 mr-1" /> Add Loan
+            </Button>
+          </>)}
         </div>
       </div>
 
@@ -488,27 +499,28 @@ export function LoansTab() {
                   </tr>
                 )}
                 {filteredLoans.map(l => {
-                  const ie = inlineEdit === l.id;
+                  const ie = tableEditMode;
+                  const ed = tableEdits[l.id] ?? {};
                   return (
                   <tr
                     key={l.id}
                     className={[
                       'border-b border-border transition-colors',
-                      ie ? 'bg-primary/[0.03] ring-1 ring-inset ring-primary/20' : 'hover:bg-muted/30 cursor-pointer',
+                      ie ? 'bg-primary/[0.03]' : 'hover:bg-muted/30 cursor-pointer',
                     ].join(' ')}
                     onClick={() => { if (!ie) setViewLoan(l); }}
                   >
                     {/* Loan Name */}
                     <td className="px-3 py-1.5 min-w-[120px] max-w-[180px]">
                       {ie
-                        ? <input className={IIC} value={inlineVals.name ?? ''} onChange={iv('name')} onClick={e => e.stopPropagation()} />
+                        ? <input className={IIC} value={ed.name ?? l.name} onChange={iv(l.id,'name')} onClick={e => e.stopPropagation()} />
                         : <span className="font-medium text-foreground break-words leading-tight">{l.name}</span>}
                     </td>
                     {/* Lender */}
                     {isVisible('lender') && (
                       <td className="px-3 py-1.5 min-w-[100px] max-w-[150px]">
                         {ie
-                          ? <input className={IIC} value={inlineVals.lender ?? ''} onChange={iv('lender')} onClick={e => e.stopPropagation()} />
+                          ? <input className={IIC} value={ed.lender ?? l.lender} onChange={iv(l.id,'lender')} onClick={e => e.stopPropagation()} />
                           : <span className="text-muted-foreground break-words leading-tight block">{l.lender}</span>}
                       </td>
                     )}
@@ -516,7 +528,7 @@ export function LoansTab() {
                     {isVisible('rate') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input type="number" step="0.01" className="h-7 w-20 px-1.5 text-sm text-right border border-border rounded bg-background focus:outline-none focus:border-primary/40" value={inlineVals.rate ?? ''} onChange={ivNum('rate')} onClick={e => e.stopPropagation()} />
+                          ? <input type="number" step="0.01" className="h-7 w-20 px-1.5 text-sm text-right border border-border rounded bg-background focus:outline-none focus:border-primary/40" value={ed.rate ?? l.rate} onChange={ivNum(l.id,'rate')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums text-foreground whitespace-nowrap float-right">{fmtPct(l.rate)}</span>}
                       </td>
                     )}
@@ -524,7 +536,7 @@ export function LoansTab() {
                     {isVisible('interestType') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <select className={`${IIC} cursor-pointer`} value={inlineVals.interestType ?? 'Fixed'} onChange={e => setInlineVals(v => ({ ...v, interestType: e.target.value as InterestType }))} onClick={e => e.stopPropagation()}>
+                          ? <select className={`${IIC} cursor-pointer`} value={ed.interestType ?? l.interestType} onChange={ivSel(l.id,'interestType')} onClick={e => e.stopPropagation()}>
                               <option value="Fixed">Fixed</option>
                               <option value="Variable">Variable</option>
                               <option value="Floating">Floating (Prime-based)</option>
@@ -544,16 +556,11 @@ export function LoansTab() {
                     {isVisible('monthlyPayment') && (
                       <td className="px-3 py-1.5 text-right">
                         {ie
-                          ? <input
-                              type="number"
-                              min="0"
-                              step="1"
+                          ? <input type="number" min="0" step="1"
                               className="h-7 w-28 px-1.5 text-sm text-right border border-border rounded bg-background focus:outline-none focus:border-primary/40 font-mono"
-                              value={inlineVals.monthlyPayment ?? ''}
+                              value={ed.monthlyPayment ?? l.monthlyPayment ?? ''}
                               placeholder={(() => { const p = calcMonthlyPayment(l); return p ? Math.round(p).toString() : ''; })()}
-                              onChange={ivNum('monthlyPayment')}
-                              onClick={e => e.stopPropagation()}
-                            />
+                              onChange={ivNum(l.id,'monthlyPayment')} onClick={e => e.stopPropagation()} />
                           : (() => {
                               const pmt = calcMonthlyPayment(l);
                               return pmt !== null
@@ -566,7 +573,7 @@ export function LoansTab() {
                     {isVisible('startDate') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input type="date" className={IIC} value={inlineVals.startDate ?? ''} onChange={iv('startDate')} onClick={e => e.stopPropagation()} />
+                          ? <input type="date" className={IIC} value={ed.startDate ?? l.startDate ?? ''} onChange={iv(l.id,'startDate')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{fmtDateDisplay(l.startDate || '')}</span>}
                       </td>
                     )}
@@ -574,26 +581,25 @@ export function LoansTab() {
                     {isVisible('maturity') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input type="date" className={IIC} value={inlineVals.maturityDate ?? ''} onChange={iv('maturityDate')} onClick={e => e.stopPropagation()} />
+                          ? <input type="date" className={IIC} value={ed.maturityDate ?? l.maturityDate ?? ''} onChange={iv(l.id,'maturityDate')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{fmtDateDisplay(l.maturityDate)}</span>}
                       </td>
                     )}
                     {/* Current Collateral */}
                     {isVisible('collateral') && (
                       <td className="px-3 py-1.5 max-w-[180px]">
-                        <span className="text-muted-foreground text-xs leading-tight line-clamp-2">{l.securityDescription || '—'}</span>
+                        {ie
+                          ? <input className={IIC} value={ed.securityDescription ?? l.securityDescription ?? ''} onChange={iv(l.id,'securityDescription')} onClick={e => e.stopPropagation()} />
+                          : <span className="text-muted-foreground text-xs leading-tight line-clamp-2">{l.securityDescription || '—'}</span>}
                       </td>
                     )}
                     {/* Type */}
                     {isVisible('type') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <LoanTypeCombo
-                              iic={IIC}
-                              value={inlineVals.type ?? l.type}
-                              onChange={val => setInlineVals(v => ({ ...v, type: val as LoanType }))}
-                              onClick={e => e.stopPropagation()}
-                            />
+                          ? <LoanTypeCombo iic={IIC} value={ed.type ?? l.type}
+                              onChange={val => setEdit(l.id, 'type', val)}
+                              onClick={e => e.stopPropagation()} />
                           : typeBadge(l.type)}
                       </td>
                     )}
@@ -601,7 +607,7 @@ export function LoansTab() {
                     {isVisible('currency') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <select className={`${IIC} cursor-pointer`} value={inlineVals.currency ?? l.currency} onChange={e => setInlineVals(v => ({ ...v, currency: e.target.value as Currency }))} onClick={e => e.stopPropagation()}>
+                          ? <select className={`${IIC} cursor-pointer`} value={ed.currency ?? l.currency} onChange={ivSel(l.id,'currency')} onClick={e => e.stopPropagation()}>
                               <option value="CAD">CAD</option>
                               <option value="USD">USD</option>
                               <option value="EUR">EUR</option>
@@ -614,7 +620,7 @@ export function LoansTab() {
                     {isVisible('origAmt') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input type="number" className={`${IIC} text-right`} value={inlineVals.originalPrincipal ?? ''} onChange={ivNum('originalPrincipal')} onClick={e => e.stopPropagation()} />
+                          ? <input type="number" className={`${IIC} text-right`} value={ed.originalPrincipal ?? l.originalPrincipal} onChange={ivNum(l.id,'originalPrincipal')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums text-muted-foreground whitespace-nowrap float-right">{fmtCurrency(l.originalPrincipal, 'CAD')}</span>}
                       </td>
                     )}
@@ -624,20 +630,18 @@ export function LoansTab() {
                         {l.currency === 'CAD'
                           ? <span className="text-muted-foreground/50 text-xs tabular-nums">—</span>
                           : ie
-                            ? <input
-                                type="number" step="0.0001" min="0.0001"
+                            ? <input type="number" step="0.0001" min="0.0001"
                                 className={`${IIC} text-right w-24`}
-                                value={inlineVals.fxRateToCAD ?? getFxRate(l)}
-                                onChange={e => setInlineVals(v => ({ ...v, fxRateToCAD: parseFloat(e.target.value) || getFxRate(l) }))}
-                              />
+                                value={ed.fxRateToCAD ?? getFxRate(l)}
+                                onChange={e => setEdit(l.id, 'fxRateToCAD', parseFloat(e.target.value) || getFxRate(l))} />
                             : <span className="tabular-nums font-mono text-sm">{getFxRate(l).toFixed(4)}</span>}
                       </td>
                     )}
-                    {/* Balance */}
+                    {/* Converted Amt */}
                     {isVisible('balance') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input type="number" className={`${IIC} text-right`} value={inlineVals.currentBalance ?? ''} onChange={ivNum('currentBalance')} onClick={e => e.stopPropagation()} />
+                          ? <input type="number" className={`${IIC} text-right`} value={ed.currentBalance ?? l.currentBalance} onChange={ivNum(l.id,'currentBalance')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums font-semibold text-foreground whitespace-nowrap float-right">{fmtCurrency(l.originalPrincipal * getFxRate(l), 'CAD')}</span>}
                       </td>
                     )}
@@ -645,7 +649,7 @@ export function LoansTab() {
                     {isVisible('glPrincipal') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <select className={`${IIC} font-mono cursor-pointer`} value={inlineVals.glPrincipalAccount ?? ''} onChange={ivSel('glPrincipalAccount')} onClick={e => e.stopPropagation()}>
+                          ? <select className={`${IIC} font-mono cursor-pointer`} value={ed.glPrincipalAccount ?? l.glPrincipalAccount ?? ''} onChange={ivSel(l.id,'glPrincipalAccount')} onClick={e => e.stopPropagation()}>
                               {allGLAccounts.map(a => (
                                 <option key={a.code} value={a.code}>{a.code} — {a.name}</option>
                               ))}
@@ -657,7 +661,7 @@ export function LoansTab() {
                     {isVisible('dayCount') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <select className={`${IIC} cursor-pointer font-mono`} value={inlineVals.dayCountBasis ?? l.dayCountBasis} onChange={e => setInlineVals(v => ({ ...v, dayCountBasis: e.target.value as DayCountBasis }))} onClick={e => e.stopPropagation()}>
+                          ? <select className={`${IIC} cursor-pointer font-mono`} value={ed.dayCountBasis ?? l.dayCountBasis} onChange={ivSel(l.id,'dayCountBasis')} onClick={e => e.stopPropagation()}>
                               <option value="ACT/365">ACT/365</option>
                               <option value="ACT/360">ACT/360</option>
                               <option value="30/360">30/360</option>
@@ -669,7 +673,7 @@ export function LoansTab() {
                     {isVisible('paymentType') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <select className={`${IIC} cursor-pointer`} value={inlineVals.paymentType ?? l.paymentType} onChange={e => setInlineVals(v => ({ ...v, paymentType: e.target.value as PaymentType }))} onClick={e => e.stopPropagation()}>
+                          ? <select className={`${IIC} cursor-pointer`} value={ed.paymentType ?? l.paymentType} onChange={ivSel(l.id,'paymentType')} onClick={e => e.stopPropagation()}>
                               <option value="P&I">P&amp;I</option>
                               <option value="Interest-only">Interest-only</option>
                               <option value="Balloon">Balloon</option>
@@ -681,7 +685,7 @@ export function LoansTab() {
                     {isVisible('status') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <select className={`${IIC} cursor-pointer`} value={inlineVals.status ?? l.status} onChange={e => setInlineVals(v => ({ ...v, status: e.target.value as LoanStatus }))} onClick={e => e.stopPropagation()}>
+                          ? <select className={`${IIC} cursor-pointer`} value={ed.status ?? l.status} onChange={ivSel(l.id,'status')} onClick={e => e.stopPropagation()}>
                               <option value="Active">Active</option>
                               <option value="Closed">Closed</option>
                               <option value="Replaced">Replaced</option>
@@ -711,24 +715,10 @@ export function LoansTab() {
                       })()}
                     </td>
                     {/* Actions */}
-                    <td className="px-3 py-1.5 text-center w-16">
-                      {ie
-                        ? <div className="flex items-center gap-0.5 justify-center">
-                            <button className="p-1.5 hover:bg-emerald-50 rounded-lg transition-colors" title="Save changes" onClick={e => { e.stopPropagation(); saveInlineEdit(); }}>
-                              <Check className="w-3.5 h-3.5 text-emerald-600" />
-                            </button>
-                            <button className="p-1.5 hover:bg-muted rounded-lg transition-colors" title="Cancel edit" onClick={e => { e.stopPropagation(); cancelInlineEdit(); }}>
-                              <X className="w-3.5 h-3.5 text-muted-foreground" />
-                            </button>
-                          </div>
-                        : <div className="flex items-center gap-0.5 justify-center" onClick={e => e.stopPropagation()}>
-                            <button className="p-1.5 hover:bg-muted rounded-lg transition-colors" title="Edit loan" onClick={() => startInlineEdit(l)}>
-                              <Edit3 className="w-3.5 h-3.5 text-primary" />
-                            </button>
-                            <button className="p-1.5 hover:bg-muted rounded-lg transition-colors" title="Delete loan" onClick={() => handleDelete(l)}>
-                              <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                            </button>
-                          </div>}
+                    <td className="px-3 py-1.5 text-center w-10" onClick={e => e.stopPropagation()}>
+                      <button className="p-1.5 hover:bg-muted rounded-lg transition-colors" title="Delete loan" onClick={() => handleDelete(l)}>
+                        <Trash2 className="w-3.5 h-3.5 text-destructive/60 hover:text-destructive" />
+                      </button>
                     </td>
                   </tr>
                   );
