@@ -551,19 +551,13 @@ export function LoansTab() {
                         {l.currency === 'CAD'
                           ? <span className="text-muted-foreground/50 text-xs tabular-nums">—</span>
                           : ie
-                            ? <div className="flex flex-col items-end gap-0.5">
-                                <span className="text-xs text-muted-foreground/60">{l.currency}/CAD</span>
-                                <input
-                                  type="number" step="0.0001" min="0.0001"
-                                  className={`${IIC} text-right w-24`}
-                                  value={inlineVals.fxRateToCAD ?? getFxRate(l)}
-                                  onChange={e => setInlineVals(v => ({ ...v, fxRateToCAD: parseFloat(e.target.value) || getFxRate(l) }))}
-                                />
-                              </div>
-                            : <div className="flex flex-col items-end">
-                                <span className="text-xs text-muted-foreground/60">{l.currency}/CAD</span>
-                                <span className="tabular-nums font-mono text-sm">{getFxRate(l).toFixed(4)}</span>
-                              </div>}
+                            ? <input
+                                type="number" step="0.0001" min="0.0001"
+                                className={`${IIC} text-right w-24`}
+                                value={inlineVals.fxRateToCAD ?? getFxRate(l)}
+                                onChange={e => setInlineVals(v => ({ ...v, fxRateToCAD: parseFloat(e.target.value) || getFxRate(l) }))}
+                              />
+                            : <span className="tabular-nums font-mono text-sm">{getFxRate(l).toFixed(4)}</span>}
                       </td>
                     )}
                     {/* Balance */}
