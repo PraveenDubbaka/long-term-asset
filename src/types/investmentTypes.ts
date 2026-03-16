@@ -167,6 +167,7 @@ export interface InvAJE {
   confidence: 'High' | 'Medium' | 'Low';
   notes?: string;
   status: 'Draft' | 'Approved' | 'Posted';
+  wpRef?: string;
 }
 
 export interface InvAJELine {
