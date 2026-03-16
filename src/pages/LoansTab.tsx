@@ -483,7 +483,7 @@ export function LoansTab() {
                           : (() => {
                               const pmt = calcMonthlyPayment(l);
                               return pmt !== null
-                                ? <span className="tabular-nums font-mono text-sm text-foreground whitespace-nowrap">{fmtCurrency(pmt, l.currency)}{l.monthlyPayment ? '' : <span className="text-muted-foreground/40 text-[10px] ml-1" title="Auto-calculated">~</span>}</span>
+                                ? <span className="tabular-nums font-mono text-sm text-foreground whitespace-nowrap">{fmtCurrency(pmt * getFxRate(l), 'CAD')}{l.monthlyPayment ? '' : <span className="text-muted-foreground/40 text-[10px] ml-1" title="Auto-calculated">~</span>}</span>
                                 : <span className="text-muted-foreground/50 text-xs">—</span>;
                             })()}
                       </td>
