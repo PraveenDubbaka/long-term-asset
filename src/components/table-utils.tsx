@@ -197,7 +197,7 @@ interface ThResizableProps {
 
 export function ThResizable({ colId: _colId, width, onResizeStart, className = '', children, style, title }: ThResizableProps) {
   const thStyle: React.CSSProperties = width
-    ? { width, minWidth: width, maxWidth: width, ...style }
+    ? { minWidth: width, ...style }
     : { position: 'relative', ...style };
 
   return (
