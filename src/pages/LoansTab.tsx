@@ -7,7 +7,7 @@ import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
 import { StyledCard } from '@/components/wp-ui/card';
 import { Modal, Input, Select, Textarea, Tooltip } from '../components/ui';
-import type { Loan, LoanType, LoanStatus, InterestType, Currency, DayCountBasis, PaymentType } from '../types';
+import type { Loan, LoanType, LoanStatus, InterestType, Currency, DayCountBasis, PaymentType, BanDocument } from '../types';
 import toast from 'react-hot-toast';
 import { useTableColumns, ColumnToggleButton, useColumnResize, ThResizable, type ColDef } from '@/components/table-utils';
 import { accountMappings as allGLAccounts } from '../data/mockData';
@@ -116,6 +116,197 @@ function LoanTypeCombo({ value, iic, onChange, onClick }: {
   );
 }
 
+function LoanRefCell({ loanId, refs, banDocs, onChange }: {
+  loanId: string;
+  refs: string[];
+  banDocs: BanDocument[];
+  onChange: (newRefs: string[]) => void;
+}) {
+  const [mode, setMode] = useState<'closed' | 'picker' | 'list'>('closed');
+  const [filter, setFilter] = useState('');
+  const [pending, setPending] = useState<string[]>(refs);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  useEffect(() => { setPending(refs); }, [refs]);
+
+  const openPicker = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPending([...refs]);
+    setFilter('');
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, left: r.left });
+    }
+    setMode('picker');
+  };
+
+  const openList = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, left: Math.max(0, r.right - 200) });
+    }
+    setMode('list');
+  };
+
+  useEffect(() => {
+    if (mode === 'closed') return;
+    const close = (e: MouseEvent) => {
+      if (!btnRef.current?.contains(e.target as Node) && !panelRef.current?.contains(e.target as Node)) {
+        setMode('closed');
+      }
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [mode]);
+
+  const toggleDoc = (id: string) => {
+    setPending(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+  };
+
+  const confirmAdd = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onChange(pending);
+    setMode('closed');
+  };
+
+  const removeRef = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = refs.filter(r => r !== id);
+    onChange(updated);
+    if (updated.length === 0) setMode('closed');
+  };
+
+  const filtered = banDocs.filter(d =>
+    !filter || d.name.toLowerCase().includes(filter.toLowerCase()) || d.code.toLowerCase().includes(filter.toLowerCase())
+  );
+
+  const displayRefs = refs.slice(0, 2);
+  const overflow = refs.length - 2;
+
+  // suppress loanId usage warning
+  void loanId;
+
+  return (
+    <div className="flex items-center" onClick={e => e.stopPropagation()}>
+      {refs.length === 0 ? (
+        <button
+          ref={btnRef}
+          onClick={openPicker}
+          className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground border border-dashed border-border rounded-md hover:border-primary/40 hover:text-primary transition-colors whitespace-nowrap"
+        >
+          <span className="text-base leading-none">+</span> Ref
+        </button>
+      ) : (
+        <button
+          ref={btnRef}
+          onClick={openList}
+          className="flex items-center gap-1 px-2 py-1 text-xs border border-border rounded-md hover:bg-muted transition-colors whitespace-nowrap max-w-[140px]"
+        >
+          <span className="truncate text-foreground font-mono">
+            {displayRefs.join(' , ')}{overflow > 0 ? ` ... ` : ''}
+          </span>
+          {overflow > 0 && <span className="text-muted-foreground">+{overflow}</span>}
+          <span className="text-muted-foreground ml-0.5">∨</span>
+        </button>
+      )}
+      {/* + Ref link even when refs exist */}
+      {refs.length > 0 && (
+        <button
+          onClick={openPicker}
+          className="ml-1 text-xs text-muted-foreground/50 hover:text-primary transition-colors"
+          title="Add more refs"
+        >+</button>
+      )}
+
+      {/* Picker popover */}
+      {mode === 'picker' && ReactDOM.createPortal(
+        <div
+          ref={panelRef}
+          style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999, width: 260 }}
+          className="bg-background border border-border rounded-lg shadow-xl overflow-hidden"
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="px-3 pt-2.5 pb-2 border-b border-border">
+            <input
+              autoFocus
+              className="w-full h-7 px-2 text-xs border border-border rounded bg-muted focus:outline-none focus:border-primary/40"
+              placeholder="Search documents…"
+              value={filter}
+              onChange={e => setFilter(e.target.value)}
+              onClick={e => e.stopPropagation()}
+            />
+          </div>
+          <div className="max-h-52 overflow-y-auto py-1">
+            {filtered.length === 0 && (
+              <div className="px-3 py-3 text-xs text-muted-foreground text-center">No documents found</div>
+            )}
+            {filtered.map(doc => (
+              <label
+                key={doc.id}
+                className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-muted cursor-pointer"
+                title={doc.name}
+                onClick={e => e.stopPropagation()}
+              >
+                <input
+                  type="checkbox"
+                  className="rounded border-border accent-primary flex-shrink-0"
+                  checked={pending.includes(doc.id)}
+                  onChange={() => toggleDoc(doc.id)}
+                />
+                <span className="text-xs text-foreground truncate">{doc.code} — {doc.name}</span>
+              </label>
+            ))}
+          </div>
+          <div className="px-3 py-2 border-t border-border">
+            <button
+              onClick={confirmAdd}
+              disabled={pending.length === 0}
+              className="w-full py-1.5 text-xs font-semibold rounded-md bg-primary text-primary-foreground disabled:opacity-40 hover:bg-primary/90 transition-colors"
+            >
+              Add{pending.length > 0 ? ` (${pending.length})` : ''}
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Refs list dropdown */}
+      {mode === 'list' && ReactDOM.createPortal(
+        <div
+          ref={panelRef}
+          style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999, width: 220 }}
+          className="bg-background border border-border rounded-lg shadow-xl overflow-hidden py-1"
+          onClick={e => e.stopPropagation()}
+        >
+          {refs.map(id => {
+            const doc = banDocs.find(d => d.id === id);
+            return doc ? (
+              <div key={id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-muted group">
+                <span className="text-xs text-foreground truncate flex-1" title={doc.name}>
+                  {doc.code} — {doc.name.length > 22 ? doc.name.slice(0, 22) + '…' : doc.name}
+                </span>
+                <button
+                  onClick={e => removeRef(id, e)}
+                  className="p-0.5 text-muted-foreground/40 hover:text-destructive transition-colors flex-shrink-0"
+                  title="Remove ref"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            ) : null;
+          })}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
 type LoansColId =
   | 'name' | 'lender' | 'rate' | 'interestType' | 'monthlyPayment'
   | 'startDate' | 'maturity' | 'collateral' | 'type' | 'currency'
@@ -140,16 +331,17 @@ const LOANS_COLS: ColDef<LoansColId>[] = [
   { id: 'dayCount',      label: 'Day Count' },
   { id: 'paymentType',   label: 'Payment Type' },
   { id: 'status',        label: 'Status' },
-  { id: 'attachments',   label: 'Attachments',    pinned: true },
+  { id: 'attachments',   label: 'Refs',           pinned: true },
   { id: 'actions',       label: 'Actions',         pinned: true },
 ];
 
 export function LoansTab() {
-  const { loans, addLoan, updateLoan, deleteLoan } = useStore(s => ({
+  const { loans, addLoan, updateLoan, deleteLoan, banDocuments } = useStore(s => ({
     loans: s.loans,
     addLoan: s.addLoan,
     updateLoan: s.updateLoan,
     deleteLoan: s.deleteLoan,
+    banDocuments: s.banDocuments,
   }));
 
   const [editLoan, setEditLoan] = useState<Loan | null>(null);
@@ -485,7 +677,7 @@ export function LoansTab() {
                       </div>
                     </ThResizable>
                   )}
-                  <ThResizable colId="attachments" width={getWidth('attachments')} onResizeStart={rh('attachments')} className="px-3 py-3 w-10 text-center" title="Attachments"><Paperclip className="w-3.5 h-3.5 text-muted-foreground mx-auto" /></ThResizable>
+                  <ThResizable colId="attachments" width={getWidth('attachments')} onResizeStart={rh('attachments')} className="px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Refs</ThResizable>
                   <ThResizable colId="actions" width={getWidth('actions')} onResizeStart={rh('actions')} className="px-3 py-3 w-16"></ThResizable>
                 </tr>
               </thead>
@@ -694,25 +886,14 @@ export function LoansTab() {
                           : statusBadge(l.status)}
                       </td>
                     )}
-                    {/* Attachments */}
-                    <td className="px-3 py-1.5 text-center w-10" onClick={e => e.stopPropagation()}>
-                      {(() => {
-                        const count = l.attachments.length;
-                        return (
-                          <button
-                            onClick={e => { e.stopPropagation(); setAttachDrawerLoan(l); }}
-                            title={count > 0 ? `${count} attachment${count !== 1 ? 's' : ''}` : 'Add attachments'}
-                            className="relative p-1.5 hover:bg-muted rounded-lg transition-colors group"
-                          >
-                            <Paperclip className={`w-3.5 h-3.5 ${count > 0 ? 'text-primary' : 'text-muted-foreground/30 group-hover:text-muted-foreground'}`} />
-                            {count > 0 && (
-                              <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] flex items-center justify-center rounded-full bg-primary text-white text-[9px] font-bold px-0.5 leading-none">
-                                {count}
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })()}
+                    {/* Refs */}
+                    <td className="px-3 py-1.5 w-36" onClick={e => e.stopPropagation()}>
+                      <LoanRefCell
+                        loanId={l.id}
+                        refs={l.wpRefs ?? []}
+                        banDocs={banDocuments}
+                        onChange={newRefs => updateLoan(l.id, { wpRefs: newRefs })}
+                      />
                     </td>
                     {/* Actions */}
                     <td className="px-3 py-1.5 text-center w-10" onClick={e => e.stopPropagation()}>

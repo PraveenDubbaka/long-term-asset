@@ -2,12 +2,13 @@ import { create } from 'zustand';
 import type {
   Loan, AmortizationRow, ContinuityRow, ActivityItem, Covenant,
   ReconciliationItem, JEProposal, EngagementSettings, ReviewQueueItem,
-  TabId, JEStatus, ActivityStatus, ReconciliationStatus
+  TabId, JEStatus, ActivityStatus, ReconciliationStatus, BanDocument
 } from '../types';
 import {
   initialLoans, initialAmortization, initialContinuity,
   initialActivities, initialCovenants, initialReconciliation,
   initialJEs, initialReviewQueue, initialSettings, accountMappings,
+  banDocuments as initialBanDocuments,
 } from '../data/mockData';
 import type { AccountMapping } from '../types';
 
@@ -32,6 +33,7 @@ interface Store {
   reviewQueue: ReviewQueueItem[];
   settings: EngagementSettings;
   accountMappings: AccountMapping[];
+  banDocuments: BanDocument[];
   ui: UIState;
 
   addLoan: (loan: Loan) => void;
@@ -62,6 +64,9 @@ interface Store {
   deleteJE: (id: string) => void;
   restoreJE: (id: string) => void;
 
+  addBanDocument: (doc: BanDocument) => void;
+  removeBanDocument: (id: string) => void;
+
   resolveReviewItem: (id: string) => void;
   updateSettings: (updates: Partial<EngagementSettings>) => void;
 
@@ -84,6 +89,7 @@ export const useStore = create<Store>((set) => ({
   reviewQueue: initialReviewQueue,
   settings: initialSettings,
   accountMappings,
+  banDocuments: initialBanDocuments,
   ui: {
     activeTab: 'dashboard',
     selectedLoanId: null,
@@ -150,6 +156,9 @@ export const useStore = create<Store>((set) => ({
   addJE: (je) => set(s => ({ jes: [...s.jes, je] })),
   deleteJE:  (id) => set(s => ({ jes: s.jes.map(j => j.id === id ? { ...j, deleted: true, deletedAt: new Date().toISOString() } : j) })),
   restoreJE: (id) => set(s => ({ jes: s.jes.map(j => j.id === id ? { ...j, deleted: false, deletedAt: undefined } : j) })),
+
+  addBanDocument: (doc) => set(s => ({ banDocuments: [...s.banDocuments, doc] })),
+  removeBanDocument: (id) => set(s => ({ banDocuments: s.banDocuments.filter(d => d.id !== id) })),
 
   resolveReviewItem: (id) => set(s => ({ reviewQueue: s.reviewQueue.filter(r => r.id !== id) })),
   updateSettings: (updates) => set(s => ({ settings: { ...s.settings, ...updates } })),

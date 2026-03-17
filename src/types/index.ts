@@ -45,6 +45,7 @@ export interface Loan {
   securityDescription?: string;
   notes?: string;
   attachments: string[];
+  wpRefs?: string[]; // IDs of BAN documents referenced by this loan
   fxRateToCAD?: number; // for non-CAD loans
   monthlyPayment?: number; // manual override; if absent, computed from PMT
 }
@@ -225,6 +226,12 @@ export interface CarryforwardPackage {
   accruedInterestCarried: Record<string, number>;
   rateTableSnapshot: Record<string, number>;
   unresolvedItems: string[];
+}
+
+export interface BanDocument {
+  id: string;
+  code: string; // e.g. "BAN-1"
+  name: string; // display name
 }
 
 export type TabId = 'dashboard' | 'loans' | 'continuity' | 'amortization' | 'activity' | 'covenants' | 'reconciliation' | 'ajes' | 'reports' | 'settings';

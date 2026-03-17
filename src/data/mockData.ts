@@ -1,8 +1,24 @@
 import type {
   Loan, AmortizationRow, ContinuityRow, ActivityItem, Covenant,
   ReconciliationItem, JEProposal, AccountMapping, EngagementSettings,
-  FXRate, ReviewQueueItem, CarryforwardPackage
+  FXRate, ReviewQueueItem, CarryforwardPackage, BanDocument
 } from '../types';
+
+// ─── BAN DOCUMENTS ───────────────────────────────────────────────────────────
+export const banDocuments: BanDocument[] = [
+  { id: 'BAN-1',  code: 'BAN-1',  name: 'Term_Loan_A_Agreement_2022.pdf' },
+  { id: 'BAN-2',  code: 'BAN-2',  name: 'RBC_Renewal_2024.pdf' },
+  { id: 'BAN-3',  code: 'BAN-3',  name: 'TD_LOC_Agreement_2023.pdf' },
+  { id: 'BAN-4',  code: 'BAN-4',  name: 'HSBC_Equipment_Loan_2023.pdf' },
+  { id: 'BAN-5',  code: 'BAN-5',  name: 'Equipment_Schedule.pdf' },
+  { id: 'BAN-6',  code: 'BAN-6',  name: 'BDC_TLB_Agreement_2021.pdf' },
+  { id: 'BAN-7',  code: 'BAN-7',  name: 'Shareholder_Loan_Agreement.pdf' },
+  { id: 'BAN-8',  code: 'BAN-8',  name: 'Ford_Fleet_Schedule_2022.pdf' },
+  { id: 'BAN-9',  code: 'BAN-9',  name: 'BNS_EUR_Facility_2023.pdf' },
+  { id: 'BAN-10', code: 'BAN-10', name: 'CIBC_Mortgage_2019.pdf' },
+  { id: 'BAN-11', code: 'BAN-11', name: 'Property_Appraisal_2023.pdf' },
+  { id: 'BAN-12', code: 'BAN-12', name: 'ATB_Bridge_2023.pdf' },
+];
 
 // ─── FX RATES ────────────────────────────────────────────────────────────────
 export const fxRates: FXRate[] = [
@@ -59,6 +75,7 @@ export const initialLoans: Loan[] = [
     lastPaymentDate: '2024-10-31',
     securityDescription: 'General Security Agreement over all present and future assets',
     attachments: ['Term_Loan_A_Agreement_2022.pdf', 'RBC_Renewal_2024.pdf'],
+    wpRefs: ['BAN-1', 'BAN-2'],
     notes: 'Fixed rate secured term loan. Annual reviews required.',
   },
   {
@@ -92,6 +109,7 @@ export const initialLoans: Loan[] = [
     lastPaymentDate: '2024-11-30',
     securityDescription: 'First charge over accounts receivable and inventory',
     attachments: ['TD_LOC_Agreement_2023.pdf'],
+    wpRefs: ['BAN-3'],
     notes: 'Variable rate revolving LOC. Rate resets monthly at TD Prime + 1.00%.',
   },
   {
@@ -122,6 +140,7 @@ export const initialLoans: Loan[] = [
     fxRateToCAD: 1.3530,
     securityDescription: 'Specific charge over manufacturing equipment (Serial #EQ-8842-X)',
     attachments: ['HSBC_Equipment_Loan_2023.pdf', 'Equipment_Schedule.pdf'],
+    wpRefs: ['BAN-4', 'BAN-5'],
     notes: 'USD denominated. FX translation required at each period end. 30/360 day count.',
   },
   {
@@ -151,6 +170,7 @@ export const initialLoans: Loan[] = [
     lastPaymentDate: '2024-11-30',
     securityDescription: 'Second charge over general assets; personal guarantee by shareholders',
     attachments: ['BDC_TLB_Agreement_2021.pdf'],
+    wpRefs: ['BAN-6'],
     notes: 'BDC subordinated term loan. Quarterly financial reporting required.',
   },
   {
@@ -180,6 +200,7 @@ export const initialLoans: Loan[] = [
     lastPaymentDate: '2024-12-31',
     securityDescription: 'Subordinated demand note; no external security',
     attachments: ['Shareholder_Loan_Agreement.pdf'],
+    wpRefs: ['BAN-7'],
     notes: "Non-arm's length loan. CRA prescribed rate. Repayable on demand per shareholder resolution.",
   },
   {
@@ -209,6 +230,7 @@ export const initialLoans: Loan[] = [
     lastPaymentDate: '2024-11-15',
     securityDescription: 'PPSA registration over 6 fleet vehicles (VINs on file)',
     attachments: ['Ford_Fleet_Schedule_2022.pdf'],
+    wpRefs: ['BAN-8'],
     notes: 'Matures June 2025. Renewal or payoff required. Classify fully as current.',
   },
   {
@@ -243,6 +265,7 @@ export const initialLoans: Loan[] = [
     fxRateToCAD: 1.4720,
     securityDescription: 'Floating charge over imported inventory; EUR-denominated',
     attachments: ['BNS_EUR_Facility_2023.pdf'],
+    wpRefs: ['BAN-9'],
     notes: 'EUR revolving import facility. FX translation at YE rate required. Matures Jul 2025.',
   },
   {
@@ -272,6 +295,7 @@ export const initialLoans: Loan[] = [
     lastPaymentDate: '2024-11-01',
     securityDescription: 'First mortgage charge over industrial property at 1842 Commerce Dr. (MPAC assessed $5.1M)',
     attachments: ['CIBC_Mortgage_2019.pdf', 'Property_Appraisal_2023.pdf'],
+    wpRefs: ['BAN-10', 'BAN-11'],
     notes: 'Fixed 5-year term renewing Apr 2024. Renewal at 4.95% confirmed. 15-year amortization.',
   },
   {
@@ -303,6 +327,7 @@ export const initialLoans: Loan[] = [
     lastPaymentDate: '2024-11-01',
     securityDescription: 'Subordinated bridge; replaced by BDC Term Loan B on maturity',
     attachments: ['ATB_Bridge_2023.pdf'],
+    wpRefs: ['BAN-12'],
     notes: 'Fully repaid Nov 1, 2024 via proceeds from BDC-TL-7721. GL balance confirmed nil at YE.',
   },
 ];
