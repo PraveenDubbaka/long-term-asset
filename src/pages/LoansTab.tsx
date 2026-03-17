@@ -195,9 +195,10 @@ function LoanRefCell({ loanId, refs, banDocs, onChange }: {
         <button
           ref={btnRef}
           onClick={openPicker}
-          className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground border border-dashed border-border rounded-md hover:border-primary/40 hover:text-primary transition-colors whitespace-nowrap"
+          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-muted-foreground border border-dashed border-border rounded-md hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-colors whitespace-nowrap"
         >
-          <span className="text-base leading-none">+</span> Ref
+          <span className="flex items-center justify-center w-4 h-4 rounded-full border border-current text-[11px] leading-none font-bold flex-shrink-0">+</span>
+          Ref
         </button>
       ) : (
         <button
@@ -212,11 +213,11 @@ function LoanRefCell({ loanId, refs, banDocs, onChange }: {
           <span className="text-muted-foreground ml-0.5">∨</span>
         </button>
       )}
-      {/* + Ref link even when refs exist */}
+      {/* + add more refs button when refs exist */}
       {refs.length > 0 && (
         <button
           onClick={openPicker}
-          className="ml-1 text-xs text-muted-foreground/50 hover:text-primary transition-colors"
+          className="ml-1 flex items-center justify-center w-5 h-5 rounded-full border border-dashed border-border text-muted-foreground/50 hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-colors text-[11px] font-bold leading-none flex-shrink-0"
           title="Add more refs"
         >+</button>
       )}
