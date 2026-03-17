@@ -12,6 +12,7 @@ import { BulkAddToMyTemplatesDialog } from "@/components/BulkAddToMyTemplatesDia
 import { getGlobalTemplateChecklist } from "@/lib/globalTemplates";
 import { readJsonFromLocalStorage, removeLocalStorageKey, writeJsonToLocalStorage } from "@/lib/safeJson";
 import { cn } from "@/lib/utils";
+import { useStore } from "@/store/useStore";
 import { LetterIcon } from "@/components/icons/LetterIcon";
 import { ChecklistIcon } from "@/components/icons/ChecklistIcon";
 import { CompletionIcon } from "@/components/icons/CompletionIcon";
@@ -718,6 +719,7 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["co"]));
   const [allSectionsExpanded, setAllSectionsExpanded] = useState(false);
   const [showSignoffs, setShowSignoffs] = useState(false);
+  const banDocuments = useStore(s => s.banDocuments);
 
   // Determine if a secondary panel is visible and expanded (for dark mode gradient)
   const isOnEngagementDetail = location.pathname.startsWith("/engagements/") && location.pathname !== "/engagements/create";
@@ -870,7 +872,15 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
                       { id: "do-sha", code: "SHA", label: "Shareholders Agreements", icon: "folder" },
                       { id: "do-ren", code: "REN", label: "Rental/Lease Agreements", icon: "folder" },
                       { id: "do-inc", code: "INC", label: "Incorporation Documents", icon: "folder" },
-                      { id: "do-ban", code: "BAN", label: "Banking Agreements", icon: "folder" },
+                      {
+                        id: "do-ban", code: "BAN", label: "Banking Agreements", icon: "folder",
+                        children: banDocuments.map(d => ({
+                          id: `ban-doc-${d.id}`,
+                          code: d.code,
+                          label: d.name,
+                          icon: "doc" as const,
+                        })),
+                      },
                     ]
                   },
                   {
