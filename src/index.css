@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -7,10 +7,26 @@
 /* ── Loan Debt Tool base styles ─────────────────────────────────────── */
 @layer base {
   * { box-sizing: border-box; }
+
+  /* Force Inter on every element — inputs, selects, buttons all inherit */
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  *, *::before, *::after {
+    font-family: inherit;
+  }
+
   body {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     background: #F8FAFC;
+  }
+
+  /* Explicitly set Inter on form elements (browsers use OS default otherwise) */
+  input, select, textarea, button {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
   input[type=number] { -moz-appearance: textfield; }
   input[type=number]::-webkit-inner-spin-button,
