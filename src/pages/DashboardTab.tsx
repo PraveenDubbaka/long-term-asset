@@ -21,7 +21,7 @@ const variantBorder: Record<StatVariant, string> = {
 
 export function DashboardTab() {
   const { loans, covenants, jes, reconciliation, amortization, settings } = useStore(s => ({
-    loans:          s.loans,
+    loans:          s.loans.filter(l => l.status !== 'Inactive'),
     covenants:      s.covenants,
     jes:            s.jes,
     reconciliation: s.reconciliation,

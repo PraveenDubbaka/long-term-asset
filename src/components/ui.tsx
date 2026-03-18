@@ -169,7 +169,7 @@ interface ModalProps {
   title?: string;
   subtitle?: string;
   children: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl';
   footer?: React.ReactNode;
 }
 export function Modal({ open, onClose, title, subtitle, children, size = 'md', footer }: ModalProps) {
@@ -180,7 +180,7 @@ export function Modal({ open, onClose, title, subtitle, children, size = 'md', f
   }, [open]);
 
   if (!open) return null;
-  const sizes = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-xl', '2xl': 'max-w-2xl' };
+  const sizes = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-xl', '2xl': 'max-w-2xl', '3xl': 'max-w-3xl' };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" onClick={onClose} />

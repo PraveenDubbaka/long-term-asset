@@ -18,7 +18,7 @@ const REPORT_DEFS = [
 
 export function ReportsTab() {
   const { loans, jes, covenants, reconciliation, amortization, continuity, settings } = useStore(s => ({
-    loans: s.loans, jes: s.jes, covenants: s.covenants,
+    loans: s.loans.filter(l => l.status !== 'Inactive'), jes: s.jes, covenants: s.covenants,
     reconciliation: s.reconciliation, amortization: s.amortization,
     continuity: s.continuity, settings: s.settings,
   }));

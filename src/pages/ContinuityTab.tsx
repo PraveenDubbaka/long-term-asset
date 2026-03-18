@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ActivityTab } from './ActivityTab';
-import { Plus, Download, Edit3, Trash2, ChevronDown, Check, Search, FileText, X } from 'lucide-react';
+import { Plus, Download, Edit3, Trash2, ChevronDown, Check, Search, FileText, X, Info } from 'lucide-react';
 import { useTableColumns, ColumnToggleButton, useColumnResize, ThResizable, type ColDef } from '@/components/table-utils';
 import { exportToExcel } from '../lib/utils';
 import { useStore } from '../store/useStore';
@@ -61,35 +60,6 @@ function calcCurrentPortion(loan: Loan, closingBalance: number, period: string):
   return Math.round(sum);
 }
 
-/** Returns [yr1, yr2, yr3, yr4, yr5, thereafter] principal amounts from `yearEndPeriod`. */
-function calcMaturityLadder(loan: Loan, closingBalance: number, yearEndPeriod: string): number[] {
-  const result = [0, 0, 0, 0, 0, 0];
-  if (closingBalance <= 0) return result;
-  const [y, m] = yearEndPeriod.split('-').map(Number);
-  const maturity = new Date(loan.maturityDate);
-  const monthsToMaturity = Math.max(0,
-    (maturity.getFullYear() - y) * 12 + (maturity.getMonth() + 1 - m));
-  if (loan.type === 'LOC' || loan.type === 'Revolver') { result[0] = closingBalance; return result; }
-  if (loan.paymentType === 'Interest-only' || loan.paymentType === 'Balloon') {
-    const idx = Math.min(Math.max(0, Math.ceil(monthsToMaturity / 12) - 1), 5);
-    result[idx] = closingBalance;
-    return result;
-  }
-  const r = loan.rate / 100 / 12;
-  const n = monthsToMaturity;
-  if (n <= 0) { result[0] = closingBalance; return result; }
-  const pmt = r === 0 ? closingBalance / n : closingBalance * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
-  let bal = closingBalance;
-  for (let mo = 1; mo <= n; mo++) {
-    const interest = bal * r;
-    const principal = Math.min(pmt - interest, bal);
-    const idx = Math.min(Math.ceil(mo / 12) - 1, 5);
-    result[idx] += principal;
-    bal -= principal;
-    if (bal <= 0.01) break;
-  }
-  return result.map(v => Math.round(v));
-}
 
 type ContColId =
   | 'period' | 'openingBalance' | 'newBorrowings' | 'principalRepayments'
@@ -111,24 +81,24 @@ const CONT_COLS: ColDef<ContColId>[] = [
   { id: 'actions',              label: '',                 pinned: true },
 ];
 
+const ALL_LOANS_ID = '__all__';
+
 export function ContinuityTab() {
   const { loans, continuity, addContinuityRow, updateContinuityRow, deleteContinuityRow } = useStore(s => ({
-    loans: s.loans,
+    loans: s.loans.filter(l => l.status !== 'Inactive'),
     continuity: s.continuity,
     addContinuityRow: s.addContinuityRow,
     updateContinuityRow: s.updateContinuityRow,
     deleteContinuityRow: s.deleteContinuityRow,
   }));
 
-  const [subTab, setSubTab] = useState<'continuity' | 'activity'>('continuity');
-  const [view, setView] = useState<'by-loan' | 'consolidated'>('by-loan');
   const [selectedLoanId, setSelectedLoanId] = useState<string>(loans[0]?.id || '');
   const [selectedLoanIds, setSelectedLoanIds] = useState<string[]>(loans.map(l => l.id));
   const [pickerOpen, setPickerOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  const [inlineEdit, setInlineEdit] = useState<string | null>(null);
-  const [inlineValues, setInlineValues] = useState<Partial<ContinuityRow>>({});
+  const [tableEditMode, setTableEditMode] = useState(false);
+  const [tableEdits, setTableEdits] = useState<Record<string, Partial<ContinuityRow>>>({});
 
   // Notes link panel state
   const [notesPanelRowId, setNotesPanelRowId] = useState<string | null>(null);
@@ -137,10 +107,14 @@ export function ContinuityTab() {
   const [notesSearch, setNotesSearch]         = useState('');
   const [fsPanelItem, setFsPanelItem]         = useState(FS_ITEMS[0]);
   const [hoveredNote, setHoveredNote]         = useState<{ rowId: string; noteId: number; x: number; y: number } | null>(null);
+  const [aiTooltipPos, setAiTooltipPos]       = useState<{ x: number; y: number } | null>(null);
 
   const { isVisible: colVisible, toggle: colToggle, setWidth: colSetWidth, getWidth: colGetWidth, visibleCount: colVisCount } = useTableColumns('continuity', CONT_COLS);
   const { onResizeStart: colResizeStart } = useColumnResize(colSetWidth);
   const crh = (id: ContColId) => (e: React.MouseEvent) => colResizeStart(id, e, colGetWidth(id) ?? 120);
+
+  // Cancel edit mode when switching loans
+  useEffect(() => { cancelTableEdit(); }, [selectedLoanId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pickerRef  = useRef<HTMLDivElement>(null);
   const exportRef  = useRef<HTMLDivElement>(null);
@@ -180,8 +154,9 @@ export function ContinuityTab() {
   const selectedLoan = loans.find(l => l.id === selectedLoanId);
   const loanRows = continuity.filter(r => r.loanId === selectedLoanId).sort((a, b) => a.period.localeCompare(b.period));
 
+  const activeLoanIds = new Set(loans.map(l => l.id));
   const consolidatedByPeriod = MONTHS.map(period => {
-    const rows = continuity.filter(r => r.period === period);
+    const rows = continuity.filter(r => r.period === period && activeLoanIds.has(r.loanId));
     return {
       period,
       openingBalance: rows.reduce((s, r) => s + r.openingBalance, 0),
@@ -195,18 +170,22 @@ export function ContinuityTab() {
     };
   }).filter(p => p.closingBalance > 0);
 
-  const startInlineEdit = (row: ContinuityRow) => {
-    setInlineEdit(row.id);
-    setInlineValues({ ...row });
+  // Bulk table edit mode — all rows editable simultaneously
+  const startTableEdit = (rows: ContinuityRow[]) => {
+    const edits: Record<string, Partial<ContinuityRow>> = {};
+    rows.forEach(r => { edits[r.id] = { ...r }; });
+    setTableEdits(edits);
+    setTableEditMode(true);
   };
-
-  const saveInlineEdit = () => {
-    if (inlineEdit) {
-      updateContinuityRow(inlineEdit, inlineValues);
-      toast.success('Row updated');
-      setInlineEdit(null);
-    }
+  const saveTableEdit = (rows: ContinuityRow[]) => {
+    Object.entries(tableEdits).forEach(([id, vals]) => updateContinuityRow(id, vals));
+    toast.success(`${rows.length} row${rows.length !== 1 ? 's' : ''} saved`);
+    setTableEditMode(false);
+    setTableEdits({});
   };
+  const cancelTableEdit = () => { setTableEditMode(false); setTableEdits({}); };
+  const setCEdit = (id: string, field: keyof ContinuityRow, value: unknown) =>
+    setTableEdits(prev => ({ ...prev, [id]: { ...(prev[id] ?? {}), [field]: value } }));
 
   // Notes panel helpers
   const openNotesPanel = (rowId: string) => {
@@ -248,51 +227,9 @@ export function ContinuityTab() {
   const closingCurrentPortion = (closing && selectedLoan) ? calcCurrentPortion(selectedLoan, closing.closingBalance, closing.period) : 0;
   const closingLongTerm = closing ? closing.closingBalance - closingCurrentPortion : 0;
 
-  const YEAR_END_PERIOD = '2024-12';
-  const baseYear = 2025;
-  const yearLabels = Array.from({ length: 5 }, (_, i) => `Year ${i + 1} (${baseYear + i})`).concat(['Thereafter']);
-  const maturityLadderRows = loans
-    .filter(l => l.status === 'Active')
-    .map(l => {
-      const lRows = continuity.filter(r => r.loanId === l.id).sort((a, b) => b.period.localeCompare(a.period));
-      const cb = lRows[0]?.closingBalance ?? l.currentBalance;
-      const ladder = calcMaturityLadder(l, cb, YEAR_END_PERIOD);
-      return { loan: l, ladder, total: ladder.reduce((s, v) => s + v, 0) };
-    });
-  const ladderColTotals = [0, 1, 2, 3, 4, 5].map(i => maturityLadderRows.reduce((s, d) => s + d.ladder[i], 0));
-  const ladderGrandTotal = ladderColTotals.reduce((s, v) => s + v, 0);
-
-  const subTabBar = (
-    <div className="px-6 pt-4 pb-0 flex items-center gap-1 border-b border-border">
-      {(['continuity', 'activity'] as const).map(t => (
-        <button
-          key={t}
-          onClick={() => setSubTab(t)}
-          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-            subTab === t
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          {t === 'continuity' ? 'Continuity' : 'Activity'}
-        </button>
-      ))}
-    </div>
-  );
-
-  if (subTab === 'activity') {
-    return (
-      <div>
-        {subTabBar}
-        <ActivityTab />
-      </div>
-    );
-  }
 
   return (
-    <div>
-      {subTabBar}
-      <div className="p-6 space-y-5">
+    <div className="p-6 space-y-5">
       {/* Section Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -330,6 +267,22 @@ export function ContinuityTab() {
           </div>
           {/* Column toggle */}
           <ColumnToggleButton columns={CONT_COLS} isVisible={colVisible} onToggle={colToggle} />
+          {/* Edit Table / Save All / Cancel — hidden in All Loans view */}
+          {selectedLoanId !== ALL_LOANS_ID && tableEditMode ? (
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={cancelTableEdit}>
+                <X className="w-3.5 h-3.5 mr-1" /> Cancel
+              </Button>
+              <Button size="sm" onClick={() => saveTableEdit(loanRows)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white border-0">
+                <Check className="w-3.5 h-3.5 mr-1" /> Save All
+              </Button>
+            </div>
+          ) : selectedLoanId !== ALL_LOANS_ID ? (
+            <Button variant="secondary" size="sm" onClick={() => startTableEdit(loanRows)}>
+              <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit Table
+            </Button>
+          ) : null}
           {/* Export dropdown */}
           <div className="relative" ref={exportRef}>
             <Button variant="secondary" size="sm" onClick={() => setExportMenuOpen(o => !o)}>
@@ -368,6 +321,7 @@ export function ContinuityTab() {
               onChange={e => setSelectedLoanId(e.target.value)}
               className="input-double-border h-9 text-sm pl-3 pr-8 rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground appearance-none transition-all duration-200 hover:border-[hsl(210_25%_75%)] cursor-pointer focus:outline-none"
             >
+              <option value={ALL_LOANS_ID}>— All Loans —</option>
               {loans.map(l => (
                 <option key={l.id} value={l.id}>{l.name}</option>
               ))}
@@ -378,26 +332,8 @@ export function ContinuityTab() {
 
       </div>
 
-      {selectedLoan && (
+      {(selectedLoan || selectedLoanId === ALL_LOANS_ID) && (
         <div className="space-y-4">
-          {/* Summary Strip */}
-          {opening && closing && (
-            <div className="grid grid-cols-4 gap-3">
-              {[
-                { label: 'Opening Balance', value: fmtCurrency(opening.openingBalance, selectedLoan.currency), sub: formatPeriod('2024-01') },
-                { label: 'Total Repayments', value: fmtCurrency(totals?.repayments || 0, selectedLoan.currency), sub: 'FY2024' },
-                { label: 'Closing Balance', value: fmtCurrency(closing.closingBalance, selectedLoan.currency), sub: formatPeriod('2024-12') },
-                { label: 'Accrued Interest (YE)', value: fmtCurrency(closing.accruedInterest, selectedLoan.currency), sub: 'Dec 31, 2024' },
-              ].map(s => (
-                <div key={s.label} className="px-5 py-4 bg-card border border-border shadow-sm" style={{ borderRadius: '12px' }}>
-                  <div className="text-[11px] font-medium text-foreground/60 mb-1 whitespace-nowrap">{s.label}</div>
-                  <div className="text-lg font-bold leading-none text-primary tabular-nums">{s.value}</div>
-                  <div className="text-[11px] text-foreground/50 mt-1">{s.sub}</div>
-                </div>
-              ))}
-            </div>
-          )}
-
           {/* Continuity Table */}
           <StyledCard className="overflow-hidden">
             <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 'calc(100vh - 380px)', minHeight: '200px' }}>
@@ -413,15 +349,41 @@ export function ContinuityTab() {
                     {colVisible('closingBalance') && <ThResizable colId="closingBalance" width={colGetWidth('closingBalance')} onResizeStart={crh('closingBalance')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Closing Balance</ThResizable>}
                     {colVisible('currentPortion') && <ThResizable colId="currentPortion" width={colGetWidth('currentPortion')} onResizeStart={crh('currentPortion')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Current Portion</ThResizable>}
                     {colVisible('longTerm') && <ThResizable colId="longTerm" width={colGetWidth('longTerm')} onResizeStart={crh('longTerm')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Long-Term</ThResizable>}
-                    {colVisible('accruedInterest') && <ThResizable colId="accruedInterest" width={colGetWidth('accruedInterest')} onResizeStart={crh('accruedInterest')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Accrued Int.</ThResizable>}
+                    {colVisible('accruedInterest') && (
+                      <ThResizable colId="accruedInterest" width={colGetWidth('accruedInterest')} onResizeStart={crh('accruedInterest')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
+                        <span className="flex items-center gap-1">
+                          Accrued Int.
+                          <Info
+                            className="w-3 h-3 text-primary cursor-help flex-shrink-0"
+                            onMouseEnter={e => { const r = (e.currentTarget as unknown as HTMLElement).getBoundingClientRect(); setAiTooltipPos({ x: r.left + r.width / 2, y: r.top }); }}
+                            onMouseLeave={() => setAiTooltipPos(null)}
+                          />
+                        </span>
+                      </ThResizable>
+                    )}
                     {colVisible('notes') && <ThResizable colId="notes" width={colGetWidth('notes')} onResizeStart={crh('notes')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Notes</ThResizable>}
                     <ThResizable colId="actions" width={colGetWidth('actions')} onResizeStart={crh('actions')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap"></ThResizable>
                   </tr>
                 </thead>
                 <tbody>
-                  {loanRows.map(row => {
-                    const isEditing = inlineEdit === row.id;
-                    const iv = inlineValues as typeof row;
+                  {selectedLoanId === ALL_LOANS_ID ? consolidatedByPeriod.map(row => (
+                    <tr key={row.period} className="border-b border-border hover:bg-muted/30 transition-colors">
+                      <td className="px-3 py-2 font-medium text-foreground whitespace-nowrap">{formatPeriod(row.period)}</td>
+                      {colVisible('openingBalance') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{fmtNumber(row.openingBalance)}</span></td>}
+                      {colVisible('newBorrowings') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{fmtNumber(row.newBorrowings)}</span></td>}
+                      {colVisible('principalRepayments') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-green-600">{row.repayments > 0 ? `(${fmtNumber(row.repayments)})` : '—'}</span></td>}
+                      {colVisible('interestRepayments') && <td className="px-3 py-2 tabular-nums text-right text-muted-foreground text-xs">—</td>}
+                      {colVisible('fxTranslation') && <td className="px-3 py-2 tabular-nums text-right"><span className={row.fxTranslation < 0 ? 'text-destructive' : row.fxTranslation > 0 ? 'text-blue-600' : 'text-foreground'}>{fmtNumber(row.fxTranslation)}</span></td>}
+                      {colVisible('closingBalance') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{fmtNumber(row.closingBalance)}</span></td>}
+                      {colVisible('currentPortion') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{fmtNumber(row.currentPortion)}</span></td>}
+                      {colVisible('longTerm') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{fmtNumber(row.longTermPortion)}</span></td>}
+                      {colVisible('accruedInterest') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-amber-600">{fmtNumber(row.accruedInterest)}</span></td>}
+                      {colVisible('notes') && <td className="px-3 py-2" />}
+                      <td className="px-3 py-2" />
+                    </tr>
+                  )) : loanRows.map(row => {
+                    const isEditing = tableEditMode;
+                    const ed = (tableEdits[row.id] ?? row) as typeof row;
                     const loan = loans.find(l => l.id === row.loanId);
                     const computedInterest = (loan && row.repayments > 0)
                       ? Math.round(row.openingBalance * (loan.rate / 100 / 12))
@@ -435,20 +397,32 @@ export function ContinuityTab() {
                     return (
                       <tr
                         key={row.id}
-                        className={`border-b border-border hover:bg-muted/30 transition-colors ${row.isManualAdjustment ? 'bg-amber-50/60 dark:bg-amber-900/10' : ''}`}
+                        className={`border-b border-border transition-colors ${
+                          isEditing
+                            ? 'bg-primary/[0.02]'
+                            : row.isManualAdjustment
+                              ? 'bg-amber-50/60 dark:bg-amber-900/10 hover:bg-amber-50 dark:hover:bg-amber-900/20'
+                              : 'hover:bg-muted/30'
+                        }`}
                       >
                         <td className="px-3 py-2 font-medium text-foreground whitespace-nowrap">{formatPeriod(row.period)}</td>
                         {colVisible('openingBalance') && (
                           <td className="px-3 py-2 tabular-nums text-right">
-                            <span className="text-foreground">{fmtNumber(row.openingBalance)}</span>
+                            {isEditing ? (
+                              <input type="number" value={ed.openingBalance ?? 0}
+                                onChange={e => setCEdit(row.id, 'openingBalance', parseFloat(e.target.value) || 0)}
+                                className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                            ) : (
+                              <span className="text-foreground">{fmtNumber(row.openingBalance)}</span>
+                            )}
                           </td>
                         )}
                         {colVisible('newBorrowings') && (
                           <td className="px-3 py-2 tabular-nums text-right">
                             {isEditing ? (
-                              <input type="number" value={(iv as unknown as Record<string, number>)['newBorrowings']}
-                                onChange={e => setInlineValues({ ...inlineValues, newBorrowings: parseFloat(e.target.value) || 0 })}
-                                className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                              <input type="number" value={ed.newBorrowings ?? 0}
+                                onChange={e => setCEdit(row.id, 'newBorrowings', parseFloat(e.target.value) || 0)}
+                                className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
                             ) : (
                               <span className="text-foreground">{fmtNumber(row.newBorrowings)}</span>
                             )}
@@ -458,9 +432,9 @@ export function ContinuityTab() {
                         {colVisible('principalRepayments') && (
                           <td className="px-3 py-2 tabular-nums text-right">
                             {isEditing ? (
-                              <input type="number" value={iv.principalRepayments ?? computedPrincipal}
-                                onChange={e => setInlineValues({ ...inlineValues, principalRepayments: parseFloat(e.target.value) || 0 })}
-                                className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                              <input type="number" value={ed.principalRepayments ?? computedPrincipal}
+                                onChange={e => setCEdit(row.id, 'principalRepayments', parseFloat(e.target.value) || 0)}
+                                className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
                             ) : (
                               <span className="text-green-600">
                                 {(() => { const v = row.principalRepayments ?? computedPrincipal; return v > 0 ? `(${fmtNumber(v)})` : '—'; })()}
@@ -472,9 +446,9 @@ export function ContinuityTab() {
                         {colVisible('interestRepayments') && (
                           <td className="px-3 py-2 tabular-nums text-right">
                             {isEditing ? (
-                              <input type="number" value={iv.interestRepayments ?? computedInterest}
-                                onChange={e => setInlineValues({ ...inlineValues, interestRepayments: parseFloat(e.target.value) || 0 })}
-                                className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                              <input type="number" value={ed.interestRepayments ?? computedInterest}
+                                onChange={e => setCEdit(row.id, 'interestRepayments', parseFloat(e.target.value) || 0)}
+                                className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
                             ) : (
                               <span className="text-amber-600">
                                 {(() => { const v = row.interestRepayments ?? computedInterest; return v > 0 ? `(${fmtNumber(v)})` : '—'; })()}
@@ -486,9 +460,9 @@ export function ContinuityTab() {
                         {colVisible('fxTranslation') && (
                           <td className="px-3 py-2 tabular-nums text-right">
                             {isEditing ? (
-                              <input type="number" value={(iv as unknown as Record<string, number>)['fxTranslation']}
-                                onChange={e => setInlineValues({ ...inlineValues, fxTranslation: parseFloat(e.target.value) || 0 })}
-                                className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                              <input type="number" value={ed.fxTranslation ?? 0}
+                                onChange={e => setCEdit(row.id, 'fxTranslation', parseFloat(e.target.value) || 0)}
+                                className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
                             ) : (
                               <span className={row.fxTranslation < 0 ? 'text-destructive' : row.fxTranslation > 0 ? 'text-blue-600' : 'text-foreground'}>
                                 {fmtNumber(row.fxTranslation)}
@@ -499,15 +473,21 @@ export function ContinuityTab() {
                         {/* Closing Balance */}
                         {colVisible('closingBalance') && (
                           <td className="px-3 py-2 tabular-nums text-right">
-                            <span className="text-foreground">{fmtNumber(row.closingBalance)}</span>
+                            {isEditing ? (
+                              <input type="number" value={ed.closingBalance ?? 0}
+                                onChange={e => setCEdit(row.id, 'closingBalance', parseFloat(e.target.value) || 0)}
+                                className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                            ) : (
+                              <span className="text-foreground">{fmtNumber(row.closingBalance)}</span>
+                            )}
                           </td>
                         )}
                         {colVisible('currentPortion') && (
                           <td className="px-3 py-2 tabular-nums text-right">
                             {isEditing ? (
-                              <input type="number" value={iv.currentPortion ?? computedCurrentPortion}
-                                onChange={e => setInlineValues({ ...inlineValues, currentPortion: parseFloat(e.target.value) || 0 })}
-                                className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                              <input type="number" value={ed.currentPortion ?? computedCurrentPortion}
+                                onChange={e => setCEdit(row.id, 'currentPortion', parseFloat(e.target.value) || 0)}
+                                className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
                             ) : (
                               <span className="text-foreground">{fmtNumber(computedCurrentPortion)}</span>
                             )}
@@ -516,9 +496,9 @@ export function ContinuityTab() {
                         {colVisible('longTerm') && (
                           <td className="px-3 py-2 tabular-nums text-right">
                             {isEditing ? (
-                              <input type="number" value={iv.longTermPortion ?? computedLongTerm}
-                                onChange={e => setInlineValues({ ...inlineValues, longTermPortion: parseFloat(e.target.value) || 0 })}
-                                className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                              <input type="number" value={ed.longTermPortion ?? computedLongTerm}
+                                onChange={e => setCEdit(row.id, 'longTermPortion', parseFloat(e.target.value) || 0)}
+                                className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
                             ) : (
                               <span className="text-foreground">{fmtNumber(computedLongTerm)}</span>
                             )}
@@ -527,9 +507,9 @@ export function ContinuityTab() {
                         {colVisible('accruedInterest') && (
                           <td className="px-3 py-2 tabular-nums text-right">
                             {isEditing ? (
-                              <input type="number" value={(iv as unknown as Record<string, number>)['accruedInterest']}
-                                onChange={e => setInlineValues({ ...inlineValues, accruedInterest: parseFloat(e.target.value) || 0 })}
-                                className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                              <input type="number" value={ed.accruedInterest ?? 0}
+                                onChange={e => setCEdit(row.id, 'accruedInterest', parseFloat(e.target.value) || 0)}
+                                className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
                             ) : (
                               <span className="text-amber-600">{fmtNumber(row.accruedInterest)}</span>
                             )}
@@ -540,10 +520,10 @@ export function ContinuityTab() {
                             {isEditing ? (
                               <input
                                 type="text"
-                                value={iv.notes ?? ''}
-                                onChange={e => setInlineValues({ ...inlineValues, notes: e.target.value })}
+                                value={ed.notes ?? ''}
+                                onChange={e => setCEdit(row.id, 'notes', e.target.value)}
                                 placeholder="Notes…"
-                                className="w-full text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                className="h-7 w-full text-xs px-2 border border-primary/40 rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
                               />
                             ) : (
                               <div className="flex items-center gap-1 flex-wrap">
@@ -570,36 +550,35 @@ export function ContinuityTab() {
                             )}
                           </td>
                         )}
-                        <td className="px-3 py-2">
-                          {isEditing ? (
-                            <div className="flex gap-1">
-                              <button onClick={saveInlineEdit} className="text-xs text-green-600 font-medium hover:underline">Save</button>
-                              <button onClick={() => setInlineEdit(null)} className="text-xs text-foreground/60 hover:text-foreground">✕</button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-0.5">
-                              <button
-                                onClick={() => startInlineEdit(row)}
-                                className="p-1.5 hover:bg-muted rounded-lg transition-colors"
-                                title="Edit row"
-                              >
-                                <Edit3 className="w-3.5 h-3.5 text-primary" />
-                              </button>
-                              <button
-                                onClick={() => { deleteContinuityRow(row.id); toast.success('Row deleted'); }}
-                                className="p-1.5 hover:bg-muted rounded-lg transition-colors"
-                                title="Delete row"
-                              >
-                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                              </button>
-                            </div>
-                          )}
-                        </td>
+                        <td className="px-3 py-2" />
                       </tr>
                     );
                   })}
                 </tbody>
-                {totals && (
+                {selectedLoanId === ALL_LOANS_ID ? consolidatedByPeriod.length > 0 && (() => {
+                  const allFirst = consolidatedByPeriod[0];
+                  const allLast  = consolidatedByPeriod[consolidatedByPeriod.length - 1];
+                  const allRep   = consolidatedByPeriod.reduce((s, r) => s + r.repayments, 0);
+                  const allBorr  = consolidatedByPeriod.reduce((s, r) => s + r.newBorrowings, 0);
+                  const allFx    = consolidatedByPeriod.reduce((s, r) => s + r.fxTranslation, 0);
+                  return (
+                    <tfoot className="sticky bottom-0 z-10">
+                      <tr className="bg-muted/80 border-t-2 border-primary/20 font-semibold">
+                        <td className="px-3 py-2.5 text-foreground">FY Total</td>
+                        {colVisible('openingBalance') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(allFirst.openingBalance)}</td>}
+                        {colVisible('newBorrowings') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(allBorr)}</td>}
+                        {colVisible('principalRepayments') && <td className="px-3 py-2.5 text-right tabular-nums text-green-600">{allRep > 0 ? `(${fmtNumber(allRep)})` : '—'}</td>}
+                        {colVisible('interestRepayments') && <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">—</td>}
+                        {colVisible('fxTranslation') && <td className="px-3 py-2.5 text-right tabular-nums text-blue-600">{fmtNumber(allFx)}</td>}
+                        {colVisible('closingBalance') && <td className="px-3 py-2.5 text-right tabular-nums font-bold text-primary">{fmtNumber(allLast.closingBalance)}</td>}
+                        {colVisible('currentPortion') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(allLast.currentPortion)}</td>}
+                        {colVisible('longTerm') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(allLast.longTermPortion)}</td>}
+                        {colVisible('accruedInterest') && <td className="px-3 py-2.5 text-right tabular-nums text-amber-600">{fmtNumber(allLast.accruedInterest)}</td>}
+                        <td colSpan={colVisible('notes') ? 2 : 1} />
+                      </tr>
+                    </tfoot>
+                  );
+                })() : totals && (
                   <tfoot className="sticky bottom-0 z-10">
                     <tr className="bg-muted/80 border-t-2 border-primary/20 font-semibold">
                       <td className="px-3 py-2.5 text-foreground">FY2024 Total</td>
@@ -620,7 +599,7 @@ export function ContinuityTab() {
             </div>
           </StyledCard>
 
-          {selectedLoan.type === 'LOC' && (
+          {selectedLoan?.type === 'LOC' && (
             <div className="flex items-start gap-3 p-3.5 rounded-xl bg-blue-50 border border-blue-200 dark:bg-blue-950/20 dark:border-blue-800">
               <span className="text-blue-500 mt-0.5 flex-shrink-0">ℹ</span>
               <div>
@@ -632,75 +611,34 @@ export function ContinuityTab() {
         </div>
       )}
 
-      {/* ── Maturity Ladder ─────────────────────────────────────── */}
-      <StyledCard className="overflow-hidden">
-        <div className="px-4 py-3 border-b border-border">
-          <h3 className="text-sm font-semibold text-foreground">Principal Repayment Schedule</h3>
-          <p className="text-xs text-foreground/60 mt-0.5">As at Dec 31, 2024 · Scheduled principal repayments by fiscal year</p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-muted border-b border-border">
-                <th className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-left">Facility</th>
-                {yearLabels.map(lbl => (
-                  <th key={lbl} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right whitespace-nowrap">{lbl}</th>
-                ))}
-                <th className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {maturityLadderRows.map(({ loan: l, ladder, total }) => (
-                <tr key={l.id} className="border-b border-border hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-2.5 font-medium text-foreground">{l.name}</td>
-                  {ladder.map((v, i) => (
-                    <td key={i} className="px-4 py-2.5 text-right tabular-nums text-foreground">{v > 0 ? fmtNumber(v) : '—'}</td>
-                  ))}
-                  <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-foreground">{fmtNumber(total)}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="bg-muted/80 border-t-2 border-primary/20 font-semibold">
-                <td className="px-4 py-2.5 text-foreground">Total</td>
-                {ladderColTotals.map((v, i) => (
-                  <td key={i} className="px-4 py-2.5 text-right tabular-nums text-foreground">{v > 0 ? fmtNumber(v) : '—'}</td>
-                ))}
-                <td className="px-4 py-2.5 text-right tabular-nums font-bold text-primary">{fmtNumber(ladderGrandTotal)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </StyledCard>
 
-      {view === 'consolidated' && (
-        <StyledCard className="overflow-hidden">
-          <div className="px-4 py-3 border-b border-border">
-            <h3 className="text-sm font-semibold text-foreground">Consolidated Continuity — All Loans (CAD Equivalent)</h3>
-            <p className="text-xs text-foreground/60 mt-0.5">USD amounts retranslated at period-end FX rates</p>
+      {/* Accrued Interest formula tooltip — fixed position */}
+      {aiTooltipPos && (
+        <div
+          className="fixed z-[200] pointer-events-none"
+          style={{ left: Math.max(8, aiTooltipPos.x - 144), top: Math.max(8, aiTooltipPos.y - 220) }}
+        >
+          <div className="bg-popover border border-border rounded-xl shadow-2xl p-3.5 w-72 text-left">
+            <p className="text-xs font-semibold text-foreground mb-2.5 flex items-center gap-1.5">
+              <Info className="w-3 h-3 text-primary flex-shrink-0" />
+              Accrued Interest Calculation
+            </p>
+            <div className="bg-muted/70 rounded-lg px-3 py-2 font-mono text-[11px] text-foreground mb-2.5">
+              Opening Balance × (Annual Rate ÷ 12)
+            </div>
+            <p className="text-[11px] text-foreground/60 leading-relaxed mb-2.5">
+              Interest accrued on the period's opening principal at the loan's annual rate, divided by 12 months. Represents amounts earned by the lender but not yet remitted.
+            </p>
+            <div className="border-t border-border/60 pt-2.5">
+              <p className="text-[10px] font-semibold text-foreground/45 uppercase tracking-wider mb-1.5">Day-count variants</p>
+              <div className="space-y-1 text-[11px] text-foreground/65 font-mono">
+                <div><span className="text-foreground/40 not-italic font-sans">ACT/365: </span>P × R × Days / 365</div>
+                <div><span className="text-foreground/40 not-italic font-sans">ACT/360: </span>P × R × Days / 360</div>
+                <div><span className="text-foreground/40 not-italic font-sans">30/360:  </span>P × R × 30 / 360</div>
+              </div>
+            </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-muted border-b border-border">
-                  {['Period','Opening','+ Borr.','− Repay.','± FX','Closing','Current','LT'].map(h => (
-                    <th key={h} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right first:text-left">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {consolidatedByPeriod.map(row => (
-                  <tr key={row.period} className="border-b border-border hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-2 font-medium text-foreground whitespace-nowrap">{formatPeriod(row.period)}</td>
-                    {[row.openingBalance, row.newBorrowings, row.repayments, row.fxTranslation, row.closingBalance, row.currentPortion, row.longTermPortion].map((v, i) => (
-                      <td key={i} className="px-4 py-2 text-right tabular-nums text-foreground whitespace-nowrap">{fmtNumber(v)}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </StyledCard>
+        </div>
       )}
 
       {/* Note hover popover — fixed to escape overflow containers */}
@@ -808,7 +746,6 @@ export function ContinuityTab() {
         loanId={selectedLoanId}
         onSave={(row) => { addContinuityRow(row); toast.success('Row added'); setAddOpen(false); }}
       />
-      </div>
     </div>
   );
 }

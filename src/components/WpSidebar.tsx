@@ -873,8 +873,17 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
                       { id: "do-ren", code: "REN", label: "Rental/Lease Agreements", icon: "folder" },
                       { id: "do-inc", code: "INC", label: "Incorporation Documents", icon: "folder" },
                       {
+                        id: "do-lag", code: "LAG", label: "Loan Agreements", icon: "folder",
+                        children: banDocuments.filter(d => d.folder === 'LAG').map(d => ({
+                          id: `lag-doc-${d.id}`,
+                          code: d.code,
+                          label: d.name,
+                          icon: "doc" as const,
+                        })),
+                      },
+                      {
                         id: "do-ban", code: "BAN", label: "Banking Agreements", icon: "folder",
-                        children: banDocuments.map(d => ({
+                        children: banDocuments.filter(d => d.folder === 'BAN').map(d => ({
                           id: `ban-doc-${d.id}`,
                           code: d.code,
                           label: d.name,

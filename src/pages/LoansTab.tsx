@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { Plus, Upload, FileSearch, Edit3, Trash2, ListFilter, Tag, Check, X, Download, ArrowLeft, Paperclip, FileText } from 'lucide-react';
+import { Plus, Upload, FileSearch, Edit3, EyeOff, Eye, ListFilter, Tag, Check, X, Download, ArrowLeft, Paperclip, FileText } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { fmtCurrency, fmtPct, fmtDateDisplay, exportToExcel, buildLoanRegisterExport } from '../lib/utils';
 import { Button } from '@/components/wp-ui/button';
@@ -29,13 +29,11 @@ const defaultLoan: Partial<Loan> = {
 };
 
 function statusBadge(s: LoanStatus) {
-  return s === 'Active'
-    ? <Badge variant="success">Active</Badge>
-    : s === 'Closed'
-    ? <Badge variant="outline">Closed</Badge>
-    : s === 'Replaced'
-    ? <Badge variant="info">Replaced</Badge>
-    : <Badge variant="warning">Refinanced</Badge>;
+  if (s === 'Active') return <Badge variant="success">Active</Badge>;
+  if (s === 'Inactive') return <Badge variant="secondary" className="line-through opacity-60">Inactive</Badge>;
+  if (s === 'Closed') return <Badge variant="outline">Closed</Badge>;
+  if (s === 'Replaced') return <Badge variant="info">Replaced</Badge>;
+  return <Badge variant="warning">Refinanced</Badge>;
 }
 
 function typeBadge(t: LoanType) {
@@ -107,6 +105,117 @@ function LoanTypeCombo({ value, iic, onChange, onClick }: {
               onMouseDown={e => { e.preventDefault(); setInputVal(opt); onChange(opt); setTyped(false); setOpen(false); }}
             >
               {opt}
+            </div>
+          ))}
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
+
+// Auto-growing textarea — replaces <input> for free-text fields so content wraps and is fully visible
+function AutoTextarea({ className, value, onChange, onClick }: {
+  className: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onClick?: (e: React.MouseEvent<HTMLTextAreaElement>) => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    ref.current.style.height = 'auto';
+    ref.current.style.height = ref.current.scrollHeight + 'px';
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      className={className}
+      value={value}
+      onChange={onChange}
+      onClick={onClick}
+      style={{ resize: 'none', overflowY: 'hidden' }}
+    />
+  );
+}
+
+function GLCombobox({ value, iic, onChange, onClick }: {
+  value: string; iic: string;
+  onChange: (v: string) => void;
+  onClick: (e: React.MouseEvent) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [typed, setTyped] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+
+  const selected = allGLAccounts.find(a => a.code === value);
+  const displayLabel = selected ? `${selected.code} — ${selected.name}` : value;
+
+  useEffect(() => { if (!typed) setQuery(displayLabel); }, [value, typed, displayLabel]);
+
+  const openDrop = () => {
+    if (inputRef.current) {
+      const r = inputRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 2, left: r.left, width: Math.max(r.width, 220) });
+    }
+    setQuery('');
+    setTyped(false);
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (!inputRef.current?.contains(e.target as Node) && !dropRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+        setTyped(false);
+        setQuery(displayLabel);
+      }
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open, displayLabel]);
+
+  const q = query.toLowerCase();
+  const filtered = typed
+    ? allGLAccounts.filter(a => a.code.toLowerCase().includes(q) || a.name.toLowerCase().includes(q))
+    : allGLAccounts;
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        className={`${iic} font-mono`}
+        value={open ? query : displayLabel}
+        placeholder="Search GL…"
+        onChange={e => { setQuery(e.target.value); setTyped(true); }}
+        onFocus={openDrop}
+        onClick={(e) => { onClick(e); openDrop(); }}
+      />
+      {open && filtered.length > 0 && ReactDOM.createPortal(
+        <div
+          ref={dropRef}
+          style={{ position: 'fixed', top: pos.top, left: pos.left, width: Math.max(pos.width, 280), zIndex: 9999 }}
+          className="bg-background border border-border rounded-md shadow-lg py-1 max-h-52 overflow-y-auto"
+        >
+          {filtered.map(a => (
+            <div
+              key={a.code}
+              className={`px-3 py-1.5 text-sm cursor-pointer font-mono ${a.code === value ? 'bg-primary/10 font-semibold text-primary' : 'text-foreground hover:bg-muted'}`}
+              onMouseDown={e => {
+                e.preventDefault();
+                onChange(a.code);
+                setOpen(false);
+                setTyped(false);
+                setQuery(`${a.code} — ${a.name}`);
+              }}
+            >
+              <span className="font-semibold">{a.code}</span>
+              <span className="text-muted-foreground ml-1.5">— {a.name}</span>
             </div>
           ))}
         </div>,
@@ -317,14 +426,14 @@ type LoansColId =
 const LOANS_COLS: ColDef<LoansColId>[] = [
   { id: 'name',          label: 'Loan Name',      pinned: true },
   { id: 'lender',        label: 'Lender' },
-  { id: 'rate',          label: 'Int. Rate' },
-  { id: 'interestType',  label: 'Rate Type' },
-  { id: 'monthlyPayment',label: 'Mo. Payment' },
-  { id: 'startDate',     label: 'Start' },
-  { id: 'maturity',      label: 'Maturity' },
   { id: 'collateral',    label: 'Collateral' },
   { id: 'type',          label: 'Type' },
+  { id: 'interestType',  label: 'Rate Type' },
+  { id: 'rate',          label: 'Int. Rate' },
+  { id: 'startDate',     label: 'Start' },
+  { id: 'maturity',      label: 'Maturity' },
   { id: 'currency',      label: 'CCY' },
+  { id: 'monthlyPayment',label: 'Mo. Payment' },
   { id: 'origAmt',       label: 'Orig. Loan Amt' },
   { id: 'fxRate',        label: 'FX Rate' },
   { id: 'balance',       label: 'Converted Amt' },
@@ -337,25 +446,38 @@ const LOANS_COLS: ColDef<LoansColId>[] = [
 ];
 
 export function LoansTab() {
-  const { loans, addLoan, updateLoan, deleteLoan, banDocuments } = useStore(s => ({
+  const { loans, addLoan, updateLoan, addBanDocument, banDocuments, settings, reconciliation } = useStore(s => ({
     loans: s.loans,
     addLoan: s.addLoan,
     updateLoan: s.updateLoan,
-    deleteLoan: s.deleteLoan,
+    addBanDocument: s.addBanDocument,
     banDocuments: s.banDocuments,
+    settings: s.settings,
+    reconciliation: s.reconciliation,
   }));
+
+  // Period date label: fiscal year-end Dec 31 2024 → opening balance is Jan 1, 2024
+  const balancePeriodLabel = (() => {
+    const fye = settings?.fiscalYearEnd;
+    if (!fye) return null;
+    const year = new Date(fye + 'T00:00:00').getFullYear();
+    return new Intl.DateTimeFormat('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })
+      .format(new Date(year, 0, 1)); // Jan 1 of that year
+  })();
 
   const [editLoan, setEditLoan] = useState<Loan | null>(null);
   const [viewLoan, setViewLoan] = useState<Loan | null>(null);
   const [tableEditMode, setTableEditMode] = useState(false);
   const [tableEdits, setTableEdits] = useState<Record<string, Partial<Loan>>>({});
+  const [ocrPendingIds, setOcrPendingIds] = useState<Set<string>>(new Set());
   const [pageView, setPageView] = useState<'list' | 'add'>('list');
-  const [addTab, setAddTab] = useState<'import' | 'ocr' | 'manual'>('import');
+  const [addTab, setAddTab] = useState<'ocr' | 'manual'>('ocr');
   const [attachDrawerLoan, setAttachDrawerLoan] = useState<Loan | null>(null);
   const [sessionFiles, setSessionFiles] = useState<Record<string, { id: string; name: string; size: number; addedAt: string }[]>>({});
   const attachFileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<Partial<Loan>>(defaultLoan);
   const [openFilter, setOpenFilter] = useState<string | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
 
   const { isVisible, toggle, setWidth, getWidth, visibleCount } = useTableColumns('loans', LOANS_COLS);
   const { onResizeStart } = useColumnResize(setWidth);
@@ -416,6 +538,7 @@ export function LoansTab() {
   const uniqueGLCodes = [...new Set(loans.map(l => l.glPrincipalAccount).filter((c): c is string => Boolean(c)))].sort();
 
   const filteredLoans = loans.filter(l => {
+    if (!showInactive && l.status === 'Inactive') return false;
     if (filters.refNumber && !l.refNumber.toLowerCase().includes(filters.refNumber.toLowerCase())) return false;
     if (filters.name && !l.name.toLowerCase().includes(filters.name.toLowerCase())) return false;
     if (filters.lender && !l.lender.toLowerCase().includes(filters.lender.toLowerCase())) return false;
@@ -428,7 +551,7 @@ export function LoansTab() {
     return true;
   });
 
-  const openAdd = () => { setForm(defaultLoan); setAddTab('import'); setPageView('add'); };
+  const openAdd = () => { setForm(defaultLoan); setAddTab('ocr'); setPageView('add'); };
   const openEdit = (loan: Loan) => { setEditLoan(loan); setForm({ ...loan }); };
 
   const enterEditMode  = () => { setTableEditMode(true); setTableEdits({}); };
@@ -436,9 +559,9 @@ export function LoansTab() {
     const changed = Object.entries(tableEdits);
     changed.forEach(([id, vals]) => updateLoan(id, vals));
     toast.success(changed.length > 0 ? `${changed.length} loan${changed.length !== 1 ? 's' : ''} updated` : 'No changes');
-    setTableEditMode(false); setTableEdits({});
+    setTableEditMode(false); setTableEdits({}); setOcrPendingIds(new Set());
   };
-  const cancelEditMode = () => { setTableEditMode(false); setTableEdits({}); };
+  const cancelEditMode = () => { setTableEditMode(false); setTableEdits({}); setOcrPendingIds(new Set()); };
   const setEdit = (loanId: string, field: keyof Loan, value: unknown) =>
     setTableEdits(prev => ({ ...prev, [loanId]: { ...(prev[loanId] ?? {}), [field]: value } }));
 
@@ -448,8 +571,11 @@ export function LoansTab() {
   };
 
   // Shared inline input / select class
-  const IIC = 'h-7 w-full min-w-0 px-1.5 text-sm border border-border rounded bg-background focus:outline-none focus:border-primary/40 focus:ring-0';
+  const IIC  = 'h-7 w-full min-w-0 px-1.5 text-sm border border-border rounded bg-background focus:outline-none focus:border-primary/40 focus:ring-0';
+  // TIIC: same as IIC but no fixed height — for AutoTextarea (wraps & grows with content)
+  const TIIC = 'w-full min-w-0 px-1.5 py-1 text-sm border border-border rounded bg-background focus:outline-none focus:border-primary/40 focus:ring-0 leading-snug';
   const iv    = (id: string, f: keyof Loan) => (e: React.ChangeEvent<HTMLInputElement>) => setEdit(id, f, e.target.value);
+  const ivTA  = (id: string, f: keyof Loan) => (e: React.ChangeEvent<HTMLTextAreaElement>) => setEdit(id, f, e.target.value);
   const ivNum = (id: string, f: keyof Loan) => (e: React.ChangeEvent<HTMLInputElement>) => setEdit(id, f, parseFloat(e.target.value) || 0);
   const ivSel = (id: string, f: keyof Loan) => (e: React.ChangeEvent<HTMLSelectElement>) => setEdit(id, f, e.target.value);
 
@@ -472,11 +598,13 @@ export function LoansTab() {
     }
   };
 
-  const handleDelete = (loan: Loan) => {
-    if (confirm(`Delete ${loan.name}? This cannot be undone.`)) {
-      deleteLoan(loan.id);
-      toast.success('Loan deleted');
-    }
+  const handleArchive = (loan: Loan) => {
+    updateLoan(loan.id, { status: 'Inactive' });
+    toast.success(`${loan.name} archived`);
+  };
+  const handleRestore = (loan: Loan) => {
+    updateLoan(loan.id, { status: 'Active' });
+    toast.success(`${loan.name} restored`);
   };
 
   const handleAttachFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -504,10 +632,13 @@ export function LoansTab() {
   };
 
   // ── GL Account Summary (computed from filteredLoans, live) ────────────────
+  // Inactive loans are excluded from ALL totals/calculations even when showInactive reveals them in the table
+  const loansForTotals = filteredLoans.filter(l => l.status !== 'Inactive');
+
   const toGL = (l: Loan, field: keyof Loan) =>
     (l[field] as number) * getFxRate(l);
 
-  const glGroups = filteredLoans.reduce<Record<string, Loan[]>>((acc, l) => {
+  const glGroups = loansForTotals.reduce<Record<string, Loan[]>>((acc, l) => {
     const code = l.glPrincipalAccount || '(untagged)';
     if (!acc[code]) acc[code] = [];
     acc[code].push(l);
@@ -516,30 +647,33 @@ export function LoansTab() {
 
   const glRows = Object.entries(glGroups)
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([code, ls]) => ({
-      code,
-      count:         ls.length,
-      totalOriginal: ls.reduce((s, l) => s + toGL(l, 'originalPrincipal'), 0),
-      totalBalance:  ls.reduce((s, l) => s + toGL(l, 'currentBalance'),    0),
-      totalCurrent:  ls.reduce((s, l) => s + toGL(l, 'currentPortion'),    0),
-      totalLT:       ls.reduce((s, l) => s + toGL(l, 'longTermPortion'),   0),
-      totalAccrued:  ls.reduce((s, l) => s + toGL(l, 'accruedInterest'),   0),
-    }));
+    .map(([code, ls]) => {
+      const loanIds = new Set(ls.map(l => l.id));
+      const totalGLBalance = reconciliation
+        .filter(r => r.accountType === 'Principal' && loanIds.has(r.loanId))
+        .reduce((s, r) => s + r.tbBalance, 0);
+      return {
+        code,
+        count:          ls.length,
+        totalOriginal:  ls.reduce((s, l) => s + toGL(l, 'originalPrincipal'), 0),
+        totalBalance:   ls.reduce((s, l) => s + toGL(l, 'currentBalance'),    0),
+        totalGLBalance,
+      };
+    });
 
   const glGrand = glRows.reduce(
     (a, r) => ({
-      count:         a.count         + r.count,
-      totalOriginal: a.totalOriginal + r.totalOriginal,
-      totalBalance:  a.totalBalance  + r.totalBalance,
-      totalCurrent:  a.totalCurrent  + r.totalCurrent,
-      totalLT:       a.totalLT       + r.totalLT,
-      totalAccrued:  a.totalAccrued  + r.totalAccrued,
+      count:          a.count          + r.count,
+      totalOriginal:  a.totalOriginal  + r.totalOriginal,
+      totalBalance:   a.totalBalance   + r.totalBalance,
+      totalGLBalance: a.totalGLBalance + r.totalGLBalance,
     }),
-    { count: 0, totalOriginal: 0, totalBalance: 0, totalCurrent: 0, totalLT: 0, totalAccrued: 0 }
+    { count: 0, totalOriginal: 0, totalBalance: 0, totalGLBalance: 0 }
   );
-  const glBalanced = Math.abs((glGrand.totalCurrent + glGrand.totalLT) - glGrand.totalBalance) < 1;
-  const totalConvertedAmt = filteredLoans.reduce((s, l) => s + l.originalPrincipal * getFxRate(l), 0);
-  const totalMonthlyPayment = filteredLoans.reduce((s, l) => {
+  const glBalanced = Math.abs(glGrand.totalGLBalance - glGrand.totalBalance) < 1;
+  const totalOrigAmt      = loansForTotals.reduce((s, l) => s + l.originalPrincipal, 0);
+  const totalConvertedAmt = loansForTotals.reduce((s, l) => s + l.originalPrincipal * getFxRate(l), 0);
+  const totalMonthlyPayment = loansForTotals.reduce((s, l) => {
     const pmt = calcMonthlyPayment(l);
     return s + (pmt !== null ? pmt * getFxRate(l) : 0);
   }, 0);
@@ -553,7 +687,7 @@ export function LoansTab() {
           <h2 className="text-base font-semibold text-foreground">Loan Register</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             {activeFilterCount > 0
-              ? <>{filteredLoans.length} of {loans.length} loans · <span className="text-primary">{activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''} active</span> · <button onClick={clearFilters} className="text-primary hover:underline">Clear</button></>
+              ? <>{filteredLoans.length} of {loans.filter(l => l.status !== 'Inactive').length} loans · <span className="text-primary">{activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''} active</span> · <button onClick={clearFilters} className="text-primary hover:underline">Clear</button></>
               : 'Manage facilities, terms, and GL mappings'}
           </p>
         </div>
@@ -562,6 +696,19 @@ export function LoansTab() {
             <Download className="w-3.5 h-3.5 mr-1" /> Export
           </Button>
           <ColumnToggleButton columns={LOANS_COLS} isVisible={isVisible} onToggle={toggle} />
+          <button
+            onClick={() => setShowInactive(v => !v)}
+            title={showInactive ? 'Hide inactive loans' : 'Show inactive loans'}
+            className={[
+              'flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg border transition-colors',
+              showInactive
+                ? 'border-amber-300 bg-amber-50 text-amber-700'
+                : 'border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted/50',
+            ].join(' ')}
+          >
+            <EyeOff className="w-3.5 h-3.5" />
+            {showInactive ? 'Hiding shown' : 'Show Inactive'}
+          </button>
           {tableEditMode ? (<>
             <Button variant="default" size="sm" onClick={saveAllEdits}>
               <Check className="w-3.5 h-3.5 mr-1" /> Save
@@ -599,14 +746,21 @@ export function LoansTab() {
                       </div>
                     </ThResizable>
                   )}
-                  {isVisible('rate') && (
-                    <ThResizable colId="rate" width={getWidth('rate')} onResizeStart={rh('rate')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Int. Rate</ThResizable>
+                  {isVisible('collateral') && (
+                    <ThResizable colId="collateral" width={getWidth('collateral')} onResizeStart={rh('collateral')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Current Collateral</ThResizable>
+                  )}
+                  {isVisible('type') && (
+                    <ThResizable colId="type" width={getWidth('type')} onResizeStart={rh('type')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
+                      <div className="flex items-center gap-1 group/th">Type
+                        <FilterPopover value={filters.type} onChange={v => setFilter('type', v)} type="select" options={[{value:'',label:'All Types'},{value:'Term',label:'Term'},{value:'LOC',label:'LOC'},{value:'Revolver',label:'Revolver'},{value:'Mortgage',label:'Mortgage'},{value:'Bridge',label:'Bridge'}]} isOpen={openFilter === 'type'} onToggle={() => setOpenFilter(p => p === 'type' ? null : 'type')} onClose={() => setOpenFilter(null)} />
+                      </div>
+                    </ThResizable>
                   )}
                   {isVisible('interestType') && (
                     <ThResizable colId="interestType" width={getWidth('interestType')} onResizeStart={rh('interestType')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Rate Type</ThResizable>
                   )}
-                  {isVisible('monthlyPayment') && (
-                    <ThResizable colId="monthlyPayment" width={getWidth('monthlyPayment')} onResizeStart={rh('monthlyPayment')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Mo. Payment</ThResizable>
+                  {isVisible('rate') && (
+                    <ThResizable colId="rate" width={getWidth('rate')} onResizeStart={rh('rate')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Int. Rate</ThResizable>
                   )}
                   {isVisible('startDate') && (
                     <ThResizable colId="startDate" width={getWidth('startDate')} onResizeStart={rh('startDate')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Start</ThResizable>
@@ -618,22 +772,15 @@ export function LoansTab() {
                       </div>
                     </ThResizable>
                   )}
-                  {isVisible('collateral') && (
-                    <ThResizable colId="collateral" width={getWidth('collateral')} onResizeStart={rh('collateral')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Current Collateral</ThResizable>
-                  )}
-                  {isVisible('type') && (
-                    <ThResizable colId="type" width={getWidth('type')} onResizeStart={rh('type')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
-                      <div className="flex items-center gap-1 group/th">Type
-                        <FilterPopover value={filters.type} onChange={v => setFilter('type', v)} type="select" options={[{value:'',label:'All Types'},{value:'Term',label:'Term'},{value:'LOC',label:'LOC'},{value:'Revolver',label:'Revolver'},{value:'Mortgage',label:'Mortgage'},{value:'Bridge',label:'Bridge'}]} isOpen={openFilter === 'type'} onToggle={() => setOpenFilter(p => p === 'type' ? null : 'type')} onClose={() => setOpenFilter(null)} />
-                      </div>
-                    </ThResizable>
-                  )}
                   {isVisible('currency') && (
                     <ThResizable colId="currency" width={getWidth('currency')} onResizeStart={rh('currency')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
                       <div className="flex items-center gap-1 group/th">CCY
                         <FilterPopover value={filters.currency} onChange={v => setFilter('currency', v)} type="select" options={[{value:'',label:'All'},{value:'CAD',label:'CAD'},{value:'USD',label:'USD'},{value:'EUR',label:'EUR'},{value:'GBP',label:'GBP'}]} isOpen={openFilter === 'currency'} onToggle={() => setOpenFilter(p => p === 'currency' ? null : 'currency')} onClose={() => setOpenFilter(null)} />
                       </div>
                     </ThResizable>
+                  )}
+                  {isVisible('monthlyPayment') && (
+                    <ThResizable colId="monthlyPayment" width={getWidth('monthlyPayment')} onResizeStart={rh('monthlyPayment')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Mo. Payment</ThResizable>
                   )}
                   {isVisible('origAmt') && (
                     <ThResizable colId="origAmt" width={getWidth('origAmt')} onResizeStart={rh('origAmt')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Orig. Loan Amt</ThResizable>
@@ -644,10 +791,19 @@ export function LoansTab() {
                     </ThResizable>
                   )}
                   {isVisible('balance') && (
-                    <ThResizable colId="balance" width={getWidth('balance')} onResizeStart={rh('balance')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Converted Amt</ThResizable>
+                    <ThResizable colId="balance" width={getWidth('balance')} onResizeStart={rh('balance')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
+                      <span className="flex flex-col items-end gap-0.5">
+                        <span>Converted Amt</span>
+                        {balancePeriodLabel && (
+                          <span className="text-[10px] font-normal normal-case tracking-normal text-muted-foreground leading-none">
+                            as at {balancePeriodLabel}
+                          </span>
+                        )}
+                      </span>
+                    </ThResizable>
                   )}
                   {isVisible('glPrincipal') && (
-                    <ThResizable colId="glPrincipal" width={getWidth('glPrincipal')} onResizeStart={rh('glPrincipal')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
+                    <ThResizable colId="glPrincipal" width={getWidth('glPrincipal')} onResizeStart={rh('glPrincipal')} className="text-center px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
                       <div className="flex items-center gap-1 group/th">GL Principal
                         <FilterPopover
                           type="multicheck"
@@ -674,7 +830,7 @@ export function LoansTab() {
                   {isVisible('status') && (
                     <ThResizable colId="status" width={getWidth('status')} onResizeStart={rh('status')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
                       <div className="flex items-center gap-1 group/th">Status
-                        <FilterPopover value={filters.status} onChange={v => setFilter('status', v)} type="select" options={[{value:'',label:'All Statuses'},{value:'Active',label:'Active'},{value:'Closed',label:'Closed'},{value:'Replaced',label:'Replaced'},{value:'Refinanced',label:'Refinanced'}]} isOpen={openFilter === 'status'} onToggle={() => setOpenFilter(p => p === 'status' ? null : 'status')} onClose={() => setOpenFilter(null)} align="right" />
+                        <FilterPopover value={filters.status} onChange={v => setFilter('status', v)} type="select" options={[{value:'',label:'All Statuses'},{value:'Active',label:'Active'},{value:'Inactive',label:'Inactive'},{value:'Closed',label:'Closed'},{value:'Replaced',label:'Replaced'},{value:'Refinanced',label:'Refinanced'}]} isOpen={openFilter === 'status'} onToggle={() => setOpenFilter(p => p === 'status' ? null : 'status')} onClose={() => setOpenFilter(null)} align="right" />
                       </div>
                     </ThResizable>
                   )}
@@ -694,35 +850,52 @@ export function LoansTab() {
                 {filteredLoans.map(l => {
                   const ie = tableEditMode;
                   const ed = tableEdits[l.id] ?? {};
+                  const isOcrPending = ocrPendingIds.has(l.id);
+                  // Amber highlight for OCR-imported rows with missing required fields
+                  const reqCls = (val: unknown) =>
+                    isOcrPending && ie && (val === '' || val === null || val === undefined || val === 0)
+                      ? ` border-amber-400 bg-amber-50 ring-1 ring-amber-300/60` : '';
                   return (
                   <tr
                     key={l.id}
                     className={[
                       'border-b border-border transition-colors',
                       ie ? 'bg-primary/[0.03]' : 'hover:bg-muted/30 cursor-pointer',
+                      l.status === 'Inactive' ? 'opacity-50 grayscale' : '',
+                      isOcrPending && ie ? 'ring-1 ring-inset ring-amber-200' : '',
                     ].join(' ')}
                     onClick={() => { if (!ie) setViewLoan(l); }}
                   >
                     {/* Loan Name */}
                     <td className="px-3 py-1.5 min-w-[120px] max-w-[180px]">
                       {ie
-                        ? <input className={IIC} value={ed.name ?? l.name} onChange={iv(l.id,'name')} onClick={e => e.stopPropagation()} />
+                        ? <AutoTextarea className={TIIC + reqCls(ed.name ?? l.name)} value={ed.name ?? l.name} onChange={ivTA(l.id,'name')} onClick={e => e.stopPropagation()} />
                         : <span className="font-medium text-foreground break-words leading-tight">{l.name}</span>}
                     </td>
                     {/* Lender */}
                     {isVisible('lender') && (
                       <td className="px-3 py-1.5 min-w-[100px] max-w-[150px]">
                         {ie
-                          ? <input className={IIC} value={ed.lender ?? l.lender} onChange={iv(l.id,'lender')} onClick={e => e.stopPropagation()} />
+                          ? <AutoTextarea className={TIIC + reqCls(ed.lender ?? l.lender)} value={ed.lender ?? l.lender} onChange={ivTA(l.id,'lender')} onClick={e => e.stopPropagation()} />
                           : <span className="text-muted-foreground break-words leading-tight block">{l.lender}</span>}
                       </td>
                     )}
-                    {/* Int. Rate */}
-                    {isVisible('rate') && (
+                    {/* Current Collateral */}
+                    {isVisible('collateral') && (
+                      <td className="px-3 py-1.5 max-w-[180px]">
+                        {ie
+                          ? <AutoTextarea className={TIIC} value={ed.securityDescription ?? l.securityDescription ?? ''} onChange={ivTA(l.id,'securityDescription')} onClick={e => e.stopPropagation()} />
+                          : <span className="text-muted-foreground text-xs leading-tight line-clamp-2">{l.securityDescription || '—'}</span>}
+                      </td>
+                    )}
+                    {/* Type */}
+                    {isVisible('type') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input type="number" step="0.01" className="h-7 w-20 px-1.5 text-sm text-right border border-border rounded bg-background focus:outline-none focus:border-primary/40" value={ed.rate ?? l.rate} onChange={ivNum(l.id,'rate')} onClick={e => e.stopPropagation()} />
-                          : <span className="tabular-nums text-foreground whitespace-nowrap float-right">{fmtPct(l.rate)}</span>}
+                          ? <LoanTypeCombo iic={IIC} value={ed.type ?? l.type}
+                              onChange={val => setEdit(l.id, 'type', val)}
+                              onClick={e => e.stopPropagation()} />
+                          : typeBadge(l.type)}
                       </td>
                     )}
                     {/* Rate Type */}
@@ -745,6 +918,43 @@ export function LoansTab() {
                             } as Record<string, React.ReactElement>)[l.interestType] ?? <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground border border-border whitespace-nowrap">{l.interestType}</span>}
                       </td>
                     )}
+                    {/* Int. Rate */}
+                    {isVisible('rate') && (
+                      <td className="px-3 py-1.5">
+                        {ie
+                          ? <input type="number" step="0.01" className={"h-7 w-20 px-1.5 text-sm text-right border border-border rounded bg-background focus:outline-none focus:border-primary/40" + reqCls(ed.rate ?? l.rate)} value={ed.rate ?? l.rate} onChange={ivNum(l.id,'rate')} onClick={e => e.stopPropagation()} />
+                          : <span className="tabular-nums text-foreground whitespace-nowrap float-right">{fmtPct(l.rate)}</span>}
+                      </td>
+                    )}
+                    {/* Start Date */}
+                    {isVisible('startDate') && (
+                      <td className="px-3 py-1.5">
+                        {ie
+                          ? <input type="date" className={IIC} value={ed.startDate ?? l.startDate ?? ''} onChange={iv(l.id,'startDate')} onClick={e => e.stopPropagation()} />
+                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{fmtDateDisplay(l.startDate || '')}</span>}
+                      </td>
+                    )}
+                    {/* Maturity */}
+                    {isVisible('maturity') && (
+                      <td className="px-3 py-1.5">
+                        {ie
+                          ? <input type="date" className={IIC + reqCls(ed.maturityDate ?? l.maturityDate)} value={ed.maturityDate ?? l.maturityDate ?? ''} onChange={iv(l.id,'maturityDate')} onClick={e => e.stopPropagation()} />
+                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{fmtDateDisplay(l.maturityDate)}</span>}
+                      </td>
+                    )}
+                    {/* Currency */}
+                    {isVisible('currency') && (
+                      <td className="px-3 py-1.5">
+                        {ie
+                          ? <select className={`${IIC} cursor-pointer`} value={ed.currency ?? l.currency} onChange={ivSel(l.id,'currency')} onClick={e => e.stopPropagation()}>
+                              <option value="CAD">CAD</option>
+                              <option value="USD">USD</option>
+                              <option value="EUR">EUR</option>
+                              <option value="GBP">GBP</option>
+                            </select>
+                          : <Badge variant="outline">{l.currency}</Badge>}
+                      </td>
+                    )}
                     {/* Mo. Payment */}
                     {isVisible('monthlyPayment') && (
                       <td className="px-3 py-1.5 text-right">
@@ -762,58 +972,11 @@ export function LoansTab() {
                             })()}
                       </td>
                     )}
-                    {/* Start Date */}
-                    {isVisible('startDate') && (
-                      <td className="px-3 py-1.5">
-                        {ie
-                          ? <input type="date" className={IIC} value={ed.startDate ?? l.startDate ?? ''} onChange={iv(l.id,'startDate')} onClick={e => e.stopPropagation()} />
-                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{fmtDateDisplay(l.startDate || '')}</span>}
-                      </td>
-                    )}
-                    {/* Maturity */}
-                    {isVisible('maturity') && (
-                      <td className="px-3 py-1.5">
-                        {ie
-                          ? <input type="date" className={IIC} value={ed.maturityDate ?? l.maturityDate ?? ''} onChange={iv(l.id,'maturityDate')} onClick={e => e.stopPropagation()} />
-                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{fmtDateDisplay(l.maturityDate)}</span>}
-                      </td>
-                    )}
-                    {/* Current Collateral */}
-                    {isVisible('collateral') && (
-                      <td className="px-3 py-1.5 max-w-[180px]">
-                        {ie
-                          ? <input className={IIC} value={ed.securityDescription ?? l.securityDescription ?? ''} onChange={iv(l.id,'securityDescription')} onClick={e => e.stopPropagation()} />
-                          : <span className="text-muted-foreground text-xs leading-tight line-clamp-2">{l.securityDescription || '—'}</span>}
-                      </td>
-                    )}
-                    {/* Type */}
-                    {isVisible('type') && (
-                      <td className="px-3 py-1.5">
-                        {ie
-                          ? <LoanTypeCombo iic={IIC} value={ed.type ?? l.type}
-                              onChange={val => setEdit(l.id, 'type', val)}
-                              onClick={e => e.stopPropagation()} />
-                          : typeBadge(l.type)}
-                      </td>
-                    )}
-                    {/* Currency */}
-                    {isVisible('currency') && (
-                      <td className="px-3 py-1.5">
-                        {ie
-                          ? <select className={`${IIC} cursor-pointer`} value={ed.currency ?? l.currency} onChange={ivSel(l.id,'currency')} onClick={e => e.stopPropagation()}>
-                              <option value="CAD">CAD</option>
-                              <option value="USD">USD</option>
-                              <option value="EUR">EUR</option>
-                              <option value="GBP">GBP</option>
-                            </select>
-                          : <Badge variant="outline">{l.currency}</Badge>}
-                      </td>
-                    )}
                     {/* Original */}
                     {isVisible('origAmt') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input type="number" className={`${IIC} text-right`} value={ed.originalPrincipal ?? l.originalPrincipal} onChange={ivNum(l.id,'originalPrincipal')} onClick={e => e.stopPropagation()} />
+                          ? <input type="number" className={`${IIC} text-right` + reqCls(ed.originalPrincipal ?? l.originalPrincipal)} value={ed.originalPrincipal ?? l.originalPrincipal} onChange={ivNum(l.id,'originalPrincipal')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums text-muted-foreground whitespace-nowrap float-right">{fmtCurrency(l.originalPrincipal, 'CAD')}</span>}
                       </td>
                     )}
@@ -827,26 +990,22 @@ export function LoansTab() {
                                 className={`${IIC} text-right w-24`}
                                 value={ed.fxRateToCAD ?? getFxRate(l)}
                                 onChange={e => setEdit(l.id, 'fxRateToCAD', parseFloat(e.target.value) || getFxRate(l))} />
-                            : <span className="tabular-nums font-mono text-sm">{getFxRate(l).toFixed(4)}</span>}
+                            : <Badge variant="outline" className="tabular-nums font-mono">{getFxRate(l).toFixed(4)}</Badge>}
                       </td>
                     )}
                     {/* Converted Amt */}
                     {isVisible('balance') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input type="number" className={`${IIC} text-right`} value={ed.currentBalance ?? l.currentBalance} onChange={ivNum(l.id,'currentBalance')} onClick={e => e.stopPropagation()} />
+                          ? <input type="number" className={`${IIC} text-right` + reqCls(ed.originalPrincipal ?? l.originalPrincipal)} value={ed.originalPrincipal ?? l.originalPrincipal} onChange={ivNum(l.id,'originalPrincipal')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums font-semibold text-foreground whitespace-nowrap float-right">{fmtCurrency(l.originalPrincipal * getFxRate(l), 'CAD')}</span>}
                       </td>
                     )}
                     {/* GL Principal */}
                     {isVisible('glPrincipal') && (
-                      <td className="px-3 py-1.5">
+                      <td className="px-3 py-1.5 text-center">
                         {ie
-                          ? <select className={`${IIC} font-mono cursor-pointer`} value={ed.glPrincipalAccount ?? l.glPrincipalAccount ?? ''} onChange={ivSel(l.id,'glPrincipalAccount')} onClick={e => e.stopPropagation()}>
-                              {allGLAccounts.map(a => (
-                                <option key={a.code} value={a.code}>{a.code} — {a.name}</option>
-                              ))}
-                            </select>
+                          ? <GLCombobox iic={IIC} value={ed.glPrincipalAccount ?? l.glPrincipalAccount ?? ''} onChange={v => setEdit(l.id, 'glPrincipalAccount', v)} onClick={e => e.stopPropagation()} />
                           : <span className="text-muted-foreground whitespace-nowrap font-mono">{l.glPrincipalAccount}</span>}
                       </td>
                     )}
@@ -880,6 +1039,7 @@ export function LoansTab() {
                         {ie
                           ? <select className={`${IIC} cursor-pointer`} value={ed.status ?? l.status} onChange={ivSel(l.id,'status')} onClick={e => e.stopPropagation()}>
                               <option value="Active">Active</option>
+                              <option value="Inactive">Inactive</option>
                               <option value="Closed">Closed</option>
                               <option value="Replaced">Replaced</option>
                               <option value="Refinanced">Refinanced</option>
@@ -898,42 +1058,69 @@ export function LoansTab() {
                     </td>
                     {/* Actions */}
                     <td className="px-3 py-1.5 text-center w-10" onClick={e => e.stopPropagation()}>
-                      <button className="p-1.5 hover:bg-muted rounded-lg transition-colors" title="Delete loan" onClick={() => handleDelete(l)}>
-                        <Trash2 className="w-3.5 h-3.5 text-destructive/60 hover:text-destructive" />
-                      </button>
+                      {l.status === 'Inactive' ? (
+                        <button className="p-1.5 hover:bg-emerald-50 rounded-lg transition-colors" title="Restore loan" onClick={() => handleRestore(l)}>
+                          <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                        </button>
+                      ) : (
+                        <button className="p-1.5 hover:bg-muted rounded-lg transition-colors" title="Archive loan (hide without deleting)" onClick={() => handleArchive(l)}>
+                          <EyeOff className="w-3.5 h-3.5 text-muted-foreground/50 hover:text-muted-foreground" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                   );
                 })}
               </tbody>
-              {filteredLoans.length > 0 && (
-                <tfoot className="sticky bottom-0 z-10">
-                  <tr className="bg-muted/50 border-t-2 border-border">
-                    <td className="px-3 py-2 text-sm font-semibold text-foreground whitespace-nowrap" colSpan={4}>
-                      Total &middot; {filteredLoans.length} {filteredLoans.length === 1 ? 'facility' : 'facilities'}
-                      {activeFilterCount > 0 && (
-                        <span className="text-muted-foreground font-normal ml-1.5">(filtered)</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-sm font-bold text-foreground whitespace-nowrap">
-                      {fmtCurrency(totalMonthlyPayment, 'CAD')}
-                    </td>
-                    <td colSpan={5} />
-                    {isVisible('origAmt') && (
-                      <td className="px-3 py-2 text-right tabular-nums text-sm font-semibold text-muted-foreground whitespace-nowrap">
-                        {fmtCurrency(glGrand.totalOriginal, 'CAD')}
+              {filteredLoans.length > 0 && (() => {
+                // Dynamic colSpans — adapt as columns are hidden/shown
+                // Column order: name | lender | collateral | type | interestType | rate | startDate | maturity | currency | [monthlyPayment] | [origAmt] | [fxRate] | [balance] | glPrincipal | dayCount | paymentType | status | attachments | actions
+                const ftLeading = 1  // 'name' always visible
+                  + (isVisible('lender') ? 1 : 0)
+                  + (isVisible('collateral') ? 1 : 0)
+                  + (isVisible('type') ? 1 : 0)
+                  + (isVisible('interestType') ? 1 : 0)
+                  + (isVisible('rate') ? 1 : 0)
+                  + (isVisible('startDate') ? 1 : 0)
+                  + (isVisible('maturity') ? 1 : 0)
+                  + (isVisible('currency') ? 1 : 0);
+                const ftTrailing = (isVisible('glPrincipal') ? 1 : 0)
+                  + (isVisible('dayCount') ? 1 : 0)
+                  + (isVisible('paymentType') ? 1 : 0)
+                  + (isVisible('status') ? 1 : 0)
+                  + 2; // attachments + actions always visible
+                return (
+                  <tfoot className="sticky bottom-0 z-10">
+                    <tr className="bg-muted/50 border-t-2 border-border">
+                      <td className="px-3 py-2 text-sm font-semibold text-foreground whitespace-nowrap" colSpan={ftLeading}>
+                        Total &middot; {filteredLoans.length} {filteredLoans.length === 1 ? 'facility' : 'facilities'}
+                        {activeFilterCount > 0 && (
+                          <span className="text-muted-foreground font-normal ml-1.5">(filtered)</span>
+                        )}
                       </td>
-                    )}
-                    {isVisible('fxRate') && <td className="px-3 py-2" />}
-                    <td className="px-3 py-2 text-right tabular-nums text-sm font-bold text-foreground whitespace-nowrap">
-                      {fmtCurrency(totalConvertedAmt, 'CAD')}
-                    </td>
-                    <td colSpan={6} className="px-3 py-2 text-right text-xs text-muted-foreground italic whitespace-nowrap">
-                      CAD equiv. · all currencies
-                    </td>
-                  </tr>
-                </tfoot>
-              )}
+                      {isVisible('monthlyPayment') && (
+                        <td className="px-3 py-2 text-right tabular-nums text-sm font-bold text-foreground whitespace-nowrap">
+                          {fmtCurrency(totalMonthlyPayment, 'CAD')}
+                        </td>
+                      )}
+                      {isVisible('origAmt') && (
+                        <td className="px-3 py-2 text-right tabular-nums text-sm font-semibold text-muted-foreground whitespace-nowrap">
+                          {fmtCurrency(totalOrigAmt, 'CAD')}
+                        </td>
+                      )}
+                      {isVisible('fxRate') && <td className="px-3 py-2" />}
+                      {isVisible('balance') && (
+                        <td className="px-3 py-2 text-right tabular-nums text-sm font-bold text-foreground whitespace-nowrap">
+                          {fmtCurrency(totalConvertedAmt, 'CAD')}
+                        </td>
+                      )}
+                      <td colSpan={ftTrailing} className="px-3 py-2 text-right text-xs text-muted-foreground italic whitespace-nowrap">
+                        CAD equiv. · all currencies
+                      </td>
+                    </tr>
+                  </tfoot>
+                );
+              })()}
             </table>
           </div>
         </StyledCard>
@@ -965,13 +1152,11 @@ export function LoansTab() {
                 <thead>
                   <tr className="bg-muted border-b border-border">
                     {[
-                      { label: 'GL Account',      cls: 'text-left'   },
-                      { label: 'Facilities',       cls: 'text-center' },
-                      { label: 'Original (CAD)',   cls: 'text-right'  },
-                      { label: 'Balance (CAD)',    cls: 'text-right'  },
-                      { label: 'Current Portion', cls: 'text-right'  },
-                      { label: 'LT Portion',      cls: 'text-right'  },
-                      { label: 'Accrued Interest',cls: 'text-right'  },
+                      { label: 'GL Account',              cls: 'text-left'   },
+                      { label: 'Facilities',               cls: 'text-center' },
+                      { label: 'Original (CAD)',           cls: 'text-right'  },
+                      { label: 'Balance (CAD)',            cls: 'text-right'  },
+                      { label: 'Balance as per GL',        cls: 'text-right'  },
                     ].map(h => (
                       <th key={h.label} className={`${h.cls} px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap`}>
                         {h.label}
@@ -980,23 +1165,22 @@ export function LoansTab() {
                   </tr>
                 </thead>
                 <tbody>
-                  {glRows.map(row => (
-                    <tr key={row.code} className="border-b border-border hover:bg-muted/30 transition-colors">
-                      <td className="px-3 py-1.5 font-mono font-semibold text-primary">{row.code}</td>
-                      <td className="px-3 py-1.5 text-center text-muted-foreground">{row.count}</td>
-                      <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{fmtCurrency(row.totalOriginal, 'CAD')}</td>
-                      <td className="px-3 py-1.5 text-right tabular-nums font-semibold text-foreground">{fmtCurrency(row.totalBalance, 'CAD')}</td>
-                      <td className="px-3 py-1.5 text-right tabular-nums text-foreground">
-                        {row.totalCurrent > 0 ? fmtCurrency(row.totalCurrent, 'CAD') : <span className="text-foreground/25">—</span>}
-                      </td>
-                      <td className="px-3 py-1.5 text-right tabular-nums text-foreground">
-                        {row.totalLT > 0 ? fmtCurrency(row.totalLT, 'CAD') : <span className="text-foreground/25">—</span>}
-                      </td>
-                      <td className="px-3 py-1.5 text-right tabular-nums text-amber-700">
-                        {row.totalAccrued > 0 ? fmtCurrency(row.totalAccrued, 'CAD') : <span className="text-foreground/25">—</span>}
-                      </td>
-                    </tr>
-                  ))}
+                  {glRows.map(row => {
+                    const variance = row.totalGLBalance - row.totalBalance;
+                    return (
+                      <tr key={row.code} className="border-b border-border hover:bg-muted/30 transition-colors">
+                        <td className="px-3 py-1.5 font-mono font-semibold text-primary">{row.code}</td>
+                        <td className="px-3 py-1.5 text-center text-muted-foreground">{row.count}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{fmtCurrency(row.totalOriginal, 'CAD')}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums font-semibold text-foreground">{fmtCurrency(row.totalBalance, 'CAD')}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums">
+                          {row.totalGLBalance > 0
+                            ? <span className={Math.abs(variance) < 1 ? 'text-foreground' : 'text-red-600 font-semibold'}>{fmtCurrency(row.totalGLBalance, 'CAD')}</span>
+                            : <span className="text-foreground/25">—</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 <tfoot>
                   {/* Totals row */}
@@ -1005,31 +1189,22 @@ export function LoansTab() {
                     <td className="px-3 py-2 text-center font-semibold text-foreground">{glGrand.count}</td>
                     <td className="px-3 py-2 text-right tabular-nums font-semibold text-muted-foreground">{fmtCurrency(glGrand.totalOriginal, 'CAD')}</td>
                     <td className="px-3 py-2 text-right tabular-nums font-bold text-foreground">{fmtCurrency(glGrand.totalBalance, 'CAD')}</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-foreground">
-                      {glGrand.totalCurrent > 0 ? fmtCurrency(glGrand.totalCurrent, 'CAD') : '—'}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-foreground">
-                      {glGrand.totalLT > 0 ? fmtCurrency(glGrand.totalLT, 'CAD') : '—'}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-amber-700">
-                      {glGrand.totalAccrued > 0 ? fmtCurrency(glGrand.totalAccrued, 'CAD') : '—'}
+                    <td className="px-3 py-2 text-right tabular-nums font-bold">
+                      <span className={glBalanced ? 'text-foreground' : 'text-red-600'}>{fmtCurrency(glGrand.totalGLBalance, 'CAD')}</span>
                     </td>
                   </tr>
                   {/* Balance check row */}
                   <tr className="border-t border-dashed border-border/60">
                     <td colSpan={3} className="px-3 py-1.5 text-sm text-muted-foreground italic">
-                      Check: Balance = Current Portion + LT Portion
+                      Check: Balance (CAD) = Balance as per GL
                     </td>
                     <td className="px-3 py-1.5 text-right text-sm font-mono text-foreground/70">
                       {fmtCurrency(glGrand.totalBalance, 'CAD')}
                     </td>
-                    <td colSpan={2} className="px-3 py-1.5 text-right text-sm font-mono text-foreground/70">
-                      = {fmtCurrency(glGrand.totalCurrent + glGrand.totalLT, 'CAD')}
-                    </td>
                     <td className="px-3 py-1.5 text-right text-sm font-semibold">
                       {glBalanced
                         ? <span className="text-emerald-600">✓ agrees</span>
-                        : <span className="text-red-600">✗ variance</span>
+                        : <span className="text-red-600">✗ {fmtCurrency(Math.abs(glGrand.totalGLBalance - glGrand.totalBalance), 'CAD')} variance</span>
                       }
                     </td>
                   </tr>
@@ -1128,7 +1303,6 @@ export function LoansTab() {
             </div>
             <div className="flex items-center bg-muted rounded-lg p-0.5 gap-0.5">
               {([
-                { id: 'import' as const, label: 'Import Excel',  icon: <Upload className="w-3 h-3" /> },
                 { id: 'ocr'    as const, label: 'Add from OCR',  icon: <FileSearch className="w-3 h-3" /> },
                 { id: 'manual' as const, label: 'Add Manually',  icon: <Plus className="w-3 h-3" /> },
               ]).map(t => (
@@ -1147,11 +1321,29 @@ export function LoansTab() {
             </div>
           </div>
           {/* Tab content */}
-          {addTab === 'import' && <ImportWizardPage onBack={() => setPageView('list')} hideHeader />}
           {addTab === 'ocr' && (
             <OcrImportPage
               onBack={() => setPageView('list')}
-              onImport={(loan) => { addLoan(loan); setPageView('list'); toast.success('Loan imported from OCR'); }}
+              onImport={(loans) => {
+                // For each extracted loan, create a Loan Agreement document (LAG folder)
+                // and link it back via wpRefs
+                const nextLagNum = banDocuments.filter(d => d.folder === 'LAG').length + 1;
+                loans.forEach((loan, i) => {
+                  const lagId   = `LAG-${nextLagNum + i}`;
+                  const lagName = `${loan.name.replace(/\s+/g, '_')}_Agreement_${new Date().toISOString().slice(0, 10)}.pdf`;
+                  addBanDocument({ id: lagId, code: lagId, name: lagName, folder: 'LAG' });
+                  addLoan({ ...loan, wpRefs: [...(loan.wpRefs ?? []), lagId] });
+                });
+                const ids = new Set(loans.map(l => l.id));
+                setOcrPendingIds(ids);
+                setTableEditMode(true);
+                setTableEdits({});
+                setPageView('list');
+                toast.success(
+                  `${loans.length} loan${loans.length !== 1 ? 's' : ''} extracted — documents saved to Loan Agreements folder`,
+                  { duration: 5000 }
+                );
+              }}
               hideHeader
             />
           )}
@@ -1342,95 +1534,11 @@ function LoanFormModal({ open, onClose, form, setForm, onSave, isEdit }: {
   form: Partial<Loan>; setForm: (f: Partial<Loan>) => void;
   onSave: () => void; isEdit: boolean;
 }) {
-  const f = (field: keyof Loan) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setForm({ ...form, [field]: e.target.value });
-  const fn = (field: keyof Loan) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm({ ...form, [field]: parseFloat(e.target.value) || 0 });
-
-  const computedMoPayment = (() => {
-    const rate = parseFloat(String(form.rate)) || 0;
-    const balance = parseFloat(String(form.originalPrincipal || form.currentBalance)) || 0;
-    if (!rate || !balance) return '';
-    const r = rate / 100 / 12;
-    const payType = form.paymentType || 'P&I';
-    if (payType === 'Interest-only' || payType === 'Balloon') return Math.round(balance * r).toString();
-    const maturity = form.maturityDate;
-    const today = new Date();
-    const n = maturity ? Math.max(1, Math.round((new Date(maturity).getTime() - today.getTime()) / (1000 * 60 * 60 * 24 * 30.44))) : 60;
-    const pmt = r === 0 ? balance / n : balance * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
-    return Math.round(pmt).toString();
-  })();
-
   return (
     <Modal open={open} onClose={onClose} title={isEdit ? 'Edit Loan' : 'Add Loan'} subtitle="All amounts in loan currency" size="2xl"
       footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button variant="default" onClick={onSave}>{isEdit ? 'Save Changes' : 'Add Loan'}</Button></>}
     >
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-        {/* Row 1: Loan Name + Lender */}
-        <Input label="Loan Name *" value={form.name || ''} onChange={f('name')} placeholder="e.g. Term Loan A" />
-        <Input label="Lender *" value={form.lender || ''} onChange={f('lender')} placeholder="e.g. Royal Bank of Canada" />
-        {/* Row 2: Int. Rate + Mo. Payment preview */}
-        <div className="col-span-2 grid grid-cols-3 gap-2">
-          <Select label="Interest Type" value={form.interestType || 'Fixed'} onChange={f('interestType')} options={[
-            { value: 'Fixed', label: 'Fixed Rate' }, { value: 'Variable', label: 'Variable Rate' }, { value: 'Floating', label: 'Floating (Prime-based)' }, { value: 'Hybrid', label: 'Hybrid (Fixed → Variable)' }, { value: 'Step Rate', label: 'Step Rate' },
-          ]} />
-          <Input label="Int. Rate (%)" type="number" value={form.rate || ''} onChange={fn('rate')} suffix="%" />
-          <Input label="Mo. Payment" type="number" value={form.monthlyPayment ?? ''} onChange={fn('monthlyPayment')} prefix="$" placeholder={computedMoPayment || '0'} />
-        </div>
-        {form.interestType === 'Variable' && <>
-          <Input label="Benchmark" value={form.benchmark || ''} onChange={f('benchmark')} placeholder="e.g. Prime, SOFR" />
-          <Input label="Spread (%)" type="number" value={form.spread || ''} onChange={(e) => setForm({ ...form, spread: parseFloat(e.target.value) || 0 })} suffix="%" />
-        </>}
-        {/* Row 3: Start + Maturity (matches table cols 4 & 5) */}
-        <Input label="Start Date" type="date" value={form.startDate || ''} onChange={f('startDate')} />
-        <Input label="Maturity Date" type="date" value={form.maturityDate || ''} onChange={f('maturityDate')} />
-        {/* Row 4: Current Collateral full-width (matches table col 6) */}
-        <div className="col-span-2">
-          <Textarea label="Current Collateral" value={form.securityDescription || ''} onChange={f('securityDescription')} rows={2} placeholder="Describe collateral and security arrangements..." />
-        </div>
-        {/* Row 5: Loan Type + CCY (matches table cols 7 & 8) */}
-        <Select label="Loan Type" value={form.type || 'Term'} onChange={f('type')} options={LOAN_TYPES} />
-        <Select label="Currency" value={form.currency || 'CAD'} onChange={f('currency')} options={[
-          { value: 'CAD', label: 'CAD – Canadian Dollar' },
-          { value: 'USD', label: 'USD – US Dollar' },
-          { value: 'EUR', label: 'EUR – Euro' },
-          { value: 'GBP', label: 'GBP – British Pound' },
-        ]} />
-        {/* Row 6: Orig. Loan Amt + Bal. Loan Amt (matches table cols 10 & 12) */}
-        <Input label="Orig. Loan Amt" type="number" value={form.originalPrincipal || ''} onChange={fn('originalPrincipal')} prefix="$" />
-        <Input label="Bal. Loan Amt" type="number" value={form.currentBalance || ''} onChange={fn('currentBalance')} prefix="$" />
-        {/* Row 7: Status + Last Payment Date */}
-        <Select label="Status" value={form.status || 'Active'} onChange={f('status')} options={[
-          { value: 'Active', label: 'Active' }, { value: 'Closed', label: 'Closed' },
-          { value: 'Replaced', label: 'Replaced' }, { value: 'Refinanced', label: 'Refinanced' },
-        ]} />
-        <Input label="Last Payment Date" type="date" value={form.lastPaymentDate || ''} onChange={f('lastPaymentDate')} />
-        {/* Row 8: Day Count + Payment Frequency */}
-        <Select label="Day Count Basis" value={form.dayCountBasis || 'ACT/365'} onChange={f('dayCountBasis')} options={[
-          { value: 'ACT/365', label: 'ACT/365' }, { value: 'ACT/360', label: 'ACT/360' }, { value: '30/360', label: '30/360' },
-        ]} />
-        <Select label="Payment Frequency" value={form.paymentFrequency || 'Monthly'} onChange={f('paymentFrequency')} options={[
-          { value: 'Monthly', label: 'Monthly' }, { value: 'Quarterly', label: 'Quarterly' },
-          { value: 'Semi-annual', label: 'Semi-Annual' }, { value: 'Annual', label: 'Annual' },
-        ]} />
-        {/* Row 9: Payment Type */}
-        <Select label="Payment Type" value={form.paymentType || 'P&I'} onChange={f('paymentType')} options={[
-          { value: 'P&I', label: 'Principal & Interest' }, { value: 'Interest-only', label: 'Interest Only' }, { value: 'Balloon', label: 'Balloon' },
-        ]} />
-        <div />
-        {/* GL Mappings */}
-        <div className="col-span-2 border-t border-border pt-3 mt-1">
-          <div className="text-xs font-semibold text-foreground/60 uppercase tracking-wider mb-3">GL Mappings</div>
-          <div className="grid grid-cols-3 gap-3">
-            <Select label="GL Principal" value={form.glPrincipalAccount || ''} onChange={f('glPrincipalAccount')} options={allGLAccounts.map(a => ({ value: a.code, label: `${a.code} — ${a.name}` }))} />
-            <Select label="GL Accrued Interest" value={form.glAccruedInterestAccount || ''} onChange={f('glAccruedInterestAccount')} options={allGLAccounts.map(a => ({ value: a.code, label: `${a.code} — ${a.name}` }))} />
-            <Select label="GL Interest Expense" value={form.glInterestExpenseAccount || ''} onChange={f('glInterestExpenseAccount')} options={allGLAccounts.map(a => ({ value: a.code, label: `${a.code} — ${a.name}` }))} />
-          </div>
-        </div>
-        <div className="col-span-2">
-          <Textarea label="Notes" value={form.notes || ''} onChange={f('notes')} rows={2} placeholder="Additional notes..." />
-        </div>
-      </div>
+      <AddLoanFormContent form={form} setForm={setForm} />
     </Modal>
   );
 }
@@ -1487,121 +1595,42 @@ function LoanViewModal({ loan, onClose, onEdit }: { loan: Loan | null; onClose: 
   );
 }
 
-// ─── OCR IMPORT MODAL ─────────────────────────────────────────────────────────
-const OCR_MOCK = {
-  name: 'Equipment Loan B', lender: 'BDC', refNumber: 'BDC-2024-7812',
-  type: 'Term' as const, currency: 'CAD' as const,
-  originalPrincipal: 800_000, currentBalance: 800_000,
-  rate: 7.20, interestType: 'Fixed' as const, dayCountBasis: 'ACT/365' as const,
-  startDate: '2025-01-01', maturityDate: '2030-01-01',
-  paymentFrequency: 'Monthly' as const, paymentType: 'P&I' as const,
-  status: 'Active' as const,
-  confidence: { name: 0.98, lender: 0.97, rate: 0.92, maturityDate: 0.78 },
-};
+// ─── OCR MULTI-LOAN MOCK (simulated extraction result) ────────────────────────
+// Fields left blank/zero simulate items the AI could not confidently extract.
+const OCR_LOANS_MOCK: Partial<Loan>[] = [
+  {
+    name: 'BDC Equipment Loan', lender: 'BDC', currency: 'CAD' as Currency,
+    type: 'Term' as LoanType, interestType: 'Fixed' as InterestType,
+    originalPrincipal: 800_000, currentBalance: 800_000,
+    rate: 7.20, startDate: '2024-01-15', maturityDate: '2030-01-15',
+    dayCountBasis: 'ACT/365' as DayCountBasis, paymentType: 'P&I' as PaymentType,
+    status: 'Active' as LoanStatus,
+    glPrincipalAccount: '2100', glAccruedInterestAccount: '2300', glInterestExpenseAccount: '7100',
+    securityDescription: '', // not found in document — needs user input
+  },
+  {
+    name: 'Working Capital Facility', lender: 'Scotiabank', currency: 'CAD' as Currency,
+    type: 'LOC' as LoanType, interestType: 'Variable' as InterestType,
+    originalPrincipal: 1_500_000, currentBalance: 750_000,
+    rate: 0,          // not found — needs user input
+    maturityDate: '', // not found — needs user input
+    startDate: '2023-03-01',
+    dayCountBasis: 'ACT/365' as DayCountBasis, paymentType: 'Interest-only' as PaymentType,
+    status: 'Active' as LoanStatus,
+    glPrincipalAccount: '2200', glAccruedInterestAccount: '2300', glInterestExpenseAccount: '7100',
+  },
+  {
+    name: 'Commercial Mortgage', lender: '', currency: 'CAD' as Currency, // lender not found
+    type: 'Mortgage' as LoanType, interestType: 'Fixed' as InterestType,
+    originalPrincipal: 0, currentBalance: 0, // principal not found
+    rate: 5.85, startDate: '2020-06-01', maturityDate: '2035-06-01',
+    dayCountBasis: 'ACT/365' as DayCountBasis, paymentType: 'P&I' as PaymentType,
+    status: 'Active' as LoanStatus,
+    glPrincipalAccount: '2100', glAccruedInterestAccount: '2300', glInterestExpenseAccount: '7100',
+  },
+];
 
-function OCRImportModal({ open, onClose, onImport }: { open: boolean; onClose: () => void; onImport: (l: Loan) => void }) {
-  const [step, setStep] = useState<'upload' | 'review' | 'confirm'>('upload');
-  const [dragging, setDragging] = useState(false);
-  const [fields, setFields] = useState({ ...OCR_MOCK });
 
-  const handleImport = () => {
-    onImport({
-      ...defaultLoan,
-      ...fields,
-      id: `loan-ocr-${Date.now()}`,
-      covenantIds: [], attachments: ['Uploaded_Agreement.pdf'],
-      currentPortion: 0, longTermPortion: fields.currentBalance,
-      accruedInterest: 0,
-      glPrincipalAccount: '2100', glAccruedInterestAccount: '2300', glInterestExpenseAccount: '7100',
-    } as Loan);
-  };
-
-  return (
-    <Modal open={open} onClose={onClose} title="Add Loan from Document" subtitle="OCR + AI extraction from loan agreement, renewal, or term sheet" size="xl"
-      footer={
-        step === 'upload' ? <><Button variant="secondary" onClick={onClose}>Cancel</Button></> :
-        step === 'review' ? <><Button variant="secondary" onClick={() => setStep('upload')}>Back</Button><Button variant="default" onClick={() => setStep('confirm')}>Confirm Fields →</Button></> :
-        <><Button variant="secondary" onClick={() => setStep('review')}>Back</Button><Button variant="default" onClick={handleImport}>Import Loan</Button></>
-      }
-    >
-      {step === 'upload' && (
-        <div
-          onDrop={e => { e.preventDefault(); setDragging(false); setStep('review'); }}
-          onDragOver={e => { e.preventDefault(); setDragging(true); }}
-          onDragLeave={() => setDragging(false)}
-          className={`border-2 border-dashed rounded-xl p-12 text-center transition-all cursor-pointer ${dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-muted/30'}`}
-          onClick={() => setStep('review')}
-        >
-          <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <FileSearch className="w-6 h-6 text-primary" />
-          </div>
-          <p className="text-sm font-semibold text-foreground mb-1">Drop PDF / DOCX or click to browse</p>
-          <p className="text-xs text-foreground/60">Loan agreements, renewal letters, term sheets</p>
-          <Button variant="default" size="sm" className="mt-4" onClick={() => setStep('review')}>
-            <Upload className="w-3.5 h-3.5 mr-1" /> Browse Files
-          </Button>
-        </div>
-      )}
-      {step === 'review' && (
-        <div className="space-y-4">
-          <div className="flex items-start gap-3 p-3 rounded-xl bg-blue-50 border border-blue-200">
-            <span className="text-blue-500 mt-0.5 flex-shrink-0 text-sm">ℹ</span>
-            <div>
-              <p className="text-xs font-semibold text-blue-800 mb-0.5">OCR Extraction Complete</p>
-              <p className="text-xs text-blue-700">4 fields extracted with high confidence. 1 field requires your review.</p>
-            </div>
-          </div>
-          <div className="space-y-3">
-            {([
-              ['Loan Name', 'name', 'text'],
-              ['Lender', 'lender', 'text'],
-              ['Reference #', 'refNumber', 'text'],
-              ['Annual Rate (%)', 'rate', 'number'],
-              ['Maturity Date', 'maturityDate', 'date'],
-            ] as [string, keyof typeof fields, string][]).map(([label, field, type]) => {
-              const conf = (fields.confidence as Record<string, number>)[field];
-              const isLow = conf !== undefined && conf < 0.90;
-              return (
-                <div key={field} className={`p-3 rounded-xl border ${isLow ? 'border-amber-300 bg-amber-50' : 'border-border bg-card'}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold text-foreground">{label}</span>
-                    {conf !== undefined && (
-                      <span className={`text-xs font-medium ${isLow ? 'text-amber-700' : 'text-green-600'}`}>
-                        {isLow ? '⚠ ' : '✓ '}{(conf * 100).toFixed(0)}% confidence
-                      </span>
-                    )}
-                  </div>
-                  <input
-                    type={type}
-                    className="w-full text-sm px-3 py-1.5 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    value={(fields as Record<string, unknown>)[field] as string}
-                    onChange={e => setFields({ ...fields, [field]: type === 'number' ? parseFloat(e.target.value) : e.target.value })}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      {step === 'confirm' && (
-        <div className="space-y-3">
-          <div className="flex items-start gap-3 p-3 rounded-xl bg-green-50 border border-green-200">
-            <span className="text-green-600 mt-0.5">✓</span>
-            <p className="text-xs text-green-800 font-medium">All fields reviewed and confirmed.</p>
-          </div>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            {[['Name', fields.name], ['Lender', fields.lender], ['Rate', `${fields.rate}%`], ['Maturity', fields.maturityDate], ['Principal', fmtCurrency(fields.originalPrincipal, 'CAD')]].map(([k, v]) => (
-              <div key={k} className="bg-muted rounded-lg p-3">
-                <div className="text-xs text-foreground/60 mb-0.5">{k}</div>
-                <div className="font-semibold text-foreground">{v}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </Modal>
-  );
-}
 
 // ─── IMPORT WIZARD ────────────────────────────────────────────────────────────
 const WIZARD_STEPS = [
@@ -1885,11 +1914,24 @@ function ImportWizardModal() {
 }
 
 // ─── ADD LOAN FORM CONTENT (shared between modal edit + inline add) ────────────
+// Form-styled GL autocomplete (label + GLCombobox using form input class)
+const FORM_IC = 'input-double-border w-full h-9 text-sm rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground placeholder:text-muted-foreground/70 transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] focus:outline-none focus:border-primary/40 focus:ring-0 pl-3 pr-3 font-mono';
+function FormGLCombobox({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm font-medium leading-none text-foreground">{label}</label>
+      <GLCombobox iic={FORM_IC} value={value} onChange={onChange} onClick={e => e.stopPropagation()} />
+    </div>
+  );
+}
+
 function AddLoanFormContent({ form, setForm }: { form: Partial<Loan>; setForm: (f: Partial<Loan>) => void }) {
   const f = (field: keyof Loan) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm({ ...form, [field]: e.target.value });
   const fn = (field: keyof Loan) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm({ ...form, [field]: parseFloat(e.target.value) || 0 });
+
+  const isFx = form.currency && form.currency !== 'CAD';
 
   const computedMoPayment = (() => {
     const rate = parseFloat(String(form.rate)) || 0;
@@ -1907,24 +1949,17 @@ function AddLoanFormContent({ form, setForm }: { form: Partial<Loan>; setForm: (
 
   return (
     <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+
+      {/* Row 1 — Name · Lender (matches first two table columns) */}
       <Input label="Loan Name *" value={form.name || ''} onChange={f('name')} placeholder="e.g. Term Loan A" />
       <Input label="Lender *" value={form.lender || ''} onChange={f('lender')} placeholder="e.g. Royal Bank of Canada" />
-      <div className="col-span-2 grid grid-cols-3 gap-2">
-        <Select label="Interest Type" value={form.interestType || 'Fixed'} onChange={f('interestType')} options={[
-          { value: 'Fixed', label: 'Fixed Rate' }, { value: 'Variable', label: 'Variable Rate' },
-        ]} />
-        <Input label="Int. Rate (%)" type="number" value={form.rate || ''} onChange={fn('rate')} suffix="%" />
-        <Input label="Mo. Payment" type="number" value={form.monthlyPayment ?? ''} onChange={fn('monthlyPayment')} prefix="$" placeholder={computedMoPayment || '0'} />
-      </div>
-      {form.interestType === 'Variable' && <>
-        <Input label="Benchmark" value={form.benchmark || ''} onChange={f('benchmark')} placeholder="e.g. Prime, SOFR" />
-        <Input label="Spread (%)" type="number" value={form.spread || ''} onChange={(e) => setForm({ ...form, spread: parseFloat(e.target.value) || 0 })} suffix="%" />
-      </>}
-      <Input label="Start Date" type="date" value={form.startDate || ''} onChange={f('startDate')} />
-      <Input label="Maturity Date" type="date" value={form.maturityDate || ''} onChange={f('maturityDate')} />
+
+      {/* Row 2 — Current Collateral (full-width, matches Collateral column) */}
       <div className="col-span-2">
         <Textarea label="Current Collateral" value={form.securityDescription || ''} onChange={f('securityDescription')} rows={2} placeholder="Describe collateral and security arrangements..." />
       </div>
+
+      {/* Row 3 — Loan Type · Currency (matches Type + CCY columns) */}
       <Select label="Loan Type" value={form.type || 'Term'} onChange={f('type')} options={LOAN_TYPES} />
       <Select label="Currency" value={form.currency || 'CAD'} onChange={f('currency')} options={[
         { value: 'CAD', label: 'CAD – Canadian Dollar' },
@@ -1932,32 +1967,69 @@ function AddLoanFormContent({ form, setForm }: { form: Partial<Loan>; setForm: (
         { value: 'EUR', label: 'EUR – Euro' },
         { value: 'GBP', label: 'GBP – British Pound' },
       ]} />
-      <Input label="Orig. Loan Amt" type="number" value={form.originalPrincipal || ''} onChange={fn('originalPrincipal')} prefix="$" />
-      <Input label="Bal. Loan Amt" type="number" value={form.currentBalance || ''} onChange={fn('currentBalance')} prefix="$" />
-      <Select label="Status" value={form.status || 'Active'} onChange={f('status')} options={[
-        { value: 'Active', label: 'Active' }, { value: 'Closed', label: 'Closed' },
-        { value: 'Replaced', label: 'Replaced' }, { value: 'Refinanced', label: 'Refinanced' },
-      ]} />
-      <Input label="Last Payment Date" type="date" value={form.lastPaymentDate || ''} onChange={f('lastPaymentDate')} />
+
+      {/* Row 4 — Rate Type · Int. Rate · Mo. Payment (matches Rate Type + Int. Rate + Mo. Payment columns) */}
+      <div className="col-span-2 grid grid-cols-3 gap-2">
+        <Select label="Rate Type" value={form.interestType || 'Fixed'} onChange={f('interestType')} options={[
+          { value: 'Fixed', label: 'Fixed Rate' }, { value: 'Variable', label: 'Variable Rate' },
+        ]} />
+        <Input label="Int. Rate (%)" type="number" value={form.rate || ''} onChange={fn('rate')} suffix="%" />
+        <Input label="Mo. Payment" type="number" value={form.monthlyPayment ?? ''} onChange={fn('monthlyPayment')} prefix="$" placeholder={computedMoPayment || '0'} />
+      </div>
+
+      {/* Row 4b — Variable rate extras (Benchmark + Spread) */}
+      {form.interestType === 'Variable' && <>
+        <Input label="Benchmark" value={form.benchmark || ''} onChange={f('benchmark')} placeholder="e.g. Prime, SOFR" />
+        <Input label="Spread (%)" type="number" value={form.spread || ''} onChange={e => setForm({ ...form, spread: parseFloat(e.target.value) || 0 })} suffix="%" />
+      </>}
+
+      {/* Row 5 — Start · Maturity (matches Start + Maturity columns) */}
+      <Input label="Start Date" type="date" value={form.startDate || ''} onChange={f('startDate')} />
+      <Input label="Maturity Date" type="date" value={form.maturityDate || ''} onChange={f('maturityDate')} />
+
+      {/* Row 6 — Orig. Loan Amt · FX Rate (if non-CAD) / Bal. Loan Amt (matches Orig. Loan Amt + FX Rate + Converted Amt columns) */}
+      <Input label="Orig. Loan Amt" type="number" value={form.originalPrincipal || ''} onChange={fn('originalPrincipal')} prefix={form.currency || 'CAD'} />
+      {isFx
+        ? <Input label={`FX Rate (${form.currency} → CAD)`} type="number" step="0.0001" value={form.fxRateToCAD || ''} onChange={fn('fxRateToCAD')} placeholder="e.g. 1.3530" />
+        : <Input label="Bal. Loan Amt" type="number" value={form.currentBalance || ''} onChange={fn('currentBalance')} prefix="$" />
+      }
+      {isFx && (
+        <Input label="Bal. Loan Amt" type="number" value={form.currentBalance || ''} onChange={fn('currentBalance')} prefix={form.currency} />
+      )}
+
+      {/* Row 7 — Day Count · Payment Type (matches Day Count + Payment Type columns) */}
       <Select label="Day Count Basis" value={form.dayCountBasis || 'ACT/365'} onChange={f('dayCountBasis')} options={[
         { value: 'ACT/365', label: 'ACT/365' }, { value: 'ACT/360', label: 'ACT/360' }, { value: '30/360', label: '30/360' },
-      ]} />
-      <Select label="Payment Frequency" value={form.paymentFrequency || 'Monthly'} onChange={f('paymentFrequency')} options={[
-        { value: 'Monthly', label: 'Monthly' }, { value: 'Quarterly', label: 'Quarterly' },
-        { value: 'Semi-annual', label: 'Semi-Annual' }, { value: 'Annual', label: 'Annual' },
       ]} />
       <Select label="Payment Type" value={form.paymentType || 'P&I'} onChange={f('paymentType')} options={[
         { value: 'P&I', label: 'Principal & Interest' }, { value: 'Interest-only', label: 'Interest Only' }, { value: 'Balloon', label: 'Balloon' },
       ]} />
+
+      {/* Row 8 — Status · Last Payment Date (matches Status column) */}
+      <Select label="Status" value={form.status || 'Active'} onChange={f('status')} options={[
+        { value: 'Active', label: 'Active' }, { value: 'Inactive', label: 'Inactive' },
+        { value: 'Closed', label: 'Closed' }, { value: 'Replaced', label: 'Replaced' }, { value: 'Refinanced', label: 'Refinanced' },
+      ]} />
+      <Input label="Last Payment Date" type="date" value={form.lastPaymentDate || ''} onChange={f('lastPaymentDate')} />
+
+      {/* Row 9 — Payment Frequency (secondary) */}
+      <Select label="Payment Frequency" value={form.paymentFrequency || 'Monthly'} onChange={f('paymentFrequency')} options={[
+        { value: 'Monthly', label: 'Monthly' }, { value: 'Quarterly', label: 'Quarterly' },
+        { value: 'Semi-annual', label: 'Semi-Annual' }, { value: 'Annual', label: 'Annual' },
+      ]} />
       <div />
+
+      {/* GL Mappings — searchable autocomplete (matches GL Principal column) */}
       <div className="col-span-2 border-t border-border pt-3 mt-1">
         <div className="text-xs font-semibold text-foreground/60 uppercase tracking-wider mb-3">GL Mappings</div>
         <div className="grid grid-cols-3 gap-3">
-          <Select label="GL Principal" value={form.glPrincipalAccount || ''} onChange={f('glPrincipalAccount')} options={allGLAccounts.map(a => ({ value: a.code, label: `${a.code} — ${a.name}` }))} />
-          <Select label="GL Accrued Interest" value={form.glAccruedInterestAccount || ''} onChange={f('glAccruedInterestAccount')} options={allGLAccounts.map(a => ({ value: a.code, label: `${a.code} — ${a.name}` }))} />
-          <Select label="GL Interest Expense" value={form.glInterestExpenseAccount || ''} onChange={f('glInterestExpenseAccount')} options={allGLAccounts.map(a => ({ value: a.code, label: `${a.code} — ${a.name}` }))} />
+          <FormGLCombobox label="GL Principal" value={form.glPrincipalAccount || ''} onChange={v => setForm({ ...form, glPrincipalAccount: v })} />
+          <FormGLCombobox label="GL Accrued Interest" value={form.glAccruedInterestAccount || ''} onChange={v => setForm({ ...form, glAccruedInterestAccount: v })} />
+          <FormGLCombobox label="GL Interest Expense" value={form.glInterestExpenseAccount || ''} onChange={v => setForm({ ...form, glInterestExpenseAccount: v })} />
         </div>
       </div>
+
+      {/* Notes */}
       <div className="col-span-2">
         <Textarea label="Notes" value={form.notes || ''} onChange={f('notes')} rows={2} placeholder="Additional notes..." />
       </div>
@@ -1966,22 +2038,52 @@ function AddLoanFormContent({ form, setForm }: { form: Partial<Loan>; setForm: (
 }
 
 // ─── OCR IMPORT INLINE PAGE ───────────────────────────────────────────────────
-function OcrImportPage({ onBack, onImport, hideHeader }: { onBack: () => void; onImport: (l: Loan) => void; hideHeader?: boolean }) {
-  const [step, setStep] = useState<'upload' | 'review' | 'confirm'>('upload');
+function OcrImportPage({ onBack, onImport, hideHeader }: {
+  onBack: () => void;
+  onImport: (loans: Loan[]) => void;
+  hideHeader?: boolean;
+}) {
+  const [step, setStep] = useState<'upload' | 'processing'>('upload');
   const [dragging, setDragging] = useState(false);
-  const [fields, setFields] = useState({ ...OCR_MOCK });
+  const [fileName, setFileName] = useState('');
+  const [progress, setProgress] = useState(0);
 
-  const handleImport = () => {
-    onImport({
-      ...defaultLoan,
-      ...fields,
-      id: `loan-ocr-${Date.now()}`,
-      covenantIds: [], attachments: ['Uploaded_Agreement.pdf'],
-      currentPortion: 0, longTermPortion: fields.currentBalance,
-      accruedInterest: 0,
-      glPrincipalAccount: '2100', glAccruedInterestAccount: '2300', glInterestExpenseAccount: '7100',
-    } as Loan);
+  const startProcessing = (name?: string) => {
+    setFileName(name || 'Uploaded_Document.pdf');
+    setProgress(0);
+    setStep('processing');
   };
+
+  useEffect(() => {
+    if (step !== 'processing') return;
+    const iv = setInterval(() => {
+      setProgress(p => {
+        const next = p + 4;
+        if (next >= 100) {
+          clearInterval(iv);
+          const loans: Loan[] = OCR_LOANS_MOCK.map((partial, i) => ({
+            ...defaultLoan,
+            ...partial,
+            id: `loan-ocr-${Date.now()}-${i}`,
+            covenantIds: [],
+            attachments: [fileName || 'Uploaded_Document.pdf'],
+            currentPortion: 0,
+            longTermPortion: (partial.currentBalance ?? 0),
+            accruedInterest: 0,
+          } as Loan));
+          setTimeout(() => onImport(loans), 300);
+          return 100;
+        }
+        return next;
+      });
+    }, 70);
+    return () => clearInterval(iv);
+  }, [step]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  const processingLabel =
+    progress < 25 ? 'Reading document…' :
+    progress < 55 ? 'Extracting loan details…' :
+    progress < 80 ? 'Mapping fields…' : 'Finalising…';
 
   return (
     <div className="flex flex-col">
@@ -1992,96 +2094,64 @@ function OcrImportPage({ onBack, onImport, hideHeader }: { onBack: () => void; o
           </button>
           <span className="text-foreground/30 mx-1">/</span>
           <span className="text-sm font-semibold text-foreground">Add from OCR</span>
-          {step !== 'upload' && <><span className="text-foreground/30 mx-1">/</span><span className="text-xs text-muted-foreground capitalize">{step}</span></>}
         </div>
       )}
       <div className="px-[25%] py-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 160px)' }}>
         <StyledCard>
-          <div className="px-6 py-5 space-y-4">
+          <div className="px-6 py-5 space-y-5">
             <div>
-              <h3 className="text-sm font-semibold text-foreground">Add Loan from Document</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">OCR + AI extraction from loan agreement, renewal, or term sheet</p>
+              <h3 className="text-sm font-semibold text-foreground">Add Loans from Document</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Upload a PDF, DOCX or image — AI will extract <strong>all loans</strong> found in the document and add them to the register
+              </p>
             </div>
+
             {step === 'upload' && (
-              <div
-                onDrop={e => { e.preventDefault(); setDragging(false); setStep('review'); }}
-                onDragOver={e => { e.preventDefault(); setDragging(true); }}
-                onDragLeave={() => setDragging(false)}
-                className={`border-2 border-dashed rounded-xl p-12 text-center transition-all cursor-pointer ${dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-muted/30'}`}
-                onClick={() => setStep('review')}
-              >
-                <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <FileSearch className="w-6 h-6 text-primary" />
-                </div>
-                <p className="text-sm font-semibold text-foreground mb-1">Drop PDF / DOCX or click to browse</p>
-                <p className="text-xs text-foreground/60">Loan agreements, renewal letters, term sheets</p>
-                <Button variant="default" size="sm" className="mt-4" onClick={() => setStep('review')}>
-                  <Upload className="w-3.5 h-3.5 mr-1" /> Browse Files
-                </Button>
-              </div>
-            )}
-            {step === 'review' && (
-              <div className="space-y-4">
-                <div className="flex items-start gap-3 p-3 rounded-xl bg-blue-50 border border-blue-200">
-                  <span className="text-blue-500 mt-0.5 flex-shrink-0 text-sm">ℹ</span>
-                  <div>
-                    <p className="text-xs font-semibold text-blue-800 mb-0.5">OCR Extraction Complete</p>
-                    <p className="text-xs text-blue-700">4 fields extracted with high confidence. 1 field requires your review.</p>
+              <>
+                <div
+                  onDrop={e => { e.preventDefault(); setDragging(false); startProcessing(e.dataTransfer.files[0]?.name); }}
+                  onDragOver={e => { e.preventDefault(); setDragging(true); }}
+                  onDragLeave={() => setDragging(false)}
+                  onClick={() => startProcessing()}
+                  className={`border-2 border-dashed rounded-xl p-14 text-center transition-all cursor-pointer select-none
+                    ${dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-muted/30'}`}
+                >
+                  <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <FileSearch className="w-7 h-7 text-primary" />
                   </div>
+                  <p className="text-sm font-semibold text-foreground mb-1">Drop document here or click to browse</p>
+                  <p className="text-xs text-foreground/60 mb-1">PDF · DOCX · PNG · JPG — loan agreements, renewal letters, term sheets</p>
+                  <p className="text-[11px] text-muted-foreground mt-3">The document may contain one or more loans — all will be extracted automatically</p>
+                  <Button variant="default" size="sm" className="mt-5" onClick={e => { e.stopPropagation(); startProcessing(); }}>
+                    <Upload className="w-3.5 h-3.5 mr-1.5" /> Browse Files
+                  </Button>
                 </div>
-                <div className="space-y-3">
-                  {([
-                    ['Loan Name', 'name', 'text'],
-                    ['Lender', 'lender', 'text'],
-                    ['Reference #', 'refNumber', 'text'],
-                    ['Annual Rate (%)', 'rate', 'number'],
-                    ['Maturity Date', 'maturityDate', 'date'],
-                  ] as [string, keyof typeof fields, string][]).map(([label, field, type]) => {
-                    const conf = (fields.confidence as Record<string, number>)[field];
-                    const isLow = conf !== undefined && conf < 0.90;
-                    return (
-                      <div key={field} className={`p-3 rounded-xl border ${isLow ? 'border-amber-300 bg-amber-50' : 'border-border bg-card'}`}>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-semibold text-foreground">{label}</span>
-                          {conf !== undefined && (
-                            <span className={`text-xs font-medium ${isLow ? 'text-amber-700' : 'text-green-600'}`}>
-                              {isLow ? '⚠ ' : '✓ '}{(conf * 100).toFixed(0)}% confidence
-                            </span>
-                          )}
-                        </div>
-                        <input
-                          type={type}
-                          className="w-full text-sm px-3 py-1.5 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                          value={(fields as Record<string, unknown>)[field] as string}
-                          onChange={e => setFields({ ...fields, [field]: type === 'number' ? parseFloat(e.target.value) : e.target.value })}
-                        />
-                      </div>
-                    );
-                  })}
+                <div className="flex justify-end pt-1 border-t border-border">
+                  <Button variant="secondary" onClick={onBack}>Cancel</Button>
                 </div>
+              </>
+            )}
+
+            {step === 'processing' && (
+              <div className="py-10 flex flex-col items-center gap-5">
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <FileSearch className="w-8 h-8 text-primary animate-pulse" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-foreground mb-0.5">{fileName || 'Document'}</p>
+                  <p className="text-xs text-muted-foreground">{processingLabel}</p>
+                </div>
+                <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all duration-75"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground tabular-nums">
+                  {progress < 100 ? `${progress}%` : 'Complete — loading register…'}
+                </p>
               </div>
             )}
-            {step === 'confirm' && (
-              <div className="space-y-3">
-                <div className="flex items-start gap-3 p-3 rounded-xl bg-green-50 border border-green-200">
-                  <span className="text-green-600 mt-0.5">✓</span>
-                  <p className="text-xs text-green-800 font-medium">All fields reviewed and confirmed.</p>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  {[['Name', fields.name], ['Lender', fields.lender], ['Rate', `${fields.rate}%`], ['Maturity', fields.maturityDate], ['Principal', fmtCurrency(fields.originalPrincipal, 'CAD')]].map(([k, v]) => (
-                    <div key={k} className="bg-muted rounded-lg p-3">
-                      <div className="text-xs text-foreground/60 mb-0.5">{k}</div>
-                      <div className="font-semibold text-foreground">{v}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="flex justify-end gap-2 pt-2 border-t border-border">
-              {step === 'upload' && <Button variant="secondary" onClick={onBack}>Cancel</Button>}
-              {step === 'review' && <><Button variant="secondary" onClick={() => setStep('upload')}>Back</Button><Button variant="default" onClick={() => setStep('confirm')}>Confirm Fields →</Button></>}
-              {step === 'confirm' && <><Button variant="secondary" onClick={() => setStep('review')}>Back</Button><Button variant="default" onClick={handleImport}>Import Loan</Button></>}
-            </div>
           </div>
         </StyledCard>
       </div>

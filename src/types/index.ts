@@ -1,6 +1,6 @@
 export type Currency = 'CAD' | 'USD' | 'EUR' | 'GBP';
 export type LoanType = 'Term' | 'LOC' | 'Revolver' | 'Mortgage' | 'Bridge' | (string & {});
-export type LoanStatus = 'Active' | 'Closed' | 'Replaced' | 'Refinanced';
+export type LoanStatus = 'Active' | 'Closed' | 'Replaced' | 'Refinanced' | 'Inactive';
 export type PaymentType = 'P&I' | 'Interest-only' | 'Balloon';
 export type DayCountBasis = 'ACT/365' | 'ACT/360' | '30/360';
 export type InterestType = 'Fixed' | 'Variable' | 'Floating' | 'Hybrid' | 'Step Rate';
@@ -174,6 +174,7 @@ export interface JEProposal {
   postedAt?: string;
   deleted?: boolean;  // soft-delete — retained for audit / restore
   deletedAt?: string;
+  notes?: string;     // preparer / reviewer notes for this JE
 }
 
 export interface FXRate {
@@ -230,8 +231,9 @@ export interface CarryforwardPackage {
 
 export interface BanDocument {
   id: string;
-  code: string; // e.g. "BAN-1"
-  name: string; // display name
+  code: string;  // e.g. "BAN-1", "LAG-1"
+  name: string;  // display name / filename
+  folder?: 'BAN' | 'LAG'; // BAN = Banking Agreements (default), LAG = Loan Agreements
 }
 
 export type TabId = 'dashboard' | 'loans' | 'continuity' | 'amortization' | 'activity' | 'covenants' | 'reconciliation' | 'ajes' | 'reports' | 'settings';

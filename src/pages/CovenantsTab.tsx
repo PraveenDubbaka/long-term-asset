@@ -49,7 +49,7 @@ const getMarginLabel = (c: Covenant): string => {
 // ─── Main Tab ─────────────────────────────────────────────────────────────────
 export function CovenantsTab() {
   const { loans, covenants, updateCovenant, addCovenant, deleteCovenant } = useStore(s => ({
-    loans: s.loans, covenants: s.covenants,
+    loans: s.loans.filter(l => l.status !== 'Inactive'), covenants: s.covenants,
     updateCovenant: s.updateCovenant, addCovenant: s.addCovenant, deleteCovenant: s.deleteCovenant,
   }));
 

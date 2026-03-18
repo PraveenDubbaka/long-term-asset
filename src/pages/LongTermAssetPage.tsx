@@ -10,12 +10,12 @@ import { Button } from "@/components/wp-ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/wp-ui/dropdown-menu";
-import { DashboardTab }    from "./DashboardTab";
 import { LoansTab }        from "./LoansTab";
 import { ContinuityTab }   from "./ContinuityTab";
 import { AmortizationTab } from "./AmortizationTab";
 import { CovenantsTab }    from "./CovenantsTab";
 import { AJEsTab }         from "./AJEsTab";
+import { NotesTab }        from "./NotesTab";
 
 const engagementsData: Record<string, { client: string; yearEnd: string; status: string }> = {
   "COM-CON-Dec312024": { client: "Shipping Line Inc.", yearEnd: "Dec 31, 2024", status: "In Progress" },
@@ -36,7 +36,7 @@ const tabs = [
   { id: "amortization", label: "Amortization" },
   { id: "covenants",    label: "Covenants"    },
   { id: "ajes",         label: "AJEs"         },
-  { id: "dashboard",    label: "Dashboard"    },
+  { id: "notes",        label: "Notes"        },
 ];
 
 const LongTermAssetPage = () => {
@@ -161,7 +161,7 @@ const LongTermAssetPage = () => {
             {activeTab === "amortization" && <AmortizationTab />}
             {activeTab === "covenants"    && <CovenantsTab />}
             {activeTab === "ajes"         && <AJEsTab />}
-            {activeTab === "dashboard"    && <DashboardTab />}
+            {activeTab === "notes"        && <NotesTab client={eng.client} yearEnd={eng.yearEnd} />}
           </div>
 
         </div>

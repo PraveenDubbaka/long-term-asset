@@ -69,16 +69,57 @@ function autoDescription(account: string, loanName: string): string {
   return '';
 }
 
+function descriptionOptions(account: string, loanName: string): string[] {
+  const a = account.toLowerCase();
+  const s = loanName ? ` – ${loanName}` : '';
+  if (a.startsWith('71') || a.startsWith('72')) return [
+    `YE accrued interest${s}`,
+    `Interest expense accrual${s}`,
+    `Accrued interest adjustment`,
+  ];
+  if (a.includes('2300') || a.includes('2310')) return [
+    `YE accrued interest payable${s}`,
+    `Accrued interest payable`,
+    `Interest accrual – year end`,
+  ];
+  if (a.includes('2110') || a.includes('2115')) return [
+    `Current portion reclass${s}`,
+    `Reclassification – current portion LT debt`,
+  ];
+  if (a.startsWith('21')) return [
+    `LT portion after reclass${s}`,
+    `Long-term debt – reclassification`,
+  ];
+  return [];
+}
+
+function accCodeOnly(account: string): string {
+  // Return just the numeric code prefix, e.g. "7100" from "7100 – Interest Expense (CAD)"
+  return account.split(/[\s–-]/)[0].trim();
+}
+
 // ─── Main tab ─────────────────────────────────────────────────────────────────
 
 export function AJEsTab() {
   const { loans, jes, advanceJEStatus, deleteJE, restoreJE, addJE, updateJE } = useStore(s => ({
-    loans: s.loans, jes: s.jes,
+    loans: s.loans.filter(l => l.status !== 'Inactive'), jes: s.jes,
     advanceJEStatus: s.advanceJEStatus, deleteJE: s.deleteJE, restoreJE: s.restoreJE,
     addJE: s.addJE, updateJE: s.updateJE,
   }));
 
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set(jes.map(j => j.id)));
+  const toggleExpand = (id: string) => setExpandedIds(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  // Track which line IDs are in "custom description" text-input mode
+  const [customDescLines, setCustomDescLines] = useState<Set<string>>(new Set());
+  const setLineCustomDesc = (lineId: string) =>
+    setCustomDescLines(prev => new Set([...prev, lineId]));
+  const clearLineCustomDesc = (lineId: string) =>
+    setCustomDescLines(prev => { const n = new Set(prev); n.delete(lineId); return n; });
+
   const [addOpen, setAddOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'All' | JEStatus | 'Deleted'>('All');
 
@@ -188,18 +229,22 @@ export function AJEsTab() {
       <div className="space-y-3">
         {filtered.map(je => {
           const loan       = je.loanId ? loans.find(l => l.id === je.loanId) : null;
-          const isExpanded = expandedId === je.id;
+          const isExpanded = expandedIds.has(je.id);
           const isBalanced = Math.abs(totalDebits(je) - totalCredits(je)) < 0.01;
           const sc         = STATUS_CONFIG[je.status];
-          const jeDate     = je.date || YEAR_END_DATE;
-          const lineType   = LINE_TYPE_SHORT[je.type] || 'JE';
+
+          // ── Global design-system cell field classes ──────────────────────────
+          const BASE = 'input-double-border w-full h-9 text-sm rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] focus:outline-none';
+          const CI  = `${BASE} px-3 placeholder:text-muted-foreground/70`;                      // text input
+          const CS  = `${BASE} pl-3 pr-8 appearance-none cursor-pointer`;                        // select
+          const CN  = `${BASE} px-3 text-right tabular-nums placeholder:text-muted-foreground/70`; // number input
 
           return (
             <StyledCard key={je.id} className={`overflow-hidden ${je.deleted ? 'opacity-60' : ''}`}>
               {/* JE Header */}
               <div
                 className="flex items-center gap-3 px-5 py-4 hover:bg-muted/30 cursor-pointer"
-                onClick={() => setExpandedId(isExpanded ? null : je.id)}
+                onClick={() => toggleExpand(je.id)}
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-0.5">
@@ -209,14 +254,6 @@ export function AJEsTab() {
                     {!isBalanced && <Badge variant="destructive">Unbalanced</Badge>}
                   </div>
                   <p className="text-sm font-medium text-foreground">{je.description}</p>
-                  <div className="flex items-center gap-4 mt-1 text-xs text-foreground/40">
-                    <span>DR: <span className="tabular-nums font-medium text-foreground/70">{fmtCurrency(totalDebits(je), 'CAD')}</span></span>
-                    <span>CR: <span className="tabular-nums font-medium text-foreground/70">{fmtCurrency(totalCredits(je), 'CAD')}</span></span>
-                    <span>FY{je.fiscalYear}</span>
-                    <span className="font-mono">{fmtDisplayDate(jeDate)}</span>
-                    {je.preparedBy && <span>Prep: {je.preparedBy}</span>}
-                    {je.approvedBy  && <span>Appr: {je.approvedBy}</span>}
-                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant={sc.variant}>{sc.label}</Badge>
@@ -233,64 +270,143 @@ export function AJEsTab() {
                   <table className="w-full text-sm border-collapse">
                     <thead>
                       <tr className="border-b border-border bg-muted/50">
-                        <th className="py-2 px-5 font-semibold text-foreground/40 text-left">Account</th>
-                        <th className="py-2 px-5 font-semibold text-foreground/40 text-left">Description</th>
-                        <th className="py-2 px-4 font-semibold text-foreground/40 text-center">Date</th>
-                        <th className="py-2 px-5 font-semibold text-foreground/40 text-right">Debit</th>
-                        <th className="py-2 px-5 font-semibold text-foreground/40 text-right">Credit</th>
-                        <th className="py-2 px-5 font-semibold text-foreground/40 text-left">Reference</th>
+                        <th className="py-2.5 px-4 font-semibold text-foreground/50 text-left text-xs uppercase tracking-wider whitespace-nowrap">Acc No.</th>
+                        <th className="py-2.5 px-4 font-semibold text-foreground/50 text-left text-xs uppercase tracking-wider">Description</th>
+                        <th className="py-2.5 px-4 font-semibold text-foreground/50 text-right text-xs uppercase tracking-wider">Debit</th>
+                        <th className="py-2.5 px-4 font-semibold text-foreground/50 text-right text-xs uppercase tracking-wider">Credit</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {je.lines.map(line => (
-                        <tr key={line.id} className="border-b border-border hover:bg-muted/30">
-                          <td className="py-1.5 px-3">
-                            <select
-                              className="w-full text-xs font-mono px-2 py-1.5 border border-transparent hover:border-border rounded-lg bg-transparent text-foreground focus:outline-none focus:border-primary/40 focus:bg-background transition-all cursor-pointer"
-                              value={line.account}
-                              onChange={e => updateJE(je.id, {
-                                lines: je.lines.map(l => l.id === line.id ? { ...l, account: e.target.value } : l)
-                              })}
-                            >
-                              {!allAccounts.some(a => a.value === line.account) && (
-                                <option value={line.account}>{line.account}</option>
-                              )}
-                              <optgroup label="Expense">
-                                {allAccounts.filter(a => a.value.startsWith('7')).map(a => (
-                                  <option key={a.value} value={a.value}>{a.label}</option>
-                                ))}
-                              </optgroup>
-                              <optgroup label="Liability">
-                                {allAccounts.filter(a => a.value.startsWith('2')).map(a => (
-                                  <option key={a.value} value={a.value}>{a.label}</option>
-                                ))}
-                              </optgroup>
-                            </select>
+                      {je.lines.map(line => {
+                        const descOpts = descriptionOptions(line.account, loan?.name || '');
+                        const isCustomDesc = customDescLines.has(line.id);
+                        return (
+                        <tr key={line.id} className="border-b border-border hover:bg-muted/20">
+                          {/* Acc No. — overlay shows code only; dropdown shows full label */}
+                          <td className="py-2 px-3 min-w-[120px] w-[140px]">
+                            <div className="relative">
+                              <select
+                                className={`${CS} font-mono`}
+                                style={{ color: 'transparent' }}
+                                value={line.account}
+                                onChange={e => updateJE(je.id, {
+                                  lines: je.lines.map(l => l.id === line.id ? { ...l, account: e.target.value } : l)
+                                })}
+                              >
+                                {!allAccounts.some(a => a.value === line.account) && line.account && (
+                                  <option value={line.account}>{line.account}</option>
+                                )}
+                                <option value="">Select</option>
+                                <optgroup label="Expense">
+                                  {allAccounts.filter(a => a.value.startsWith('7')).map(a => (
+                                    <option key={a.value} value={a.value}>{a.label}</option>
+                                  ))}
+                                </optgroup>
+                                <optgroup label="Liability">
+                                  {allAccounts.filter(a => a.value.startsWith('2')).map(a => (
+                                    <option key={a.value} value={a.value}>{a.label}</option>
+                                  ))}
+                                </optgroup>
+                              </select>
+                              {/* Overlay showing only the account code */}
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-mono text-foreground pointer-events-none select-none">
+                                {line.account ? accCodeOnly(line.account) : <span className="text-muted-foreground/50 font-sans font-normal">Select</span>}
+                              </span>
+                              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/70 pointer-events-none" />
+                            </div>
                           </td>
-                          <td className="py-2.5 px-5 text-muted-foreground">{line.description}</td>
-                          <td className="py-2.5 px-4 text-center tabular-nums text-muted-foreground text-xs">{fmtDisplayDate(jeDate)}</td>
-                          <td className="py-2.5 px-5 text-right tabular-nums text-foreground">{line.debit  > 0 ? fmtCurrency(line.debit,  'CAD') : '—'}</td>
-                          <td className="py-2.5 px-5 text-right tabular-nums text-foreground">{line.credit > 0 ? fmtCurrency(line.credit, 'CAD') : '—'}</td>
-                          <td className="py-2.5 px-5 text-muted-foreground text-xs">
-                            {line.reference
-                              ? <span className="flex items-center gap-1"><BookOpen className="w-3 h-3 flex-shrink-0" />{line.reference}</span>
-                              : <span className="text-foreground/25">—</span>}
+                          {/* Description — dropdown with preset options + custom text mode */}
+                          <td className="py-2 px-3">
+                            {isCustomDesc ? (
+                              <input
+                                type="text"
+                                autoFocus
+                                className={CI}
+                                value={line.description}
+                                placeholder="Enter custom description…"
+                                onChange={e => updateJE(je.id, {
+                                  lines: je.lines.map(l => l.id === line.id ? { ...l, description: e.target.value } : l)
+                                })}
+                                onBlur={() => clearLineCustomDesc(line.id)}
+                              />
+                            ) : (
+                              <div className="relative">
+                                <select
+                                  className={CS}
+                                  value={line.description}
+                                  onChange={e => {
+                                    if (e.target.value === '__add_custom__') {
+                                      setLineCustomDesc(line.id);
+                                      updateJE(je.id, { lines: je.lines.map(l => l.id === line.id ? { ...l, description: '' } : l) });
+                                    } else {
+                                      updateJE(je.id, { lines: je.lines.map(l => l.id === line.id ? { ...l, description: e.target.value } : l) });
+                                    }
+                                  }}
+                                >
+                                  <option value="">— select description —</option>
+                                  {descOpts.map(d => (
+                                    <option key={d} value={d}>{d}</option>
+                                  ))}
+                                  {line.description && !descOpts.includes(line.description) && (
+                                    <option value={line.description}>{line.description}</option>
+                                  )}
+                                  <option value="__add_custom__">＋ Add account…</option>
+                                </select>
+                                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/70 pointer-events-none" />
+                              </div>
+                            )}
+                          </td>
+                          {/* Debit */}
+                          <td className="py-2 px-3 w-36">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              className={CN}
+                              value={line.debit || ''}
+                              placeholder="0.00"
+                              onChange={e => updateJE(je.id, {
+                                lines: je.lines.map(l => l.id === line.id ? { ...l, debit: parseFloat(e.target.value) || 0 } : l)
+                              })}
+                            />
+                          </td>
+                          {/* Credit */}
+                          <td className="py-2 px-3 w-36">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              className={CN}
+                              value={line.credit || ''}
+                              placeholder="0.00"
+                              onChange={e => updateJE(je.id, {
+                                lines: je.lines.map(l => l.id === line.id ? { ...l, credit: parseFloat(e.target.value) || 0 } : l)
+                              })}
+                            />
                           </td>
                         </tr>
-                      ))}
-                      <tr className="bg-muted/50 font-semibold text-xs">
-                        <td className="py-2 px-5 text-foreground" colSpan={3}>Totals</td>
-                        <td className="py-2 px-5 text-right tabular-nums text-foreground">{fmtCurrency(totalDebits(je),  'CAD')}</td>
-                        <td className="py-2 px-5 text-right tabular-nums text-foreground">{fmtCurrency(totalCredits(je), 'CAD')}</td>
-                        <td className="py-2 px-5 text-right">
-                          {isBalanced
-                            ? <span className="text-emerald-600 font-semibold">✓ Balanced</span>
-                            : <span className="text-red-600">✗ Unbalanced</span>
-                          }
+                      );})}
+                      <tr className="bg-muted/50 font-semibold text-xs border-t border-border">
+                        <td className="py-2.5 px-4 text-foreground" colSpan={2}>Total</td>
+                        <td className="py-2.5 px-4 text-right tabular-nums text-foreground">{fmtCurrency(totalDebits(je),  'CAD')}</td>
+                        <td className="py-2.5 px-4 text-right tabular-nums text-foreground">
+                          {fmtCurrency(totalCredits(je), 'CAD')}
                         </td>
                       </tr>
                     </tbody>
                   </table>
+
+                  {/* Notes */}
+                  <div className="px-5 py-3 border-t border-border bg-background">
+                    <label className="block text-[11px] font-semibold text-foreground/50 uppercase tracking-wider mb-1.5">Notes</label>
+                    <textarea
+                      rows={2}
+                      className="input-double-border w-full text-sm px-3 py-2.5 rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground placeholder:text-muted-foreground/70 transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] resize-none focus:outline-none"
+                      placeholder="Add a note for this entry…"
+                      value={je.notes ?? ''}
+                      onChange={e => updateJE(je.id, { notes: e.target.value })}
+                    />
+                  </div>
 
                   {/* JE Actions */}
                   <div className="flex items-center justify-between px-5 py-3 bg-muted/50 border-t border-border">
@@ -380,6 +496,18 @@ function emptyLine(idx: number): DraftLine {
   return { id: `new-${idx}-${Date.now()}`, account: '', description: '', debit: 0, credit: 0, reference: '' };
 }
 
+function fmtNum(n: number) {
+  return n.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+const ENTRY_TYPES = ['Journal', 'AJE', 'Reclass', 'FX Translation'];
+
+// Shared field-strip class constants (module-level to avoid re-creation)
+const SF  = 'input-double-border h-9 text-sm rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] focus:outline-none';
+const SFS = `${SF} pl-3 pr-8 appearance-none cursor-pointer`;   // select
+const SFI = `${SF} px-3 placeholder:text-muted-foreground/50`;  // text / date
+const SFN = `w-full ${SF} px-3 text-right tabular-nums`;        // number
+
 function AddJEModal({ open, onClose, loans, allAccounts, onSave }: {
   open: boolean;
   onClose: () => void;
@@ -387,18 +515,28 @@ function AddJEModal({ open, onClose, loans, allAccounts, onSave }: {
   allAccounts: { value: string; label: string }[];
   onSave: (je: JEProposal) => void;
 }) {
-  const [description, setDescription] = useState('');
-  const [loanId, setLoanId] = useState('');
-  const [date, setDate] = useState(YEAR_END_DATE);
-  const [lines, setLines] = useState<DraftLine[]>([emptyLine(1), emptyLine(2)]);
+  const [loanId,     setLoanId]     = useState('');
+  const [date,       setDate]       = useState(YEAR_END_DATE);
+  const [entryType,  setEntryType]  = useState('Journal');
+  const [entryNum,   setEntryNum]   = useState('JE-1');
+  const [showRef,    setShowRef]    = useState(false);
+  const [reference,  setReference]  = useState('');
+  const [recurring,  setRecurring]  = useState(false);
+  const [lines,      setLines]      = useState<DraftLine[]>([emptyLine(1), emptyLine(2)]);
+  const [modalNotes, setModalNotes] = useState('');
 
   const selectedLoanName = loans.find(l => l.id === loanId)?.name || '';
+
+  const reset = () => {
+    setLoanId(''); setDate(YEAR_END_DATE); setEntryType('Journal');
+    setEntryNum('JE-1'); setShowRef(false); setReference('');
+    setRecurring(false); setLines([emptyLine(1), emptyLine(2)]); setModalNotes('');
+  };
 
   const updateLine = (i: number, k: keyof DraftLine, v: string | number) => {
     setLines(prev => prev.map((l, idx) => {
       if (idx !== i) return l;
       const updated = { ...l, [k]: v };
-      // Auto-fill description when account is chosen and description is still empty
       if (k === 'account' && !l.description) {
         const hint = autoDescription(v as string, selectedLoanName);
         if (hint) updated.description = hint;
@@ -407,204 +545,259 @@ function AddJEModal({ open, onClose, loans, allAccounts, onSave }: {
     }));
   };
 
-  const addLine = () => setLines(prev => [...prev, emptyLine(prev.length + 1)]);
+  const addLine    = () => setLines(prev => [...prev, emptyLine(prev.length + 1)]);
   const removeLine = (i: number) => setLines(prev => prev.filter((_, idx) => idx !== i));
 
-  const totalDR = lines.reduce((s, l) => s + (l.debit  || 0), 0);
-  const totalCR = lines.reduce((s, l) => s + (l.credit || 0), 0);
+  const totalDR  = lines.reduce((s, l) => s + (l.debit  || 0), 0);
+  const totalCR  = lines.reduce((s, l) => s + (l.credit || 0), 0);
   const balanced = Math.abs(totalDR - totalCR) < 0.01;
 
   const handleSave = () => {
-    if (!description.trim()) { toast.error('Description required'); return; }
     if (!balanced) {
       toast.error(`JE is unbalanced — DR: ${fmtCurrency(totalDR, 'CAD')}  CR: ${fmtCurrency(totalCR, 'CAD')}`);
       return;
     }
+    const desc = [entryType, selectedLoanName].filter(Boolean).join(' – ') || 'Manual JE';
     onSave({
       id:          `je-${Date.now()}`,
       type:        'Manual',
-      description: description.trim(),
+      description: desc,
       date,
-      lines:       lines.map((l, i) => ({
+      lines: lines.map((l, i) => ({
         id:          `jl-${Date.now()}-${i}`,
         account:     l.account     || '',
         description: l.description || '',
         debit:       l.debit       || 0,
         credit:      l.credit      || 0,
         loanId:      loanId || undefined,
-        reference:   l.reference   || undefined,
+        reference:   reference || undefined,
       })),
       status:     'Draft',
       fiscalYear: '2024',
       loanId:     loanId || undefined,
       createdAt:  new Date().toISOString(),
       preparedBy: 'J. Martinez',
+      notes:      modalNotes || undefined,
     });
-    // reset
-    setDescription(''); setLoanId(''); setDate(YEAR_END_DATE);
-    setLines([emptyLine(1), emptyLine(2)]);
+    reset();
   };
 
-  const IC = 'w-full text-xs px-2 py-1.5 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:border-primary/40 transition-colors';
+  // Field-strip label
+  const FL = (text: React.ReactNode) => (
+    <span className="block text-[11px] font-medium text-foreground/60 mb-1 whitespace-nowrap">{text}</span>
+  );
 
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={() => { onClose(); }}
       title="Add Manual Journal Entry"
-      size="xl"
+      size="3xl"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button variant="default" onClick={handleSave}>Add JE</Button>
+          <Button variant="secondary" onClick={() => { reset(); onClose(); }}>Cancel</Button>
+          <Button variant="default" onClick={handleSave}>Save</Button>
         </>
       }
     >
       <div className="space-y-4">
-        {/* JE header fields */}
-        <div className="grid grid-cols-2 gap-3">
-          <Input
-            label="JE Description"
-            value={description}
-            onChange={e => setDescription(e.target.value)}
-            placeholder="e.g. YE accrued interest adjustment"
-          />
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-foreground">Effective Date</label>
-            <input
-              type="date"
-              className={IC}
-              style={{ height: '36px' }}
-              value={date}
-              onChange={e => setDate(e.target.value)}
-            />
-            <p className="text-[11px] text-muted-foreground">Defaults to year-end ({YEAR_END_DATE})</p>
-          </div>
-        </div>
-        <Select
-          label="Related Loan (optional)"
-          value={loanId}
-          onChange={e => setLoanId(e.target.value)}
-          options={[{ value: '', label: 'None' }, ...loans.map(l => ({ value: l.id, label: l.name }))]}
-        />
 
-        {/* Lines table */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-xs font-semibold text-foreground/70">JE Lines</div>
-            <Button variant="ghost" size="sm" onClick={addLine}>
-              <Plus className="w-3 h-3" /> Add Line
+        {/* ── Fields strip ── */}
+        <div className="flex items-end gap-2">
+
+          {/* Entity Name */}
+          <div className="shrink-0 w-[118px]">
+            {FL('Entity Name')}
+            <div className="relative">
+              <select className={`w-full ${SFS}`} value={loanId} onChange={e => setLoanId(e.target.value)}>
+                <option value="">— None —</option>
+                {loans.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/70 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Entry Date */}
+          <div className="shrink-0">
+            {FL('Entry Date')}
+            <input type="date" className={`${SFI} w-[132px]`} value={date} onChange={e => setDate(e.target.value)} />
+          </div>
+
+          {/* Entry Type */}
+          <div className="shrink-0">
+            {FL(<>Entry Type <span className="text-red-400">*</span></>)}
+            <div className="relative">
+              <select className={`w-[106px] ${SFS}`} value={entryType} onChange={e => setEntryType(e.target.value)}>
+                {ENTRY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/70 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Entry No */}
+          <div className="shrink-0">
+            {FL(<>Entry No <span className="text-red-400">*</span></>)}
+            <div className="flex items-center">
+              <Button variant="secondary" className="px-2 h-9 rounded-r-none border-r-0"
+                onClick={() => setEntryNum(n => { const m = n.match(/(\D+)(\d+)/); return m ? `${m[1]}${Math.max(1, +m[2]-1)}` : n; })}>‹</Button>
+              <div className="relative">
+                <select className={`w-[76px] ${SFS} rounded-none border-l-0 border-r-0`} value={entryNum} onChange={e => setEntryNum(e.target.value)}>
+                  {['JE-1','JE-2','JE-3','JE-4','JE-5'].map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/70 pointer-events-none" />
+              </div>
+              <Button variant="secondary" className="px-2 h-9 rounded-l-none border-l-0"
+                onClick={() => setEntryNum(n => { const m = n.match(/(\D+)(\d+)/); return m ? `${m[1]}${+m[2]+1}` : n; })}>›</Button>
+            </div>
+          </div>
+
+          {/* Reference */}
+          <div className="shrink-0">
+            {FL('Reference')}
+            {showRef ? (
+              <input
+                autoFocus
+                className={`${SFI} w-[100px]`}
+                placeholder="e.g. WP-A3"
+                value={reference}
+                onChange={e => setReference(e.target.value)}
+                onBlur={() => { if (!reference) setShowRef(false); }}
+              />
+            ) : (
+              <Button variant="outline" className="px-3" onClick={() => setShowRef(true)}>
+                + Ref
+              </Button>
+            )}
+          </div>
+
+          {/* Recurring */}
+          <div className="shrink-0 flex flex-col items-center">
+            {FL('Recurring')}
+            <div className="h-9 flex items-center justify-center px-2">
+              <input type="checkbox" className="w-4 h-4 rounded accent-primary cursor-pointer"
+                checked={recurring} onChange={e => setRecurring(e.target.checked)} />
+            </div>
+          </div>
+
+          {/* Delete / Reset */}
+          <div className="shrink-0 flex flex-col items-center">
+            {FL('Delete')}
+            <Button variant="destructive" size="icon" onClick={reset} title="Clear form">
+              <Trash2 className="w-4 h-4" />
             </Button>
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b border-border bg-muted/50">
-                  {['Acc. No.', 'Description', 'Date', 'Type', 'Debit', 'Credit', 'Reference', ''].map(h => (
-                    <th key={h} className="py-2 px-2 text-left text-xs font-semibold text-foreground/50 whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {lines.map((line, i) => (
-                  <tr key={line.id} className="border-b border-border hover:bg-muted/20">
-                    {/* Account dropdown */}
-                    <td className="px-2 py-1.5 min-w-[180px]">
-                      <select
-                        className={IC}
-                        value={line.account || ''}
-                        onChange={e => updateLine(i, 'account', e.target.value)}
-                      >
-                        <option value="">— select account —</option>
-                        <optgroup label="Expense">
-                          {allAccounts.filter(a => a.value.startsWith('7')).map(a => (
-                            <option key={a.value} value={a.value}>{a.label}</option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="Liability">
-                          {allAccounts.filter(a => a.value.startsWith('2')).map(a => (
-                            <option key={a.value} value={a.value}>{a.label}</option>
-                          ))}
-                        </optgroup>
-                      </select>
+        </div>
+
+        {/* ── Lines table ── */}
+        <div className="rounded-lg border border-border overflow-hidden">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b border-border bg-muted/50">
+                <th className="py-2.5 px-3 text-left text-xs font-semibold text-foreground/50 uppercase tracking-wider w-[120px]">Acc No.</th>
+                <th className="py-2.5 px-3 text-left text-xs font-semibold text-foreground/50 uppercase tracking-wider">Description</th>
+                <th className="py-2.5 px-3 text-right text-xs font-semibold text-foreground/50 uppercase tracking-wider w-36">Debit</th>
+                <th className="py-2.5 px-3 text-right text-xs font-semibold text-foreground/50 uppercase tracking-wider w-36">Credit</th>
+                <th className="py-2.5 px-3 text-center text-xs font-semibold text-foreground/50 uppercase tracking-wider w-20">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((line, i) => {
+                const descOpts = descriptionOptions(line.account || '', selectedLoanName);
+                const isLast   = i === lines.length - 1;
+                return (
+                  <tr key={line.id} className="border-b border-border last:border-b-0 hover:bg-muted/20">
+                    {/* Acc No. — code-only overlay */}
+                    <td className="px-3 py-2">
+                      <div className="relative">
+                        <select className={`w-full ${SFS} font-mono`} style={{ color: 'transparent' }}
+                          value={line.account || ''} onChange={e => updateLine(i, 'account', e.target.value)}>
+                          <option value="">Select</option>
+                          <optgroup label="Expense">
+                            {allAccounts.filter(a => a.value.startsWith('7')).map(a =>
+                              <option key={a.value} value={a.value}>{a.label}</option>)}
+                          </optgroup>
+                          <optgroup label="Liability">
+                            {allAccounts.filter(a => a.value.startsWith('2')).map(a =>
+                              <option key={a.value} value={a.value}>{a.label}</option>)}
+                          </optgroup>
+                        </select>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-mono text-foreground pointer-events-none select-none">
+                          {line.account
+                            ? accCodeOnly(line.account)
+                            : <span className="text-muted-foreground/50 font-sans font-normal">Select</span>}
+                        </span>
+                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/70 pointer-events-none" />
+                      </div>
                     </td>
-                    {/* Description */}
-                    <td className="px-2 py-1.5 min-w-[160px]">
-                      <input
-                        className={IC}
-                        value={line.description || ''}
-                        onChange={e => updateLine(i, 'description', e.target.value)}
-                        placeholder="Description"
-                      />
-                    </td>
-                    {/* Date (inherited from JE, display-only per line) */}
-                    <td className="px-2 py-1.5 min-w-[90px]">
-                      <span className="text-xs tabular-nums text-muted-foreground px-1">{fmtDisplayDate(date)}</span>
-                    </td>
-                    {/* Type badge */}
-                    <td className="px-2 py-1.5">
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-muted text-muted-foreground border border-border">JE</span>
+                    {/* Description — combobox-style select */}
+                    <td className="px-3 py-2">
+                      <div className="relative">
+                        <select className={`w-full ${SFS}`}
+                          value={line.description || ''} onChange={e => updateLine(i, 'description', e.target.value)}>
+                          <option value="">Type here to search</option>
+                          {descOpts.map(d => <option key={d} value={d}>{d}</option>)}
+                          {line.description && !descOpts.includes(line.description) && (
+                            <option value={line.description}>{line.description}</option>
+                          )}
+                          <option value="__custom__">＋ Add account…</option>
+                        </select>
+                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/70 pointer-events-none" />
+                      </div>
                     </td>
                     {/* Debit */}
-                    <td className="px-2 py-1.5">
-                      <input
-                        type="number"
-                        min="0"
-                        className={`${IC} w-24 text-right`}
-                        value={line.debit || ''}
-                        onChange={e => updateLine(i, 'debit', parseFloat(e.target.value) || 0)}
-                        placeholder="0.00"
-                      />
+                    <td className="px-3 py-2">
+                      <input type="number" min="0" step="0.01" className={SFN}
+                        value={line.debit || ''} placeholder="0.00"
+                        onChange={e => updateLine(i, 'debit', parseFloat(e.target.value) || 0)} />
                     </td>
                     {/* Credit */}
-                    <td className="px-2 py-1.5">
-                      <input
-                        type="number"
-                        min="0"
-                        className={`${IC} w-24 text-right`}
-                        value={line.credit || ''}
-                        onChange={e => updateLine(i, 'credit', parseFloat(e.target.value) || 0)}
-                        placeholder="0.00"
-                      />
+                    <td className="px-3 py-2">
+                      <input type="number" min="0" step="0.01" className={SFN}
+                        value={line.credit || ''} placeholder="0.00"
+                        onChange={e => updateLine(i, 'credit', parseFloat(e.target.value) || 0)} />
                     </td>
-                    {/* Reference */}
-                    <td className="px-2 py-1.5 min-w-[140px]">
-                      <input
-                        className={IC}
-                        value={line.reference}
-                        onChange={e => updateLine(i, 'reference', e.target.value)}
-                        placeholder="e.g. WP A-3 / Schedule"
-                      />
-                    </td>
-                    {/* Delete */}
-                    <td className="px-2 py-1.5">
-                      <button
-                        onClick={() => removeLine(i)}
-                        className="p-1 text-muted-foreground hover:text-red-500 transition-colors rounded"
-                        title="Remove line"
-                      >✕</button>
+                    {/* Actions */}
+                    <td className="px-3 py-2">
+                      <div className="flex items-center justify-start gap-1">
+                        <Button variant="ghost" size="icon-sm" onClick={() => removeLine(i)} title="Remove"
+                          className="text-muted-foreground hover:text-red-500 hover:bg-red-50">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                        {isLast && (
+                          <Button variant="ghost" size="icon-sm" onClick={addLine} title="Add line">
+                            <Plus className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="bg-muted/50 text-xs font-semibold">
-                  <td colSpan={4} className="px-2 py-2 text-muted-foreground">Totals</td>
-                  <td className="px-2 py-2 text-right tabular-nums text-foreground">{fmtCurrency(totalDR, 'CAD')}</td>
-                  <td className="px-2 py-2 text-right tabular-nums text-foreground">{fmtCurrency(totalCR, 'CAD')}</td>
-                  <td colSpan={2} className="px-2 py-2 text-right">
-                    {totalDR > 0 || totalCR > 0
-                      ? balanced
-                        ? <span className="text-emerald-600">✓ Balanced</span>
-                        : <span className="text-red-500">✗ {fmtCurrency(Math.abs(totalDR - totalCR), 'CAD')} off</span>
-                      : null}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="bg-muted/50 text-sm font-semibold border-t border-border">
+                <td colSpan={2} className="px-3 py-2.5 text-right text-foreground/70">Total</td>
+                <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNum(totalDR)}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNum(totalCR)}</td>
+                <td />
+              </tr>
+            </tfoot>
+          </table>
         </div>
+
+        {/* ── Notes ── */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1.5">Notes</label>
+          <textarea
+            rows={4}
+            className="input-double-border w-full text-sm px-3 py-2.5 rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground placeholder:text-muted-foreground/50 transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] resize-none focus:outline-none"
+            placeholder="Add your notes here..."
+            value={modalNotes}
+            onChange={e => setModalNotes(e.target.value)}
+          />
+        </div>
+
       </div>
     </Modal>
   );

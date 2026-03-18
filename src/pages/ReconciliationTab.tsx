@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 
 export function ReconciliationTab() {
   const { loans, reconciliation, updateReconciliation, overrideReconciliation } = useStore(s => ({
-    loans: s.loans, reconciliation: s.reconciliation,
+    loans: s.loans.filter(l => l.status !== 'Inactive'), reconciliation: s.reconciliation,
     updateReconciliation: s.updateReconciliation,
     overrideReconciliation: s.overrideReconciliation,
   }));

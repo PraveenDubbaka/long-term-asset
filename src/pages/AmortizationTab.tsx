@@ -2,7 +2,38 @@ import React, { useState } from 'react';
 import { Edit3, Lock, Unlock, Download, ChevronDown } from 'lucide-react';
 import { useTableColumns, ColumnToggleButton, useColumnResize, ThResizable, type ColDef } from '@/components/table-utils';
 import { useStore } from '../store/useStore';
-import { fmtCurrency, fmtNumber, fmtDateDisplay, buildMaturityLadder, exportToExcel, buildAmortizationExport } from '../lib/utils';
+import { fmtCurrency, fmtNumber, fmtDateDisplay, exportToExcel, buildAmortizationExport } from '../lib/utils';
+import type { Loan } from '../types';
+
+/** Returns [yr1, yr2, yr3, yr4, yr5, thereafter] principal amounts from `yearEndPeriod`. */
+function calcMaturityLadder(loan: Loan, closingBalance: number, yearEndPeriod: string): number[] {
+  const result = [0, 0, 0, 0, 0, 0];
+  if (closingBalance <= 0) return result;
+  const [y, m] = yearEndPeriod.split('-').map(Number);
+  const maturity = new Date(loan.maturityDate);
+  const monthsToMaturity = Math.max(0,
+    (maturity.getFullYear() - y) * 12 + (maturity.getMonth() + 1 - m));
+  if (loan.type === 'LOC' || loan.type === 'Revolver') { result[0] = closingBalance; return result; }
+  if (loan.paymentType === 'Interest-only' || loan.paymentType === 'Balloon') {
+    const idx = Math.min(Math.max(0, Math.ceil(monthsToMaturity / 12) - 1), 5);
+    result[idx] = closingBalance;
+    return result;
+  }
+  const r = loan.rate / 100 / 12;
+  const n = monthsToMaturity;
+  if (n <= 0) { result[0] = closingBalance; return result; }
+  const pmt = r === 0 ? closingBalance / n : closingBalance * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+  let bal = closingBalance;
+  for (let mo = 1; mo <= n; mo++) {
+    const interest = bal * r;
+    const principal = Math.min(pmt - interest, bal);
+    const idx = Math.min(Math.ceil(mo / 12) - 1, 5);
+    result[idx] += principal;
+    bal -= principal;
+    if (bal <= 0.01) break;
+  }
+  return result.map(v => Math.round(v));
+}
 import { Button } from '@/components/wp-ui/button';
 import { StyledCard } from '@/components/wp-ui/card';
 import toast from 'react-hot-toast';
@@ -13,21 +44,21 @@ const AMORT_COLS: ColDef<AmortColId>[] = [
   { id: 'period',         label: 'Period',          pinned: true },
   { id: 'openingBalance', label: 'Opening Balance' },
   { id: 'interest',       label: 'Interest' },
-  { id: 'payment',        label: 'Payment' },
   { id: 'principal',      label: 'Principal' },
+  { id: 'payment',        label: 'Payment' },
   { id: 'endingBalance',  label: 'Ending Balance' },
   { id: 'actions',        label: '',                pinned: true },
 ];
 
 export function AmortizationTab() {
   const { loans, amortization, settings, updateAmortRow } = useStore(s => ({
-    loans: s.loans,
+    loans: s.loans.filter(l => l.status !== 'Inactive'),
     amortization: s.amortization,
     settings: s.settings,
     updateAmortRow: s.updateAmortRow,
   }));
 
-  const [view, setView] = useState<'schedule' | 'maturity'>('schedule');
+  const [view, setView] = useState<'schedule' | 'repayment'>('schedule');
   const [selectedLoanId, setSelectedLoanId] = useState(loans[0]?.id || '');
   const [editRowId, setEditRowId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<{ payment: number; principal: number; interest: number }>({ payment: 0, principal: 0, interest: 0 });
@@ -40,11 +71,17 @@ export function AmortizationTab() {
   const selectedLoan = loans.find(l => l.id === selectedLoanId);
   const loanRows = amortization.filter(r => r.loanId === selectedLoanId).sort((a, b) => a.periodDate.localeCompare(b.periodDate));
 
-  const maturityLadder = buildMaturityLadder(loans, amortization, settings.fiscalYearEnd);
-
-  const next12Rows = amortization.filter(r => {
-    return r.periodDate > settings.fiscalYearEnd && r.periodDate <= '2026-01-01';
-  }).sort((a, b) => a.periodDate.localeCompare(b.periodDate));
+  const YEAR_END_PERIOD = '2024-12';
+  const baseYear = 2025;
+  const yearLabels = Array.from({ length: 5 }, (_, i) => `Year ${i + 1} (${baseYear + i})`).concat(['Thereafter']);
+  const maturityLadderRows = loans
+    .filter(l => l.status === 'Active')
+    .map(l => {
+      const ladder = calcMaturityLadder(l, l.currentBalance, YEAR_END_PERIOD);
+      return { loan: l, ladder, total: ladder.reduce((s, v) => s + v, 0) };
+    });
+  const ladderColTotals = [0, 1, 2, 3, 4, 5].map(i => maturityLadderRows.reduce((s, d) => s + d.ladder[i], 0));
+  const ladderGrandTotal = ladderColTotals.reduce((s, v) => s + v, 0);
 
   const startEdit = (row: typeof loanRows[0]) => {
     if (lockedRows.has(row.id)) { toast.error('Row is locked'); return; }
@@ -75,11 +112,6 @@ export function AmortizationTab() {
     principal: acc.principal + r.principal,
   }), { interest: 0, payment: 0, principal: 0 });
 
-  const next12Totals = next12Rows.reduce((acc, r) => ({
-    interest:  acc.interest  + r.interest,
-    payment:   acc.payment   + r.payment,
-    principal: acc.principal + r.principal,
-  }), { interest: 0, payment: 0, principal: 0 });
 
   const exportCurrentLoan = async () => {
     if (!selectedLoan) return;
@@ -102,8 +134,8 @@ export function AmortizationTab() {
   };
 
   const TABS = [
-    { id: 'schedule', label: 'Per-Loan Schedule' },
-    { id: 'maturity', label: 'Maturity & Next 12 Months' },
+    { id: 'schedule',   label: 'Per-Loan Schedule' },
+    { id: 'repayment',  label: 'Repayment Schedule' },
   ];
 
   return (
@@ -121,13 +153,13 @@ export function AmortizationTab() {
       </div>
 
       {/* Tab Bar */}
-      <div className="flex items-center gap-1 bg-card rounded-lg border border-border p-1 w-fit">
+      <div className="flex items-center gap-1 border-b border-border -mx-6 px-6">
         {TABS.map(tab => (
           <button
             key={tab.id}
             onClick={() => setView(tab.id as typeof view)}
-            className={`px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${
-              view === tab.id ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-muted'
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              view === tab.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
             {tab.label}
@@ -188,8 +220,8 @@ export function AmortizationTab() {
                     <ThResizable colId="period" width={amortGetWidth('period')} onResizeStart={arh('period')} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-left whitespace-nowrap">Period</ThResizable>
                     {amortVisible('openingBalance') && <ThResizable colId="openingBalance" width={amortGetWidth('openingBalance')} onResizeStart={arh('openingBalance')} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right whitespace-nowrap">Opening Balance</ThResizable>}
                     {amortVisible('interest') && <ThResizable colId="interest" width={amortGetWidth('interest')} onResizeStart={arh('interest')} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right whitespace-nowrap">Interest</ThResizable>}
-                    {amortVisible('payment') && <ThResizable colId="payment" width={amortGetWidth('payment')} onResizeStart={arh('payment')} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right whitespace-nowrap">Payment</ThResizable>}
                     {amortVisible('principal') && <ThResizable colId="principal" width={amortGetWidth('principal')} onResizeStart={arh('principal')} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right whitespace-nowrap">Principal</ThResizable>}
+                    {amortVisible('payment') && <ThResizable colId="payment" width={amortGetWidth('payment')} onResizeStart={arh('payment')} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right whitespace-nowrap">Payment</ThResizable>}
                     {amortVisible('endingBalance') && <ThResizable colId="endingBalance" width={amortGetWidth('endingBalance')} onResizeStart={arh('endingBalance')} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right whitespace-nowrap">Ending Balance</ThResizable>}
                     <ThResizable colId="actions" width={amortGetWidth('actions')} onResizeStart={arh('actions')} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-center whitespace-nowrap"></ThResizable>
                   </tr>
@@ -215,20 +247,20 @@ export function AmortizationTab() {
                               : fmtNumber(row.interest)}
                           </td>
                         )}
-                        {amortVisible('payment') && (
-                          <td className="px-4 py-2 text-right tabular-nums text-foreground whitespace-nowrap">
-                            {isEditing
-                              ? <input type="number" value={editValues.payment} onChange={e => setEditValues(p => ({ ...p, payment: parseFloat(e.target.value) || 0 }))}
-                                  className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none" />
-                              : fmtNumber(row.payment)}
-                          </td>
-                        )}
                         {amortVisible('principal') && (
                           <td className="px-4 py-2 text-right tabular-nums text-green-600 whitespace-nowrap">
                             {isEditing
                               ? <input type="number" value={editValues.principal} onChange={e => setEditValues(p => ({ ...p, principal: parseFloat(e.target.value) || 0 }))}
                                   className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none" />
                               : fmtNumber(row.principal)}
+                          </td>
+                        )}
+                        {amortVisible('payment') && (
+                          <td className="px-4 py-2 text-right tabular-nums text-foreground whitespace-nowrap">
+                            {isEditing
+                              ? <input type="number" value={editValues.payment} onChange={e => setEditValues(p => ({ ...p, payment: parseFloat(e.target.value) || 0 }))}
+                                  className="w-24 text-xs px-2 py-1 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none" />
+                              : fmtNumber(row.payment)}
                           </td>
                         )}
                         {amortVisible('endingBalance') && (
@@ -263,8 +295,8 @@ export function AmortizationTab() {
                     <td className="px-4 py-2.5 text-foreground">Schedule Total</td>
                     {amortVisible('openingBalance') && <td className="px-4 py-2.5" />}
                     {amortVisible('interest') && <td className="px-4 py-2.5 text-right tabular-nums text-amber-600">{fmtNumber(totals.interest)}</td>}
-                    {amortVisible('payment') && <td className="px-4 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(totals.payment)}</td>}
                     {amortVisible('principal') && <td className="px-4 py-2.5 text-right tabular-nums text-green-600">{fmtNumber(totals.principal)}</td>}
+                    {amortVisible('payment') && <td className="px-4 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(totals.payment)}</td>}
                     {amortVisible('endingBalance') && <td className="px-4 py-2.5 text-right tabular-nums text-foreground/60">—</td>}
                     <td />
                   </tr>
@@ -275,67 +307,44 @@ export function AmortizationTab() {
         </div>
       )}
 
-      {view === 'maturity' && (
+      {view === 'repayment' && (
         <div className="space-y-5">
-          {/* Maturity Ladder Buckets */}
-          <div>
-            <h3 className="text-sm font-semibold text-foreground mb-3">Principal Maturity Ladder (CAD Equivalent)</h3>
-            <div className="grid grid-cols-5 gap-3">
-              {maturityLadder.map((bucket, i) => (
-                <div key={i} className="px-5 py-4 bg-card border border-border shadow-sm text-center" style={{ borderRadius: '12px' }}>
-                  <div className="text-[11px] font-medium text-foreground/60 mb-1 whitespace-nowrap">{bucket.label}</div>
-                  <div className="text-lg font-bold leading-none text-primary tabular-nums">{fmtCurrency(bucket.amount, 'CAD', true)}</div>
-                  <div className="text-[11px] text-foreground/50 mt-1 truncate">{bucket.loans.map(l => l.name).join(', ') || '—'}</div>
-                </div>
-              ))}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Principal Repayment Schedule</h2>
+              <p className="text-xs text-foreground/60 mt-0.5">As at Dec 31, 2024 · Scheduled principal repayments by fiscal year</p>
             </div>
           </div>
-
-          {/* Next 12 Months Detail Table */}
-          <StyledCard className="overflow-hidden flex flex-col">
-            <div className="px-4 py-3 border-b border-border flex-shrink-0">
-              <h3 className="text-sm font-semibold text-foreground">Next 12 Months — Detailed Repayment Schedule</h3>
-              <p className="text-xs text-foreground/60 mt-0.5">Consolidated across all active loans · {next12Rows.length} payments</p>
-            </div>
-            <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 'calc(100vh - 520px)', minHeight: '180px' }}>
+          <StyledCard className="overflow-hidden">
+            <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="sticky top-0 z-10">
+                <thead>
                   <tr className="bg-muted border-b border-border">
-                    {['Loan','Period','Opening','Interest','Payment','Principal','Ending'].map(h => (
-                      <th key={h} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right first:text-left whitespace-nowrap">{h}</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-left">Facility</th>
+                    {yearLabels.map(lbl => (
+                      <th key={lbl} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right whitespace-nowrap">{lbl}</th>
                     ))}
+                    <th className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right">Total</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {next12Rows.map(row => {
-                    const loan = loans.find(l => l.id === row.loanId);
-                    return (
-                      <tr key={row.id} className="border-b border-border hover:bg-muted/30 transition-colors">
-                        <td className="px-4 py-2 font-medium text-foreground whitespace-nowrap">{loan?.name}</td>
-                        <td className="px-4 py-2 text-right font-mono text-foreground/60 whitespace-nowrap">{row.periodDate}</td>
-                        <td className="px-4 py-2 text-right tabular-nums text-foreground/60 whitespace-nowrap">{fmtNumber(row.openingBalance)}</td>
-                        <td className="px-4 py-2 text-right tabular-nums text-amber-600 whitespace-nowrap">{fmtNumber(row.interest)}</td>
-                        <td className="px-4 py-2 text-right tabular-nums text-foreground whitespace-nowrap">{fmtNumber(row.payment)}</td>
-                        <td className="px-4 py-2 text-right tabular-nums text-green-600 whitespace-nowrap">{fmtNumber(row.principal)}</td>
-                        <td className="px-4 py-2 text-right tabular-nums font-semibold text-foreground whitespace-nowrap">{fmtNumber(row.endingBalance)}</td>
-                      </tr>
-                    );
-                  })}
-                  {next12Rows.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">No payments scheduled in the next 12 months</td>
+                  {maturityLadderRows.map(({ loan: l, ladder, total }) => (
+                    <tr key={l.id} className="border-b border-border hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-2.5 font-medium text-foreground">{l.name}</td>
+                      {ladder.map((v, i) => (
+                        <td key={i} className="px-4 py-2.5 text-right tabular-nums text-foreground">{v > 0 ? fmtNumber(v) : '—'}</td>
+                      ))}
+                      <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-foreground">{fmtNumber(total)}</td>
                     </tr>
-                  )}
+                  ))}
                 </tbody>
-                <tfoot className="sticky bottom-0 z-10">
+                <tfoot>
                   <tr className="bg-muted/80 border-t-2 border-primary/20 font-semibold">
-                    <td className="px-4 py-2.5 text-foreground text-sm">12-Month Total</td>
-                    <td className="px-4 py-2.5 text-right text-xs text-foreground/40 whitespace-nowrap">{next12Rows.length} payments</td>
-                    <td className="px-4 py-2.5" />
-                    <td className="px-4 py-2.5 text-right tabular-nums text-amber-600">{fmtNumber(next12Totals.interest)}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(next12Totals.payment)}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-green-600">{fmtNumber(next12Totals.principal)}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-foreground/40">—</td>
+                    <td className="px-4 py-2.5 text-foreground">Total</td>
+                    {ladderColTotals.map((v, i) => (
+                      <td key={i} className="px-4 py-2.5 text-right tabular-nums text-foreground">{v > 0 ? fmtNumber(v) : '—'}</td>
+                    ))}
+                    <td className="px-4 py-2.5 text-right tabular-nums font-bold text-primary">{fmtNumber(ladderGrandTotal)}</td>
                   </tr>
                 </tfoot>
               </table>

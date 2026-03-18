@@ -17,7 +17,7 @@ function StatusBadge({ s }: { s: ActivityStatus }) {
 
 export function ActivityTab() {
   const { loans, activities, addActivity, updateActivity, classifyActivity, ui, setImportWizardOpen } = useStore(s => ({
-    loans: s.loans, activities: s.activities,
+    loans: s.loans.filter(l => l.status !== 'Inactive'), activities: s.activities,
     addActivity: s.addActivity, updateActivity: s.updateActivity, classifyActivity: s.classifyActivity,
     ui: s.ui, setImportWizardOpen: s.setImportWizardOpen,
   }));
