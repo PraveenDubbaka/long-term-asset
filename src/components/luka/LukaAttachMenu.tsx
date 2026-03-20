@@ -54,7 +54,7 @@ export function LukaAttachMenu({
       <button
         onClick={() => setOpen(!open)}
         className={cn(
-          "h-9 w-9 flex items-center justify-center rounded-[10px] border border-border bg-background",
+          "h-9 w-9 flex items-center justify-center rounded-[10px] border border-transparent bg-background",
           "transition-all duration-200 hover:bg-muted/60 hover:border-border hover:shadow-sm",
           "active:scale-[0.97]",
           open && "bg-muted/60 border-border shadow-sm"
