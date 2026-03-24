@@ -5,6 +5,7 @@ export type PaymentType = 'P&I' | 'Interest-only' | 'Balloon';
 export type DayCountBasis = 'ACT/365' | 'ACT/360' | '30/360';
 export type InterestType = 'Fixed' | 'Variable' | 'Floating' | 'Hybrid' | 'Step Rate';
 export type PaymentFrequency = 'Monthly' | 'Quarterly' | 'Semi-annual' | 'Annual';
+export type CompoundingFrequency = 'Monthly' | 'Quarterly' | 'Semi-annual' | 'Annual';
 export type CovenantStatus = 'OK' | 'At Risk' | 'Breached' | 'Unknown';
 export type CovenantFrequency = 'Monthly' | 'Quarterly' | 'Annual';
 export type JEStatus = 'Draft' | 'Approved' | 'Posted' | 'Exported';
@@ -41,7 +42,12 @@ export interface Loan {
   currentPortion: number;
   longTermPortion: number;
   accruedInterest: number;
+  firstPaymentDate?: string;
   lastPaymentDate?: string;
+  tenureMonths?: number;            // loan term in months (explicit override; if absent, derived from start/maturity)
+  compoundingFrequency?: CompoundingFrequency;
+  interestOnlyPeriodMonths?: number; // months of interest-only payments before P&I kicks in
+  balloonAmount?: number;            // final lump-sum balloon payment
   securityDescription?: string;
   notes?: string;
   attachments: string[];

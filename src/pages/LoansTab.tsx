@@ -421,28 +421,34 @@ type LoansColId =
   | 'name' | 'lender' | 'rate' | 'interestType' | 'monthlyPayment'
   | 'startDate' | 'maturity' | 'collateral' | 'type' | 'currency'
   | 'origAmt' | 'fxRate' | 'balance' | 'glPrincipal' | 'dayCount'
-  | 'paymentType' | 'status' | 'attachments' | 'actions';
+  | 'paymentType' | 'status' | 'attachments' | 'actions'
+  | 'tenureMonths' | 'firstPaymentDate' | 'compoundingFreq' | 'balloonAmt' | 'interestOnlyPeriod';
 
 const LOANS_COLS: ColDef<LoansColId>[] = [
-  { id: 'name',          label: 'Loan Name',      pinned: true },
-  { id: 'lender',        label: 'Lender' },
-  { id: 'collateral',    label: 'Collateral' },
-  { id: 'type',          label: 'Type' },
-  { id: 'interestType',  label: 'Rate Type' },
-  { id: 'rate',          label: 'Int. Rate' },
-  { id: 'startDate',     label: 'Start' },
-  { id: 'maturity',      label: 'Maturity' },
-  { id: 'currency',      label: 'CCY' },
-  { id: 'monthlyPayment',label: 'Mo. Payment' },
-  { id: 'origAmt',       label: 'Orig. Loan Amt' },
-  { id: 'fxRate',        label: 'FX Rate' },
-  { id: 'balance',       label: 'Converted Amt' },
-  { id: 'glPrincipal',   label: 'GL Principal' },
-  { id: 'dayCount',      label: 'Day Count' },
-  { id: 'paymentType',   label: 'Payment Type' },
-  { id: 'status',        label: 'Status' },
-  { id: 'attachments',   label: 'Refs',           pinned: true },
-  { id: 'actions',       label: 'Actions',         pinned: true },
+  { id: 'name',               label: 'Loan Name',           pinned: true },
+  { id: 'lender',             label: 'Lender' },
+  { id: 'collateral',         label: 'Collateral' },
+  { id: 'type',               label: 'Type' },
+  { id: 'interestType',       label: 'Rate Type' },
+  { id: 'rate',               label: 'Int. Rate' },
+  { id: 'startDate',          label: 'Start' },
+  { id: 'maturity',           label: 'Maturity' },
+  { id: 'tenureMonths',       label: 'Tenure (mo.)' },
+  { id: 'firstPaymentDate',   label: 'First Payment' },
+  { id: 'currency',           label: 'CCY' },
+  { id: 'monthlyPayment',     label: 'Mo. Payment' },
+  { id: 'origAmt',            label: 'Orig. Loan Amt' },
+  { id: 'fxRate',             label: 'FX Rate' },
+  { id: 'balance',            label: 'Converted Amt' },
+  { id: 'glPrincipal',        label: 'GL Principal' },
+  { id: 'dayCount',           label: 'Day Count' },
+  { id: 'paymentType',        label: 'Payment Type' },
+  { id: 'compoundingFreq',    label: 'Compounding' },
+  { id: 'interestOnlyPeriod', label: 'IO Period (mo.)' },
+  { id: 'balloonAmt',         label: 'Balloon Amt' },
+  { id: 'status',             label: 'Status' },
+  { id: 'attachments',        label: 'Refs',                pinned: true },
+  { id: 'actions',            label: 'Actions',             pinned: true },
 ];
 
 export function LoansTab() {
@@ -772,6 +778,12 @@ export function LoansTab() {
                       </div>
                     </ThResizable>
                   )}
+                  {isVisible('tenureMonths') && (
+                    <ThResizable colId="tenureMonths" width={getWidth('tenureMonths')} onResizeStart={rh('tenureMonths')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Tenure (mo.)</ThResizable>
+                  )}
+                  {isVisible('firstPaymentDate') && (
+                    <ThResizable colId="firstPaymentDate" width={getWidth('firstPaymentDate')} onResizeStart={rh('firstPaymentDate')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">First Payment</ThResizable>
+                  )}
                   {isVisible('currency') && (
                     <ThResizable colId="currency" width={getWidth('currency')} onResizeStart={rh('currency')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
                       <div className="flex items-center gap-1 group/th">CCY
@@ -826,6 +838,15 @@ export function LoansTab() {
                         <FilterPopover value={filters.paymentType} onChange={v => setFilter('paymentType', v)} type="select" options={[{value:'',label:'All'},{value:'P&I',label:'P&I'},{value:'Interest-only',label:'Interest-only'},{value:'Balloon',label:'Balloon'}]} isOpen={openFilter === 'paymentType'} onToggle={() => setOpenFilter(p => p === 'paymentType' ? null : 'paymentType')} onClose={() => setOpenFilter(null)} />
                       </div>
                     </ThResizable>
+                  )}
+                  {isVisible('compoundingFreq') && (
+                    <ThResizable colId="compoundingFreq" width={getWidth('compoundingFreq')} onResizeStart={rh('compoundingFreq')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Compounding</ThResizable>
+                  )}
+                  {isVisible('interestOnlyPeriod') && (
+                    <ThResizable colId="interestOnlyPeriod" width={getWidth('interestOnlyPeriod')} onResizeStart={rh('interestOnlyPeriod')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">IO Period (mo.)</ThResizable>
+                  )}
+                  {isVisible('balloonAmt') && (
+                    <ThResizable colId="balloonAmt" width={getWidth('balloonAmt')} onResizeStart={rh('balloonAmt')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Balloon Amt</ThResizable>
                   )}
                   {isVisible('status') && (
                     <ThResizable colId="status" width={getWidth('status')} onResizeStart={rh('status')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
@@ -942,6 +963,25 @@ export function LoansTab() {
                           : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{fmtDateDisplay(l.maturityDate)}</span>}
                       </td>
                     )}
+                    {/* Tenure (months) */}
+                    {isVisible('tenureMonths') && (
+                      <td className="px-3 py-1.5 text-right">
+                        {ie
+                          ? <input type="number" min="1" className={`${IIC} text-right w-20`} value={ed.tenureMonths ?? l.tenureMonths ?? ''} onChange={ivNum(l.id,'tenureMonths')} onClick={e => e.stopPropagation()} placeholder={l.startDate && l.maturityDate ? String(Math.round((new Date(l.maturityDate).getTime() - new Date(l.startDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44))) : ''} />
+                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap">
+                              {l.tenureMonths ?? (l.startDate && l.maturityDate ? Math.round((new Date(l.maturityDate).getTime() - new Date(l.startDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)) : null) ?? '—'}
+                              {!l.tenureMonths && l.startDate && l.maturityDate && <span className="text-muted-foreground/40 text-[10px] ml-1" title="Auto-calculated">~</span>}
+                            </span>}
+                      </td>
+                    )}
+                    {/* First Payment Date */}
+                    {isVisible('firstPaymentDate') && (
+                      <td className="px-3 py-1.5">
+                        {ie
+                          ? <input type="date" className={IIC} value={ed.firstPaymentDate ?? l.firstPaymentDate ?? ''} onChange={iv(l.id,'firstPaymentDate')} onClick={e => e.stopPropagation()} />
+                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{l.firstPaymentDate ? fmtDateDisplay(l.firstPaymentDate) : '—'}</span>}
+                      </td>
+                    )}
                     {/* Currency */}
                     {isVisible('currency') && (
                       <td className="px-3 py-1.5">
@@ -1033,6 +1073,35 @@ export function LoansTab() {
                           : <span className="text-muted-foreground whitespace-nowrap">{l.paymentType}</span>}
                       </td>
                     )}
+                    {/* Compounding Frequency */}
+                    {isVisible('compoundingFreq') && (
+                      <td className="px-3 py-1.5">
+                        {ie
+                          ? <select className={`${IIC} cursor-pointer`} value={ed.compoundingFrequency ?? l.compoundingFrequency ?? 'Monthly'} onChange={ivSel(l.id,'compoundingFrequency')} onClick={e => e.stopPropagation()}>
+                              <option value="Monthly">Monthly</option>
+                              <option value="Quarterly">Quarterly</option>
+                              <option value="Semi-annual">Semi-annual</option>
+                              <option value="Annual">Annual</option>
+                            </select>
+                          : <span className="text-muted-foreground whitespace-nowrap">{l.compoundingFrequency ?? 'Monthly'}</span>}
+                      </td>
+                    )}
+                    {/* Interest-Only Period */}
+                    {isVisible('interestOnlyPeriod') && (
+                      <td className="px-3 py-1.5 text-right">
+                        {ie
+                          ? <input type="number" min="0" className={`${IIC} text-right w-20`} value={ed.interestOnlyPeriodMonths ?? l.interestOnlyPeriodMonths ?? ''} onChange={ivNum(l.id,'interestOnlyPeriodMonths')} onClick={e => e.stopPropagation()} />
+                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{l.interestOnlyPeriodMonths ?? '—'}</span>}
+                      </td>
+                    )}
+                    {/* Balloon Amount */}
+                    {isVisible('balloonAmt') && (
+                      <td className="px-3 py-1.5 text-right">
+                        {ie
+                          ? <input type="number" min="0" className={`${IIC} text-right w-28`} value={ed.balloonAmount ?? l.balloonAmount ?? ''} onChange={ivNum(l.id,'balloonAmount')} onClick={e => e.stopPropagation()} />
+                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{l.balloonAmount ? fmtCurrency(l.balloonAmount, l.currency) : '—'}</span>}
+                      </td>
+                    )}
                     {/* Status */}
                     {isVisible('status') && (
                       <td className="px-3 py-1.5">
@@ -1074,7 +1143,6 @@ export function LoansTab() {
               </tbody>
               {filteredLoans.length > 0 && (() => {
                 // Dynamic colSpans — adapt as columns are hidden/shown
-                // Column order: name | lender | collateral | type | interestType | rate | startDate | maturity | currency | [monthlyPayment] | [origAmt] | [fxRate] | [balance] | glPrincipal | dayCount | paymentType | status | attachments | actions
                 const ftLeading = 1  // 'name' always visible
                   + (isVisible('lender') ? 1 : 0)
                   + (isVisible('collateral') ? 1 : 0)
@@ -1083,10 +1151,15 @@ export function LoansTab() {
                   + (isVisible('rate') ? 1 : 0)
                   + (isVisible('startDate') ? 1 : 0)
                   + (isVisible('maturity') ? 1 : 0)
+                  + (isVisible('tenureMonths') ? 1 : 0)
+                  + (isVisible('firstPaymentDate') ? 1 : 0)
                   + (isVisible('currency') ? 1 : 0);
                 const ftTrailing = (isVisible('glPrincipal') ? 1 : 0)
                   + (isVisible('dayCount') ? 1 : 0)
                   + (isVisible('paymentType') ? 1 : 0)
+                  + (isVisible('compoundingFreq') ? 1 : 0)
+                  + (isVisible('interestOnlyPeriod') ? 1 : 0)
+                  + (isVisible('balloonAmt') ? 1 : 0)
                   + (isVisible('status') ? 1 : 0)
                   + 2; // attachments + actions always visible
                 return (
@@ -1561,8 +1634,19 @@ function LoanViewModal({ loan, onClose, onEdit }: { loan: Loan | null; onClose: 
             ['Current Balance', fmtCurrency(loan.currentBalance, loan.currency)],
             ['Interest Rate', `${fmtPct(loan.rate)}${loan.interestType === 'Variable' ? ' (Variable)' : ' (Fixed)'}`],
             ['Payment', `${loan.paymentFrequency} – ${loan.paymentType}`],
+            ['Compounding', loan.compoundingFrequency ?? 'Monthly'],
             ['Start Date', fmtDateDisplay(loan.startDate)],
             ['Maturity', fmtDateDisplay(loan.maturityDate)],
+            ['Loan Tenure', loan.tenureMonths
+              ? `${loan.tenureMonths} months`
+              : loan.startDate && loan.maturityDate
+                ? `${Math.round((new Date(loan.maturityDate).getTime() - new Date(loan.startDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44))} months (calc.)`
+                : '—'],
+            ['First Payment', loan.firstPaymentDate ? fmtDateDisplay(loan.firstPaymentDate) : '—'],
+            ...(loan.paymentType === 'Interest-only' || loan.paymentType === 'Balloon'
+              ? [['IO Period', loan.interestOnlyPeriodMonths ? `${loan.interestOnlyPeriodMonths} months` : '—']] : []),
+            ...(loan.paymentType === 'Balloon'
+              ? [['Balloon Amount', loan.balloonAmount ? fmtCurrency(loan.balloonAmount, loan.currency) : '—']] : []),
             ['Current Portion', fmtCurrency(loan.currentPortion, loan.currency)],
             ['Long-Term Portion', fmtCurrency(loan.longTermPortion, loan.currency)],
             ['Accrued Interest', fmtCurrency(loan.accruedInterest, loan.currency)],
@@ -1983,9 +2067,15 @@ function AddLoanFormContent({ form, setForm }: { form: Partial<Loan>; setForm: (
         <Input label="Spread (%)" type="number" value={form.spread || ''} onChange={e => setForm({ ...form, spread: parseFloat(e.target.value) || 0 })} suffix="%" />
       </>}
 
-      {/* Row 5 — Start · Maturity (matches Start + Maturity columns) */}
+      {/* Row 5 — Start · Maturity · Tenure */}
       <Input label="Start Date" type="date" value={form.startDate || ''} onChange={f('startDate')} />
       <Input label="Maturity Date" type="date" value={form.maturityDate || ''} onChange={f('maturityDate')} />
+      <Input label="Loan Tenure (months)" type="number" value={form.tenureMonths ?? ''} onChange={fn('tenureMonths')} placeholder={
+        form.startDate && form.maturityDate
+          ? String(Math.round((new Date(form.maturityDate).getTime() - new Date(form.startDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)))
+          : ''
+      } hint="Auto-calculated from dates if left blank" />
+      <Input label="First Payment Date" type="date" value={form.firstPaymentDate || ''} onChange={f('firstPaymentDate')} />
 
       {/* Row 6 — Orig. Loan Amt · FX Rate (if non-CAD) / Bal. Loan Amt (matches Orig. Loan Amt + FX Rate + Converted Amt columns) */}
       <Input label="Orig. Loan Amt" type="number" value={form.originalPrincipal || ''} onChange={fn('originalPrincipal')} prefix={form.currency || 'CAD'} />
@@ -1997,27 +2087,40 @@ function AddLoanFormContent({ form, setForm }: { form: Partial<Loan>; setForm: (
         <Input label="Bal. Loan Amt" type="number" value={form.currentBalance || ''} onChange={fn('currentBalance')} prefix={form.currency} />
       )}
 
-      {/* Row 7 — Day Count · Payment Type (matches Day Count + Payment Type columns) */}
+      {/* Row 7 — Day Count · Payment Type · Compounding Frequency */}
       <Select label="Day Count Basis" value={form.dayCountBasis || 'ACT/365'} onChange={f('dayCountBasis')} options={[
         { value: 'ACT/365', label: 'ACT/365' }, { value: 'ACT/360', label: 'ACT/360' }, { value: '30/360', label: '30/360' },
       ]} />
       <Select label="Payment Type" value={form.paymentType || 'P&I'} onChange={f('paymentType')} options={[
-        { value: 'P&I', label: 'Principal & Interest' }, { value: 'Interest-only', label: 'Interest Only' }, { value: 'Balloon', label: 'Balloon' },
+        { value: 'P&I', label: 'Principal & Interest (Blended)' }, { value: 'Interest-only', label: 'Interest Only' }, { value: 'Balloon', label: 'Balloon' },
       ]} />
 
-      {/* Row 8 — Status · Last Payment Date (matches Status column) */}
+      {/* Conditional: Interest-Only Period (only for Interest-only or Balloon) */}
+      {(form.paymentType === 'Interest-only' || form.paymentType === 'Balloon') && (
+        <Input label="Interest-Only Period (months)" type="number" value={form.interestOnlyPeriodMonths ?? ''} onChange={fn('interestOnlyPeriodMonths')} placeholder="e.g. 12" hint="Number of months before principal payments begin" />
+      )}
+
+      {/* Conditional: Balloon Amount (only for Balloon payment type) */}
+      {form.paymentType === 'Balloon' && (
+        <Input label="Balloon Amount" type="number" value={form.balloonAmount ?? ''} onChange={fn('balloonAmount')} prefix={form.currency || 'CAD'} placeholder="Final lump-sum payment" />
+      )}
+
+      {/* Row 8 — Payment Frequency · Compounding Frequency */}
+      <Select label="Payment Frequency" value={form.paymentFrequency || 'Monthly'} onChange={f('paymentFrequency')} options={[
+        { value: 'Monthly', label: 'Monthly' }, { value: 'Quarterly', label: 'Quarterly' },
+        { value: 'Semi-annual', label: 'Semi-Annual' }, { value: 'Annual', label: 'Annual' },
+      ]} />
+      <Select label="Compounding Frequency" value={form.compoundingFrequency || 'Monthly'} onChange={f('compoundingFrequency')} options={[
+        { value: 'Monthly', label: 'Monthly' }, { value: 'Quarterly', label: 'Quarterly' },
+        { value: 'Semi-annual', label: 'Semi-Annual' }, { value: 'Annual', label: 'Annual' },
+      ]} />
+
+      {/* Row 9 — Status · Last Payment Date */}
       <Select label="Status" value={form.status || 'Active'} onChange={f('status')} options={[
         { value: 'Active', label: 'Active' }, { value: 'Inactive', label: 'Inactive' },
         { value: 'Closed', label: 'Closed' }, { value: 'Replaced', label: 'Replaced' }, { value: 'Refinanced', label: 'Refinanced' },
       ]} />
       <Input label="Last Payment Date" type="date" value={form.lastPaymentDate || ''} onChange={f('lastPaymentDate')} />
-
-      {/* Row 9 — Payment Frequency (secondary) */}
-      <Select label="Payment Frequency" value={form.paymentFrequency || 'Monthly'} onChange={f('paymentFrequency')} options={[
-        { value: 'Monthly', label: 'Monthly' }, { value: 'Quarterly', label: 'Quarterly' },
-        { value: 'Semi-annual', label: 'Semi-Annual' }, { value: 'Annual', label: 'Annual' },
-      ]} />
-      <div />
 
       {/* GL Mappings — searchable autocomplete (matches GL Principal column) */}
       <div className="col-span-2 border-t border-border pt-3 mt-1">
