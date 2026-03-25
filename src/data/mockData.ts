@@ -766,7 +766,7 @@ export const initialReviewQueue: ReviewQueueItem[] = [
 
 // ─── SETTINGS ─────────────────────────────────────────────────────────────────
 export const initialSettings: EngagementSettings = {
-  client: 'Acme Manufacturing Inc.',
+  client: 'Shipping Line Inc.',
   engagement: 'FY2024 Year-End Audit',
   fiscalYearEnd: '2024-12-31',
   baseCurrency: 'CAD',

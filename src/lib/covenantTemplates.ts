@@ -59,6 +59,135 @@ export const GL_ACCOUNTS: GlAccount[] = [
   { code: '3200',  name: 'Tangible Net Worth',             category: 'Computed'  },
 ];
 
+// ─── Definition Keyword → GL Mapping ─────────────────────────────────────────
+export interface DefinitionKeywordRule {
+  keywords: string[];          // phrases to match (lowercase)
+  glCode: string;
+  description: string;
+  section: 'numerator' | 'denominator';
+  defaultSign: '+' | '-';
+  note?: string;               // e.g. "Commonly excluded — verify agreement"
+}
+
+export const DEFINITION_KEYWORD_RULES: DefinitionKeywordRule[] = [
+  // Income / P&L computed
+  { keywords: ['ebitda', 'earnings before interest, tax', 'earnings before interest tax'],
+    glCode: '6500', description: 'EBITDA', section: 'numerator', defaultSign: '+' },
+  { keywords: ['net income', 'net earnings', 'net profit'],
+    glCode: '6510', description: 'Net Income', section: 'numerator', defaultSign: '+' },
+  { keywords: ['ebit', 'earnings before interest and tax'],
+    glCode: '6520', description: 'EBIT', section: 'numerator', defaultSign: '+' },
+  { keywords: ['revenue', 'net revenue', 'total revenue', 'net sales', 'total sales'],
+    glCode: '4000', description: 'Revenue', section: 'numerator', defaultSign: '+' },
+  { keywords: ['depreciation', 'amortization', 'd&a', 'depreciation and amortization'],
+    glCode: '6600', description: 'Depreciation & Amortization', section: 'numerator', defaultSign: '+' },
+  { keywords: ['income tax', 'tax expense', 'income taxes'],
+    glCode: 'TAXES', description: 'Income Tax Expense', section: 'numerator', defaultSign: '+' },
+  { keywords: ['capital expenditure', 'capex', 'capital spending'],
+    glCode: 'CAPEX', description: 'Capital Expenditures', section: 'denominator', defaultSign: '+' },
+  // Debt service
+  { keywords: ['annual principal payment', 'scheduled principal', 'principal repayment', 'principal maturities'],
+    glCode: 'DS01', description: 'Annual Principal Payments', section: 'denominator', defaultSign: '+' },
+  { keywords: ['annual interest payment', 'interest payments due', 'interest obligations'],
+    glCode: 'DS02', description: 'Annual Interest Payments', section: 'denominator', defaultSign: '+' },
+  { keywords: ['total debt service', 'total annual debt service', 'debt service obligations'],
+    glCode: 'DS03', description: 'Total Annual Debt Service', section: 'denominator', defaultSign: '+' },
+  { keywords: ['interest expense', 'interest charges', 'interest cost'],
+    glCode: '7100', description: 'Interest Expense', section: 'denominator', defaultSign: '+' },
+  // Assets
+  { keywords: ['cash and cash equivalents', 'cash and equivalents', 'cash on hand', 'liquid assets'],
+    glCode: '1000', description: 'Cash & Cash Equivalents', section: 'numerator', defaultSign: '+' },
+  { keywords: ['accounts receivable', 'trade receivables', 'receivables'],
+    glCode: '1100', description: 'Accounts Receivable', section: 'numerator', defaultSign: '+' },
+  { keywords: ['inventory', 'inventories', 'stock on hand'],
+    glCode: '1200', description: 'Inventory', section: 'numerator', defaultSign: '+' },
+  { keywords: ['total current assets', 'current assets'],
+    glCode: '1400', description: 'Total Current Assets', section: 'numerator', defaultSign: '+' },
+  { keywords: ['pp&e', 'property plant and equipment', 'property, plant and equipment', 'fixed assets'],
+    glCode: '1500', description: 'PP&E – Net', section: 'numerator', defaultSign: '+' },
+  { keywords: ['goodwill'],
+    glCode: '1600', description: 'Goodwill', section: 'numerator', defaultSign: '-',
+    note: 'Intangibles are typically excluded from tangible net worth — verify agreement' },
+  { keywords: ['intangible assets', 'other intangibles', 'intangible'],
+    glCode: '1700', description: 'Other Intangible Assets', section: 'numerator', defaultSign: '-',
+    note: 'Intangibles are typically excluded — verify agreement' },
+  { keywords: ['total assets'],
+    glCode: '1800', description: 'Total Assets', section: 'numerator', defaultSign: '+' },
+  // Liabilities
+  { keywords: ['accounts payable', 'trade payables'],
+    glCode: '2000', description: 'Accounts Payable', section: 'denominator', defaultSign: '+' },
+  { keywords: ['long-term debt', 'long term debt', 'term debt outstanding', 'total debt outstanding'],
+    glCode: '2100', description: 'Long-Term Debt – CAD', section: 'numerator', defaultSign: '+' },
+  { keywords: ['current portion', 'current maturities of long-term', 'cpltd'],
+    glCode: '2101', description: 'Current Portion – LTD', section: 'denominator', defaultSign: '+' },
+  { keywords: ['line of credit', 'revolving credit', 'loc balance', 'revolving facility'],
+    glCode: '2200', description: 'Line of Credit', section: 'numerator', defaultSign: '+' },
+  { keywords: ['accrued interest', 'accrued interest payable'],
+    glCode: '2300', description: 'Accrued Interest Payable', section: 'denominator', defaultSign: '+' },
+  { keywords: ['total current liabilities', 'current liabilities'],
+    glCode: '2400', description: 'Total Current Liabilities', section: 'denominator', defaultSign: '+' },
+  { keywords: ['total liabilities'],
+    glCode: '2600', description: 'Total Liabilities', section: 'denominator', defaultSign: '+' },
+  // Equity
+  { keywords: ["shareholders' equity", "shareholder equity", "stockholders' equity", 'total equity', 'net equity'],
+    glCode: '3000', description: "Total Shareholders' Equity", section: 'numerator', defaultSign: '+' },
+  { keywords: ['retained earnings', 'retained surplus'],
+    glCode: '3100', description: 'Retained Earnings', section: 'numerator', defaultSign: '+' },
+  // Computed
+  { keywords: ['net working capital', 'working capital'],
+    glCode: 'WKCAP', description: 'Net Working Capital', section: 'numerator', defaultSign: '+' },
+  { keywords: ['tangible net worth', 'tangible equity', 'tangible shareholders'],
+    glCode: '3200', description: 'Tangible Net Worth', section: 'numerator', defaultSign: '+',
+    note: 'Typically = Equity less goodwill and intangibles — verify agreement definition' },
+];
+
+export interface ParsedSuggestion {
+  id: string;
+  rule: DefinitionKeywordRule;
+  matchedKeyword: string;
+  matchStart: number;
+  matchEnd: number;
+  sign: '+' | '-';  // may be flipped by "excluding/less/minus" context
+  isExclusion: boolean;
+  selected: boolean;
+}
+
+/** Parse raw covenant definition text and return GL line suggestions. */
+export function parseCovenantDefinition(text: string): ParsedSuggestion[] {
+  const lower = text.toLowerCase();
+  const seen = new Set<string>(); // deduplicate by glCode
+  const suggestions: ParsedSuggestion[] = [];
+
+  for (const rule of DEFINITION_KEYWORD_RULES) {
+    for (const keyword of rule.keywords) {
+      const idx = lower.indexOf(keyword);
+      if (idx === -1) continue;
+      if (seen.has(rule.glCode)) continue;
+      seen.add(rule.glCode);
+
+      // Check for exclusion context: "excluding/less/minus" within 40 chars before the match
+      const pre = lower.slice(Math.max(0, idx - 40), idx);
+      const isExclusion = /\b(exclud|less |minus |subtract|deduct|net of|before)\b/.test(pre);
+      const sign: '+' | '-' = isExclusion ? '-' : rule.defaultSign;
+
+      suggestions.push({
+        id: `sug-${rule.glCode}`,
+        rule,
+        matchedKeyword: keyword,
+        matchStart: idx,
+        matchEnd: idx + keyword.length,
+        sign,
+        isExclusion,
+        selected: true,
+      });
+      break; // first matching keyword wins
+    }
+  }
+
+  // Sort by position in text
+  return suggestions.sort((a, b) => a.matchStart - b.matchStart);
+}
+
 export const GL_CATEGORY_ORDER: GlCategory[] = [
   'Computed', 'DebtSvc', 'Income', 'Expense', 'Asset', 'Liability', 'Equity',
 ];

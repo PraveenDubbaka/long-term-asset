@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Plus, TrendingUp, TrendingDown, DollarSign, BarChart3 } from 'lucide-react';
+import { Download, Plus } from 'lucide-react';
 import { useTableColumns, ColumnToggleButton, useColumnResize, ThResizable, type ColDef } from '@/components/table-utils';
 import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
@@ -130,19 +130,15 @@ export function InvHoldingsTab() {
       {/* KPI cards */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          { label: 'Positions',           value: String(filtered.length),                     icon: BarChart3,    color: 'text-primary'    },
-          { label: 'Total Book Value',     value: 'CAD ' + fmtCAD(totalCostCAD),              icon: DollarSign,   color: 'text-foreground' },
-          { label: 'YE Fair Value',        value: 'CAD ' + fmtCAD(totalFmvCAD),               icon: TrendingUp,   color: 'text-primary'    },
-          { label: 'Unrealized G/L',       value: (totalUnrealizedGL >= 0 ? '+' : '') + 'CAD ' + fmtCAD(totalUnrealizedGL),
-            icon: totalUnrealizedGL >= 0 ? TrendingUp : TrendingDown,
+          { label: 'Positions',       value: String(filtered.length)                                                                     },
+          { label: 'Total Book Value', value: 'CAD ' + fmtCAD(totalCostCAD)                                                              },
+          { label: 'YE Fair Value',    value: 'CAD ' + fmtCAD(totalFmvCAD)                                                               },
+          { label: 'Unrealized G/L',   value: (totalUnrealizedGL >= 0 ? '+' : '') + 'CAD ' + fmtCAD(totalUnrealizedGL),
             color: totalUnrealizedGL >= 0 ? 'text-green-600' : 'text-red-600' },
         ].map(k => (
-          <StyledCard key={k.label} className="p-3 flex items-center gap-3">
-            <k.icon className={`w-8 h-8 ${k.color} opacity-80`} />
-            <div>
-              <div className={`text-sm font-bold ${k.color} tabular-nums`}>{k.value}</div>
-              <div className="text-xs text-muted-foreground">{k.label}</div>
-            </div>
+          <StyledCard key={k.label} className="px-4 py-3">
+            <div className={`text-sm font-bold tabular-nums ${'color' in k ? k.color : 'text-foreground'}`}>{k.value}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{k.label}</div>
           </StyledCard>
         ))}
       </div>

@@ -1,312 +1,385 @@
-import { useState, useMemo } from 'react';
-import { ChevronDown, ChevronRight, FileText, Trash2, Plus, Search } from 'lucide-react';
-import { Button } from '@/components/wp-ui/button';
-import { Input } from '@/components/wp-ui/input';
+import { useState, useMemo, useCallback, Fragment } from 'react';
+import {
+  RefreshCw, AlertTriangle, RotateCcw,
+} from 'lucide-react';
+import { StyledCard } from '@/components/wp-ui/card';
+import { useStore } from '../store/useStore';
+import { fmtPct, fmtDateDisplay } from '../lib/utils';
+import type { Loan, ContinuityRow, ReconciliationItem } from '../types';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Formatters ───────────────────────────────────────────────────────────────
 
-interface FinancialNote {
-  id: string;
-  number: number;
-  title: string;
-  content: string;
+const CAD = (v: number) =>
+  v === 0 ? '—' : `$${v.toLocaleString('en-CA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+
+// ─── Data helpers ─────────────────────────────────────────────────────────────
+
+function getTBBalance(loanId: string, recon: ReconciliationItem[], fallback: number) {
+  const r = recon.find(x => x.loanId === loanId && x.accountType === 'Principal');
+  if (!r) return { value: fallback, fromTB: false, hasVariance: false };
+  return { value: r.tbBalance, fromTB: true, hasVariance: r.variance !== 0 };
 }
 
-// ─── Seed data ────────────────────────────────────────────────────────────────
+function getPriorYearBalance(loanId: string, continuity: ContinuityRow[]): number | null {
+  const rows = continuity
+    .filter(r => r.loanId === loanId)
+    .sort((a, b) => a.period.localeCompare(b.period));
+  return rows.length > 0 ? rows[0].openingBalance : null;
+}
 
-const SEED_NOTES: FinancialNote[] = [
-  {
-    id: 'note-ltd-1',
-    number: 1,
-    title: 'Long-term debt',
-    content:
-`Long-term debt consists of the following as at December 31, 2024:
+function getYEContinuity(loanId: string, continuity: ContinuityRow[], yearEnd: string) {
+  const ym = yearEnd.substring(0, 7);
+  const rows = continuity
+    .filter(r => r.loanId === loanId)
+    .sort((a, b) => a.period.localeCompare(b.period));
+  const before = rows.filter(r => r.period <= ym);
+  return before.length > 0 ? before[before.length - 1] : (rows[rows.length - 1] ?? null);
+}
 
-  RBC Term Loan (RBC-2022-4451) — $3,452,847 CAD
-  Fixed rate of 5.25% per annum, ACT/365 day count. Monthly principal and interest payments of $71,200. Secured by a general security agreement over all present and after-acquired property of the Company. Matures November 1, 2027.
+// ─── Per-loan note generator ──────────────────────────────────────────────────
 
-  TD Operating Line of Credit (TD-LOC-8832) — $875,000 CAD drawn ($2,000,000 facility)
-  Variable rate of prime + 2.20% (current effective rate 7.45%), interest-only payments monthly. Secured by a first-ranking floating charge over accounts receivable and inventory. Revolving facility with no fixed maturity; subject to annual review.
+function generateLoanNote(l: Loan, tbValue: number): string {
+  const balance = CAD(tbValue);
+  const ccy = l.currency !== 'CAD' ? `${l.currency} ` : '';
+  const typeLabel =
+    l.type === 'LOC'      ? 'line of credit' :
+    l.type === 'Revolver' ? 'revolving credit facility' :
+    l.type === 'Mortgage' ? 'mortgage' : 'term loan';
 
-  HSBC Equipment Loan (HSBC-EQ-2291) — USD $1,125,000 (CAD $1,530,375 at closing rate of 1.3604)
-  Fixed rate of 6.10% per annum, 30/360 day count. Monthly blended payments of USD $21,850. Secured by a specific security interest over the financed equipment. Matures March 15, 2028.
+  const rateStr = l.interestType === 'Variable' && l.benchmark
+    ? `${l.benchmark}${l.spread ? ` + ${l.spread}%` : ''} (${fmtPct(l.rate)} effective), variable rate`
+    : `${fmtPct(l.rate)}, fixed rate`;
 
-The aggregate carrying amount of long-term debt is $5,858,222 CAD (2023: $6,214,500 CAD). The current portion reclassified to current liabilities totals $842,400 CAD (see Note 3).`,
-  },
-  {
-    id: 'note-ltd-2',
-    number: 2,
-    title: 'Interest expense and accrued interest',
-    content:
-`Interest expense recognized in the statement of operations for the year ended December 31, 2024 is as follows:
-
-  RBC Term Loan — $187,461 CAD
-  TD Operating Line of Credit — $63,214 CAD
-  HSBC Equipment Loan (translated at average rate) — $83,902 CAD
-  Total interest expense — $334,577 CAD (2023: $318,240 CAD)
-
-Accrued interest payable at December 31, 2024 represents interest earned but not yet due per the respective loan agreements:
-
-  RBC Term Loan accrued interest — $15,875 CAD
-  TD Line of Credit accrued interest — $5,462 CAD
-  HSBC Equipment Loan accrued interest (at closing rate) — $7,214 CAD
-  Total accrued interest payable — $28,551 CAD
-
-Interest is calculated on the outstanding daily principal balance using the applicable day-count convention for each instrument. The adjusting journal entry to record year-end accrued interest has been reviewed and approved by management.`,
-  },
-  {
-    id: 'note-ltd-3',
-    number: 3,
-    title: 'Current portion of long-term debt',
-    content:
-`The current portion of long-term debt represents scheduled principal repayments due within twelve months of December 31, 2024, reclassified from long-term liabilities in accordance with IAS 1 / ASPE Section 1510.
-
-  RBC Term Loan — $612,400 CAD
-  HSBC Equipment Loan (at closing rate of 1.3604) — $230,000 CAD
-  Total current portion — $842,400 CAD
-
-The TD Operating Line of Credit is classified as current in its entirety, as the facility is subject to annual renewal at the lender's discretion. Management expects the facility to be renewed on substantially similar terms; however, no legally enforceable commitment to renew exists as at the reporting date.`,
-  },
-  {
-    id: 'note-ltd-4',
-    number: 4,
-    title: 'Debt covenants and compliance',
-    content:
-`The Company's credit facilities contain the following financial maintenance covenants, tested at the frequency noted:
-
-  (i) Debt Service Coverage Ratio (DSCR) ≥ 1.25×, tested quarterly.
-      Actual at December 31, 2024: 1.12× — COVENANT BREACH
-
-  (ii) Minimum unrestricted cash ≥ $500,000 CAD, tested monthly.
-      Actual at December 31, 2024: $425,000 CAD — AT RISK
-
-  (iii) Total Debt / EBITDA ≤ 4.0×, tested semi-annually.
-      Actual at December 31, 2024: 3.6× — COMPLIANT
-
-As at December 31, 2024, the Company was in breach of the DSCR covenant under the RBC Term Loan. Management obtained a written waiver from RBC dated January 15, 2025 covering the Q4 2024 test period. The waiver does not constitute a cure; management has presented a remediation plan to the lender and expects to return to compliance by Q2 2025. The breach does not trigger cross-default provisions under the TD or HSBC facilities.`,
-  },
-  {
-    id: 'note-ltd-5',
-    number: 5,
-    title: 'Principal repayment schedule',
-    content:
-`Scheduled principal repayments of long-term debt (excluding the revolving line of credit) over the next five years and thereafter are as follows:
-
-  2025 — $842,400 CAD
-  2026 — $865,100 CAD
-  2027 — $1,745,347 CAD  (includes RBC Term Loan balloon)
-  2028 — $975,375 CAD   (includes HSBC final tranche)
-  2029 and thereafter — $Nil
-
-Total — $4,428,222 CAD
-
-The above schedule has been translated at the December 31, 2024 closing rate of USD/CAD 1.3604 for the HSBC Equipment Loan. Actual repayments in Canadian dollars will vary with movements in the USD/CAD exchange rate.`,
-  },
-  {
-    id: 'note-ltd-6',
-    number: 6,
-    title: 'Foreign currency risk on long-term debt',
-    content:
-`The HSBC Equipment Loan is denominated in United States dollars. The Company does not currently hold any hedging instruments (forward contracts, cross-currency swaps) to offset the foreign currency exposure on this instrument.
-
-Exchange rates applied:
-  Closing rate (December 31, 2024): 1.3604 CAD per USD
-  Average rate (year ended December 31, 2024): 1.3521 CAD per USD
-  Prior year closing rate (December 31, 2023): 1.3248 CAD per USD
-
-The FX translation adjustment for the year ended December 31, 2024 is a loss of $47,632 CAD (2023: gain of $21,450 CAD), recognized in other comprehensive income. The cumulative unrealized translation loss recorded in accumulated other comprehensive income as at December 31, 2024 is $31,780 CAD.`,
-  },
-];
-
-// ─── Component ────────────────────────────────────────────────────────────────
-
-export function NotesTab({ client, yearEnd }: { client?: string; yearEnd?: string } = {}) {
-  const [notes, setNotes]       = useState<FinancialNote[]>(SEED_NOTES);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set([SEED_NOTES[0].id]));
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [search, setSearch]     = useState('');
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return q ? notes.filter(n => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)) : notes;
-  }, [notes, search]);
-
-  const allSelected   = filtered.length > 0 && filtered.every(n => selected.has(n.id));
-  const someSelected  = filtered.some(n => selected.has(n.id));
-
-  const toggleExpand  = (id: string) => setExpanded(prev => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
-  });
-
-  const toggleSelect  = (id: string) => setSelected(prev => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
-  });
-
-  const toggleSelectAll = () => {
-    if (allSelected) {
-      setSelected(prev => { const next = new Set(prev); filtered.forEach(n => next.delete(n.id)); return next; });
-    } else {
-      setSelected(prev => { const next = new Set(prev); filtered.forEach(n => next.add(n.id)); return next; });
-    }
-  };
-
-  const deleteSelected = () => {
-    setNotes(prev => prev.filter(n => !selected.has(n.id)));
-    setSelected(new Set());
-  };
-
-  const updateContent = (id: string, content: string) =>
-    setNotes(prev => prev.map(n => n.id === id ? { ...n, content } : n));
-
-  const updateTitle = (id: string, title: string) =>
-    setNotes(prev => prev.map(n => n.id === id ? { ...n, title } : n));
-
-  const addNote = () => {
-    const maxNum = notes.reduce((m, n) => Math.max(m, n.number), 0);
-    const id = `note-new-${Date.now()}`;
-    const newNote: FinancialNote = {
-      id,
-      number: maxNum + 1,
-      title:  'New note',
-      content: '',
-    };
-    setNotes(prev => [...prev, newNote]);
-    setExpanded(prev => new Set([...prev, id]));
-  };
+  const payStr = `${l.paymentFrequency.toLowerCase()} ${l.paymentType.toLowerCase()} payments`;
+  const matStr = l.maturityDate
+    ? `matures on ${fmtDateDisplay(l.maturityDate)}`
+    : 'revolving with no fixed maturity';
+  const secStr = l.securityDescription
+    ? ` The facility is secured by ${l.securityDescription.toLowerCase()}.`
+    : '';
+  const creditLimitStr =
+    (l.type === 'LOC' || l.type === 'Revolver') && l.creditLimit
+      ? ` Maximum available credit is ${CAD(l.creditLimit)}.`
+      : '';
+  const fxStr =
+    l.currency !== 'CAD' && l.fxRateToCAD
+      ? ` Translated to CAD at a closing rate of ${l.fxRateToCAD.toFixed(4)}.`
+      : '';
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-5">
+    `${l.name} is a ${ccy}${balance} ${typeLabel} with ${l.lender} bearing interest at ${rateStr}, ` +
+    `payable in ${payStr}. The facility ${matStr}.${secStr}${creditLimitStr}${fxStr}`
+  );
+}
 
-      {/* Page heading */}
-      <div className="text-center mb-2">
-        <p className="text-sm text-muted-foreground font-medium">
-          {client ?? 'Client'} validation
-        </p>
-        <h2 className="text-lg font-bold text-foreground mt-0.5">Notes to Financial Information</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">For the year ended {yearEnd ?? 'December 31, 2024'}</p>
-      </div>
+// ─── Inline row note (always editable, auto-saves on change) ─────────────────
 
-      {/* Toolbar */}
-      <div className="flex items-center justify-between gap-3">
-        {/* Left: select-all + delete */}
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              className="w-4 h-4 accent-primary rounded cursor-pointer"
-              checked={allSelected}
-              ref={el => { if (el) el.indeterminate = someSelected && !allSelected; }}
-              onChange={toggleSelectAll}
-            />
-            <span className="text-sm text-foreground/70">Select all</span>
-          </label>
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={!someSelected}
-            onClick={deleteSelected}
-            className="gap-1.5 disabled:opacity-40"
+function RowNote({
+  loanId, loanName, noteIndex, value, onSave, onRegenerate,
+}: {
+  loanId: string; loanName: string; noteIndex: number; value: string;
+  onSave: (id: string, v: string) => void;
+  onRegenerate: (id: string) => void;
+}) {
+  return (
+    <tr className="border-b-2 border-border group/note">
+      <td colSpan={9} className="px-5 pt-3 pb-4 bg-muted/20">
+        {/* Note label */}
+        <div className="flex items-center gap-2 mb-1.5">
+          <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
+            Note {noteIndex}
+          </span>
+          <span className="text-[10px] text-foreground">—</span>
+          <span className="text-[10px] font-semibold text-foreground uppercase tracking-wide">{loanName}</span>
+        </div>
+        {/* Editable textarea */}
+        <div className="flex items-start gap-2">
+          <textarea
+            rows={2}
+            className="flex-1 text-xs font-sans bg-background border border-border rounded-md px-2.5 py-2 resize-none focus:outline-none focus:border-primary/40 leading-relaxed text-foreground placeholder:text-foreground/40 transition-colors"
+            value={value}
+            onChange={e => onSave(loanId, e.target.value)}
+            placeholder="Add note for this facility…"
+          />
+          <button
+            onClick={() => onRegenerate(loanId)}
+            title="Re-generate note"
+            className="opacity-0 group-hover/note:opacity-60 hover:!opacity-100 shrink-0 mt-0.5 p-0.5 rounded transition-opacity text-foreground hover:text-primary"
           >
-            <Trash2 className="w-3.5 h-3.5" />
-            Delete
-          </Button>
+            <RotateCcw className="w-3 h-3" />
+          </button>
         </div>
+      </td>
+    </tr>
+  );
+}
 
-        {/* Right: search + add */}
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60 pointer-events-none" />
-            <Input
-              className="pl-8 w-[220px] h-9"
-              placeholder="Search"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-          <Button variant="default" size="default" onClick={addNote} className="gap-1.5">
-            <Plus className="w-3.5 h-3.5" />
-            Add notes
-            <ChevronDown className="w-3.5 h-3.5 opacity-70" />
-          </Button>
+// ─── Repayment schedule ───────────────────────────────────────────────────────
+
+function RepaymentScheduleTable({ loans, yearEnd }: { loans: Loan[]; yearEnd: string }) {
+  const yr = new Date(yearEnd + 'T00:00:00').getFullYear() || 2024;
+  const term = loans.filter(l => l.type !== 'LOC' && l.type !== 'Revolver');
+
+  const buckets: Record<string, number> = {};
+  for (let i = 1; i <= 5; i++) buckets[String(yr + i)] = 0;
+  buckets['thereafter'] = 0;
+
+  term.forEach(l => {
+    const matYear = l.maturityDate ? new Date(l.maturityDate + 'T00:00:00').getFullYear() : null;
+    if (!matYear) return;
+    const key = matYear > yr + 5 ? 'thereafter' : String(matYear);
+    buckets[key] = (buckets[key] ?? 0) + (l.currentPortion || l.currentBalance || 0);
+  });
+  const total = Object.values(buckets).reduce((s, v) => s + v, 0);
+  const monthName = new Date(yearEnd + 'T00:00:00').toLocaleString('en-CA', { month: 'long' });
+  const day = new Date(yearEnd + 'T00:00:00').getDate();
+  const cols = [...Array(5).keys()].map(i => String(yr + i + 1));
+
+  return (
+    <table className="w-full text-sm">
+      <thead className="sticky top-0 z-10">
+        <tr className="bg-muted border-b border-border">
+          <th className="text-left px-3 py-2.5 text-xs font-semibold text-foreground uppercase tracking-wide whitespace-nowrap">
+            Year ending {monthName} {day}
+          </th>
+          {cols.map(y => (
+            <th key={y} className="text-right px-3 py-2.5 text-xs font-semibold text-foreground uppercase tracking-wide whitespace-nowrap">{y}</th>
+          ))}
+          <th className="text-right px-3 py-2.5 text-xs font-semibold text-foreground uppercase tracking-wide whitespace-nowrap">Thereafter</th>
+          <th className="text-right px-3 py-2.5 text-xs font-semibold text-foreground uppercase tracking-wide whitespace-nowrap">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr className="border-b border-border hover:bg-muted/30">
+          <td className="px-3 py-2.5 text-sm text-foreground">Principal repayments ($)</td>
+          {cols.map(y => (
+            <td key={y} className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-foreground">{CAD(buckets[y] || 0)}</td>
+          ))}
+          <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-foreground">{CAD(buckets['thereafter'])}</td>
+          <td className="px-3 py-2.5 text-right tabular-nums font-bold font-mono text-sm text-foreground">{CAD(total)}</td>
+        </tr>
+      </tbody>
+    </table>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+export default function NotesTab() {
+  const { loans, continuity, recon, settings } = useStore(s => ({
+    loans:      s.loans,
+    continuity: s.continuity,
+    recon:      s.reconciliation,
+    settings:   s.settings,
+  }));
+
+  const yearEnd = settings.fiscalYearEnd;
+  const fyYear  = new Date(yearEnd + 'T00:00:00').getFullYear();
+  const active  = useMemo(() => loans.filter(l => l.status === 'Active'), [loans]);
+
+  // ── Per-loan notes (auto-generated on first render) ───────────────────
+  const [loanNotes, setLoanNotes] = useState<Record<string, string>>(() => {
+    const notes: Record<string, string> = {};
+    loans.filter(l => l.status === 'Active').forEach(l => {
+      notes[l.id] = generateLoanNote(l, l.currentBalance);
+    });
+    return notes;
+  });
+
+  const saveLoanNote = useCallback((id: string, text: string) => {
+    setLoanNotes(prev => ({ ...prev, [id]: text }));
+  }, []);
+
+  const regenerateLoanNote = useCallback((id: string) => {
+    const loan = loans.find(l => l.id === id);
+    if (!loan) return;
+    const tb = getTBBalance(id, recon, loan.currentBalance);
+    setLoanNotes(prev => ({ ...prev, [id]: generateLoanNote(loan, tb.value) }));
+  }, [loans, recon]);
+
+  const regenerateAll = () => {
+    const notes: Record<string, string> = {};
+    active.forEach(l => {
+      const tb = getTBBalance(l.id, recon, l.currentBalance);
+      notes[l.id] = generateLoanNote(l, tb.value);
+    });
+    setLoanNotes(prev => ({ ...prev, ...notes }));
+  };
+
+  // ── Totals ────────────────────────────────────────────────────────────
+  const totalCY = active.reduce((s, l) => s + getTBBalance(l.id, recon, l.currentBalance).value, 0);
+  const totalPY = active.reduce((s, l) => s + (getPriorYearBalance(l.id, continuity) ?? 0), 0);
+  const totalCurrent = active.reduce((s, l) => {
+    const yr = getYEContinuity(l.id, continuity, yearEnd);
+    return s + (yr?.currentPortion ?? l.currentPortion ?? 0);
+  }, 0);
+  const totalLT = active.reduce((s, l) => {
+    const yr = getYEContinuity(l.id, continuity, yearEnd);
+    return s + (yr?.longTermPortion ?? l.longTermPortion ?? 0);
+  }, 0);
+  const hasVariances = active.some(l => getTBBalance(l.id, recon, l.currentBalance).hasVariance);
+
+  return (
+    <div className="flex flex-col">
+
+      {/* ── Section header ──────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between px-6 pt-5 pb-3">
+        <div>
+          <p className="text-xs text-foreground uppercase tracking-widest mb-0.5">{settings.client}</p>
+          <h2 className="text-base font-semibold text-foreground">Note — Long-term Debt</h2>
+          <p className="text-xs text-foreground mt-0.5">For the year ended {fmtDateDisplay(yearEnd)}</p>
         </div>
       </div>
 
-      {/* Notes list */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border">
-        {filtered.length === 0 && (
-          <div className="py-12 text-center text-muted-foreground text-sm">
-            {search ? 'No notes match your search.' : 'No notes yet — click "Add notes" to create one.'}
-          </div>
-        )}
+      {/* ── Main table ──────────────────────────────────────────────────── */}
+      <div className="px-6">
+        <StyledCard className="overflow-hidden">
 
-        {filtered.map(note => {
-          const isOpen     = expanded.has(note.id);
-          const isSelected = selected.has(note.id);
-
-          return (
-            <div key={note.id} className={`${isSelected ? 'bg-primary/[0.03]' : ''}`}>
-              {/* Note header row */}
-              <div className="flex items-center gap-2 px-4 py-3 hover:bg-muted/30 transition-colors group">
-                {/* Checkbox */}
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 accent-primary rounded cursor-pointer flex-shrink-0"
-                  checked={isSelected}
-                  onChange={() => toggleSelect(note.id)}
-                  onClick={e => e.stopPropagation()}
-                />
-
-                {/* Expand toggle */}
-                <button
-                  onClick={() => toggleExpand(note.id)}
-                  className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-muted-foreground/60 hover:text-foreground transition-colors"
-                >
-                  {isOpen
-                    ? <ChevronDown className="w-4 h-4" />
-                    : <ChevronRight className="w-4 h-4" />
-                  }
-                </button>
-
-                {/* Document icon */}
-                <FileText className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-
-                {/* Title (editable inline) */}
-                <input
-                  type="text"
-                  className="flex-1 text-sm font-semibold text-foreground bg-transparent focus:outline-none focus:bg-muted/40 rounded px-1 -ml-1 cursor-text"
-                  value={`${note.number}.${note.title}`}
-                  onChange={e => {
-                    // strip leading "N." prefix if user edits it
-                    const raw = e.target.value.replace(/^\d+\./, '');
-                    updateTitle(note.id, raw.trimStart() || note.title);
-                  }}
-                  onClick={e => e.stopPropagation()}
-                />
-              </div>
-
-              {/* Expanded body */}
-              {isOpen && (
-                <div className="px-12 pb-4 space-y-3">
-                  <textarea
-                    rows={4}
-                    className="input-double-border w-full text-sm px-3 py-2.5 rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground placeholder:text-muted-foreground/50 transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] resize-none focus:outline-none"
-                    placeholder="Enter the note disclosure text…"
-                    value={note.content}
-                    onChange={e => updateContent(note.id, e.target.value)}
-                  />
-                  <Button variant="default" size="sm" className="gap-1.5" onClick={addNote}>
-                    <Plus className="w-3.5 h-3.5" />
-                    Add Type
-                  </Button>
-                </div>
-              )}
+          {/* Toolbar */}
+          <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-muted/30">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold text-foreground uppercase tracking-wide whitespace-nowrap">Long-term Debt</span>
+              <span className="text-[10px] text-foreground bg-muted rounded-full px-2 py-0.5">
+                {active.length} active facilit{active.length === 1 ? 'y' : 'ies'}
+              </span>
             </div>
-          );
-        })}
+            <span className="text-[10px] text-foreground flex items-center gap-1.5">
+              <RefreshCw className="w-3 h-3" />Auto-populated from Loan Register &amp; Continuity
+            </span>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 'calc(100vh - 260px)', minHeight: '200px' }}>
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-muted border-b border-border">
+                  <th className="text-left px-3 py-2.5 text-xs font-semibold text-foreground uppercase tracking-wide whitespace-nowrap w-[17%]">Facility</th>
+                  <th className="text-left px-3 py-2.5 text-xs font-semibold text-foreground uppercase tracking-wide whitespace-nowrap w-[11%]">Lender</th>
+                  <th className="text-left px-3 py-2.5 text-xs font-semibold text-foreground uppercase tracking-wide whitespace-nowrap w-[13%]">Interest Rate</th>
+                  <th className="text-left px-3 py-2.5 text-xs font-semibold text-foreground uppercase tracking-wide whitespace-nowrap">Day Count</th>
+                  <th className="text-left px-3 py-2.5 text-xs font-semibold text-foreground uppercase tracking-wide whitespace-nowrap w-[9%]">Payment</th>
+                  <th className="text-left px-3 py-2.5 text-xs font-semibold text-foreground uppercase tracking-wide whitespace-nowrap w-[9%]">Maturity</th>
+                  <th className="text-left px-3 py-2.5 text-xs font-semibold text-foreground uppercase tracking-wide w-[14%]">Security</th>
+                  <th className="text-right px-3 py-2.5 text-xs font-semibold text-foreground uppercase tracking-wide whitespace-nowrap w-[10%]">
+                    {new Date(yearEnd + 'T00:00:00').toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  </th>
+                  <th className="text-right px-3 py-2.5 text-xs font-semibold text-foreground uppercase tracking-wide whitespace-nowrap w-[10%]">
+                    {new Date(new Date(yearEnd + 'T00:00:00').setFullYear(fyYear - 1)).toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {active.map((l, idx) => {
+                  const tb = getTBBalance(l.id, recon, l.currentBalance);
+                  const py = getPriorYearBalance(l.id, continuity);
+                  const isVar = l.interestType === 'Variable' || l.interestType === 'Floating';
+                  return (
+                    <Fragment key={l.id}>
+                      {/* Data row */}
+                      <tr className="border-b border-border/40 hover:bg-muted/20 align-top">
+                        <td className="px-3 py-2.5">
+                          <div className="font-medium text-foreground leading-snug">{l.name}</div>
+                          {l.currency !== 'CAD' && (
+                            <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
+                              {l.currency}{l.fxRateToCAD ? ` @ ${l.fxRateToCAD.toFixed(4)}` : ''}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5 text-sm text-foreground">{l.lender}</td>
+                        <td className="px-3 py-2.5">
+                          {isVar && l.benchmark ? (
+                            <>
+                              <span className="font-medium text-foreground">{l.benchmark}</span>
+                              {l.spread ? ` + ${l.spread}%` : ''}
+                              <div className="text-xs text-foreground">{fmtPct(l.rate)} eff.</div>
+                            </>
+                          ) : (
+                            <span className="font-medium text-foreground">{fmtPct(l.rate)}</span>
+                          )}
+                          <div className="text-xs text-foreground mt-0.5">{l.interestType}</div>
+                        </td>
+                        <td className="px-3 py-2.5 text-sm text-foreground">{l.dayCountBasis}</td>
+                        <td className="px-3 py-2.5 text-sm text-foreground leading-snug">
+                          {l.paymentFrequency}<br /><span className="text-xs">{l.paymentType}</span>
+                        </td>
+                        <td className="px-3 py-2.5 text-sm text-foreground whitespace-nowrap">
+                          {l.maturityDate ? fmtDateDisplay(l.maturityDate) : <em className="text-foreground">Revolving</em>}
+                        </td>
+                        <td className="px-3 py-2.5 text-xs text-foreground leading-snug">
+                          {l.securityDescription ?? <em className="text-foreground">—</em>}
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular-nums font-mono font-medium text-foreground">
+                          {CAD(tb.value)}
+                          {tb.hasVariance && <AlertTriangle className="w-3 h-3 text-amber-500 inline ml-1 -mt-0.5" />}
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular-nums font-mono text-foreground">
+                          {py !== null ? CAD(py) : <span className="text-xs text-foreground">n/a</span>}
+                        </td>
+                      </tr>
+                      {/* Per-loan note row */}
+                      <RowNote
+                        loanId={l.id}
+                        loanName={l.name}
+                        noteIndex={idx + 1}
+                        value={loanNotes[l.id] ?? ''}
+                        onSave={saveLoanNote}
+                        onRegenerate={regenerateLoanNote}
+                      />
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-border bg-muted/40">
+                  <td colSpan={7} className="px-3 py-2.5 text-sm font-semibold text-foreground">Total long-term debt</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums font-bold font-mono text-sm text-foreground">{CAD(totalCY)}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums font-bold font-mono text-sm text-foreground">{CAD(totalPY)}</td>
+                </tr>
+                <tr className="border-b border-border bg-muted/10">
+                  <td colSpan={7} className="px-3 py-2 text-sm text-foreground pl-7">
+                    Less: current portion — reclassified to current liabilities
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums font-mono text-sm text-foreground">({CAD(totalCurrent)})</td>
+                  <td className="px-3 py-2 text-right tabular-nums font-mono text-sm text-foreground">—</td>
+                </tr>
+                <tr className="bg-muted/30">
+                  <td colSpan={7} className="px-3 py-2.5 text-sm font-semibold text-foreground">Non-current portion</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums font-bold font-mono text-sm text-foreground">{CAD(totalLT)}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-foreground">—</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          {/* Source attribution */}
+          <div className="px-5 py-2 border-t border-border bg-muted/10">
+            <p className="text-[10px] text-foreground flex items-center gap-1.5">
+              <RefreshCw className="w-3 h-3 shrink-0" />
+              {fyYear} balances from trial balance (TB)
+              {hasVariances && <span className="text-amber-600"> · ⚠ reconciling items exist</span>}
+              &nbsp;·&nbsp; {fyYear - 1} comparatives from continuity opening balances
+              &nbsp;·&nbsp; current portion per year-end continuity reclassification
+            </p>
+          </div>
+
+        </StyledCard>
+      </div>
+
+      {/* ── Repayment schedule ───────────────────────────────────────────── */}
+      <div className="px-6 pt-5 pb-6">
+        <StyledCard className="overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-muted/30">
+            <span className="text-xs font-semibold text-foreground uppercase tracking-wide whitespace-nowrap">
+              Principal Repayment Schedule — Next Five Fiscal Years
+            </span>
+            <span className="text-[10px] text-foreground flex items-center gap-1.5">
+              <RefreshCw className="w-3 h-3" />Derived from maturity dates in loan register
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <RepaymentScheduleTable loans={active} yearEnd={yearEnd} />
+          </div>
+        </StyledCard>
       </div>
 
     </div>

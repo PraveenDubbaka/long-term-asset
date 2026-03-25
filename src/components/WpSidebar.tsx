@@ -1066,7 +1066,7 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
                     <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                   )}
                   <Folder className="h-4 w-4 text-primary flex-shrink-0" />
-                  <span className="truncate flex-1 text-foreground">Work Papers</span>
+                  <span className="truncate flex-1 text-foreground">Workpapers</span>
                 </div>
                 {workPapersOpen && (
                   <div className="ml-8">

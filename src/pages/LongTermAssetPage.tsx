@@ -15,7 +15,7 @@ import { ContinuityTab }   from "./ContinuityTab";
 import { AmortizationTab } from "./AmortizationTab";
 import { CovenantsTab }    from "./CovenantsTab";
 import { AJEsTab }         from "./AJEsTab";
-import { NotesTab }        from "./NotesTab";
+import NotesTab             from "./NotesTab";
 
 const engagementsData: Record<string, { client: string; yearEnd: string; status: string }> = {
   "COM-CON-Dec312024": { client: "Shipping Line Inc.", yearEnd: "Dec 31, 2024", status: "In Progress" },
@@ -161,7 +161,7 @@ const LongTermAssetPage = () => {
             {activeTab === "amortization" && <AmortizationTab />}
             {activeTab === "covenants"    && <CovenantsTab />}
             {activeTab === "ajes"         && <AJEsTab />}
-            {activeTab === "notes"        && <NotesTab client={eng.client} yearEnd={eng.yearEnd} />}
+            {activeTab === "notes"        && <NotesTab />}
           </div>
 
         </div>

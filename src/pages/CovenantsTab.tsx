@@ -1,13 +1,15 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Plus, AlertCircle, AlertTriangle, CheckCircle, XCircle, Edit3, ChevronDown,
   ChevronRight, FileText, Trash2, Sparkles, TrendingDown, TrendingUp, Minus, Download,
+  BookOpen, Wand2, CheckSquare, Square, ArrowRight,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { fmtCurrency, exportToExcel, buildCovenantsExport } from '../lib/utils';
 import {
   COVENANT_TEMPLATES, GL_ACCOUNTS, GL_CATEGORY_ORDER, GL_CATEGORY_LABELS,
   computeFormula, getProjectedStatus,
+  parseCovenantDefinition, type ParsedSuggestion,
 } from '../lib/covenantTemplates';
 import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
@@ -110,29 +112,6 @@ export function CovenantsTab() {
         ))}
       </div>
 
-      {/* Alerts */}
-      {breached.length > 0 && (
-        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
-          <XCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <div className="text-sm font-semibold text-red-700 mb-1">{breached.length} Covenant Breach{breached.length > 1 ? 'es' : ''} Detected</div>
-            <div className="text-xs text-red-600">
-              {breached.map(c => { const loan = loans.find(l => l.covenantIds.includes(c.id)); return `${c.name} (${loan?.name || 'Unknown'}): ${c.currentValue} vs threshold ${c.operator} ${c.threshold}`; }).join(' • ')}
-              {' '}Management letter disclosure may be required.
-            </div>
-          </div>
-        </div>
-      )}
-
-      {atRisk.length > 0 && (
-        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-          <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <div className="text-sm font-semibold text-amber-700 mb-1">{atRisk.length} Covenant{atRisk.length > 1 ? 's' : ''} At Risk</div>
-            <div className="text-xs text-amber-600">Monitor closely. Covenant margins are tight and may breach before next test date.</div>
-          </div>
-        </div>
-      )}
 
       {/* Loan Selector + Table */}
       <div className="bg-card border border-border overflow-hidden shadow-[0_2px_8px_hsl(213_40%_20%/0.06)]" style={{ borderRadius: '12px' }}>
@@ -322,53 +301,15 @@ export function CovenantsTab() {
                     {isExpanded && (
                       <tr className="border-b border-border">
                         <td colSpan={11} className="bg-muted/20 px-6 py-4">
-                          <div className="grid grid-cols-3 gap-5 text-xs">
+                          <div className="flex items-start gap-5 text-xs">
                             {/* Formula */}
-                            <div>
+                            <div className="flex-1">
                               <div className="font-semibold text-foreground/50 uppercase tracking-wider mb-2">Formula / Method</div>
                               {cov.useFormulaBuilder && cov.formulaLines ? (
                                 <FormulaDisplay cov={cov} />
                               ) : (
                                 <div className="font-mono bg-background px-2.5 py-2 rounded-lg border border-border text-foreground">{cov.formula || '—'}</div>
                               )}
-                            </div>
-                            {/* Notes */}
-                            <div>
-                              <div className="font-semibold text-foreground/50 uppercase tracking-wider mb-2">Notes</div>
-                              <div className="text-foreground/60">{cov.notes || '—'}</div>
-                              {cov.testedBy && <div className="mt-2 text-foreground/50">Tested by: <span className="text-foreground/70">{cov.testedBy}</span></div>}
-                              {cov.description && <div className="mt-1.5 text-foreground/60">{cov.description}</div>}
-                              {cov.disclosureRequired && (
-                                <div className="mt-3 p-2.5 bg-red-50 border border-red-200 rounded-lg">
-                                  <div className="font-semibold text-red-700">⚠ Disclosure Required</div>
-                                  <div className="text-red-600 mt-0.5">Add note to management letter and financial statements.</div>
-                                </div>
-                              )}
-                            </div>
-                            {/* Actions / Recommendations */}
-                            <div>
-                              {isAlerted ? (
-                                <>
-                                  <div className="font-semibold text-foreground/50 uppercase tracking-wider mb-2">Recommended Actions</div>
-                                  <div className="space-y-1.5">
-                                    {['Contact lender to discuss covenant waiver or amendment', 'Prepare management letter note', 'Request updated financial projections', 'Document in file — upload covenant certificate'].map((a, i) => (
-                                      <div key={i} className="flex items-start gap-1.5 text-foreground/60">
-                                        <span className="text-foreground/40 flex-shrink-0">{i + 1}.</span>{a}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </>
-                              ) : (
-                                <div className="text-foreground/30 italic">No actions required — covenant is in compliance.</div>
-                              )}
-                              <div className="mt-4 flex items-center gap-2">
-                                <Button variant="secondary" size="sm" onClick={() => setEditCovenant(cov)}>
-                                  <Edit3 className="w-3 h-3 mr-1" /> Edit
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => { deleteCovenant(cov.id); toast.success('Covenant removed'); }} className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                                  Remove
-                                </Button>
-                              </div>
                             </div>
                           </div>
                         </td>
@@ -412,7 +353,7 @@ function FormulaDisplay({ cov }: { cov: Covenant }) {
   const numTotal = numLines.reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
   const denTotal = denLines.reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
 
-  const fmtAmt = (v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : v.toFixed(2);
+  const fmtAmt = (v: number) => v === 0 ? '$0' : `$${v.toLocaleString('en-CA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
   const LineRows = ({ lines }: { lines: CovenantFormulaLine[] }) => (
     <>
@@ -446,8 +387,8 @@ function FormulaDisplay({ cov }: { cov: Covenant }) {
             <span className="text-foreground/40">Denominator Total</span>
             <span className="font-bold text-foreground">{fmtAmt(denTotal)}</span>
           </div>
-          <div className="border-t-2 border-primary/20 pt-1.5 flex justify-between text-xs font-bold">
-            <span className="text-foreground/60">= {fmtAmt(numTotal)} ÷ {fmtAmt(denTotal)}</span>
+          <div className="border-t-2 border-primary/20 pt-1.5 text-xs font-bold">
+            <span className="text-foreground/60">{fmtAmt(numTotal)} ÷ {fmtAmt(denTotal)} = </span>
             <span className="text-primary">{denTotal !== 0 ? (numTotal / denTotal).toFixed(2) : '—'}x</span>
           </div>
         </>
@@ -469,7 +410,7 @@ function CovenantFormModal({ open, onClose, covenant, loans, onSave }: {
   open: boolean; onClose: () => void; covenant: Covenant | null;
   loans: { id: string; name: string }[]; onSave: (c: Partial<Covenant>) => void;
 }) {
-  const [activeTab, setActiveTab] = useState<'details' | 'formula'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'definition' | 'formula'>('details');
   const [form, setForm] = useState<Partial<Covenant>>(covenant || {
     type: 'Quantitative', frequency: 'Annual', status: 'Unknown', operator: '>=', threshold: 0,
     useFormulaBuilder: false, isRatioCovenant: true,
@@ -526,13 +467,17 @@ function CovenantFormModal({ open, onClose, covenant, loans, onSave }: {
     >
       {/* Tabs */}
       <div className="flex border-b border-border mb-4 -mt-1">
-        {(['details', 'formula'] as const).map(t => (
+        {(['details', 'definition', 'formula'] as const).map(t => (
           <button
             key={t}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === t ? 'border-primary text-primary' : 'border-transparent text-foreground/60 hover:text-foreground'}`}
             onClick={() => setActiveTab(t)}
           >
-            {t === 'details' ? 'Details' : (
+            {t === 'details' ? 'Details' : t === 'definition' ? (
+              <span className="flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5" /> Definition Parser
+              </span>
+            ) : (
               <span className="flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" /> Formula Builder
               </span>
@@ -574,10 +519,173 @@ function CovenantFormModal({ open, onClose, covenant, loans, onSave }: {
         </div>
       )}
 
+      {activeTab === 'definition' && (
+        <DefinitionParserTab form={form} setForm={setForm} onApplied={() => setActiveTab('formula')} />
+      )}
+
       {activeTab === 'formula' && (
         <FormulaBuilderTab form={form} setForm={setForm} computedCurrent={computedCurrent} computedProjected={computedProjected} IC={IC} />
       )}
     </Modal>
+  );
+}
+
+// ─── Definition Parser Tab ────────────────────────────────────────────────────
+function DefinitionParserTab({
+  form, setForm, onApplied,
+}: {
+  form: Partial<Covenant>;
+  setForm: React.Dispatch<React.SetStateAction<Partial<Covenant>>>;
+  onApplied: () => void;
+}) {
+  const [rawText, setRawText] = useState('');
+  const [suggestions, setSuggestions] = useState<ParsedSuggestion[]>([]);
+  const [parsed, setParsed] = useState(false);
+
+  const handleParse = useCallback(() => {
+    const results = parseCovenantDefinition(rawText);
+    setSuggestions(results);
+    setParsed(true);
+  }, [rawText]);
+
+  const toggle = (id: string) =>
+    setSuggestions(s => s.map(x => x.id === id ? { ...x, selected: !x.selected } : x));
+
+  const flipSign = (id: string) =>
+    setSuggestions(s => s.map(x => x.id === id ? { ...x, sign: x.sign === '+' ? '-' : '+' } : x));
+
+  const applyToFormula = () => {
+    const mkId = () => `fl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const selected = suggestions.filter(s => s.selected);
+    const numLines = selected.filter(s => s.rule.section === 'numerator').map(s => ({
+      id: mkId(), sign: s.sign, description: s.rule.description,
+      glAccount: s.rule.glCode, amount: 0, projectedAmount: 0, multiplier: 1,
+    } as CovenantFormulaLine));
+    const denLines = selected.filter(s => s.rule.section === 'denominator').map(s => ({
+      id: mkId(), sign: s.sign, description: s.rule.description,
+      glAccount: s.rule.glCode, amount: 0, projectedAmount: 0, multiplier: 1,
+    } as CovenantFormulaLine));
+    setForm(p => ({
+      ...p,
+      useFormulaBuilder: true,
+      isRatioCovenant: denLines.length > 0,
+      formulaLines: [...(p.formulaLines ?? []), ...numLines],
+      denominatorLines: denLines.length > 0 ? [...(p.denominatorLines ?? []), ...denLines] : p.denominatorLines,
+    }));
+    onApplied();
+  };
+
+  // Highlight matched keywords in the raw text
+  const highlightedText = useMemo(() => {
+    if (!parsed || !suggestions.length || !rawText) return null;
+    const ranges = suggestions
+      .map(s => ({ start: s.matchStart, end: s.matchEnd, id: s.id, selected: s.selected }))
+      .sort((a, b) => a.start - b.start);
+    const parts: React.ReactNode[] = [];
+    let cursor = 0;
+    for (const r of ranges) {
+      if (r.start > cursor) parts.push(rawText.slice(cursor, r.start));
+      parts.push(
+        <mark key={r.id} className={`rounded px-0.5 ${r.selected ? 'bg-primary/20 text-primary font-medium' : 'bg-muted line-through text-muted-foreground'}`}>
+          {rawText.slice(r.start, r.end)}
+        </mark>
+      );
+      cursor = r.end;
+    }
+    if (cursor < rawText.length) parts.push(rawText.slice(cursor));
+    return parts;
+  }, [parsed, suggestions, rawText]);
+
+  return (
+    <div className="space-y-4">
+      {/* Info banner */}
+      <div className="flex items-start gap-2.5 bg-primary/5 border border-primary/15 rounded-xl px-3.5 py-3 text-xs text-primary/80">
+        <BookOpen className="w-4 h-4 shrink-0 mt-0.5" />
+        <div>
+          <span className="font-semibold">Agreement Definition Parser</span>
+          <span className="text-primary/60 ml-1">— Paste the covenant definition from your loan agreement. The system will identify financial terms, map them to GL accounts, and suggest formula lines for your review.</span>
+        </div>
+      </div>
+
+      {/* Input */}
+      <div>
+        <label className="block text-xs font-semibold text-foreground/60 mb-1.5 uppercase tracking-wider">Covenant Definition Text (from agreement)</label>
+        <textarea
+          className="w-full h-32 text-xs border border-border rounded-lg px-3 py-2 bg-background resize-none focus:outline-none focus:border-primary/40 placeholder:text-muted-foreground/40 font-mono leading-relaxed"
+          placeholder={`Paste the exact covenant definition from the loan agreement here.\n\nExample: "DSCR means, for any period, the ratio of (a) EBITDA for such period to (b) the sum of all scheduled principal payments and interest expense on all outstanding long-term debt during such period, excluding any non-recurring or one-time charges."`}
+          value={rawText}
+          onChange={e => { setRawText(e.target.value); setParsed(false); setSuggestions([]); }}
+        />
+      </div>
+
+      <Button variant="default" onClick={handleParse} disabled={!rawText.trim()} className="w-full">
+        <Wand2 className="w-3.5 h-3.5 mr-1.5" /> Identify Components
+      </Button>
+
+      {/* Highlighted text preview */}
+      {parsed && (
+        <div className="border border-border rounded-lg px-3 py-2.5 bg-muted/30 text-xs leading-relaxed font-mono text-foreground/70">
+          {suggestions.length === 0
+            ? <span className="text-muted-foreground italic">No known financial terms detected. Try pasting more of the covenant definition, or add lines manually in the Formula Builder.</span>
+            : highlightedText
+          }
+        </div>
+      )}
+
+      {/* Suggestions */}
+      {parsed && suggestions.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-foreground/60 uppercase tracking-wider">{suggestions.filter(s => s.selected).length} of {suggestions.length} components selected</span>
+            <button className="text-xs text-primary hover:underline" onClick={() => setSuggestions(s => s.map(x => ({ ...x, selected: true })))}>Select all</button>
+          </div>
+
+          {(['numerator', 'denominator'] as const).map(section => {
+            const rows = suggestions.filter(s => s.rule.section === section);
+            if (!rows.length) return null;
+            return (
+              <div key={section}>
+                <div className="text-[10px] font-semibold text-foreground/40 uppercase tracking-wider mb-1.5">
+                  {section === 'numerator' ? 'Numerator / Dividend' : 'Denominator / Divisor'}
+                </div>
+                <div className="border border-border rounded-lg overflow-hidden">
+                  {rows.map((s, i) => (
+                    <div key={s.id} className={`flex items-start gap-2.5 px-3 py-2.5 text-xs ${i > 0 ? 'border-t border-border' : ''} ${s.selected ? 'bg-background' : 'bg-muted/30 opacity-60'}`}>
+                      <button className="mt-0.5 shrink-0 text-foreground/50 hover:text-primary" onClick={() => toggle(s.id)}>
+                        {s.selected ? <CheckSquare className="w-3.5 h-3.5 text-primary" /> : <Square className="w-3.5 h-3.5" />}
+                      </button>
+                      <button
+                        className={`shrink-0 w-5 h-5 rounded flex items-center justify-center font-bold text-[11px] border transition-colors ${s.sign === '+' ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100' : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'}`}
+                        title="Click to flip sign"
+                        onClick={() => flipSign(s.id)}
+                      >{s.sign}</button>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-foreground">{s.rule.description}</div>
+                        <div className="text-muted-foreground mt-0.5">
+                          GL <span className="font-mono">{s.rule.glCode}</span>
+                          <span className="mx-1.5 text-border">·</span>
+                          Matched: "<span className="text-foreground/70 italic">{s.matchedKeyword}</span>"
+                          {s.isExclusion && <span className="ml-1.5 text-amber-600 font-medium">· Exclusion context detected</span>}
+                        </div>
+                        {s.rule.note && <div className="mt-1 text-amber-600 text-[10px]">⚠ {s.rule.note}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
+          <div className="pt-1">
+            <Button variant="default" onClick={applyToFormula} disabled={!suggestions.some(s => s.selected)} className="w-full">
+              <ArrowRight className="w-3.5 h-3.5 mr-1.5" />
+              Apply {suggestions.filter(s => s.selected).length} Selected Lines to Formula Builder
+            </Button>
+            <p className="text-[10px] text-muted-foreground text-center mt-1.5">GL amounts will be set to $0 — fill them in the Formula Builder tab</p>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
