@@ -80,8 +80,8 @@ export function AutomationProgress({ loan, onComplete }: Props) {
       {/* Header */}
       <div className="px-5 pt-4 pb-3">
         <div className="flex items-center justify-between mb-1">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Automation Progress</p>
-          <span className="text-xs font-mono text-muted-foreground bg-muted/40 px-2 py-0.5 rounded-md">{formatTime(elapsedSeconds)}</span>
+          <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Automation Progress</p>
+          <span className="text-xs font-mono text-foreground bg-muted/40 px-2 py-0.5 rounded-md">{formatTime(elapsedSeconds)}</span>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
@@ -92,7 +92,7 @@ export function AutomationProgress({ loan, onComplete }: Props) {
           </div>
           <span className="text-sm font-bold text-primary w-10 text-right">{progress}%</span>
         </div>
-        <p className="text-xs text-muted-foreground mt-1 truncate">{loan.name} — {loan.refNumber}</p>
+        <p className="text-xs text-foreground mt-1 truncate">{loan.name} — {loan.refNumber}</p>
       </div>
 
       {/* Orb */}
@@ -107,7 +107,7 @@ export function AutomationProgress({ loan, onComplete }: Props) {
             <LukaIcon size={22} />
           </div>
         </div>
-        <p className={cn("text-sm font-medium", progress < 100 ? "text-muted-foreground luka-thinking-text" : "text-green-600")}>
+        <p className={cn("text-sm font-medium", progress < 100 ? "text-foreground luka-thinking-text" : "text-green-600")}>
           {progress < 100 ? "Luka is working" : "Automation complete!"}
         </p>
         {progress < 100 && (
@@ -132,7 +132,7 @@ export function AutomationProgress({ loan, onComplete }: Props) {
             )} />
             <span className={cn(
               "text-xs font-mono",
-              i === revealedLines.length - 1 ? "text-foreground" : "text-muted-foreground"
+              i === revealedLines.length - 1 ? "text-foreground" : "text-foreground"
             )}>
               {line}
             </span>

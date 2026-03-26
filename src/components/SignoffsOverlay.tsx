@@ -115,7 +115,7 @@ function PreparerAvatar({ name, status }: { name: string; status: Preparer["stat
           <ellipse cx="18" cy="30" rx="12" ry="8" fill="#c9cdd4" />
         </svg>
       </div>
-      <span className="text-[10px] text-muted-foreground">{name}</span>
+      <span className="text-[10px] text-foreground">{name}</span>
     </div>
   );
 }
@@ -135,7 +135,7 @@ function SignoffButton({ status }: { status: Preparer["status"] }) {
       {isRejected ? (
         <XSquare className="w-5 h-5 text-destructive" />
       ) : (
-        <CheckSquare className="w-5 h-5 text-muted-foreground" />
+        <CheckSquare className="w-5 h-5 text-foreground" />
       )}
     </div>
   );
@@ -228,7 +228,7 @@ export function SignoffsOverlay({ open, onClose, anchorLeft }: SignoffsOverlayPr
                 >
                   <div className="flex items-center gap-1.5 flex-1 min-w-0 px-3 py-2">
                     <svg
-                      className={cn("h-3 w-3 text-muted-foreground transition-transform shrink-0", section.isExpanded && "rotate-90")}
+                      className={cn("h-3 w-3 text-foreground transition-transform shrink-0", section.isExpanded && "rotate-90")}
                       fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -255,7 +255,7 @@ export function SignoffsOverlay({ open, onClose, anchorLeft }: SignoffsOverlayPr
                     >
                       {/* Item label */}
                       <div className="flex-1 min-w-0 px-3 py-2.5 pl-7">
-                        <span className="text-xs text-foreground/80 truncate block">{item.label}</span>
+                        <span className="text-xs text-foreground truncate block">{item.label}</span>
                       </div>
                       {/* Preparer checkboxes */}
                       {preparers.map(p => {

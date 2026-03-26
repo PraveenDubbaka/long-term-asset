@@ -40,7 +40,7 @@ export function CapAssetDisposalsTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Disposals Schedule</h2>
-          <p className="text-xs text-foreground/60 mt-0.5">
+          <p className="text-xs text-foreground mt-0.5">
             Year end: October 31, 2024 · Capital asset disposals and gain / (loss) on disposal
           </p>
         </div>
@@ -63,7 +63,7 @@ export function CapAssetDisposalsTab() {
         ].map(k => (
           <StyledCard key={k.label} className="px-4 py-3">
             <div className={`text-sm font-bold tabular-nums ${k.color ?? 'text-foreground'}`}>{k.value}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">{k.label}</div>
+            <div className="text-xs text-foreground mt-0.5">{k.label}</div>
           </StyledCard>
         ))}
       </div>
@@ -101,20 +101,20 @@ export function CapAssetDisposalsTab() {
                     <td className="px-3 py-3">
                       <Badge variant="outline" className="text-xs">{a.category}</Badge>
                     </td>
-                    <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{a.dateAdded ?? '—'}</td>
+                    <td className="px-3 py-3 text-xs text-foreground whitespace-nowrap">{a.dateAdded ?? '—'}</td>
                     <td className="px-3 py-3 text-right tabular-nums font-mono text-sm">${fmt(a.disposals2024)}</td>
-                    <td className="px-3 py-3 text-right tabular-nums font-mono text-sm text-muted-foreground">${fmt(a.amortReductions2024)}</td>
+                    <td className="px-3 py-3 text-right tabular-nums font-mono text-sm text-foreground">${fmt(a.amortReductions2024)}</td>
                     <td className="px-3 py-3 text-right tabular-nums font-mono text-sm">${fmt(carrying)}</td>
                     <td className="px-3 py-3 text-right tabular-nums font-mono text-sm">${fmt(a.proceedsOnDisposal)}</td>
                     <td className="px-3 py-3 text-right tabular-nums font-mono text-sm font-semibold">
-                      <span className={gl > 0 ? 'text-emerald-600' : gl < 0 ? 'text-red-600' : 'text-muted-foreground'}>
+                      <span className={gl > 0 ? 'text-emerald-600' : gl < 0 ? 'text-red-600' : 'text-foreground'}>
                         {gl > 0 ? '+$' + fmt(gl) : gl < 0 ? '($' + fmt(-gl) + ')' : '—'}
                       </span>
                     </td>
                     <td className="px-3 py-3 text-center">
                       {a.wpRef
                         ? <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{a.wpRef}</span>
-                        : <span className="text-muted-foreground text-xs">—</span>}
+                        : <span className="text-foreground text-xs">—</span>}
                     </td>
                     <td className="px-3 py-3 max-w-[220px]">
                       {a.notes
@@ -122,7 +122,7 @@ export function CapAssetDisposalsTab() {
                             <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
                             <span className="line-clamp-2">{a.notes}</span>
                           </div>
-                        : <span className="text-muted-foreground text-xs">—</span>}
+                        : <span className="text-foreground text-xs">—</span>}
                     </td>
                   </tr>
                 );
@@ -134,7 +134,7 @@ export function CapAssetDisposalsTab() {
                   Total — {disposed.length} disposal{disposed.length !== 1 ? 's' : ''}
                 </td>
                 <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm">${fmt(totalCost)}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-muted-foreground">${fmt(totalAccumAmort)}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-foreground">${fmt(totalAccumAmort)}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm">${fmt(totalCarrying)}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm">${fmt(totalProceeds)}</td>
                 <td className={`px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm ${totalGainLoss > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
@@ -155,12 +155,12 @@ export function CapAssetDisposalsTab() {
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-1.5 text-xs">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Original cost of disposed assets:</span>
+              <span className="text-foreground">Original cost of disposed assets:</span>
               <span className="tabular-nums font-mono">${fmt(totalCost)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Less: accumulated amortization:</span>
-              <span className="tabular-nums font-mono text-muted-foreground">({fmt(totalAccumAmort)})</span>
+              <span className="text-foreground">Less: accumulated amortization:</span>
+              <span className="tabular-nums font-mono text-foreground">({fmt(totalAccumAmort)})</span>
             </div>
             <div className="flex justify-between border-t border-border pt-1 font-semibold">
               <span>Carrying amount at disposal:</span>
@@ -169,12 +169,12 @@ export function CapAssetDisposalsTab() {
           </div>
           <div className="space-y-1.5 text-xs">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Proceeds on disposal:</span>
+              <span className="text-foreground">Proceeds on disposal:</span>
               <span className="tabular-nums font-mono">${fmt(totalProceeds)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Less: carrying amount:</span>
-              <span className="tabular-nums font-mono text-muted-foreground">({fmt(totalCarrying)})</span>
+              <span className="text-foreground">Less: carrying amount:</span>
+              <span className="tabular-nums font-mono text-foreground">({fmt(totalCarrying)})</span>
             </div>
             <div className={`flex justify-between border-t border-border pt-1 font-semibold ${totalGainLoss > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
               <span>Gain / (Loss) on disposal:</span>

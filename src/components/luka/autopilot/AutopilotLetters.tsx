@@ -77,7 +77,7 @@ export function AutopilotLetters({ loan, onComplete }: Props) {
         <div className="flex-1 min-w-0 overflow-y-auto space-y-3">
           <div className="border border-border rounded-xl overflow-hidden">
             <div className="px-4 py-2.5 bg-muted/40 border-b border-border flex items-center justify-between">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Letter Templates</p>
+              <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Letter Templates</p>
               <span className="text-[10px] text-amber-600 font-medium bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full">Required</span>
             </div>
             <div className="divide-y divide-border">
@@ -93,7 +93,7 @@ export function AutopilotLetters({ loan, onComplete }: Props) {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1 border border-border rounded-md px-2 py-1 text-xs text-muted-foreground bg-muted/20 cursor-pointer hover:bg-muted/40">
+                      <div className="flex items-center gap-1 border border-border rounded-md px-2 py-1 text-xs text-foreground bg-muted/20 cursor-pointer hover:bg-muted/40">
                         {template.type}
                         <ChevronDown className="w-3 h-3 ml-1" />
                       </div>
@@ -120,10 +120,10 @@ export function AutopilotLetters({ loan, onComplete }: Props) {
               <div className="px-4 py-2.5 bg-primary/5 border-b border-primary/20 flex items-center justify-between">
                 <p className="text-xs font-semibold text-primary">Letter Preview</p>
                 <div className="flex items-center gap-1">
-                  <button className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-muted/40 transition-colors">
+                  <button className="flex items-center gap-1 text-[10px] text-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-muted/40 transition-colors">
                     <Share2 className="w-3 h-3" /> Share
                   </button>
-                  <button className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-muted/40 transition-colors">
+                  <button className="flex items-center gap-1 text-[10px] text-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-muted/40 transition-colors">
                     <Edit3 className="w-3 h-3" /> Edit
                   </button>
                   <button
@@ -135,7 +135,7 @@ export function AutopilotLetters({ loan, onComplete }: Props) {
                 </div>
               </div>
               <div className="p-4 bg-white dark:bg-card">
-                <pre className="text-[10px] text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed">
+                <pre className="text-[10px] text-foreground font-mono whitespace-pre-wrap leading-relaxed">
                   {letterPreview.replace("[Loan Reference]", loan.refNumber).replace("[Lender Name]", loan.lender)}
                 </pre>
               </div>

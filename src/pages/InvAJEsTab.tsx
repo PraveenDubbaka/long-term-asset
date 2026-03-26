@@ -70,7 +70,7 @@ export function InvAJEsTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Adjusting Journal Entries</h2>
-          <p className="text-xs text-foreground/60 mt-0.5">Investment workpaper AJEs · ASPE Part II · FY December 31, 2025</p>
+          <p className="text-xs text-foreground mt-0.5">Investment workpaper AJEs · ASPE Part II · FY December 31, 2025</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" size="sm" onClick={handleExport}>
@@ -93,7 +93,7 @@ export function InvAJEsTab() {
             <div className="text-2xl font-bold text-foreground">{s.count}</div>
             <div>
               <div className="text-sm font-medium text-foreground">{s.label}</div>
-              <div className="text-xs text-muted-foreground">{s.msg}</div>
+              <div className="text-xs text-foreground">{s.msg}</div>
             </div>
           </StyledCard>
         ))}
@@ -125,7 +125,7 @@ export function InvAJEsTab() {
                 onClick={() => setExpandedId(isOpen ? null : je.id)}
               >
                 <div className="flex items-center gap-3">
-                  {isOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                  {isOpen ? <ChevronDown className="w-4 h-4 text-foreground" /> : <ChevronRight className="w-4 h-4 text-foreground" />}
                   <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{je.entryNo}</span>
                   <span className="font-medium text-foreground text-sm">{je.description}</span>
                   <Badge variant="outline" className="text-xs">{TYPE_LABELS[je.type]}</Badge>
@@ -137,7 +137,7 @@ export function InvAJEsTab() {
                   <Badge variant={STATUS_CFG[je.status].variant} className="text-xs">
                     {STATUS_CFG[je.status].label}
                   </Badge>
-                  <span className="text-xs tabular-nums text-muted-foreground">Dr ${fmt(dr)}</span>
+                  <span className="text-xs tabular-nums text-foreground">Dr ${fmt(dr)}</span>
                 </div>
               </button>
 
@@ -146,7 +146,7 @@ export function InvAJEsTab() {
                 <div className="border-t border-border">
                   {/* Rationale */}
                   <div className="px-4 py-3 bg-muted/20 border-b border-border">
-                    <p className="text-xs text-muted-foreground leading-relaxed">{je.rationale}</p>
+                    <p className="text-xs text-foreground leading-relaxed">{je.rationale}</p>
                     {je.notes && (
                       <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">
                         ⚑ {je.notes}
@@ -158,24 +158,24 @@ export function InvAJEsTab() {
                   <table className="w-full text-sm border-collapse">
                     <thead>
                       <tr className="border-b border-border bg-muted/50">
-                        <th className="py-2 px-5 font-semibold text-foreground/40 text-left">Account</th>
-                        <th className="py-2 px-5 font-semibold text-foreground/40 text-left">GL Code</th>
-                        <th className="py-2 px-5 font-semibold text-foreground/40 text-right">Debit</th>
-                        <th className="py-2 px-5 font-semibold text-foreground/40 text-right">Credit</th>
-                        <th className="py-2 px-5 font-semibold text-foreground/40 text-left">Reference</th>
+                        <th className="py-2 px-5 font-semibold text-foreground text-left">Account</th>
+                        <th className="py-2 px-5 font-semibold text-foreground text-left">GL Code</th>
+                        <th className="py-2 px-5 font-semibold text-foreground text-right">Debit</th>
+                        <th className="py-2 px-5 font-semibold text-foreground text-right">Credit</th>
+                        <th className="py-2 px-5 font-semibold text-foreground text-left">Reference</th>
                       </tr>
                     </thead>
                     <tbody>
                       {je.lines.map((l, i) => (
                         <tr key={i} className="border-b border-border hover:bg-muted/30">
                           <td className="py-2.5 px-5 text-foreground">{l.account}</td>
-                          <td className="py-2.5 px-5 text-muted-foreground text-xs font-mono">{l.glCode}</td>
+                          <td className="py-2.5 px-5 text-foreground text-xs font-mono">{l.glCode}</td>
                           <td className="py-2.5 px-5 text-right tabular-nums text-foreground">{l.dr > 0 ? `$${fmt(l.dr)}` : '—'}</td>
                           <td className="py-2.5 px-5 text-right tabular-nums text-foreground">{l.cr > 0 ? `$${fmt(l.cr)}` : '—'}</td>
-                          <td className="py-2.5 px-5 text-muted-foreground text-xs">
+                          <td className="py-2.5 px-5 text-foreground text-xs">
                             {i === 0 && je.wpRef
                               ? <span className="font-mono">{je.wpRef}</span>
-                              : <span className="text-foreground/25">—</span>}
+                              : <span className="text-foreground">—</span>}
                           </td>
                         </tr>
                       ))}

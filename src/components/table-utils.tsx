@@ -100,7 +100,7 @@ export function ColumnToggleButton<T extends string>({
         Columns
         <span className={[
           'ml-0.5 min-w-[16px] h-4 flex items-center justify-center rounded-full text-[10px] font-bold px-0.5',
-          open ? 'bg-white/20 text-primary-foreground' : 'bg-muted text-muted-foreground',
+          open ? 'bg-white/20 text-primary-foreground' : 'bg-muted text-foreground',
         ].join(' ')}>
           {visCount}/{toggleable.length}
         </span>
@@ -109,7 +109,7 @@ export function ColumnToggleButton<T extends string>({
       {open && (
         <div className="absolute right-0 top-full mt-1.5 z-[200] bg-background border border-border rounded-lg shadow-xl py-1 min-w-[190px]">
           <div className="px-3 py-1.5 border-b border-border mb-0.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Toggle Columns</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground">Toggle Columns</p>
           </div>
           <div className="max-h-72 overflow-y-auto">
             {toggleable.map(col => {
@@ -130,7 +130,7 @@ export function ColumnToggleButton<T extends string>({
                       </svg>
                     )}
                   </span>
-                  <span className={vis ? 'text-foreground' : 'text-muted-foreground/60'}>{col.label}</span>
+                  <span className={vis ? 'text-foreground' : 'text-foreground'}>{col.label}</span>
                 </button>
               );
             })}
@@ -142,10 +142,10 @@ export function ColumnToggleButton<T extends string>({
             >
               Show all
             </button>
-            <span className="text-muted-foreground/40">·</span>
+            <span className="text-foreground">·</span>
             <button
               onClick={() => toggleable.forEach(c => { if (isVisible(c.id)) onToggle(c.id); })}
-              className="text-[10px] text-muted-foreground hover:text-foreground hover:underline"
+              className="text-[10px] text-foreground hover:text-foreground hover:underline"
             >
               Hide all
             </button>

@@ -69,7 +69,7 @@ const TH = ({ children, right }: { children: React.ReactNode; right?: boolean })
 const TD = ({ children, right, bold, muted, mono }: {
   children: React.ReactNode; right?: boolean; bold?: boolean; muted?: boolean; mono?: boolean;
 }) => (
-  <td className={`px-2 py-1.5 text-xs ${right ? 'text-right' : 'text-left'} ${bold ? 'font-semibold' : ''} ${muted ? 'text-muted-foreground' : ''} ${mono ? 'tabular-nums font-mono' : ''}`}>
+  <td className={`px-2 py-1.5 text-xs ${right ? 'text-right' : 'text-left'} ${bold ? 'font-semibold' : ''} ${muted ? 'text-foreground' : ''} ${mono ? 'tabular-nums font-mono' : ''}`}>
     {children}
   </td>
 );
@@ -139,7 +139,7 @@ export function CapAssetScheduleTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Capital Asset Schedule</h2>
-          <p className="text-xs text-foreground/60 mt-0.5">
+          <p className="text-xs text-foreground mt-0.5">
             Year end: October 31, 2024 · Declining balance method · Half-year rule on additions
           </p>
         </div>
@@ -170,7 +170,7 @@ export function CapAssetScheduleTab() {
         ].map(k => (
           <StyledCard key={k.label} className="px-4 py-3">
             <div className="text-sm font-bold tabular-nums text-foreground">{k.value}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">{k.label}</div>
+            <div className="text-xs text-foreground mt-0.5">{k.label}</div>
           </StyledCard>
         ))}
       </div>
@@ -201,7 +201,7 @@ export function CapAssetScheduleTab() {
                 {capVisible('aa2024') && <ThResizable colId="aa2024" width={capGetWidth('aa2024')} onResizeStart={cph('aa2024')} className="px-2 py-2.5 text-xs font-semibold text-violet-600 uppercase tracking-wide text-right whitespace-nowrap">AA 2024</ThResizable>}
                 {/* NBV section */}
                 {capVisible('nbv2024') && <ThResizable colId="nbv2024" width={capGetWidth('nbv2024')} onResizeStart={cph('nbv2024')} className="px-2 py-2.5 text-xs font-semibold text-emerald-700 uppercase tracking-wide text-right whitespace-nowrap border-l border-border">NBV 2024</ThResizable>}
-                {capVisible('nbv2023') && <ThResizable colId="nbv2023" width={capGetWidth('nbv2023')} onResizeStart={cph('nbv2023')} className="px-2 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide text-right whitespace-nowrap">NBV 2023</ThResizable>}
+                {capVisible('nbv2023') && <ThResizable colId="nbv2023" width={capGetWidth('nbv2023')} onResizeStart={cph('nbv2023')} className="px-2 py-2.5 text-xs font-semibold text-foreground uppercase tracking-wide text-right whitespace-nowrap">NBV 2023</ThResizable>}
                 {capVisible('wpRef') && <ThResizable colId="wpRef" width={capGetWidth('wpRef')} onResizeStart={cph('wpRef')} className="px-2 py-2.5 text-xs font-semibold text-foreground uppercase tracking-wide text-left whitespace-nowrap">WP Ref</ThResizable>}
               </tr>
             </thead>
@@ -222,10 +222,10 @@ export function CapAssetScheduleTab() {
                       <td colSpan={capVisCount} className="px-3 py-2">
                         <div className="flex items-center gap-2">
                           {isOpen
-                            ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                            : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />}
+                            ? <ChevronDown className="w-3.5 h-3.5 text-foreground flex-shrink-0" />
+                            : <ChevronRight className="w-3.5 h-3.5 text-foreground flex-shrink-0" />}
                           <span className="font-semibold text-sm text-foreground">{cat}</span>
-                          <span className="text-muted-foreground text-xs hidden xl:inline">
+                          <span className="text-foreground text-xs hidden xl:inline">
                             CCA class: N/A · Rate method: Declining balance · Rate unit: % ·
                             Group rate: {cfg.rate} · Group pro-rate: 12/12 months · Half normal amortization: Yes
                           </span>
@@ -268,7 +268,7 @@ export function CapAssetScheduleTab() {
                         {capVisible('reductions') && <TD right mono>{fmtPos(a.amortReductions2024)}</TD>}
                         {capVisible('adjOpen') && <TD right mono>{fmtC(a.adjustedOpeningAmort)}</TD>}
                         {capVisible('rate') && <td className="px-2 py-1.5 text-center text-xs">{a.amortRate > 0 ? a.amortRate + '%' : 'N/A'}</td>}
-                        {capVisible('proRate') && <td className="px-2 py-1.5 text-center text-xs text-muted-foreground">{a.amortRate > 0 ? a.proRateMonths : '—'}</td>}
+                        {capVisible('proRate') && <td className="px-2 py-1.5 text-center text-xs text-foreground">{a.amortRate > 0 ? a.proRateMonths : '—'}</td>}
                         {capVisible('amortExp') && <TD right mono>{fmtPos(a.amortExpense2024)}</TD>}
                         {capVisible('aa2024') && <TD right mono>{fmtC(a.accumAmort2024)}</TD>}
                         {/* NBV */}
@@ -278,7 +278,7 @@ export function CapAssetScheduleTab() {
                           <td className="px-2 py-1.5 text-xs">
                             {a.wpRef
                               ? <span className="font-mono bg-muted px-1 py-0.5 rounded text-xs">{a.wpRef}</span>
-                              : <span className="text-muted-foreground">—</span>}
+                              : <span className="text-foreground">—</span>}
                           </td>
                         )}
                       </tr>
@@ -302,7 +302,7 @@ export function CapAssetScheduleTab() {
                       {capVisible('amortExp') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs">{t.amortExpense > 0 ? '$' + fmt(t.amortExpense) : '—'}</td>}
                       {capVisible('aa2024') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs">${fmt(t.accumAmort2024)}</td>}
                       {capVisible('nbv2024') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs font-bold text-emerald-700 border-l border-border/40">${fmt(t.nbv2024)}</td>}
-                      {capVisible('nbv2023') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs text-muted-foreground">${fmt(t.nbv2023)}</td>}
+                      {capVisible('nbv2023') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs text-foreground">${fmt(t.nbv2023)}</td>}
                       {capVisible('wpRef') && <td />}
                     </tr>
                   </React.Fragment>
@@ -333,7 +333,7 @@ export function CapAssetScheduleTab() {
                 {capVisible('amortExp') && <td className="px-2 py-2.5 text-right tabular-nums font-mono text-xs font-bold">${fmt(grand.amortExpense)}</td>}
                 {capVisible('aa2024') && <td className="px-2 py-2.5 text-right tabular-nums font-mono text-xs font-bold">${fmt(grand.accumAmort2024)}</td>}
                 {capVisible('nbv2024') && <td className="px-2 py-2.5 text-right tabular-nums font-mono text-sm font-bold text-emerald-700 border-l border-border/40">${fmt(grand.nbv2024)}</td>}
-                {capVisible('nbv2023') && <td className="px-2 py-2.5 text-right tabular-nums font-mono text-xs font-bold text-muted-foreground">${fmt(grand.nbv2023)}</td>}
+                {capVisible('nbv2023') && <td className="px-2 py-2.5 text-right tabular-nums font-mono text-xs font-bold text-foreground">${fmt(grand.nbv2023)}</td>}
                 {capVisible('wpRef') && <td />}
               </tr>
             </tfoot>
@@ -341,7 +341,7 @@ export function CapAssetScheduleTab() {
         </div>
       </StyledCard>
 
-      <p className="text-xs text-muted-foreground italic">
+      <p className="text-xs text-foreground italic">
         See BULK I for capital asset opening balances. All farm buildings are class 6 on T2S8.
         Class 1 buildings separated for client AgExpert G/L reconciliation purposes.
       </p>

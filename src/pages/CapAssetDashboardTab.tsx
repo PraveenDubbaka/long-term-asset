@@ -101,7 +101,7 @@ export function CapAssetDashboardTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Capital Asset Dashboard</h2>
-          <p className="text-xs text-foreground/60 mt-0.5">
+          <p className="text-xs text-foreground mt-0.5">
             Year end: October 31, 2024 · Summary of all capital asset activity
           </p>
         </div>
@@ -122,7 +122,7 @@ export function CapAssetDashboardTab() {
             <k.icon className={`w-8 h-8 ${k.color} opacity-75`} />
             <div>
               <div className={`text-sm font-bold tabular-nums ${k.color}`}>{k.value}</div>
-              <div className="text-xs text-muted-foreground">{k.label}</div>
+              <div className="text-xs text-foreground">{k.label}</div>
             </div>
           </StyledCard>
         ))}
@@ -141,9 +141,9 @@ export function CapAssetDashboardTab() {
             { label: '= Closing Cost (2024)', value: '$' + fmt(totalCost2024), color: 'text-foreground font-bold' },
           ].map((item, i) => (
             <div key={item.label} className="flex items-center gap-2">
-              {i > 0 && <span className="text-muted-foreground text-lg">→</span>}
+              {i > 0 && <span className="text-foreground text-lg">→</span>}
               <div className="flex flex-col items-center bg-muted rounded-lg px-4 py-2 min-w-[120px]">
-                <span className="text-xs text-muted-foreground whitespace-nowrap">{item.label}</span>
+                <span className="text-xs text-foreground whitespace-nowrap">{item.label}</span>
                 <span className={`tabular-nums font-mono text-sm ${item.color}`}>{item.value}</span>
               </div>
             </div>
@@ -165,9 +165,9 @@ export function CapAssetDashboardTab() {
             { label: '= Closing NBV (2024)', value: '$' + fmt(totalNBV2024),   color: 'text-foreground font-bold' },
           ].map((item, i) => (
             <div key={item.label} className="flex items-center gap-2">
-              {i > 0 && <span className="text-muted-foreground text-lg">→</span>}
+              {i > 0 && <span className="text-foreground text-lg">→</span>}
               <div className="flex flex-col items-center bg-muted rounded-lg px-3 py-2 min-w-[120px]">
-                <span className="text-xs text-muted-foreground whitespace-nowrap">{item.label}</span>
+                <span className="text-xs text-foreground whitespace-nowrap">{item.label}</span>
                 <span className={`tabular-nums font-mono text-sm ${item.color}`}>{item.value}</span>
               </div>
             </div>
@@ -217,7 +217,7 @@ export function CapAssetDashboardTab() {
               { label: 'Accum amort to cost ratio',    value: fmt(totalAccumAmort / totalCost2024 * 100, 1) + '%' },
             ].map(r => (
               <div key={r.label} className="flex justify-between items-center border-b border-border/50 pb-1.5 last:border-0">
-                <span className="text-muted-foreground text-xs">{r.label}</span>
+                <span className="text-foreground text-xs">{r.label}</span>
                 <span className={`tabular-nums font-mono text-xs font-semibold ${r.color ?? 'text-foreground'}`}>{r.value}</span>
               </div>
             ))}
@@ -264,15 +264,15 @@ export function CapAssetDashboardTab() {
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">${fmt(c.cost)}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">
-                      {c.additions > 0 ? <span className="text-primary">+${fmt(c.additions)}</span> : <span className="text-muted-foreground text-xs">—</span>}
+                      {c.additions > 0 ? <span className="text-primary">+${fmt(c.additions)}</span> : <span className="text-foreground text-xs">—</span>}
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">
-                      {c.disposals > 0 ? <span className="text-red-500">${fmt(c.disposals)}</span> : <span className="text-muted-foreground text-xs">—</span>}
+                      {c.disposals > 0 ? <span className="text-red-500">${fmt(c.disposals)}</span> : <span className="text-foreground text-xs">—</span>}
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-amber-600">
-                      {c.amortExp > 0 ? '$' + fmt(c.amortExp) : <span className="text-muted-foreground text-xs">—</span>}
+                      {c.amortExp > 0 ? '$' + fmt(c.amortExp) : <span className="text-foreground text-xs">—</span>}
                     </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-muted-foreground">${fmt(c.accumAmort)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-foreground">${fmt(c.accumAmort)}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm text-emerald-700">${fmt(c.nbv)}</td>
                     <td className="px-3 py-2.5 text-center">
                       <div className="flex flex-col items-center gap-1">
@@ -300,7 +300,7 @@ export function CapAssetDashboardTab() {
                   {totalDisposals > 0 ? '$' + fmt(totalDisposals) : '—'}
                 </td>
                 <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm text-amber-600">${fmt(totalAmortExp)}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm text-muted-foreground">${fmt(totalAccumAmort)}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm text-foreground">${fmt(totalAccumAmort)}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm text-emerald-700">${fmt(totalNBV2024)}</td>
                 <td className="px-3 py-2.5 text-center">
                   <span className="text-xs tabular-nums font-bold">{fmt(pctAmort, 0)}%</span>

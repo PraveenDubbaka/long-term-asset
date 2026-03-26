@@ -158,7 +158,7 @@ export function AJEsTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Adjusting Journal Entries</h2>
-          <p className="text-xs text-foreground/60 mt-0.5">Year-end AJEs: accrued interest, current portion reclass, FX translation</p>
+          <p className="text-xs text-foreground mt-0.5">Year-end AJEs: accrued interest, current portion reclass, FX translation</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" size="sm" onClick={handleExportAll}>
@@ -181,7 +181,7 @@ export function AJEsTab() {
             <div className="text-2xl font-bold text-foreground">{s.count}</div>
             <div>
               <div className="text-xs font-semibold text-foreground">{s.label}</div>
-              <div className="text-xs text-muted-foreground">{s.msg}</div>
+              <div className="text-xs text-foreground">{s.msg}</div>
             </div>
           </StyledCard>
         ))}
@@ -202,7 +202,7 @@ export function AJEsTab() {
             className={`px-3 py-1.5 text-xs rounded-full font-medium transition-all ${
               filterStatus === s
                 ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                : 'bg-muted text-foreground hover:bg-muted/80'
             }`}
           >
             {s}
@@ -213,7 +213,7 @@ export function AJEsTab() {
           className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full font-medium transition-all ${
             filterStatus === 'Deleted'
               ? 'bg-red-500 text-white'
-              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              : 'bg-muted text-foreground hover:bg-muted/80'
           }`}
         >
           <Trash2 className="w-3 h-3" /> Deleted
@@ -235,9 +235,9 @@ export function AJEsTab() {
 
           // ── Global design-system cell field classes ──────────────────────────
           const BASE = 'input-double-border w-full h-9 text-sm rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] focus:outline-none';
-          const CI  = `${BASE} px-3 placeholder:text-muted-foreground/70`;                      // text input
+          const CI  = `${BASE} px-3 placeholder:text-foreground`;                      // text input
           const CS  = `${BASE} pl-3 pr-8 appearance-none cursor-pointer`;                        // select
-          const CN  = `${BASE} px-3 text-right tabular-nums placeholder:text-muted-foreground/70`; // number input
+          const CN  = `${BASE} px-3 text-right tabular-nums placeholder:text-foreground`; // number input
 
           return (
             <StyledCard key={je.id} className={`overflow-hidden ${je.deleted ? 'opacity-60' : ''}`}>
@@ -248,9 +248,9 @@ export function AJEsTab() {
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-xs font-mono text-foreground/40">{je.id.toUpperCase()}</span>
+                    <span className="text-xs font-mono text-foreground">{je.id.toUpperCase()}</span>
                     <Badge variant="outline">{TYPE_LABELS[je.type] || je.type}</Badge>
-                    {loan && <span className="text-xs text-muted-foreground">{loan.name}</span>}
+                    {loan && <span className="text-xs text-foreground">{loan.name}</span>}
                     {!isBalanced && <Badge variant="destructive">Unbalanced</Badge>}
                   </div>
                   <p className="text-sm font-medium text-foreground">{je.description}</p>
@@ -258,8 +258,8 @@ export function AJEsTab() {
                 <div className="flex items-center gap-2">
                   <Badge variant={sc.variant}>{sc.label}</Badge>
                   {isExpanded
-                    ? <ChevronDown  className="w-4 h-4 text-foreground/40" />
-                    : <ChevronRight className="w-4 h-4 text-foreground/40" />
+                    ? <ChevronDown  className="w-4 h-4 text-foreground" />
+                    : <ChevronRight className="w-4 h-4 text-foreground" />
                   }
                 </div>
               </div>
@@ -270,10 +270,10 @@ export function AJEsTab() {
                   <table className="w-full text-sm border-collapse">
                     <thead>
                       <tr className="border-b border-border bg-muted/50">
-                        <th className="py-2.5 px-4 font-semibold text-foreground/50 text-left text-xs uppercase tracking-wider whitespace-nowrap">Acc No.</th>
-                        <th className="py-2.5 px-4 font-semibold text-foreground/50 text-left text-xs uppercase tracking-wider">Description</th>
-                        <th className="py-2.5 px-4 font-semibold text-foreground/50 text-right text-xs uppercase tracking-wider">Debit</th>
-                        <th className="py-2.5 px-4 font-semibold text-foreground/50 text-right text-xs uppercase tracking-wider">Credit</th>
+                        <th className="py-2.5 px-4 font-semibold text-foreground text-left text-xs uppercase tracking-wider whitespace-nowrap">Acc No.</th>
+                        <th className="py-2.5 px-4 font-semibold text-foreground text-left text-xs uppercase tracking-wider">Description</th>
+                        <th className="py-2.5 px-4 font-semibold text-foreground text-right text-xs uppercase tracking-wider">Debit</th>
+                        <th className="py-2.5 px-4 font-semibold text-foreground text-right text-xs uppercase tracking-wider">Credit</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -310,9 +310,9 @@ export function AJEsTab() {
                               </select>
                               {/* Overlay showing only the account code */}
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-mono text-foreground pointer-events-none select-none">
-                                {line.account ? accCodeOnly(line.account) : <span className="text-muted-foreground/50 font-sans font-normal">Select</span>}
+                                {line.account ? accCodeOnly(line.account) : <span className="text-foreground font-sans font-normal">Select</span>}
                               </span>
-                              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/70 pointer-events-none" />
+                              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground pointer-events-none" />
                             </div>
                           </td>
                           {/* Description — dropdown with preset options + custom text mode */}
@@ -352,7 +352,7 @@ export function AJEsTab() {
                                   )}
                                   <option value="__add_custom__">＋ Add account…</option>
                                 </select>
-                                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/70 pointer-events-none" />
+                                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground pointer-events-none" />
                               </div>
                             )}
                           </td>
@@ -398,10 +398,10 @@ export function AJEsTab() {
 
                   {/* Notes */}
                   <div className="px-5 py-3 border-t border-border bg-background">
-                    <label className="block text-[11px] font-semibold text-foreground/50 uppercase tracking-wider mb-1.5">Notes</label>
+                    <label className="block text-[11px] font-semibold text-foreground uppercase tracking-wider mb-1.5">Notes</label>
                     <textarea
                       rows={2}
-                      className="input-double-border w-full text-sm px-3 py-2.5 rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground placeholder:text-muted-foreground/70 transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] resize-none focus:outline-none"
+                      className="input-double-border w-full text-sm px-3 py-2.5 rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground placeholder:text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] resize-none focus:outline-none"
                       placeholder="Add a note for this entry…"
                       value={je.notes ?? ''}
                       onChange={e => updateJE(je.id, { notes: e.target.value })}
@@ -413,7 +413,7 @@ export function AJEsTab() {
                     {je.deleted ? (
                       /* ── Deleted state ── */
                       <div className="flex items-center gap-3 w-full">
-                        <span className="text-xs text-muted-foreground italic flex-1">
+                        <span className="text-xs text-foreground italic flex-1">
                           Deleted {je.deletedAt ? `on ${je.deletedAt.slice(0, 10)}` : ''}
                         </span>
                         <Button
@@ -472,7 +472,7 @@ export function AJEsTab() {
         })}
 
         {filtered.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">No journal entries match the filter</div>
+          <div className="text-center py-12 text-foreground">No journal entries match the filter</div>
         )}
       </div>
 
@@ -505,7 +505,7 @@ const ENTRY_TYPES = ['Journal', 'AJE', 'Reclass', 'FX Translation'];
 // Shared field-strip class constants (module-level to avoid re-creation)
 const SF  = 'input-double-border h-9 text-sm rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] focus:outline-none';
 const SFS = `${SF} pl-3 pr-8 appearance-none cursor-pointer`;   // select
-const SFI = `${SF} px-3 placeholder:text-muted-foreground/50`;  // text / date
+const SFI = `${SF} px-3 placeholder:text-foreground`;  // text / date
 const SFN = `w-full ${SF} px-3 text-right tabular-nums`;        // number
 
 function AddJEModal({ open, onClose, loans, allAccounts, onSave }: {
@@ -584,7 +584,7 @@ function AddJEModal({ open, onClose, loans, allAccounts, onSave }: {
 
   // Field-strip label
   const FL = (text: React.ReactNode) => (
-    <span className="block text-[11px] font-medium text-foreground/60 mb-1 whitespace-nowrap">{text}</span>
+    <span className="block text-[11px] font-medium text-foreground mb-1 whitespace-nowrap">{text}</span>
   );
 
   return (
@@ -613,7 +613,7 @@ function AddJEModal({ open, onClose, loans, allAccounts, onSave }: {
                 <option value="">— None —</option>
                 {loans.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/70 pointer-events-none" />
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground pointer-events-none" />
             </div>
           </div>
 
@@ -630,7 +630,7 @@ function AddJEModal({ open, onClose, loans, allAccounts, onSave }: {
               <select className={`w-[106px] ${SFS}`} value={entryType} onChange={e => setEntryType(e.target.value)}>
                 {ENTRY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/70 pointer-events-none" />
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground pointer-events-none" />
             </div>
           </div>
 
@@ -644,7 +644,7 @@ function AddJEModal({ open, onClose, loans, allAccounts, onSave }: {
                 <select className={`w-[76px] ${SFS} rounded-none border-l-0 border-r-0`} value={entryNum} onChange={e => setEntryNum(e.target.value)}>
                   {['JE-1','JE-2','JE-3','JE-4','JE-5'].map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
-                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/70 pointer-events-none" />
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-foreground pointer-events-none" />
               </div>
               <Button variant="secondary" className="px-2 h-9 rounded-l-none border-l-0"
                 onClick={() => setEntryNum(n => { const m = n.match(/(\D+)(\d+)/); return m ? `${m[1]}${+m[2]+1}` : n; })}>›</Button>
@@ -694,11 +694,11 @@ function AddJEModal({ open, onClose, loans, allAccounts, onSave }: {
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b border-border bg-muted/50">
-                <th className="py-2.5 px-3 text-left text-xs font-semibold text-foreground/50 uppercase tracking-wider w-[120px]">Acc No.</th>
-                <th className="py-2.5 px-3 text-left text-xs font-semibold text-foreground/50 uppercase tracking-wider">Description</th>
-                <th className="py-2.5 px-3 text-right text-xs font-semibold text-foreground/50 uppercase tracking-wider w-36">Debit</th>
-                <th className="py-2.5 px-3 text-right text-xs font-semibold text-foreground/50 uppercase tracking-wider w-36">Credit</th>
-                <th className="py-2.5 px-3 text-center text-xs font-semibold text-foreground/50 uppercase tracking-wider w-20">Actions</th>
+                <th className="py-2.5 px-3 text-left text-xs font-semibold text-foreground uppercase tracking-wider w-[120px]">Acc No.</th>
+                <th className="py-2.5 px-3 text-left text-xs font-semibold text-foreground uppercase tracking-wider">Description</th>
+                <th className="py-2.5 px-3 text-right text-xs font-semibold text-foreground uppercase tracking-wider w-36">Debit</th>
+                <th className="py-2.5 px-3 text-right text-xs font-semibold text-foreground uppercase tracking-wider w-36">Credit</th>
+                <th className="py-2.5 px-3 text-center text-xs font-semibold text-foreground uppercase tracking-wider w-20">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -725,9 +725,9 @@ function AddJEModal({ open, onClose, loans, allAccounts, onSave }: {
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-mono text-foreground pointer-events-none select-none">
                           {line.account
                             ? accCodeOnly(line.account)
-                            : <span className="text-muted-foreground/50 font-sans font-normal">Select</span>}
+                            : <span className="text-foreground font-sans font-normal">Select</span>}
                         </span>
-                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/70 pointer-events-none" />
+                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground pointer-events-none" />
                       </div>
                     </td>
                     {/* Description — combobox-style select */}
@@ -742,7 +742,7 @@ function AddJEModal({ open, onClose, loans, allAccounts, onSave }: {
                           )}
                           <option value="__custom__">＋ Add account…</option>
                         </select>
-                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/70 pointer-events-none" />
+                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground pointer-events-none" />
                       </div>
                     </td>
                     {/* Debit */}
@@ -761,7 +761,7 @@ function AddJEModal({ open, onClose, loans, allAccounts, onSave }: {
                     <td className="px-3 py-2">
                       <div className="flex items-center justify-start gap-1">
                         <Button variant="ghost" size="icon-sm" onClick={() => removeLine(i)} title="Remove"
-                          className="text-muted-foreground hover:text-red-500 hover:bg-red-50">
+                          className="text-foreground hover:text-red-500 hover:bg-red-50">
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                         {isLast && (
@@ -777,7 +777,7 @@ function AddJEModal({ open, onClose, loans, allAccounts, onSave }: {
             </tbody>
             <tfoot>
               <tr className="bg-muted/50 text-sm font-semibold border-t border-border">
-                <td colSpan={2} className="px-3 py-2.5 text-right text-foreground/70">Total</td>
+                <td colSpan={2} className="px-3 py-2.5 text-right text-foreground">Total</td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNum(totalDR)}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNum(totalCR)}</td>
                 <td />
@@ -791,7 +791,7 @@ function AddJEModal({ open, onClose, loans, allAccounts, onSave }: {
           <label className="block text-sm font-medium text-foreground mb-1.5">Notes</label>
           <textarea
             rows={4}
-            className="input-double-border w-full text-sm px-3 py-2.5 rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground placeholder:text-muted-foreground/50 transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] resize-none focus:outline-none"
+            className="input-double-border w-full text-sm px-3 py-2.5 rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground placeholder:text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] resize-none focus:outline-none"
             placeholder="Add your notes here..."
             value={modalNotes}
             onChange={e => setModalNotes(e.target.value)}

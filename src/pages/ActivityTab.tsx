@@ -75,7 +75,7 @@ export function ActivityTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Loan Activity</h2>
-          <p className="text-xs text-foreground/60 mt-0.5">Payments, draws, and classifications</p>
+          <p className="text-xs text-foreground mt-0.5">Payments, draws, and classifications</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" size="sm" onClick={handleExport}>
@@ -107,7 +107,7 @@ export function ActivityTab() {
             </div>
             <div className="flex flex-col">
               <span className="text-xl font-bold leading-none text-primary">{s.value}</span>
-              <span className="text-[11px] font-medium text-foreground/60 leading-tight mt-0.5 whitespace-nowrap">{s.label}</span>
+              <span className="text-[11px] font-medium text-foreground leading-tight mt-0.5 whitespace-nowrap">{s.label}</span>
             </div>
           </div>
         ))}
@@ -123,7 +123,7 @@ export function ActivityTab() {
               className={`px-3 py-1.5 text-xs rounded-full font-medium transition-all ${
                 filterStatus === s
                   ? 'bg-primary text-white'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  : 'bg-muted text-foreground hover:bg-muted/80'
               }`}
             >
               {s}
@@ -161,11 +161,11 @@ export function ActivityTab() {
                     key={item.id}
                     className={`border-b border-border hover:bg-muted/30 transition-colors ${hasAI ? 'bg-primary/[0.03]' : ''}`}
                   >
-                    <td className="px-4 py-2 text-foreground/60 whitespace-nowrap">{fmtDateDisplay(item.date)}</td>
+                    <td className="px-4 py-2 text-foreground whitespace-nowrap">{fmtDateDisplay(item.date)}</td>
                     <td className="px-4 py-2 font-medium text-foreground whitespace-nowrap">{loan?.name || '—'}</td>
-                    <td className="px-4 py-2 text-foreground/60 max-w-[200px] truncate">
+                    <td className="px-4 py-2 text-foreground max-w-[200px] truncate">
                       {item.description}
-                      {item.sourceRef && <span className="ml-1.5 text-foreground/40 text-xs">({item.sourceRef})</span>}
+                      {item.sourceRef && <span className="ml-1.5 text-foreground text-xs">({item.sourceRef})</span>}
                     </td>
                     <td className="px-4 py-2 text-right tabular-nums font-semibold text-foreground whitespace-nowrap">
                       {fmtCurrency(Math.abs(item.totalAmount), loan?.currency || 'CAD')}
@@ -178,7 +178,7 @@ export function ActivityTab() {
                     <td className="px-4 py-2 text-right tabular-nums text-amber-600 whitespace-nowrap">
                       {item.interestAmount !== undefined ? fmtCurrency(item.interestAmount, loan?.currency || 'CAD') : '—'}
                     </td>
-                    <td className="px-4 py-2 text-right tabular-nums text-foreground/60 whitespace-nowrap">
+                    <td className="px-4 py-2 text-right tabular-nums text-foreground whitespace-nowrap">
                       {item.feesAmount !== undefined && item.feesAmount > 0 ? fmtCurrency(item.feesAmount, loan?.currency || 'CAD') : '—'}
                     </td>
                     <td className="px-4 py-2"><StatusBadge s={item.status} /></td>
@@ -207,7 +207,7 @@ export function ActivityTab() {
             </tbody>
           </table>
           {filtered.length === 0 && (
-            <div className="text-center py-12 text-foreground/60 text-sm">No activity records match the current filter</div>
+            <div className="text-center py-12 text-foreground text-sm">No activity records match the current filter</div>
           )}
         </div>
       </StyledCard>
@@ -218,7 +218,7 @@ export function ActivityTab() {
           <AlertCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
           <div className="text-xs">
             <p className="font-semibold text-foreground mb-0.5">AI Classification Suggestions Available</p>
-            <p className="text-foreground/60">
+            <p className="text-foreground">
               {aiReady} transaction(s) have AI-suggested P/I splits ready to review.
               Click the <Zap className="inline w-3 h-3 text-primary" /> button to apply a suggestion, or use Split to manually classify.
             </p>
@@ -241,7 +241,7 @@ export function ActivityTab() {
                 <div className="grid grid-cols-3 gap-2 text-xs">
                   {[['Principal', splitItem.aiSuggestion.principal], ['Interest', splitItem.aiSuggestion.interest], ['Fees', splitItem.aiSuggestion.fees]].map(([k, v]) => (
                     <div key={k as string} className="text-center">
-                      <div className="text-foreground/60">{k}</div>
+                      <div className="text-foreground">{k}</div>
                       <div className="font-semibold text-foreground">{fmtCurrency(v as number, 'CAD')}</div>
                     </div>
                   ))}
@@ -253,7 +253,7 @@ export function ActivityTab() {
             )}
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-foreground/60">Total Amount</span>
+                <span className="text-foreground">Total Amount</span>
                 <span className="font-semibold tabular-nums text-foreground">{fmtCurrency(Math.abs(splitItem.totalAmount), 'CAD')}</span>
               </div>
               <div className="border-t border-border pt-3 space-y-3">
@@ -262,7 +262,7 @@ export function ActivityTab() {
                 <Input label="Fees Amount" type="number" value={splitValues.fees} onChange={e => setSplitValues(p => ({ ...p, fees: parseFloat(e.target.value) || 0 }))} prefix="$" />
               </div>
               <div className="flex items-center justify-between text-sm pt-2 border-t border-border">
-                <span className="text-foreground/60">Remaining unallocated</span>
+                <span className="text-foreground">Remaining unallocated</span>
                 <span className={`font-semibold tabular-nums ${Math.abs(Math.abs(splitItem.totalAmount) - splitValues.principal - splitValues.interest - splitValues.fees) > 1 ? 'text-destructive' : 'text-green-600'}`}>
                   {fmtCurrency(Math.abs(splitItem.totalAmount) - splitValues.principal - splitValues.interest - splitValues.fees, 'CAD')}
                 </span>

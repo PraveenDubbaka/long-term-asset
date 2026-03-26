@@ -108,7 +108,7 @@ function RecordingTimer({ seconds, paused }: { seconds: number; paused: boolean 
   return (
     <span className={cn(
       "text-sm font-mono tabular-nums transition-colors",
-      paused ? "text-muted-foreground" : "text-foreground"
+      paused ? "text-foreground" : "text-foreground"
     )}>
       {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
     </span>
@@ -324,7 +324,7 @@ export function VoiceRecordingOverlay({ open, onClose, onComplete }: VoiceRecord
               </div>
             </div>
             <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={handleCancel}>
-              <X size={14} className="text-muted-foreground" />
+              <X size={14} className="text-foreground" />
             </Button>
           </div>
 
@@ -341,7 +341,7 @@ export function VoiceRecordingOverlay({ open, onClose, onComplete }: VoiceRecord
               <div className="text-sm leading-relaxed">
                 {finalText && <span className="text-foreground">{finalText}</span>}
                 {interimText && (
-                  <span className="text-muted-foreground/70 italic">
+                  <span className="text-foreground italic">
                     {finalText ? " " : ""}{interimText}
                   </span>
                 )}
@@ -350,9 +350,9 @@ export function VoiceRecordingOverlay({ open, onClose, onComplete }: VoiceRecord
                 )}
               </div>
             ) : isIdle ? (
-              <p className="text-sm text-muted-foreground">Click the button below to start recording</p>
+              <p className="text-sm text-foreground">Click the button below to start recording</p>
             ) : (
-              <p className="text-sm text-muted-foreground italic">Listening for speech...</p>
+              <p className="text-sm text-foreground italic">Listening for speech...</p>
             )}
           </div>
 
@@ -371,7 +371,7 @@ export function VoiceRecordingOverlay({ open, onClose, onComplete }: VoiceRecord
               <>
                 <button
                   onClick={handlePause}
-                  className="h-10 w-10 rounded-full border border-border bg-background flex items-center justify-center text-muted-foreground hover:bg-muted/60 transition-all active:scale-95"
+                  className="h-10 w-10 rounded-full border border-border bg-background flex items-center justify-center text-foreground hover:bg-muted/60 transition-all active:scale-95"
                 >
                   <Pause size={16} />
                 </button>
@@ -388,7 +388,7 @@ export function VoiceRecordingOverlay({ open, onClose, onComplete }: VoiceRecord
               <>
                 <button
                   onClick={handleResume}
-                  className="h-10 w-10 rounded-full border border-border bg-background flex items-center justify-center text-muted-foreground hover:bg-muted/60 transition-all active:scale-95"
+                  className="h-10 w-10 rounded-full border border-border bg-background flex items-center justify-center text-foreground hover:bg-muted/60 transition-all active:scale-95"
                 >
                   <Play size={16} />
                 </button>

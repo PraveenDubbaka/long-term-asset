@@ -215,7 +215,7 @@ function GLCombobox({ value, iic, onChange, onClick }: {
               }}
             >
               <span className="font-semibold">{a.code}</span>
-              <span className="text-muted-foreground ml-1.5">— {a.name}</span>
+              <span className="text-foreground ml-1.5">— {a.name}</span>
             </div>
           ))}
         </div>,
@@ -304,7 +304,7 @@ function LoanRefCell({ loanId, refs, banDocs, onChange }: {
         <button
           ref={btnRef}
           onClick={openPicker}
-          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-muted-foreground border border-dashed border-border rounded-md hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-colors whitespace-nowrap"
+          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-foreground border border-dashed border-border rounded-md hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-colors whitespace-nowrap"
         >
           <span className="flex items-center justify-center w-4 h-4 rounded-full border border-current text-[11px] leading-none font-bold flex-shrink-0">+</span>
           Ref
@@ -318,15 +318,15 @@ function LoanRefCell({ loanId, refs, banDocs, onChange }: {
           <span className="truncate text-foreground font-mono">
             {displayRefs.join(' , ')}{overflow > 0 ? ` ... ` : ''}
           </span>
-          {overflow > 0 && <span className="text-muted-foreground">+{overflow}</span>}
-          <span className="text-muted-foreground ml-0.5">∨</span>
+          {overflow > 0 && <span className="text-foreground">+{overflow}</span>}
+          <span className="text-foreground ml-0.5">∨</span>
         </button>
       )}
       {/* + add more refs button when refs exist */}
       {refs.length > 0 && (
         <button
           onClick={openPicker}
-          className="ml-1 flex items-center justify-center w-5 h-5 rounded-full border border-dashed border-border text-muted-foreground/50 hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-colors text-[11px] font-bold leading-none flex-shrink-0"
+          className="ml-1 flex items-center justify-center w-5 h-5 rounded-full border border-dashed border-border text-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-colors text-[11px] font-bold leading-none flex-shrink-0"
           title="Add more refs"
         >+</button>
       )}
@@ -351,7 +351,7 @@ function LoanRefCell({ loanId, refs, banDocs, onChange }: {
           </div>
           <div className="max-h-52 overflow-y-auto py-1">
             {filtered.length === 0 && (
-              <div className="px-3 py-3 text-xs text-muted-foreground text-center">No documents found</div>
+              <div className="px-3 py-3 text-xs text-foreground text-center">No documents found</div>
             )}
             {filtered.map(doc => (
               <label
@@ -400,7 +400,7 @@ function LoanRefCell({ loanId, refs, banDocs, onChange }: {
                 </span>
                 <button
                   onClick={e => removeRef(id, e)}
-                  className="p-0.5 text-muted-foreground/40 hover:text-destructive transition-colors flex-shrink-0"
+                  className="p-0.5 text-foreground hover:text-destructive transition-colors flex-shrink-0"
                   title="Remove ref"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -691,7 +691,7 @@ export function LoansTab() {
       <div className="flex items-center justify-between px-6 pt-5 pb-3">
         <div>
           <h2 className="text-base font-semibold text-foreground">Loan Register</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-xs text-foreground mt-0.5">
             {activeFilterCount > 0
               ? <>{filteredLoans.length} of {loans.filter(l => l.status !== 'Inactive').length} loans · <span className="text-primary">{activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''} active</span> · <button onClick={clearFilters} className="text-primary hover:underline">Clear</button></>
               : 'Manage facilities, terms, and GL mappings'}
@@ -709,7 +709,7 @@ export function LoansTab() {
               'flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg border transition-colors',
               showInactive
                 ? 'border-amber-300 bg-amber-50 text-amber-700'
-                : 'border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted/50',
+                : 'border-border bg-background text-foreground hover:text-foreground hover:bg-muted/50',
             ].join(' ')}
           >
             <EyeOff className="w-3.5 h-3.5" />
@@ -799,7 +799,7 @@ export function LoansTab() {
                   )}
                   {isVisible('fxRate') && (
                     <ThResizable colId="fxRate" width={getWidth('fxRate')} onResizeStart={rh('fxRate')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
-                      <span title="FX rate to CAD (editable per loan)">FX Rate{ratesLoading && <span className="ml-1 text-muted-foreground/50">…</span>}</span>
+                      <span title="FX rate to CAD (editable per loan)">FX Rate{ratesLoading && <span className="ml-1 text-foreground">…</span>}</span>
                     </ThResizable>
                   )}
                   {isVisible('balance') && (
@@ -807,7 +807,7 @@ export function LoansTab() {
                       <span className="flex flex-col items-end gap-0.5">
                         <span>Converted Amt</span>
                         {balancePeriodLabel && (
-                          <span className="text-[10px] font-normal normal-case tracking-normal text-muted-foreground leading-none">
+                          <span className="text-[10px] font-normal normal-case tracking-normal text-foreground leading-none">
                             as at {balancePeriodLabel}
                           </span>
                         )}
@@ -862,7 +862,7 @@ export function LoansTab() {
               <tbody>
                 {filteredLoans.length === 0 && (
                   <tr>
-                    <td colSpan={visibleCount} className="px-3 py-10 text-center text-sm text-muted-foreground">
+                    <td colSpan={visibleCount} className="px-3 py-10 text-center text-sm text-foreground">
                       No loans match the current filters.{' '}
                       <button onClick={clearFilters} className="text-primary hover:underline">Clear filters</button>
                     </td>
@@ -898,7 +898,7 @@ export function LoansTab() {
                       <td className="px-3 py-1.5 min-w-[100px] max-w-[150px]">
                         {ie
                           ? <AutoTextarea className={TIIC + reqCls(ed.lender ?? l.lender)} value={ed.lender ?? l.lender} onChange={ivTA(l.id,'lender')} onClick={e => e.stopPropagation()} />
-                          : <span className="text-muted-foreground break-words leading-tight block">{l.lender}</span>}
+                          : <span className="text-foreground break-words leading-tight block">{l.lender}</span>}
                       </td>
                     )}
                     {/* Current Collateral */}
@@ -906,7 +906,7 @@ export function LoansTab() {
                       <td className="px-3 py-1.5 max-w-[180px]">
                         {ie
                           ? <AutoTextarea className={TIIC} value={ed.securityDescription ?? l.securityDescription ?? ''} onChange={ivTA(l.id,'securityDescription')} onClick={e => e.stopPropagation()} />
-                          : <span className="text-muted-foreground text-xs leading-tight line-clamp-2">{l.securityDescription || '—'}</span>}
+                          : <span className="text-foreground text-xs leading-tight line-clamp-2">{l.securityDescription || '—'}</span>}
                       </td>
                     )}
                     {/* Type */}
@@ -931,12 +931,12 @@ export function LoansTab() {
                               <option value="Step Rate">Step Rate</option>
                             </select>
                           : ({
-                              Fixed:      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground border border-border whitespace-nowrap">Fixed</span>,
+                              Fixed:      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">Fixed</span>,
                               Variable:   <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">Variable</span>,
                               Floating:   <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 whitespace-nowrap">Floating</span>,
                               Hybrid:     <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap">Hybrid</span>,
                               'Step Rate':<span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-teal-50 text-teal-700 border border-teal-200 whitespace-nowrap">Step Rate</span>,
-                            } as Record<string, React.ReactElement>)[l.interestType] ?? <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground border border-border whitespace-nowrap">{l.interestType}</span>}
+                            } as Record<string, React.ReactElement>)[l.interestType] ?? <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">{l.interestType}</span>}
                       </td>
                     )}
                     {/* Int. Rate */}
@@ -952,7 +952,7 @@ export function LoansTab() {
                       <td className="px-3 py-1.5">
                         {ie
                           ? <input type="date" className={IIC} value={ed.startDate ?? l.startDate ?? ''} onChange={iv(l.id,'startDate')} onClick={e => e.stopPropagation()} />
-                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{fmtDateDisplay(l.startDate || '')}</span>}
+                          : <span className="tabular-nums text-foreground whitespace-nowrap">{fmtDateDisplay(l.startDate || '')}</span>}
                       </td>
                     )}
                     {/* Maturity */}
@@ -960,7 +960,7 @@ export function LoansTab() {
                       <td className="px-3 py-1.5">
                         {ie
                           ? <input type="date" className={IIC + reqCls(ed.maturityDate ?? l.maturityDate)} value={ed.maturityDate ?? l.maturityDate ?? ''} onChange={iv(l.id,'maturityDate')} onClick={e => e.stopPropagation()} />
-                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{fmtDateDisplay(l.maturityDate)}</span>}
+                          : <span className="tabular-nums text-foreground whitespace-nowrap">{fmtDateDisplay(l.maturityDate)}</span>}
                       </td>
                     )}
                     {/* Tenure (months) */}
@@ -968,9 +968,9 @@ export function LoansTab() {
                       <td className="px-3 py-1.5 text-right">
                         {ie
                           ? <input type="number" min="1" className={`${IIC} text-right w-20`} value={ed.tenureMonths ?? l.tenureMonths ?? ''} onChange={ivNum(l.id,'tenureMonths')} onClick={e => e.stopPropagation()} placeholder={l.startDate && l.maturityDate ? String(Math.round((new Date(l.maturityDate).getTime() - new Date(l.startDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44))) : ''} />
-                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap">
+                          : <span className="tabular-nums text-foreground whitespace-nowrap">
                               {l.tenureMonths ?? (l.startDate && l.maturityDate ? Math.round((new Date(l.maturityDate).getTime() - new Date(l.startDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)) : null) ?? '—'}
-                              {!l.tenureMonths && l.startDate && l.maturityDate && <span className="text-muted-foreground/40 text-[10px] ml-1" title="Auto-calculated">~</span>}
+                              {!l.tenureMonths && l.startDate && l.maturityDate && <span className="text-foreground text-[10px] ml-1" title="Auto-calculated">~</span>}
                             </span>}
                       </td>
                     )}
@@ -979,7 +979,7 @@ export function LoansTab() {
                       <td className="px-3 py-1.5">
                         {ie
                           ? <input type="date" className={IIC} value={ed.firstPaymentDate ?? l.firstPaymentDate ?? ''} onChange={iv(l.id,'firstPaymentDate')} onClick={e => e.stopPropagation()} />
-                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{l.firstPaymentDate ? fmtDateDisplay(l.firstPaymentDate) : '—'}</span>}
+                          : <span className="tabular-nums text-foreground whitespace-nowrap">{l.firstPaymentDate ? fmtDateDisplay(l.firstPaymentDate) : '—'}</span>}
                       </td>
                     )}
                     {/* Currency */}
@@ -1007,8 +1007,8 @@ export function LoansTab() {
                           : (() => {
                               const pmt = calcMonthlyPayment(l);
                               return pmt !== null
-                                ? <span className="tabular-nums font-mono text-sm text-foreground whitespace-nowrap">{fmtCurrency(pmt * getFxRate(l), 'CAD')}{l.monthlyPayment ? '' : <span className="text-muted-foreground/40 text-[10px] ml-1" title="Auto-calculated">~</span>}</span>
-                                : <span className="text-muted-foreground/50 text-xs">—</span>;
+                                ? <span className="tabular-nums font-mono text-sm text-foreground whitespace-nowrap">{fmtCurrency(pmt * getFxRate(l), 'CAD')}{l.monthlyPayment ? '' : <span className="text-foreground text-[10px] ml-1" title="Auto-calculated">~</span>}</span>
+                                : <span className="text-foreground text-xs">—</span>;
                             })()}
                       </td>
                     )}
@@ -1017,14 +1017,14 @@ export function LoansTab() {
                       <td className="px-3 py-1.5">
                         {ie
                           ? <input type="number" className={`${IIC} text-right` + reqCls(ed.originalPrincipal ?? l.originalPrincipal)} value={ed.originalPrincipal ?? l.originalPrincipal} onChange={ivNum(l.id,'originalPrincipal')} onClick={e => e.stopPropagation()} />
-                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap float-right">{fmtCurrency(l.originalPrincipal, 'CAD')}</span>}
+                          : <span className="tabular-nums text-foreground whitespace-nowrap float-right">{fmtCurrency(l.originalPrincipal, 'CAD')}</span>}
                       </td>
                     )}
                     {/* FX Rate */}
                     {isVisible('fxRate') && (
                       <td className="px-3 py-1.5 text-right" onClick={e => e.stopPropagation()}>
                         {l.currency === 'CAD'
-                          ? <span className="text-muted-foreground/50 text-xs tabular-nums">—</span>
+                          ? <span className="text-foreground text-xs tabular-nums">—</span>
                           : ie
                             ? <input type="number" step="0.0001" min="0.0001"
                                 className={`${IIC} text-right w-24`}
@@ -1046,7 +1046,7 @@ export function LoansTab() {
                       <td className="px-3 py-1.5 text-center">
                         {ie
                           ? <GLCombobox iic={IIC} value={ed.glPrincipalAccount ?? l.glPrincipalAccount ?? ''} onChange={v => setEdit(l.id, 'glPrincipalAccount', v)} onClick={e => e.stopPropagation()} />
-                          : <span className="text-muted-foreground whitespace-nowrap font-mono">{l.glPrincipalAccount}</span>}
+                          : <span className="text-foreground whitespace-nowrap font-mono">{l.glPrincipalAccount}</span>}
                       </td>
                     )}
                     {/* Day Count */}
@@ -1058,7 +1058,7 @@ export function LoansTab() {
                               <option value="ACT/360">ACT/360</option>
                               <option value="30/360">30/360</option>
                             </select>
-                          : <span className="text-muted-foreground whitespace-nowrap font-mono">{l.dayCountBasis}</span>}
+                          : <span className="text-foreground whitespace-nowrap font-mono">{l.dayCountBasis}</span>}
                       </td>
                     )}
                     {/* Payment Type */}
@@ -1070,7 +1070,7 @@ export function LoansTab() {
                               <option value="Interest-only">Interest-only</option>
                               <option value="Balloon">Balloon</option>
                             </select>
-                          : <span className="text-muted-foreground whitespace-nowrap">{l.paymentType}</span>}
+                          : <span className="text-foreground whitespace-nowrap">{l.paymentType}</span>}
                       </td>
                     )}
                     {/* Compounding Frequency */}
@@ -1083,7 +1083,7 @@ export function LoansTab() {
                               <option value="Semi-annual">Semi-annual</option>
                               <option value="Annual">Annual</option>
                             </select>
-                          : <span className="text-muted-foreground whitespace-nowrap">{l.compoundingFrequency ?? 'Monthly'}</span>}
+                          : <span className="text-foreground whitespace-nowrap">{l.compoundingFrequency ?? 'Monthly'}</span>}
                       </td>
                     )}
                     {/* Interest-Only Period */}
@@ -1091,7 +1091,7 @@ export function LoansTab() {
                       <td className="px-3 py-1.5 text-right">
                         {ie
                           ? <input type="number" min="0" className={`${IIC} text-right w-20`} value={ed.interestOnlyPeriodMonths ?? l.interestOnlyPeriodMonths ?? ''} onChange={ivNum(l.id,'interestOnlyPeriodMonths')} onClick={e => e.stopPropagation()} />
-                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{l.interestOnlyPeriodMonths ?? '—'}</span>}
+                          : <span className="tabular-nums text-foreground whitespace-nowrap">{l.interestOnlyPeriodMonths ?? '—'}</span>}
                       </td>
                     )}
                     {/* Balloon Amount */}
@@ -1099,7 +1099,7 @@ export function LoansTab() {
                       <td className="px-3 py-1.5 text-right">
                         {ie
                           ? <input type="number" min="0" className={`${IIC} text-right w-28`} value={ed.balloonAmount ?? l.balloonAmount ?? ''} onChange={ivNum(l.id,'balloonAmount')} onClick={e => e.stopPropagation()} />
-                          : <span className="tabular-nums text-muted-foreground whitespace-nowrap">{l.balloonAmount ? fmtCurrency(l.balloonAmount, l.currency) : '—'}</span>}
+                          : <span className="tabular-nums text-foreground whitespace-nowrap">{l.balloonAmount ? fmtCurrency(l.balloonAmount, l.currency) : '—'}</span>}
                       </td>
                     )}
                     {/* Status */}
@@ -1133,7 +1133,7 @@ export function LoansTab() {
                         </button>
                       ) : (
                         <button className="p-1.5 hover:bg-muted rounded-lg transition-colors" title="Archive loan (hide without deleting)" onClick={() => handleArchive(l)}>
-                          <EyeOff className="w-3.5 h-3.5 text-muted-foreground/50 hover:text-muted-foreground" />
+                          <EyeOff className="w-3.5 h-3.5 text-foreground hover:text-foreground" />
                         </button>
                       )}
                     </td>
@@ -1168,7 +1168,7 @@ export function LoansTab() {
                       <td className="px-3 py-2 text-sm font-semibold text-foreground whitespace-nowrap" colSpan={ftLeading}>
                         Total &middot; {filteredLoans.length} {filteredLoans.length === 1 ? 'facility' : 'facilities'}
                         {activeFilterCount > 0 && (
-                          <span className="text-muted-foreground font-normal ml-1.5">(filtered)</span>
+                          <span className="text-foreground font-normal ml-1.5">(filtered)</span>
                         )}
                       </td>
                       {isVisible('monthlyPayment') && (
@@ -1177,7 +1177,7 @@ export function LoansTab() {
                         </td>
                       )}
                       {isVisible('origAmt') && (
-                        <td className="px-3 py-2 text-right tabular-nums text-sm font-semibold text-muted-foreground whitespace-nowrap">
+                        <td className="px-3 py-2 text-right tabular-nums text-sm font-semibold text-foreground whitespace-nowrap">
                           {fmtCurrency(totalOrigAmt, 'CAD')}
                         </td>
                       )}
@@ -1187,7 +1187,7 @@ export function LoansTab() {
                           {fmtCurrency(totalConvertedAmt, 'CAD')}
                         </td>
                       )}
-                      <td colSpan={ftTrailing} className="px-3 py-2 text-right text-xs text-muted-foreground italic whitespace-nowrap">
+                      <td colSpan={ftTrailing} className="px-3 py-2 text-right text-xs text-foreground italic whitespace-nowrap">
                         CAD equiv. · all currencies
                       </td>
                     </tr>
@@ -1209,7 +1209,7 @@ export function LoansTab() {
               <div className="flex items-center gap-1.5">
                 <Tag className="w-3 h-3 text-primary" />
                 <span className="text-xs font-semibold text-foreground">GL Account Summary</span>
-                <span className="text-xs text-muted-foreground ml-1">
+                <span className="text-xs text-foreground ml-1">
                   — principal balance by account · CAD equiv. (USD × 1.353)
                 </span>
               </div>
@@ -1243,13 +1243,13 @@ export function LoansTab() {
                     return (
                       <tr key={row.code} className="border-b border-border hover:bg-muted/30 transition-colors">
                         <td className="px-3 py-1.5 font-mono font-semibold text-primary">{row.code}</td>
-                        <td className="px-3 py-1.5 text-center text-muted-foreground">{row.count}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{fmtCurrency(row.totalOriginal, 'CAD')}</td>
+                        <td className="px-3 py-1.5 text-center text-foreground">{row.count}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums text-foreground">{fmtCurrency(row.totalOriginal, 'CAD')}</td>
                         <td className="px-3 py-1.5 text-right tabular-nums font-semibold text-foreground">{fmtCurrency(row.totalBalance, 'CAD')}</td>
                         <td className="px-3 py-1.5 text-right tabular-nums">
                           {row.totalGLBalance > 0
                             ? <span className={Math.abs(variance) < 1 ? 'text-foreground' : 'text-red-600 font-semibold'}>{fmtCurrency(row.totalGLBalance, 'CAD')}</span>
-                            : <span className="text-foreground/25">—</span>}
+                            : <span className="text-foreground">—</span>}
                         </td>
                       </tr>
                     );
@@ -1260,7 +1260,7 @@ export function LoansTab() {
                   <tr className="bg-primary/5 border-t-2 border-primary/25">
                     <td className="px-3 py-2 font-bold text-foreground">Total</td>
                     <td className="px-3 py-2 text-center font-semibold text-foreground">{glGrand.count}</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-muted-foreground">{fmtCurrency(glGrand.totalOriginal, 'CAD')}</td>
+                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-foreground">{fmtCurrency(glGrand.totalOriginal, 'CAD')}</td>
                     <td className="px-3 py-2 text-right tabular-nums font-bold text-foreground">{fmtCurrency(glGrand.totalBalance, 'CAD')}</td>
                     <td className="px-3 py-2 text-right tabular-nums font-bold">
                       <span className={glBalanced ? 'text-foreground' : 'text-red-600'}>{fmtCurrency(glGrand.totalGLBalance, 'CAD')}</span>
@@ -1268,10 +1268,10 @@ export function LoansTab() {
                   </tr>
                   {/* Balance check row */}
                   <tr className="border-t border-dashed border-border/60">
-                    <td colSpan={3} className="px-3 py-1.5 text-sm text-muted-foreground italic">
+                    <td colSpan={3} className="px-3 py-1.5 text-sm text-foreground italic">
                       Check: Balance (CAD) = Balance as per GL
                     </td>
-                    <td className="px-3 py-1.5 text-right text-sm font-mono text-foreground/70">
+                    <td className="px-3 py-1.5 text-right text-sm font-mono text-foreground">
                       {fmtCurrency(glGrand.totalBalance, 'CAD')}
                     </td>
                     <td className="px-3 py-1.5 text-right text-sm font-semibold">
@@ -1302,10 +1302,10 @@ export function LoansTab() {
                   <Paperclip className="w-4 h-4 text-primary" />
                   <h3 className="text-sm font-semibold text-foreground">Attachments</h3>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5 ml-6">{attachDrawerLoan.name}</p>
+                <p className="text-xs text-foreground mt-0.5 ml-6">{attachDrawerLoan.name}</p>
               </div>
               <button onClick={() => setAttachDrawerLoan(null)} className="p-1.5 hover:bg-muted rounded-lg transition-colors mt-0.5">
-                <X className="w-4 h-4 text-muted-foreground" />
+                <X className="w-4 h-4 text-foreground" />
               </button>
             </div>
             {/* File list */}
@@ -1313,10 +1313,10 @@ export function LoansTab() {
               {attachDrawerLoan.attachments.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center mb-3">
-                    <Paperclip className="w-5 h-5 text-muted-foreground/50" />
+                    <Paperclip className="w-5 h-5 text-foreground" />
                   </div>
                   <p className="text-sm font-medium text-foreground">No attachments yet</p>
-                  <p className="text-xs text-muted-foreground mt-1">Upload supporting documents for this loan</p>
+                  <p className="text-xs text-foreground mt-1">Upload supporting documents for this loan</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -1330,7 +1330,7 @@ export function LoansTab() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-foreground truncate">{name}</p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                          <p className="text-[11px] text-foreground mt-0.5">
                             {ext}{meta ? ` · ${(meta.size / 1024).toFixed(0)} KB · ${meta.addedAt}` : ''}
                           </p>
                         </div>
@@ -1368,10 +1368,10 @@ export function LoansTab() {
           {/* Header: breadcrumb + tab switcher */}
           <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-border">
             <div className="flex items-center gap-2">
-              <button onClick={() => setPageView('list')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <button onClick={() => setPageView('list')} className="flex items-center gap-1.5 text-sm text-foreground hover:text-foreground transition-colors">
                 <ArrowLeft className="w-4 h-4" /> Back to Loans
               </button>
-              <span className="text-foreground/30 mx-1">/</span>
+              <span className="text-foreground mx-1">/</span>
               <span className="text-sm font-semibold text-foreground">Add Loan</span>
             </div>
             <div className="flex items-center bg-muted rounded-lg p-0.5 gap-0.5">
@@ -1385,7 +1385,7 @@ export function LoansTab() {
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                     addTab === t.id
                       ? 'bg-background text-foreground shadow-sm border border-border'
-                      : 'text-muted-foreground hover:text-foreground'
+                      : 'text-foreground hover:text-foreground'
                   }`}
                 >
                   {t.icon} {t.label}
@@ -1465,7 +1465,7 @@ function FilterPopover({
   isOpen: boolean; onToggle: () => void; onClose: () => void; align?: 'left' | 'right';
 }) {
   const isActive = type === 'multicheck' ? (multiValues?.length ?? 0) > 0 : Boolean(value);
-  const inputCls = "w-full text-xs px-2.5 py-1.5 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50";
+  const inputCls = "w-full text-xs px-2.5 py-1.5 rounded-md border border-border bg-background text-foreground placeholder:text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50";
 
   // Portal positioning — escapes overflow:hidden scroll containers
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -1510,7 +1510,7 @@ function FilterPopover({
           <div>
             {(multiValues?.length ?? 0) > 0 && (
               <div className="flex items-center justify-between mb-2 pb-2 border-b border-border">
-                <span className="text-xs text-muted-foreground">{multiValues!.length} selected</span>
+                <span className="text-xs text-foreground">{multiValues!.length} selected</span>
                 <button onClick={() => onMultiChange?.([])} className="text-xs text-primary hover:underline">Clear all</button>
               </div>
             )}
@@ -1541,7 +1541,7 @@ function FilterPopover({
         {type !== 'multicheck' && value && (
           <button
             onClick={() => { onChange?.(''); onClose(); }}
-            className="mt-1.5 text-xs text-muted-foreground hover:text-destructive w-full text-right transition-colors"
+            className="mt-1.5 text-xs text-foreground hover:text-destructive w-full text-right transition-colors"
           >
             Clear ✕
           </button>
@@ -1556,7 +1556,7 @@ function FilterPopover({
       <button
         ref={btnRef}
         onClick={(e) => { e.stopPropagation(); onToggle(); }}
-        className={`p-0.5 rounded transition-colors ${isActive ? 'text-primary' : 'text-muted-foreground/30 group-hover/th:text-muted-foreground/60 hover:!text-muted-foreground'}`}
+        className={`p-0.5 rounded transition-colors ${isActive ? 'text-primary' : 'text-foreground group-hover/th:text-foreground hover:!text-foreground'}`}
         title={title}
       >
         <ListFilter className="w-3 h-3" />
@@ -1575,7 +1575,7 @@ function LoanSummaryCard({ loan }: { loan: Loan }) {
         <h3 className="text-sm font-semibold text-foreground">{loan.name}</h3>
         <Badge variant="outline" className="text-xs">{loan.currency}</Badge>
       </div>
-      <p className="text-xs text-muted-foreground">{loan.lender} · {loan.refNumber}</p>
+      <p className="text-xs text-foreground">{loan.lender} · {loan.refNumber}</p>
       <div className="space-y-1.5 text-sm">
         {[
           ['Current Portion', fmtCurrency(loan.currentPortion, loan.currency), false],
@@ -1583,7 +1583,7 @@ function LoanSummaryCard({ loan }: { loan: Loan }) {
           ['Accrued Interest', fmtCurrency(loan.accruedInterest, loan.currency), true],
         ].map(([k, v, accent]) => (
           <div key={k as string} className="flex justify-between">
-            <span className="text-muted-foreground">{k}</span>
+            <span className="text-foreground">{k}</span>
             <span className={`tabular-nums font-medium ${accent ? 'text-primary' : 'text-foreground'}`}>{v}</span>
           </div>
         ))}
@@ -1653,20 +1653,20 @@ function LoanViewModal({ loan, onClose, onEdit }: { loan: Loan | null; onClose: 
             ['GL Principal', loan.glPrincipalAccount],
           ].map(([k, v]) => (
             <div key={k}>
-              <div className="text-xs text-foreground/60 mb-0.5">{k}</div>
+              <div className="text-xs text-foreground mb-0.5">{k}</div>
               <div className="font-medium text-foreground">{v}</div>
             </div>
           ))}
         </div>
         {loan.securityDescription && (
           <div className="pt-3 border-t border-border">
-            <div className="text-xs text-foreground/60 mb-1">Security / Collateral</div>
+            <div className="text-xs text-foreground mb-1">Security / Collateral</div>
             <p className="text-sm text-foreground">{loan.securityDescription}</p>
           </div>
         )}
         {loan.attachments.length > 0 && (
           <div className="pt-3 border-t border-border">
-            <div className="text-xs text-foreground/60 mb-2">Attachments</div>
+            <div className="text-xs text-foreground mb-2">Attachments</div>
             <div className="flex flex-wrap gap-2">
               {loan.attachments.map(a => (
                 <span key={a} className="text-xs px-2.5 py-1 bg-muted rounded-lg text-foreground cursor-pointer hover:bg-muted/80">{a}</span>
@@ -1820,11 +1820,11 @@ function ImportWizardModal() {
                 <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
                   i < stepIdx  ? 'bg-primary text-primary-foreground' :
                   i === stepIdx ? 'bg-primary text-primary-foreground ring-2 ring-primary/30' :
-                  'bg-muted text-muted-foreground'
+                  'bg-muted text-foreground'
                 }`}>
                   {i < stepIdx ? '✓' : i + 1}
                 </div>
-                <span className={`text-xs font-medium ${i === stepIdx ? 'text-foreground' : 'text-muted-foreground'}`}>{s.label}</span>
+                <span className={`text-xs font-medium ${i === stepIdx ? 'text-foreground' : 'text-foreground'}`}>{s.label}</span>
               </div>
               {i < WIZARD_STEPS.length - 1 && (
                 <div className={`flex-1 h-px mx-2 ${i < stepIdx ? 'bg-primary' : 'bg-border'}`} style={{ minWidth: 16 }} />
@@ -1840,11 +1840,11 @@ function ImportWizardModal() {
               className="border-2 border-dashed border-border rounded-xl p-10 text-center hover:border-primary/50 hover:bg-muted/30 cursor-pointer transition-all"
               onClick={() => setStep('map')}
             >
-              <Upload className="w-8 h-8 text-foreground/40 mx-auto mb-3" />
+              <Upload className="w-8 h-8 text-foreground mx-auto mb-3" />
               <p className="text-sm font-medium text-foreground">Drop Excel file or click to browse</p>
-              <p className="text-xs text-foreground/60 mt-1">.xlsx or .csv accepted</p>
+              <p className="text-xs text-foreground mt-1">.xlsx or .csv accepted</p>
             </div>
-            <div className="flex items-center gap-2 text-xs text-foreground/60">
+            <div className="flex items-center gap-2 text-xs text-foreground">
               <span>Need a template?</span>
               <button className="text-primary font-medium hover:underline">Download Import Template →</button>
             </div>
@@ -1871,7 +1871,7 @@ function ImportWizardModal() {
           <div className="space-y-4">
             <div className="flex items-start gap-2.5 p-3 rounded-xl bg-primary/5 border border-primary/20">
               <Tag className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-foreground">
                 Assign GL account codes for each field type. These will be applied to all imported loans and used for automated journal entry generation.
               </p>
             </div>
@@ -1884,12 +1884,12 @@ function ImportWizardModal() {
                     onChange={e => setGlTags(prev => ({ ...prev, [key]: e.target.value }))}
                     options={GL_OPTIONS[key] ?? []}
                   />
-                  <p className="text-[11px] text-muted-foreground mt-1">{hint}</p>
+                  <p className="text-[11px] text-foreground mt-1">{hint}</p>
                 </div>
               ))}
             </div>
             <div className="p-3 rounded-xl bg-muted/60 border border-border">
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[11px] text-foreground">
                 <span className="font-semibold text-foreground">Tip:</span> GL codes follow your chart of accounts. You can edit individual loan GL tags after import via the Loans register.
               </p>
             </div>
@@ -1922,7 +1922,7 @@ function ImportWizardModal() {
                       return (
                         <tr key={i} className="border-b border-border hover:bg-muted/30 transition-colors">
                           <td className="px-3 py-2 font-medium text-foreground">{r.name}</td>
-                          <td className="px-3 py-2 text-muted-foreground">{r.lender}</td>
+                          <td className="px-3 py-2 text-foreground">{r.lender}</td>
                           <td className="px-3 py-2 tabular-nums text-foreground">{fmtCurrency(r.principal, 'CAD')}</td>
                           <td className="px-3 py-2 text-foreground">{r.rate}</td>
                           <td className="px-3 py-2 font-mono text-xs text-foreground">{r.maturity}</td>
@@ -1948,30 +1948,30 @@ function ImportWizardModal() {
               <div className="flex items-center gap-1.5 px-4 py-2.5 bg-muted/60 border-b border-border">
                 <Tag className="w-3 h-3 text-primary" />
                 <span className="text-xs font-semibold text-foreground">GL Account Breakdown</span>
-                <span className="text-[10px] text-muted-foreground ml-1">— verifies import totals reconcile to your chart of accounts</span>
+                <span className="text-[10px] text-foreground ml-1">— verifies import totals reconcile to your chart of accounts</span>
               </div>
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
-                    <th className="text-left px-4 py-2 font-semibold text-foreground/60 uppercase tracking-wide">Account</th>
-                    <th className="text-left px-4 py-2 font-semibold text-foreground/60 uppercase tracking-wide">Loans</th>
-                    <th className="text-right px-4 py-2 font-semibold text-foreground/60 uppercase tracking-wide">Dr</th>
-                    <th className="text-right px-4 py-2 font-semibold text-foreground/60 uppercase tracking-wide">Cr (Opening Bal.)</th>
+                    <th className="text-left px-4 py-2 font-semibold text-foreground uppercase tracking-wide">Account</th>
+                    <th className="text-left px-4 py-2 font-semibold text-foreground uppercase tracking-wide">Loans</th>
+                    <th className="text-right px-4 py-2 font-semibold text-foreground uppercase tracking-wide">Dr</th>
+                    <th className="text-right px-4 py-2 font-semibold text-foreground uppercase tracking-wide">Cr (Opening Bal.)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {glBreakdown.map((row, i) => (
                     <tr key={i} className="border-b border-border hover:bg-muted/20 transition-colors">
-                      <td className="px-4 py-2.5 font-mono text-foreground/80">{row.account || '—'}</td>
-                      <td className="px-4 py-2.5 text-muted-foreground">
+                      <td className="px-4 py-2.5 font-mono text-foreground">{row.account || '—'}</td>
+                      <td className="px-4 py-2.5 text-foreground">
                         {row.loans.length > 0
                           ? row.loans.map(l => l.name).join(', ')
-                          : <span className="text-foreground/30">—</span>
+                          : <span className="text-foreground">—</span>
                         }
                       </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-foreground/30">—</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-foreground">—</td>
                       <td className="px-4 py-2.5 text-right tabular-nums font-medium text-foreground">
-                        {row.amount > 0 ? fmtCurrency(row.amount, 'CAD') : <span className="text-foreground/30">—</span>}
+                        {row.amount > 0 ? fmtCurrency(row.amount, 'CAD') : <span className="text-foreground">—</span>}
                       </td>
                     </tr>
                   ))}
@@ -1981,7 +1981,7 @@ function ImportWizardModal() {
                     <td className="px-4 py-2.5 font-semibold text-foreground" colSpan={2}>
                       Total — {PREV_LOANS.length} records
                     </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-foreground/30 font-semibold">—</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-foreground font-semibold">—</td>
                     <td className="px-4 py-2.5 text-right tabular-nums font-bold text-foreground">
                       <span>{fmtCurrency(grandTotal, 'CAD')}</span>
                       <span className="ml-2 text-[10px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">✓ GL</span>
@@ -1999,7 +1999,7 @@ function ImportWizardModal() {
 
 // ─── ADD LOAN FORM CONTENT (shared between modal edit + inline add) ────────────
 // Form-styled GL autocomplete (label + GLCombobox using form input class)
-const FORM_IC = 'input-double-border w-full h-9 text-sm rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground placeholder:text-muted-foreground/70 transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] focus:outline-none focus:border-primary/40 focus:ring-0 pl-3 pr-3 font-mono';
+const FORM_IC = 'input-double-border w-full h-9 text-sm rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground placeholder:text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] focus:outline-none focus:border-primary/40 focus:ring-0 pl-3 pr-3 font-mono';
 function FormGLCombobox({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -2124,7 +2124,7 @@ function AddLoanFormContent({ form, setForm }: { form: Partial<Loan>; setForm: (
 
       {/* GL Mappings — searchable autocomplete (matches GL Principal column) */}
       <div className="col-span-2 border-t border-border pt-3 mt-1">
-        <div className="text-xs font-semibold text-foreground/60 uppercase tracking-wider mb-3">GL Mappings</div>
+        <div className="text-xs font-semibold text-foreground uppercase tracking-wider mb-3">GL Mappings</div>
         <div className="grid grid-cols-3 gap-3">
           <FormGLCombobox label="GL Principal" value={form.glPrincipalAccount || ''} onChange={v => setForm({ ...form, glPrincipalAccount: v })} />
           <FormGLCombobox label="GL Accrued Interest" value={form.glAccruedInterestAccount || ''} onChange={v => setForm({ ...form, glAccruedInterestAccount: v })} />
@@ -2192,10 +2192,10 @@ function OcrImportPage({ onBack, onImport, hideHeader }: {
     <div className="flex flex-col">
       {!hideHeader && (
         <div className="flex items-center gap-2 px-6 pt-5 pb-4 border-b border-border">
-          <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="w-4 h-4" /> Back to Loans
           </button>
-          <span className="text-foreground/30 mx-1">/</span>
+          <span className="text-foreground mx-1">/</span>
           <span className="text-sm font-semibold text-foreground">Add from OCR</span>
         </div>
       )}
@@ -2204,7 +2204,7 @@ function OcrImportPage({ onBack, onImport, hideHeader }: {
           <div className="px-6 py-5 space-y-5">
             <div>
               <h3 className="text-sm font-semibold text-foreground">Add Loans from Document</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-xs text-foreground mt-0.5">
                 Upload a PDF, DOCX or image — AI will extract <strong>all loans</strong> found in the document and add them to the register
               </p>
             </div>
@@ -2223,8 +2223,8 @@ function OcrImportPage({ onBack, onImport, hideHeader }: {
                     <FileSearch className="w-7 h-7 text-primary" />
                   </div>
                   <p className="text-sm font-semibold text-foreground mb-1">Drop document here or click to browse</p>
-                  <p className="text-xs text-foreground/60 mb-1">PDF · DOCX · PNG · JPG — loan agreements, renewal letters, term sheets</p>
-                  <p className="text-[11px] text-muted-foreground mt-3">The document may contain one or more loans — all will be extracted automatically</p>
+                  <p className="text-xs text-foreground mb-1">PDF · DOCX · PNG · JPG — loan agreements, renewal letters, term sheets</p>
+                  <p className="text-[11px] text-foreground mt-3">The document may contain one or more loans — all will be extracted automatically</p>
                   <Button variant="default" size="sm" className="mt-5" onClick={e => { e.stopPropagation(); startProcessing(); }}>
                     <Upload className="w-3.5 h-3.5 mr-1.5" /> Browse Files
                   </Button>
@@ -2242,7 +2242,7 @@ function OcrImportPage({ onBack, onImport, hideHeader }: {
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-semibold text-foreground mb-0.5">{fileName || 'Document'}</p>
-                  <p className="text-xs text-muted-foreground">{processingLabel}</p>
+                  <p className="text-xs text-foreground">{processingLabel}</p>
                 </div>
                 <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
                   <div
@@ -2250,7 +2250,7 @@ function OcrImportPage({ onBack, onImport, hideHeader }: {
                     style={{ width: `${progress}%` }}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground tabular-nums">
+                <p className="text-xs text-foreground tabular-nums">
                   {progress < 100 ? `${progress}%` : 'Complete — loading register…'}
                 </p>
               </div>
@@ -2296,10 +2296,10 @@ function ImportWizardPage({ onBack, hideHeader }: { onBack: () => void; hideHead
     <div className="flex flex-col">
       {!hideHeader && (
         <div className="flex items-center gap-2 px-6 pt-5 pb-4 border-b border-border">
-          <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="w-4 h-4" /> Back to Loans
           </button>
-          <span className="text-foreground/30 mx-1">/</span>
+          <span className="text-foreground mx-1">/</span>
           <span className="text-sm font-semibold text-foreground">Import Excel</span>
         </div>
       )}
@@ -2308,7 +2308,7 @@ function ImportWizardPage({ onBack, hideHeader }: { onBack: () => void; hideHead
           <div className="px-6 py-5 space-y-4">
             <div>
               <h3 className="text-sm font-semibold text-foreground">Import Loan Register</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Upload an Excel template with loan data</p>
+              <p className="text-xs text-foreground mt-0.5">Upload an Excel template with loan data</p>
             </div>
             {/* Step indicator */}
             <div className="flex items-center gap-0">
@@ -2318,11 +2318,11 @@ function ImportWizardPage({ onBack, hideHeader }: { onBack: () => void; hideHead
                     <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
                       i < stepIdx  ? 'bg-primary text-primary-foreground' :
                       i === stepIdx ? 'bg-primary text-primary-foreground ring-2 ring-primary/30' :
-                      'bg-muted text-muted-foreground'
+                      'bg-muted text-foreground'
                     }`}>
                       {i < stepIdx ? '✓' : i + 1}
                     </div>
-                    <span className={`text-xs font-medium ${i === stepIdx ? 'text-foreground' : 'text-muted-foreground'}`}>{s.label}</span>
+                    <span className={`text-xs font-medium ${i === stepIdx ? 'text-foreground' : 'text-foreground'}`}>{s.label}</span>
                   </div>
                   {i < WIZARD_STEPS.length - 1 && (
                     <div className={`flex-1 h-px mx-2 ${i < stepIdx ? 'bg-primary' : 'bg-border'}`} style={{ minWidth: 16 }} />
@@ -2337,11 +2337,11 @@ function ImportWizardPage({ onBack, hideHeader }: { onBack: () => void; hideHead
                   className="border-2 border-dashed border-border rounded-xl p-10 text-center hover:border-primary/50 hover:bg-muted/30 cursor-pointer transition-all"
                   onClick={() => setStep('map')}
                 >
-                  <Upload className="w-8 h-8 text-foreground/40 mx-auto mb-3" />
+                  <Upload className="w-8 h-8 text-foreground mx-auto mb-3" />
                   <p className="text-sm font-medium text-foreground">Drop Excel file or click to browse</p>
-                  <p className="text-xs text-foreground/60 mt-1">.xlsx or .csv accepted</p>
+                  <p className="text-xs text-foreground mt-1">.xlsx or .csv accepted</p>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-foreground/60">
+                <div className="flex items-center gap-2 text-xs text-foreground">
                   <span>Need a template?</span>
                   <button className="text-primary font-medium hover:underline">Download Import Template →</button>
                 </div>
@@ -2366,7 +2366,7 @@ function ImportWizardPage({ onBack, hideHeader }: { onBack: () => void; hideHead
               <div className="space-y-4">
                 <div className="flex items-start gap-2.5 p-3 rounded-xl bg-primary/5 border border-primary/20">
                   <Tag className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-foreground">
                     Assign GL account codes for each field type. These will be applied to all imported loans and used for automated journal entry generation.
                   </p>
                 </div>
@@ -2379,12 +2379,12 @@ function ImportWizardPage({ onBack, hideHeader }: { onBack: () => void; hideHead
                         onChange={e => setGlTags(prev => ({ ...prev, [key]: e.target.value }))}
                         options={GL_OPTIONS[key] ?? []}
                       />
-                      <p className="text-[11px] text-muted-foreground mt-1">{hint}</p>
+                      <p className="text-[11px] text-foreground mt-1">{hint}</p>
                     </div>
                   ))}
                 </div>
                 <div className="p-3 rounded-xl bg-muted/60 border border-border">
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[11px] text-foreground">
                     <span className="font-semibold text-foreground">Tip:</span> GL codes follow your chart of accounts. You can edit individual loan GL tags after import via the Loans register.
                   </p>
                 </div>
@@ -2414,7 +2414,7 @@ function ImportWizardPage({ onBack, hideHeader }: { onBack: () => void; hideHead
                           return (
                             <tr key={i} className="border-b border-border hover:bg-muted/30 transition-colors">
                               <td className="px-3 py-2 font-medium text-foreground">{r.name}</td>
-                              <td className="px-3 py-2 text-muted-foreground">{r.lender}</td>
+                              <td className="px-3 py-2 text-foreground">{r.lender}</td>
                               <td className="px-3 py-2 tabular-nums text-foreground">{fmtCurrency(r.principal, 'CAD')}</td>
                               <td className="px-3 py-2 text-foreground">{r.rate}</td>
                               <td className="px-3 py-2 font-mono text-xs text-foreground">{r.maturity}</td>
@@ -2442,20 +2442,20 @@ function ImportWizardPage({ onBack, hideHeader }: { onBack: () => void; hideHead
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-border bg-muted/30">
-                        <th className="text-left px-4 py-2 font-semibold text-foreground/60 uppercase tracking-wide">Account</th>
-                        <th className="text-left px-4 py-2 font-semibold text-foreground/60 uppercase tracking-wide">Loans</th>
-                        <th className="text-right px-4 py-2 font-semibold text-foreground/60 uppercase tracking-wide">Cr (Opening Bal.)</th>
+                        <th className="text-left px-4 py-2 font-semibold text-foreground uppercase tracking-wide">Account</th>
+                        <th className="text-left px-4 py-2 font-semibold text-foreground uppercase tracking-wide">Loans</th>
+                        <th className="text-right px-4 py-2 font-semibold text-foreground uppercase tracking-wide">Cr (Opening Bal.)</th>
                       </tr>
                     </thead>
                     <tbody>
                       {glBreakdown.map((row, i) => (
                         <tr key={i} className="border-b border-border hover:bg-muted/20 transition-colors">
-                          <td className="px-4 py-2.5 font-mono text-foreground/80">{row.account || '—'}</td>
-                          <td className="px-4 py-2.5 text-muted-foreground">
-                            {row.loans.length > 0 ? row.loans.map(l => l.name).join(', ') : <span className="text-foreground/30">—</span>}
+                          <td className="px-4 py-2.5 font-mono text-foreground">{row.account || '—'}</td>
+                          <td className="px-4 py-2.5 text-foreground">
+                            {row.loans.length > 0 ? row.loans.map(l => l.name).join(', ') : <span className="text-foreground">—</span>}
                           </td>
                           <td className="px-4 py-2.5 text-right tabular-nums font-medium text-foreground">
-                            {row.amount > 0 ? fmtCurrency(row.amount, 'CAD') : <span className="text-foreground/30">—</span>}
+                            {row.amount > 0 ? fmtCurrency(row.amount, 'CAD') : <span className="text-foreground">—</span>}
                           </td>
                         </tr>
                       ))}

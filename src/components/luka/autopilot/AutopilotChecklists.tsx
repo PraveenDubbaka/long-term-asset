@@ -57,7 +57,7 @@ export function AutopilotChecklists({ loan, onComplete }: Props) {
                   "px-4 py-2 rounded-lg text-sm font-medium border transition-colors",
                   isNewLoan === true
                     ? "bg-primary text-primary-foreground border-primary"
-                    : "border-border text-muted-foreground hover:bg-muted/50"
+                    : "border-border text-foreground hover:bg-muted/50"
                 )}
               >
                 Yes — first year
@@ -68,7 +68,7 @@ export function AutopilotChecklists({ loan, onComplete }: Props) {
                   "px-4 py-2 rounded-lg text-sm font-medium border transition-colors",
                   isNewLoan === false
                     ? "bg-primary text-primary-foreground border-primary"
-                    : "border-border text-muted-foreground hover:bg-muted/50"
+                    : "border-border text-foreground hover:bg-muted/50"
                 )}
               >
                 No — continuing engagement
@@ -91,7 +91,7 @@ export function AutopilotChecklists({ loan, onComplete }: Props) {
           >
             <Upload className="w-8 h-8 text-primary/40 mx-auto mb-2" />
             <p className="text-sm text-primary font-medium">Click to upload</p>
-            <p className="text-xs text-muted-foreground">or drag and drop — PDF files only</p>
+            <p className="text-xs text-foreground">or drag and drop — PDF files only</p>
             <input ref={fileRef} type="file" multiple accept=".pdf" className="hidden" onChange={e => handleFiles(e.target.files)} />
           </div>
 
@@ -121,16 +121,16 @@ export function AutopilotChecklists({ loan, onComplete }: Props) {
         {/* Right: checklist */}
         <div className="w-52 shrink-0">
           <div className="border border-border rounded-xl p-4">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Document Checklist</p>
+            <p className="text-xs font-semibold text-foreground uppercase tracking-wider mb-3">Document Checklist</p>
             <div className="space-y-2.5">
               {checklistItems.map(item => (
                 <div key={item.id} className="flex items-center gap-2">
                   {item.checked ? (
                     <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
                   ) : (
-                    <Circle className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+                    <Circle className="w-4 h-4 text-foreground shrink-0" />
                   )}
-                  <span className={cn("text-xs", item.checked ? "text-foreground" : "text-muted-foreground")}>
+                  <span className={cn("text-xs", item.checked ? "text-foreground" : "text-foreground")}>
                     {item.label}
                     {item.required && <span className="text-destructive ml-0.5">*</span>}
                   </span>

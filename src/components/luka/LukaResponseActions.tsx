@@ -33,7 +33,7 @@ function ActionButton({
         expanded ? "px-3 gap-2" : "px-0 w-9 gap-0"
       )}
     >
-      <span className="shrink-0 flex items-center justify-center text-muted-foreground">{icon}</span>
+      <span className="shrink-0 flex items-center justify-center text-foreground">{icon}</span>
       <span
         className={cn(
           "grid overflow-hidden",
@@ -43,7 +43,7 @@ function ActionButton({
       >
         <span
           className={cn(
-            "overflow-hidden whitespace-nowrap text-xs font-medium text-muted-foreground",
+            "overflow-hidden whitespace-nowrap text-xs font-medium text-foreground",
             "transition-opacity duration-200 ease-emphasized",
             expanded ? "opacity-100 delay-75" : "opacity-0"
           )}
@@ -99,7 +99,7 @@ function DownloadButton({
           expanded ? "px-3 gap-2" : "px-0 w-9 gap-0"
         )}
       >
-        <span className="shrink-0 flex items-center justify-center text-muted-foreground">
+        <span className="shrink-0 flex items-center justify-center text-foreground">
           <Download size={16} strokeWidth={2} />
         </span>
         <span
@@ -111,7 +111,7 @@ function DownloadButton({
         >
           <span
             className={cn(
-              "overflow-hidden whitespace-nowrap text-xs font-medium text-muted-foreground",
+              "overflow-hidden whitespace-nowrap text-xs font-medium text-foreground",
               "transition-opacity duration-200 ease-emphasized",
               expanded ? "opacity-100 delay-75" : "opacity-0"
             )}

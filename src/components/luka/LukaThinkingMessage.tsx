@@ -17,7 +17,7 @@ export function LukaThinkingMessage({ visible }: LukaThinkingMessageProps) {
 
       {/* Thinking text with shimmer */}
       <div className="flex items-center gap-2 pt-2">
-        <span className="text-sm font-medium text-muted-foreground luka-thinking-text">
+        <span className="text-sm font-medium text-foreground luka-thinking-text">
           Thinking
         </span>
         <span className="flex gap-0.5">

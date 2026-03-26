@@ -111,9 +111,9 @@ export function InvHoldingsTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Investment Holdings Register</h2>
-          <p className="text-xs text-foreground/60 mt-0.5">
+          <p className="text-xs text-foreground mt-0.5">
             Closing positions Dec 31, 2025 · ASPE cost method · FMV disclosed only
-            {ratesLoading && <span className="ml-1 text-muted-foreground/50">— loading FX…</span>}
+            {ratesLoading && <span className="ml-1 text-foreground">— loading FX…</span>}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -138,7 +138,7 @@ export function InvHoldingsTab() {
         ].map(k => (
           <StyledCard key={k.label} className="px-4 py-3">
             <div className={`text-sm font-bold tabular-nums ${'color' in k ? k.color : 'text-foreground'}`}>{k.value}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">{k.label}</div>
+            <div className="text-xs text-foreground mt-0.5">{k.label}</div>
           </StyledCard>
         ))}
       </div>
@@ -152,7 +152,7 @@ export function InvHoldingsTab() {
             className="h-8 px-3 rounded-md border border-border bg-background text-sm w-60 focus:outline-none focus:ring-1 focus:ring-primary"
           />
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-muted-foreground">Currency:</span>
+            <span className="text-xs text-foreground">Currency:</span>
             {ccys.map(c => (
               <button key={c}
                 onClick={() => setFilterCcy(c)}
@@ -162,7 +162,7 @@ export function InvHoldingsTab() {
             ))}
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-muted-foreground">Broker:</span>
+            <span className="text-xs text-foreground">Broker:</span>
             <select
               value={filterBroker} onChange={e => setFilterBroker(e.target.value)}
               className="h-8 px-2 rounded-md border border-border bg-background text-xs focus:outline-none focus:ring-1 focus:ring-primary"
@@ -172,7 +172,7 @@ export function InvHoldingsTab() {
           </div>
           {(search || filterCcy !== 'All' || filterBroker !== 'All') && (
             <button onClick={() => { setSearch(''); setFilterCcy('All'); setFilterBroker('All'); }}
-              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2">
+              className="text-xs text-foreground hover:text-foreground underline underline-offset-2">
               Clear
             </button>
           )}
@@ -207,13 +207,13 @@ export function InvHoldingsTab() {
                   <tr key={h.id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-2.5">
                       <div className="font-medium text-foreground text-sm">{h.security}</div>
-                      <div className="text-xs text-muted-foreground font-mono">{h.ticker}</div>
+                      <div className="text-xs text-foreground font-mono">{h.ticker}</div>
                       {h.notes && <div className="text-xs text-amber-600 mt-0.5">{h.notes}</div>}
                     </td>
                     {invVisible('broker') && (
                       <td className="px-3 py-2.5">
                         <div className="text-sm text-foreground">{h.broker}</div>
-                        <div className="text-xs text-muted-foreground">…{h.acctLast4}</div>
+                        <div className="text-xs text-foreground">…{h.acctLast4}</div>
                       </td>
                     )}
                     {invVisible('currency') && (
@@ -227,9 +227,9 @@ export function InvHoldingsTab() {
                     {invVisible('acqRate') && (
                       <td className="px-3 py-2.5 text-right">
                         {h.currency === 'CAD'
-                          ? <span className="text-muted-foreground text-xs">—</span>
+                          ? <span className="text-foreground text-xs">—</span>
                           : <div className="flex flex-col items-end">
-                              <span className="text-xs text-muted-foreground/60">{h.currency}/CAD</span>
+                              <span className="text-xs text-foreground">{h.currency}/CAD</span>
                               <span className="tabular-nums font-mono text-sm">{fmt(h.acqFxRate, 4)}</span>
                             </div>}
                       </td>
@@ -238,15 +238,15 @@ export function InvHoldingsTab() {
                     {invVisible('yeRate') && (
                       <td className="px-3 py-2.5 text-right">
                         {h.currency === 'CAD'
-                          ? <span className="text-muted-foreground text-xs">—</span>
+                          ? <span className="text-foreground text-xs">—</span>
                           : <div className="flex flex-col items-end">
-                              <span className="text-xs text-muted-foreground/60">{h.currency}/CAD</span>
+                              <span className="text-xs text-foreground">{h.currency}/CAD</span>
                               <span className="tabular-nums font-mono text-sm">{fmt(fxRate, 4)}</span>
                             </div>}
                       </td>
                     )}
-                    {invVisible('fmvLocal') && <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-muted-foreground">{fmt(h.fmvLocal)}</td>}
-                    {invVisible('fmvCAD') && <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-muted-foreground">{fmtCAD(h.fmvCAD)}</td>}
+                    {invVisible('fmvLocal') && <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-foreground">{fmt(h.fmvLocal)}</td>}
+                    {invVisible('fmvCAD') && <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-foreground">{fmtCAD(h.fmvCAD)}</td>}
                     {invVisible('unrealizedGL') && <td className="px-3 py-2.5 text-right">{glBadge(h.unrealizedGL_CAD)}</td>}
                     {invVisible('glAcct') && (
                       <td className="px-3 py-2.5">
@@ -270,8 +270,8 @@ export function InvHoldingsTab() {
                 {invVisible('acqRate') && <td />}
                 {invVisible('bookValueCAD') && <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm">{fmtCAD(totalCostCAD)}</td>}
                 {invVisible('yeRate') && <td />}
-                {invVisible('fmvLocal') && <td className="px-3 py-2.5 text-right tabular-nums font-mono text-muted-foreground text-sm">—</td>}
-                {invVisible('fmvCAD') && <td className="px-3 py-2.5 text-right tabular-nums font-mono text-muted-foreground text-sm">{fmtCAD(totalFmvCAD)}</td>}
+                {invVisible('fmvLocal') && <td className="px-3 py-2.5 text-right tabular-nums font-mono text-foreground text-sm">—</td>}
+                {invVisible('fmvCAD') && <td className="px-3 py-2.5 text-right tabular-nums font-mono text-foreground text-sm">{fmtCAD(totalFmvCAD)}</td>}
                 {invVisible('unrealizedGL') && <td className="px-3 py-2.5 text-right">{glBadge(totalUnrealizedGL)}</td>}
                 {invVisible('glAcct') && <td />}
               </tr>
@@ -280,7 +280,7 @@ export function InvHoldingsTab() {
         </div>
       </StyledCard>
 
-      <p className="text-xs text-muted-foreground italic">
+      <p className="text-xs text-foreground italic">
         ① FMV and Unrealized G/L are disclosed for reference only — ASPE Part II (Section 3856) cost method. FX translated at Dec 31, 2025 closing rates.
       </p>
     </div>

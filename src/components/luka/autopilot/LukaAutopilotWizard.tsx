@@ -84,12 +84,12 @@ export function LukaAutopilotWizard({ loan, settings, onStartMagic }: Props) {
                 isActive
                   ? "border-primary text-primary bg-primary/5"
                   : isLocked
-                    ? "border-transparent text-muted-foreground/40 cursor-not-allowed"
+                    ? "border-transparent text-foreground cursor-not-allowed"
                     : status === "complete"
                       ? "border-transparent text-green-600 hover:bg-green-500/5"
                       : status === "warning"
                         ? "border-transparent text-amber-600 hover:bg-amber-500/5"
-                        : "border-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                        : "border-transparent text-foreground hover:bg-muted/40 hover:text-foreground"
               )}
             >
               {status === "complete" ? (

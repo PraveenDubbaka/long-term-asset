@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ChevronDown, ChevronRight, ChevronLeft, Search, Plus, Expand, Trash2, Folder, Headphones, Check, FileText, FileBarChart, StickyNote, Table, Copy, Pencil, FolderInput, MoreVertical, GripVertical, X, Save, Files } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronLeft, Search, Plus, Expand, Trash2, Folder, Headphones, Check, FileText, FileBarChart, StickyNote, Table, Copy, Pencil, FolderInput, MoreVertical, GripVertical, X, Save, Files, Settings, RefreshCw } from "lucide-react";
 import { Input } from "@/components/wp-ui/input";
 import { Button } from "@/components/wp-ui/button";
 import { Checkbox } from "@/components/wp-ui/checkbox";
@@ -244,6 +244,19 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
   const [selectedGlobalTemplate, setSelectedGlobalTemplate] = useState<string | null>("global-1-1");
    const [workPapersOpen, setWorkPapersOpen] = useState(true);
    const [longTermAssetOpen, setLongTermAssetOpen] = useState(true);
+  const [wpSettingsOpen, setWpSettingsOpen] = useState(false);
+  const [wpCurrencySettings, setWpCurrencySettings] = useState({
+    baseCurrency: 'CAD',
+    reportingCurrency: 'CAD',
+    rateType: 'Closing Rate',
+    applyScope: 'global' as 'global' | 'by-type',
+    applyToLongTermDebt: true,
+    applyToCapitalAsset: false,
+    applyToInvestment: false,
+    exchangeRate: '',
+    lastFetched: null as string | null,
+    isFetching: false,
+  });
 
   // Multi-select state for Global Templates
   const [selectedTemplates, setSelectedTemplates] = useState<Set<string>>(new Set());
@@ -542,12 +555,12 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
               >
                 {hasChildren ? (
                   template.isExpanded ? (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <ChevronDown className="h-4 w-4 text-foreground flex-shrink-0" />
                   ) : (
-                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <ChevronRight className="h-4 w-4 text-foreground flex-shrink-0" />
                   )
                 ) : (
-                  <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <ChevronRight className="h-4 w-4 text-foreground flex-shrink-0" />
                 )}
                 <Folder className="h-4 w-4 text-primary flex-shrink-0" />
                 <span className="truncate flex-1">{template.name}</span>
@@ -646,14 +659,14 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
         <div className={`flex items-center gap-2 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted transition-colors text-sm ${depth > 0 ? "ml-6" : ""}`} onClick={() => template.type === "folder" && toggleFolder(template.id)}>
           <Checkbox className="h-4 w-4 border-border" />
           {template.type === "folder" ? <>
-              {hasChildren ? template.isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0 icon-chevron-down" /> : <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 icon-arrow-right" /> : <span className="w-4 flex-shrink-0" />}
+              {hasChildren ? template.isExpanded ? <ChevronDown className="h-4 w-4 text-foreground flex-shrink-0 icon-chevron-down" /> : <ChevronRight className="h-4 w-4 text-foreground flex-shrink-0 icon-arrow-right" /> : <span className="w-4 flex-shrink-0" />}
               <Folder className="h-4 w-4 text-primary flex-shrink-0 icon-folder" />
             </> : <>
               <span className="w-4 flex-shrink-0" />
               <ChecklistIcon className="h-4 w-4 flex-shrink-0" />
             </>}
           <span className="truncate flex-1 text-foreground">{template.name}</span>
-          {folderChecklists.length > 0 && <span className="text-xs text-muted-foreground">{folderChecklists.length}</span>}
+          {folderChecklists.length > 0 && <span className="text-xs text-foreground">{folderChecklists.length}</span>}
         </div>
         {template.type === "folder" && template.isExpanded && <>
             {/* Render saved checklists */}
@@ -673,7 +686,7 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
                     <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-muted-foreground/10 rounded transition-opacity">
-                      <MoreVertical className="h-3.5 w-3.5 text-muted-foreground icon-more" />
+                      <MoreVertical className="h-3.5 w-3.5 text-foreground icon-more" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-48 bg-card border shadow-sm">
@@ -797,7 +810,7 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
                 <h2 className="font-semibold text-primary text-lg">Engagements</h2>
                 <button
                   onClick={() => setShowSignoffs(true)}
-                  className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                  className="flex items-center gap-1 text-foreground hover:text-primary transition-colors cursor-pointer"
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="12" cy="12" r="10" />
@@ -811,7 +824,7 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
             <div className={`p-3 pt-1 ${isTemplatesPanelCollapsed ? "hidden" : ""}`}>
               <div className="flex gap-2">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground icon-search" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground icon-search" />
                   <Input placeholder="Search" className="pl-9 h-9 text-sm" />
                 </div>
                 <Button size="icon" variant="ghost" className="h-9 w-9 bg-primary/10 hover:bg-primary/20"
@@ -1033,14 +1046,14 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
                         }}
                       >
                         {hasChildren ? (
-                          isOpen ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                          isOpen ? <ChevronDown className="h-3.5 w-3.5 text-foreground flex-shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
                         ) : (
                           <span className="w-3.5 flex-shrink-0" />
                         )}
                         {renderIcon(isLeaf ? node.icon : "folder")}
                         {node.code && <span className="font-semibold text-primary">{node.code}</span>}
                         <span className="truncate flex-1 text-foreground">{node.label}</span>
-                        {node.hasPlus && <Plus className="h-4 w-4 text-muted-foreground hover:text-foreground flex-shrink-0" />}
+                        {node.hasPlus && <Plus className="h-4 w-4 text-foreground hover:text-foreground flex-shrink-0" />}
                       </div>
                       {isOpen && hasChildren && (
                         <div>
@@ -1061,12 +1074,19 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
                   onClick={() => setWorkPapersOpen(!workPapersOpen)}
                 >
                   {workPapersOpen ? (
-                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                    <ChevronDown className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
                   ) : (
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                    <ChevronRight className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
                   )}
                   <Folder className="h-4 w-4 text-primary flex-shrink-0" />
                   <span className="truncate flex-1 text-foreground">Workpapers</span>
+                  <button
+                    onClick={e => { e.stopPropagation(); setWpSettingsOpen(true); }}
+                    className="p-0.5 rounded hover:bg-primary/10 transition-all text-foreground"
+                    title="Workpaper Settings"
+                  >
+                    <Settings className="h-3.5 w-3.5" />
+                  </button>
                 </div>
                 {workPapersOpen && (
                   <div className="ml-8">
@@ -1180,7 +1200,7 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
                   return <span>Select...</span>;
                 })()}
                   </div>
-                  <ChevronDown className="h-4 w-4 text-muted-foreground icon-chevron-down" />
+                  <ChevronDown className="h-4 w-4 text-foreground icon-chevron-down" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-[200px]">
                   {dropdownItems.map(item => <DropdownMenuItem key={item.id} onClick={() => handleDropdownSelect(item.id)} className="flex items-center justify-between cursor-pointer">
@@ -1197,12 +1217,12 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
             <div className={`flex mb-2 ${isTemplatesPanelCollapsed ? "hidden" : ""}`} style={{
           borderBottom: "1px solid #DDE1E9"
         }}>
-              <button onClick={() => setActiveTab("firm")} className={`flex-1 py-2 px-1 text-sm font-medium transition-all text-center whitespace-nowrap ${activeTab === "firm" ? "text-primary border-b-[3px]" : "text-muted-foreground hover:text-foreground border-b-[3px] border-transparent"}`} style={activeTab === "firm" ? {
+              <button onClick={() => setActiveTab("firm")} className={`flex-1 py-2 px-1 text-sm font-medium transition-all text-center whitespace-nowrap ${activeTab === "firm" ? "text-primary border-b-[3px]" : "text-foreground hover:text-foreground border-b-[3px] border-transparent"}`} style={activeTab === "firm" ? {
             borderBottomColor: "#0A3159"
           } : undefined}>
                 My Templates
               </button>
-              <button onClick={() => setActiveTab("master")} className={`flex-1 py-2 px-1 text-sm font-medium transition-all text-center whitespace-nowrap ${activeTab === "master" ? "text-primary border-b-[3px]" : "text-muted-foreground hover:text-foreground border-b-[3px] border-transparent"}`} style={activeTab === "master" ? {
+              <button onClick={() => setActiveTab("master")} className={`flex-1 py-2 px-1 text-sm font-medium transition-all text-center whitespace-nowrap ${activeTab === "master" ? "text-primary border-b-[3px]" : "text-foreground hover:text-foreground border-b-[3px] border-transparent"}`} style={activeTab === "master" ? {
             borderBottomColor: "#0A3159"
           } : undefined}>
                 Global Templates
@@ -1212,7 +1232,7 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
             <div className={`p-3 pt-1 ${isTemplatesPanelCollapsed ? "hidden" : ""}`}>
               <div className="flex gap-2">
                 <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground icon-search" />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground icon-search" />
                   <Input placeholder="Search" className="pl-8 h-8 text-sm bg-card/80 border-0 shadow-sm" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                 </div>
                 <button className="h-9 w-9 rounded-md flex items-center justify-center bg-primary/10 hover:bg-primary/20 transition-colors">
@@ -1329,12 +1349,12 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
             <DialogTitle>Move to Folder</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-sm text-muted-foreground mb-3">
+            <p className="text-sm text-foreground mb-3">
               Select a folder to move "{selectedChecklist?.name}" to:
             </p>
             <div className="border rounded-lg p-3 space-y-1 max-h-64 overflow-y-auto bg-background">
               {templates.map(folder => <div key={folder.id} className={`flex items-center gap-2 py-2 px-2 rounded-md cursor-pointer transition-colors ${selectedMoveFolder === folder.id ? "bg-primary/10 text-primary" : "hover:bg-muted"}`} onClick={() => setSelectedMoveFolder(folder.id)}>
-                  <Folder className={`h-4 w-4 ${selectedMoveFolder === folder.id ? "text-primary" : "text-muted-foreground"}`} />
+                  <Folder className={`h-4 w-4 ${selectedMoveFolder === folder.id ? "text-primary" : "text-foreground"}`} />
                   <span className="text-sm truncate flex-1">{folder.name}</span>
                   {selectedMoveFolder === folder.id && <Check className="h-4 w-4 text-primary" />}
                 </div>)}
@@ -1368,5 +1388,168 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
         onClose={() => setShowSignoffs(false)}
         anchorLeft={56}
       />
+
+      {/* Workpaper Currency Settings Modal */}
+      <Dialog open={wpSettingsOpen} onOpenChange={setWpSettingsOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="h-4 w-4 text-primary" />
+              Workpaper Settings — Currency
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* shared field classes matching global design */}
+          {(() => {
+            const SEL = "h-9 w-full px-3 py-2 text-sm rounded-[10px] border border-[#dcdfe4] bg-white hover:border-[hsl(210_25%_75%)] focus:outline-none focus:border-primary/40 transition-all duration-200 cursor-pointer";
+            const INP = "h-9 flex-1 px-3 py-2 text-sm rounded-[10px] border border-[#dcdfe4] bg-white hover:border-[hsl(210_25%_75%)] focus:outline-none focus:border-primary/40 transition-all duration-200 tabular-nums";
+            const LBL = "block text-sm font-medium text-foreground mb-1.5";
+            return (
+              <div className="space-y-5 py-1">
+
+                {/* Base & Reporting Currency */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={LBL}>Base Currency</label>
+                    <select
+                      value={wpCurrencySettings.baseCurrency}
+                      onChange={e => setWpCurrencySettings(p => ({ ...p, baseCurrency: e.target.value, exchangeRate: '' }))}
+                      className={SEL}
+                    >
+                      {['CAD','USD','EUR','GBP','JPY','CHF','AUD','MXN','CNY','HKD'].map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={LBL}>Reporting Currency</label>
+                    <select
+                      value={wpCurrencySettings.reportingCurrency}
+                      onChange={e => setWpCurrencySettings(p => ({ ...p, reportingCurrency: e.target.value, exchangeRate: '' }))}
+                      className={SEL}
+                    >
+                      {['CAD','USD','EUR','GBP','JPY','CHF','AUD','MXN','CNY','HKD'].map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Exchange Rate section — only when currencies differ */}
+                {wpCurrencySettings.baseCurrency !== wpCurrencySettings.reportingCurrency && (
+                  <div className="space-y-4 p-4 rounded-[10px] bg-muted/30 border border-[#dcdfe4]">
+                    <div>
+                      <label className={LBL}>Exchange Rate Type</label>
+                      <select
+                        value={wpCurrencySettings.rateType}
+                        onChange={e => setWpCurrencySettings(p => ({ ...p, rateType: e.target.value }))}
+                        className={SEL}
+                      >
+                        <option value="Closing Rate">Closing Rate — Balance sheet date rate</option>
+                        <option value="Average Rate">Average Rate — Period-average rate</option>
+                        <option value="Spot Rate">Spot Rate — Current market rate</option>
+                        <option value="Overage Rate">Overage Rate — Blended / override rate</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className={LBL}>
+                        Exchange Rate&nbsp;
+                        <span className="font-normal">
+                          ({wpCurrencySettings.baseCurrency} → {wpCurrencySettings.reportingCurrency})
+                        </span>
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          step="0.0001"
+                          placeholder="e.g. 1.3650"
+                          value={wpCurrencySettings.exchangeRate}
+                          onChange={e => setWpCurrencySettings(p => ({ ...p, exchangeRate: e.target.value }))}
+                          className={INP}
+                        />
+                        <Button
+                          variant="outline"
+                          size="default"
+                          onClick={() => {
+                            setWpCurrencySettings(p => ({ ...p, isFetching: true }));
+                            setTimeout(() => {
+                              const mockRates: Record<string, Record<string, string>> = {
+                                CAD: { USD: '0.7321', EUR: '0.6712', GBP: '0.5789', JPY: '110.42' },
+                                USD: { CAD: '1.3662', EUR: '0.9168', GBP: '0.7912', JPY: '150.87' },
+                                EUR: { CAD: '1.4901', USD: '1.0908', GBP: '0.8629', JPY: '164.52' },
+                                GBP: { CAD: '1.7268', USD: '1.2638', EUR: '1.1587', JPY: '190.61' },
+                              };
+                              const rate = mockRates[wpCurrencySettings.baseCurrency]?.[wpCurrencySettings.reportingCurrency] ?? '1.0000';
+                              const now = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' });
+                              setWpCurrencySettings(p => ({ ...p, exchangeRate: rate, lastFetched: now, isFetching: false }));
+                            }, 900);
+                          }}
+                          disabled={wpCurrencySettings.isFetching}
+                        >
+                          <RefreshCw className={wpCurrencySettings.isFetching ? 'animate-spin' : ''} />
+                          {wpCurrencySettings.isFetching ? 'Fetching…' : 'Pull Latest'}
+                        </Button>
+                      </div>
+                      {wpCurrencySettings.lastFetched && (
+                        <p className="mt-1.5 text-xs text-foreground">Last fetched at {wpCurrencySettings.lastFetched}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Apply Scope */}
+                <div>
+                  <label className={LBL}>Apply Rate To</label>
+                  <div className="flex gap-3">
+                    {(['global','by-type'] as const).map(scope => (
+                      <button
+                        key={scope}
+                        onClick={() => setWpCurrencySettings(p => ({ ...p, applyScope: scope }))}
+                        className={`flex-1 h-9 px-3 rounded-[10px] border text-sm font-medium transition-all duration-200 ${
+                          wpCurrencySettings.applyScope === scope
+                            ? 'border-primary bg-primary/5 text-primary'
+                            : 'border-[#dcdfe4] bg-white text-foreground hover:border-[hsl(210_25%_75%)]'
+                        }`}
+                      >
+                        {scope === 'global' ? 'All Workpapers' : 'By Workpaper Type'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {wpCurrencySettings.applyScope === 'by-type' && (
+                    <div className="mt-3 space-y-2.5 pl-1">
+                      {([
+                        { key: 'applyToLongTermDebt', label: 'Long-term Debt' },
+                        { key: 'applyToCapitalAsset',  label: 'Capital Asset' },
+                        { key: 'applyToInvestment',    label: 'Investment' },
+                      ] as const).map(({ key, label }) => (
+                        <label key={key} className="flex items-center gap-2.5 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={wpCurrencySettings[key]}
+                            onChange={e => setWpCurrencySettings(p => ({ ...p, [key]: e.target.checked }))}
+                            className="h-4 w-4 rounded border-[#dcdfe4] accent-primary cursor-pointer"
+                          />
+                          <span className="text-sm text-foreground">{label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          <DialogFooter className="gap-2 pt-2">
+            <Button variant="outline" onClick={() => setWpSettingsOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="default" onClick={() => setWpSettingsOpen(false)}>
+              Save Settings
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>;
 }

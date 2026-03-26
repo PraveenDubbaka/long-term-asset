@@ -75,7 +75,7 @@ export function CapAssetAmortTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Amortization Schedule</h2>
-          <p className="text-xs text-foreground/60 mt-0.5">
+          <p className="text-xs text-foreground mt-0.5">
             Year end: October 31, 2024 · Declining balance · Half-year rule on additions
           </p>
         </div>
@@ -94,14 +94,14 @@ export function CapAssetAmortTab() {
         ].map(k => (
           <StyledCard key={k.label} className="px-4 py-3">
             <div className="text-sm font-bold tabular-nums text-foreground">{k.value}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">{k.label}</div>
+            <div className="text-xs text-foreground mt-0.5">{k.label}</div>
           </StyledCard>
         ))}
       </div>
 
       {/* Category filter */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-muted-foreground">Category:</span>
+        <span className="text-xs text-foreground">Category:</span>
         {(['All', ...CATEGORY_ORDER] as const).map(c => (
           <button key={c} onClick={() => setFilterCat(c as typeof filterCat)}
             className={`px-3 py-1 text-xs rounded-md border transition-colors ${
@@ -138,7 +138,7 @@ export function CapAssetAmortTab() {
                   {rateStr} declining balance
                 </Badge>
               </div>
-              <div className="text-xs text-muted-foreground tabular-nums">
+              <div className="text-xs text-foreground tabular-nums">
                 {catAssets.length} asset{catAssets.length !== 1 ? 's' : ''} ·
                 Expense: <strong>${fmt(catExp)}</strong>
               </div>
@@ -169,14 +169,14 @@ export function CapAssetAmortTab() {
                           <div className="text-sm font-medium text-foreground">{a.description}</div>
                           {a.notes && <div className="text-xs text-amber-600 mt-0.5">{a.notes}</div>}
                         </td>
-                        <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">{a.dateAdded ?? '—'}</td>
+                        <td className="px-3 py-2 text-xs text-foreground whitespace-nowrap">{a.dateAdded ?? '—'}</td>
                         <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{fmtC(a.cost2024)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums font-mono text-sm text-muted-foreground">{fmtC(a.accumAmort2023)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums font-mono text-sm text-foreground">{fmtC(a.accumAmort2023)}</td>
                         <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{fmtC(a.netBookValue2023)}</td>
                         <td className="px-3 py-2 text-right tabular-nums font-mono text-sm font-medium text-primary">
                           {a.amortExpense2024 > 0 ? '$' + fmt(a.amortExpense2024) : '—'}
                         </td>
-                        <td className="px-3 py-2 text-right tabular-nums font-mono text-sm text-muted-foreground">{fmtC(a.accumAmort2024)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums font-mono text-sm text-foreground">{fmtC(a.accumAmort2024)}</td>
                         <td className="px-3 py-2 text-right tabular-nums font-mono font-semibold text-sm text-emerald-700">{fmtC(a.netBookValue2024)}</td>
                         <td className="px-3 py-2 text-center">
                           <div className="flex flex-col items-center gap-1">
@@ -197,10 +197,10 @@ export function CapAssetAmortTab() {
                   <tr className="border-t-2 border-border bg-muted/50">
                     <td colSpan={2} className="px-4 py-2 text-xs font-semibold">Subtotal — {catAssets.length} assets</td>
                     <td className="px-3 py-2 text-right tabular-nums font-mono font-bold text-sm">{fmtC(catCost)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-mono text-sm text-muted-foreground">{fmtC(catAAOpen)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums font-mono text-sm text-foreground">{fmtC(catAAOpen)}</td>
                     <td className="px-3 py-2 text-right tabular-nums font-mono font-bold text-sm">{fmtC(catNBVOp)}</td>
                     <td className="px-3 py-2 text-right tabular-nums font-mono font-bold text-sm text-primary">${fmt(catExp)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-mono text-sm text-muted-foreground">{fmtC(catAAClose)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums font-mono text-sm text-foreground">{fmtC(catAAClose)}</td>
                     <td className="px-3 py-2 text-right tabular-nums font-mono font-bold text-sm text-emerald-700">{fmtC(catNBVCl)}</td>
                     <td />
                   </tr>
@@ -223,7 +223,7 @@ export function CapAssetAmortTab() {
           ].map(k => (
             <div key={k.label}>
               <div className="text-sm font-bold tabular-nums text-foreground">{k.value}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">{k.label}</div>
+              <div className="text-xs text-foreground mt-0.5">{k.label}</div>
             </div>
           ))}
         </div>

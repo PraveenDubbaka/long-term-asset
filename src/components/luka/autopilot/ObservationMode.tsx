@@ -76,14 +76,14 @@ export function ObservationMode({ loan, onNewThread }: Props) {
         {/* FILE MATURITY card */}
         <div className="border border-border rounded-xl overflow-hidden">
           <div className="px-4 py-2.5 bg-muted/40 border-b border-border flex items-center justify-between">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">File Maturity</p>
+            <p className="text-xs font-semibold text-foreground uppercase tracking-wider">File Maturity</p>
             <div className="flex items-center gap-1.5">
               <button className="h-6 w-6 flex items-center justify-center rounded-md hover:bg-muted/60 transition-colors relative">
-                <Bell className="w-3.5 h-3.5 text-muted-foreground" />
+                <Bell className="w-3.5 h-3.5 text-foreground" />
                 <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-primary text-white text-[8px] flex items-center justify-center font-bold">3</span>
               </button>
               <button className="h-6 w-6 flex items-center justify-center rounded-md hover:bg-muted/60 transition-colors">
-                <Settings className="w-3.5 h-3.5 text-muted-foreground" />
+                <Settings className="w-3.5 h-3.5 text-foreground" />
               </button>
             </div>
           </div>
@@ -118,19 +118,19 @@ export function ObservationMode({ loan, onNewThread }: Props) {
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 flex-1">
               <div>
                 <p className="text-base font-bold text-foreground">4</p>
-                <p className="text-[10px] text-muted-foreground">WPs complete</p>
+                <p className="text-[10px] text-foreground">WPs complete</p>
               </div>
               <div>
                 <p className="text-base font-bold text-amber-500">1</p>
-                <p className="text-[10px] text-muted-foreground">Pending review</p>
+                <p className="text-[10px] text-foreground">Pending review</p>
               </div>
               <div>
                 <p className="text-base font-bold text-foreground">2</p>
-                <p className="text-[10px] text-muted-foreground">Disclosures ready</p>
+                <p className="text-[10px] text-foreground">Disclosures ready</p>
               </div>
               <div>
                 <p className="text-base font-bold text-destructive">0/2</p>
-                <p className="text-[10px] text-muted-foreground">Signed off</p>
+                <p className="text-[10px] text-foreground">Signed off</p>
               </div>
             </div>
           </div>
@@ -140,7 +140,7 @@ export function ObservationMode({ loan, onNewThread }: Props) {
         {visibleActions.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Suggested Actions</p>
+              <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Suggested Actions</p>
               <span className="w-5 h-5 rounded-full bg-primary text-white text-[10px] flex items-center justify-center font-bold">
                 {visibleActions.length}
               </span>
@@ -179,7 +179,7 @@ export function ObservationMode({ loan, onNewThread }: Props) {
         {/* Back to threads */}
         <button
           onClick={onNewThread}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+          className="flex items-center gap-1.5 text-xs text-foreground hover:text-primary transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Back to threads
         </button>
@@ -193,9 +193,9 @@ export function ObservationMode({ loan, onNewThread }: Props) {
             value={inputValue}
             onChange={e => setInputValue(e.target.value)}
             placeholder="Type # for prompts or just ask anything..."
-            className="flex-1 text-xs bg-transparent outline-none border-none text-foreground placeholder:text-muted-foreground/70"
+            className="flex-1 text-xs bg-transparent outline-none border-none text-foreground placeholder:text-foreground"
           />
-          <button className="h-6 w-6 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+          <button className="h-6 w-6 flex items-center justify-center text-foreground hover:text-foreground transition-colors">
             <Paperclip className="w-3.5 h-3.5" />
           </button>
           <button className="h-6 w-6 flex items-center justify-center rounded-full bg-primary text-white hover:bg-primary/90 transition-colors">

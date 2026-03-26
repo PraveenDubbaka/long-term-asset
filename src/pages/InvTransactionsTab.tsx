@@ -73,7 +73,7 @@ export function InvTransactionsTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Transaction Register</h2>
-          <p className="text-xs text-foreground/60 mt-0.5">All transactions — 4 brokers consolidated · FY Jan 1 – Dec 31, 2025</p>
+          <p className="text-xs text-foreground mt-0.5">All transactions — 4 brokers consolidated · FY Jan 1 – Dec 31, 2025</p>
         </div>
         <Button variant="secondary" size="sm" onClick={handleExport}>
           <Download className="w-3.5 h-3.5" /> Export
@@ -92,7 +92,7 @@ export function InvTransactionsTab() {
             <k.icon className={`w-7 h-7 ${k.color} opacity-80`} />
             <div>
               <div className="text-2xl font-bold text-foreground">{k.count}</div>
-              <div className="text-xs text-muted-foreground">{k.label}</div>
+              <div className="text-xs text-foreground">{k.label}</div>
             </div>
           </StyledCard>
         ))}
@@ -132,7 +132,7 @@ export function InvTransactionsTab() {
           </button>
           {(search || filterType !== 'All' || filterBroker !== 'All' || filterTicker !== 'All' || flagsOnly) && (
             <button onClick={() => { setSearch(''); setFilterType('All'); setFilterBroker('All'); setFilterTicker('All'); setFlagsOnly(false); }}
-              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2">Clear</button>
+              className="text-xs text-foreground hover:text-foreground underline underline-offset-2">Clear</button>
           )}
         </div>
       </StyledCard>
@@ -160,13 +160,13 @@ export function InvTransactionsTab() {
             <tbody className="divide-y divide-border">
               {filtered.map(t => (
                 <tr key={t.id} className={`hover:bg-muted/30 transition-colors ${t.flag ? 'bg-amber-50/60' : ''}`}>
-                  <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">{fmtDateDisplay(t.date)}</td>
+                  <td className="px-3 py-2 text-xs text-foreground whitespace-nowrap">{fmtDateDisplay(t.date)}</td>
                   <td className="px-3 py-2">
                     <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{t.source}</span>
                   </td>
                   <td className="px-3 py-2">
                     <div className="font-medium text-foreground text-sm leading-tight">{t.security}</div>
-                    <div className="text-xs text-muted-foreground font-mono">{t.ticker}</div>
+                    <div className="text-xs text-foreground font-mono">{t.ticker}</div>
                   </td>
                   <td className="px-3 py-2 text-xs text-foreground whitespace-nowrap">{t.broker.replace(' Investing', '').replace(' Waterhouse', '')}</td>
                   <td className="px-3 py-2">
@@ -176,19 +176,19 @@ export function InvTransactionsTab() {
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{fmt(t.qty, 0)}</td>
                   <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{fmt(t.price, 2)}</td>
-                  <td className="px-2 py-2 text-center text-xs text-muted-foreground font-mono">{t.currency}</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-mono text-xs text-muted-foreground">
+                  <td className="px-2 py-2 text-center text-xs text-foreground font-mono">{t.currency}</td>
+                  <td className="px-3 py-2 text-right tabular-nums font-mono text-xs text-foreground">
                     {t.commission > 0 ? fmt(t.commission) : '—'}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{fmt(t.netLocal)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-mono text-xs text-muted-foreground">
+                  <td className="px-3 py-2 text-right tabular-nums font-mono text-xs text-foreground">
                     {t.currency === 'CAD' ? '—' : fmt(t.fxRate, 4)}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums font-mono font-semibold text-sm">{fmtCAD(t.netCAD)}</td>
                   <td className="px-3 py-2 max-w-[160px]">
                     <div className="flex items-start gap-1">
                       {t.flag && <Flag className="w-3 h-3 text-amber-500 flex-shrink-0 mt-0.5" />}
-                      <span className="text-xs text-muted-foreground truncate" title={t.notes}>{t.notes ?? ''}</span>
+                      <span className="text-xs text-foreground truncate" title={t.notes}>{t.notes ?? ''}</span>
                     </div>
                   </td>
                 </tr>
@@ -200,7 +200,7 @@ export function InvTransactionsTab() {
                   {filtered.length} transactions
                 </td>
                 <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm">
-                  <span className="text-xs text-muted-foreground mr-1">Net flow</span>
+                  <span className="text-xs text-foreground mr-1">Net flow</span>
                   {totalNetCAD >= 0 ? '+' : ''}{fmtCAD(totalNetCAD)}
                 </td>
                 <td />

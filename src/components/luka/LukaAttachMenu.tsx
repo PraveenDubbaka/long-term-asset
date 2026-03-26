@@ -61,7 +61,7 @@ export function LukaAttachMenu({
         )}
       >
         <span className={cn("transition-transform duration-200", open && "rotate-45")}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-muted-foreground">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-foreground">
             <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
         </span>
@@ -83,14 +83,14 @@ export function LukaAttachMenu({
             onClick={handleComputerClick}
             className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm text-foreground hover:bg-muted/60 transition-colors rounded-sm"
           >
-            <Monitor size={16} className="text-muted-foreground shrink-0" />
+            <Monitor size={16} className="text-foreground shrink-0" />
             <span className="font-medium">Computer</span>
           </button>
           <button
             onClick={() => setOpen(false)}
             className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm text-foreground hover:bg-muted/60 transition-colors rounded-sm"
           >
-            <FolderOpen size={16} className="text-muted-foreground shrink-0" />
+            <FolderOpen size={16} className="text-foreground shrink-0" />
             <span className="font-medium">Repository</span>
           </button>
         </div>
@@ -119,19 +119,19 @@ export function AttachedFilesBar({
           className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-lg bg-muted/60 border border-border/50 text-xs group/chip"
         >
           <span className="text-foreground font-medium max-w-[120px] truncate">{f.name}</span>
-          <span className="text-muted-foreground">{f.size}</span>
+          <span className="text-foreground">{f.size}</span>
           <button
             onClick={() => onRemove(f.id)}
             className="ml-0.5 h-4 w-4 flex items-center justify-center rounded-full hover:bg-destructive/10 transition-colors"
           >
-            <X size={10} className="text-muted-foreground hover:text-destructive" />
+            <X size={10} className="text-foreground hover:text-destructive" />
           </button>
         </div>
       ))}
       {files.length > 1 && (
         <button
           onClick={onClearAll}
-          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
         >
           <Trash2 size={11} />
           <span>Clear all</span>

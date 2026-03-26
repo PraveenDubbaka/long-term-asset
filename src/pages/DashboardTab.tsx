@@ -117,7 +117,7 @@ export function DashboardTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Dashboard</h2>
-          <p className="text-xs text-foreground/60 mt-0.5">Portfolio overview · KPIs, covenant status, and maturity outlook</p>
+          <p className="text-xs text-foreground mt-0.5">Portfolio overview · KPIs, covenant status, and maturity outlook</p>
         </div>
         <Button variant="secondary" size="sm" onClick={handleExport}>
           <Download className="w-3.5 h-3.5 mr-1" /> Export
@@ -132,11 +132,11 @@ export function DashboardTab() {
             style={{ borderRadius: '12px' }}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{s.label}</span>
-              <span className="text-foreground/40">{s.icon}</span>
+              <span className="text-[11px] font-medium text-foreground uppercase tracking-wide">{s.label}</span>
+              <span className="text-foreground">{s.icon}</span>
             </div>
             <div className="text-xl font-semibold text-foreground tabular-nums">{s.value}</div>
-            <div className="text-xs text-muted-foreground">{s.sub}</div>
+            <div className="text-xs text-foreground">{s.sub}</div>
           </div>
         ))}
       </div>
@@ -185,7 +185,7 @@ export function DashboardTab() {
               <div key={i} className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-1.5">
                   <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: item.color }} />
-                  <span className="text-muted-foreground truncate max-w-[100px]">{item.name}</span>
+                  <span className="text-foreground truncate max-w-[100px]">{item.name}</span>
                 </div>
                 <span className="tabular-nums font-medium text-foreground">{fmtCurrency(item.value, 'CAD', true)}</span>
               </div>
@@ -210,7 +210,7 @@ export function DashboardTab() {
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <div className="text-sm font-semibold text-foreground">{loan.name}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">{loan.lender} · {loan.refNumber}</div>
+                    <div className="text-xs text-foreground mt-0.5">{loan.lender} · {loan.refNumber}</div>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Badge variant="outline">{loan.currency}</Badge>
@@ -220,23 +220,23 @@ export function DashboardTab() {
 
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <div className="text-foreground/40 mb-0.5">Current Balance</div>
+                    <div className="text-foreground mb-0.5">Current Balance</div>
                     <div className="font-semibold text-foreground tabular-nums">{fmtCurrency(loan.currentBalance, loan.currency)}</div>
                     {loan.currency !== 'CAD' && (
-                      <div className="text-foreground/40">≈ {fmtCurrency(loan.currentBalance * cad, 'CAD', true)} CAD</div>
+                      <div className="text-foreground">≈ {fmtCurrency(loan.currentBalance * cad, 'CAD', true)} CAD</div>
                     )}
                   </div>
                   <div>
-                    <div className="text-foreground/40 mb-0.5">Rate</div>
+                    <div className="text-foreground mb-0.5">Rate</div>
                     <div className="font-semibold text-foreground">{fmtPct(loan.rate)}{loan.interestType === 'Variable' ? ' V' : ''}</div>
-                    <div className="text-foreground/40">{loan.dayCountBasis}</div>
+                    <div className="text-foreground">{loan.dayCountBasis}</div>
                   </div>
                   <div>
-                    <div className="text-foreground/40 mb-0.5">Current Portion</div>
+                    <div className="text-foreground mb-0.5">Current Portion</div>
                     <div className="font-medium text-foreground tabular-nums">{fmtCurrency(loan.currentPortion, loan.currency)}</div>
                   </div>
                   <div>
-                    <div className="text-foreground/40 mb-0.5">Accrued Interest</div>
+                    <div className="text-foreground mb-0.5">Accrued Interest</div>
                     <div className="font-medium text-amber-700 tabular-nums">{fmtCurrency(loan.accruedInterest, loan.currency)}</div>
                   </div>
                 </div>
@@ -244,7 +244,7 @@ export function DashboardTab() {
                 {utilization !== null && (
                   <div className="mt-3 pt-3 border-t border-border">
                     <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-foreground/40">LOC Utilization</span>
+                      <span className="text-foreground">LOC Utilization</span>
                       <span className="font-medium text-foreground">{fmtPct(utilization, 0)}</span>
                     </div>
                     <div className="h-1.5 bg-muted rounded-full overflow-hidden">
@@ -289,24 +289,24 @@ export function DashboardTab() {
             });
             if (bucket.length === 0) return (
               <div key={label} className="flex items-center justify-between py-2 border-b border-border last:border-0 text-xs">
-                <span className="text-foreground/40">{label}</span>
-                <span className="text-foreground/30">—</span>
+                <span className="text-foreground">{label}</span>
+                <span className="text-foreground">—</span>
               </div>
             );
             return (
               <div key={label} className="py-2 border-b border-border last:border-0">
                 <div className="flex items-center justify-between text-xs mb-1">
-                  <span className={`font-semibold ${maxDays <= 90 ? 'text-red-700' : maxDays <= 180 ? 'text-amber-700' : 'text-foreground/70'}`}>{label}</span>
-                  <span className="text-foreground/50">{bucket.length} facilit{bucket.length > 1 ? 'ies' : 'y'}</span>
+                  <span className={`font-semibold ${maxDays <= 90 ? 'text-red-700' : maxDays <= 180 ? 'text-amber-700' : 'text-foreground'}`}>{label}</span>
+                  <span className="text-foreground">{bucket.length} facilit{bucket.length > 1 ? 'ies' : 'y'}</span>
                 </div>
                 {bucket.map(l => (
                   <div key={l.id} className="flex items-center justify-between text-xs pl-2 py-0.5">
                     <div className="flex items-center gap-1.5">
                       <CalendarClock className={`w-3 h-3 ${maxDays <= 90 ? 'text-red-500' : 'text-amber-500'}`} />
-                      <span className="text-foreground/70">{l.name}</span>
-                      <span className="text-foreground/40">{fmtDateDisplay(l.maturityDate)}</span>
+                      <span className="text-foreground">{l.name}</span>
+                      <span className="text-foreground">{fmtDateDisplay(l.maturityDate)}</span>
                     </div>
-                    <span className="tabular-nums font-medium text-foreground/80">{fmtCurrency(l.currentBalance, l.currency)}</span>
+                    <span className="tabular-nums font-medium text-foreground">{fmtCurrency(l.currentBalance, l.currency)}</span>
                   </div>
                 ))}
               </div>
@@ -320,9 +320,9 @@ export function DashboardTab() {
         {/* Covenant Outlook */}
         <StyledCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <ShieldAlert className="w-4 h-4 text-foreground/40" />
+            <ShieldAlert className="w-4 h-4 text-foreground" />
             <h3 className="text-sm font-semibold text-foreground">Covenant Outlook</h3>
-            <span className="text-xs text-foreground/40 ml-auto">Current → Projected</span>
+            <span className="text-xs text-foreground ml-auto">Current → Projected</span>
           </div>
           <div className="space-y-1.5">
             {covenants.filter(c => c.type === 'Quantitative' && c.currentValue !== undefined).map(c => {
@@ -342,7 +342,7 @@ export function DashboardTab() {
                 <div key={c.id} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs ${worsening ? 'bg-amber-50' : 'bg-muted/30'}`}>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-foreground truncate">{c.name}</div>
-                    {loan && <div className="text-foreground/40 truncate">{loan.name}</div>}
+                    {loan && <div className="text-foreground truncate">{loan.name}</div>}
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     <span className={`tabular-nums font-semibold ${c.status === 'Breached' ? 'text-red-600' : c.status === 'At Risk' ? 'text-amber-600' : 'text-emerald-600'}`}>
@@ -350,7 +350,7 @@ export function DashboardTab() {
                     </span>
                     {dir === 'up'   && <TrendingUp   className="w-3 h-3 text-emerald-500" />}
                     {dir === 'down' && <TrendingDown  className="w-3 h-3 text-red-500" />}
-                    {dir === 'flat' && <Minus         className="w-3 h-3 text-foreground/30" />}
+                    {dir === 'flat' && <Minus         className="w-3 h-3 text-foreground" />}
                     {c.projectedValue !== undefined && (
                       <span className={`tabular-nums font-semibold ${projSt === 'Breached' ? 'text-red-600' : projSt === 'At Risk' ? 'text-amber-600' : 'text-emerald-600'}`}>
                         {fmtV(c.projectedValue)}
@@ -436,7 +436,7 @@ export function DashboardTab() {
               { label: 'Total Accrued Interest',             value: fmtCurrency(totalAccruedInterest, 'CAD'), highlight: true   },
             ].map((row, i) => (
               <div key={i} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
-                <span className="text-muted-foreground">{row.label}</span>
+                <span className="text-foreground">{row.label}</span>
                 <span className={`tabular-nums font-semibold ${row.highlight ? 'text-amber-700' : 'text-foreground'}`}>
                   {row.value}
                 </span>

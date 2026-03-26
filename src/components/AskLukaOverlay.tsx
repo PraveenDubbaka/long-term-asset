@@ -124,7 +124,7 @@ function LukaMessage({ children }: { children: React.ReactNode }) {
       <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-[hsl(265_80%_55%)] flex items-center justify-center shrink-0 mt-0.5">
         <LukaIcon size={12} />
       </div>
-      <div className="flex-1 text-sm text-foreground/85 leading-relaxed">{children}</div>
+      <div className="flex-1 text-sm text-foreground leading-relaxed">{children}</div>
     </div>
   );
 }
@@ -580,10 +580,10 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
               isActive
                 ? "border-primary text-foreground bg-primary/5"
                 : isDone
-                  ? "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+                  ? "border-transparent text-foreground hover:text-foreground hover:border-border"
                   : isLocked
-                    ? "border-transparent text-muted-foreground/40 cursor-not-allowed"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+                    ? "border-transparent text-foreground cursor-not-allowed"
+                    : "border-transparent text-foreground hover:text-foreground hover:border-border"
             )}
           >
             {isDone && !isActive && <CheckCircle2 className="w-3 h-3 text-green-500 shrink-0" />}
@@ -620,9 +620,9 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
             <div className="flex-1 pt-0.5">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-xs font-semibold text-foreground">Luka</span>
-                <span className="text-[10px] text-muted-foreground/60">Engagement AI</span>
+                <span className="text-[10px] text-foreground">Engagement AI</span>
               </div>
-              <div className="bg-background rounded-[8px] border border-border/60 px-4 py-3 shadow-sm text-sm text-foreground/85 leading-relaxed">
+              <div className="bg-background rounded-[8px] border border-border/60 px-4 py-3 shadow-sm text-sm text-foreground leading-relaxed">
                 Hi! I am <span className="text-primary font-semibold">Luka</span> — your year-end-engagement automation preparer.
               </div>
             </div>
@@ -638,9 +638,9 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
             <div className="flex-1 pt-0.5">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-xs font-semibold text-foreground">Luka</span>
-                <span className="text-[10px] text-muted-foreground/60">Engagement AI</span>
+                <span className="text-[10px] text-foreground">Engagement AI</span>
               </div>
-              <div className="bg-background rounded-[8px] border border-border/60 px-4 py-3 shadow-sm text-sm text-foreground/85 leading-relaxed">
+              <div className="bg-background rounded-[8px] border border-border/60 px-4 py-3 shadow-sm text-sm text-foreground leading-relaxed">
                 I'll gather the info needed for this engagement while you relax. I'll review the details and sources, then update you on the verification results shortly.
               </div>
             </div>
@@ -656,7 +656,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
             <div className="flex-1 pt-0.5">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-xs font-semibold text-foreground">Luka</span>
-                <span className="text-[10px] text-muted-foreground/60">Engagement AI</span>
+                <span className="text-[10px] text-foreground">Engagement AI</span>
                 {verifyPhase === "reviewing" && (
                   <span className="flex items-center gap-1 text-[10px] text-primary/70 animate-pulse">
                     <span className="w-1 h-1 rounded-full bg-primary inline-block" />
@@ -695,9 +695,9 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                           : <div className="w-3.5 h-3.5 rounded-full border-2 border-border/60" />
                         }
                       </div>
-                      <span className="text-[11px] text-muted-foreground w-36 shrink-0 leading-relaxed">{row.label}</span>
+                      <span className="text-[11px] text-foreground w-36 shrink-0 leading-relaxed">{row.label}</span>
                       {row.showCheck && (
-                        <span className="text-[11px] text-foreground/80 flex-1 leading-relaxed whitespace-pre-line">{row.value}</span>
+                        <span className="text-[11px] text-foreground flex-1 leading-relaxed whitespace-pre-line">{row.value}</span>
                       )}
                     </div>
                   ))}
@@ -706,7 +706,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
 
               {/* Post-verification message */}
               {verifyPhase === "done" && (
-                <div className="mt-3 bg-background rounded-[8px] border border-border/60 px-4 py-3 shadow-sm text-sm text-foreground/85 leading-relaxed animate-in fade-in duration-300">
+                <div className="mt-3 bg-background rounded-[8px] border border-border/60 px-4 py-3 shadow-sm text-sm text-foreground leading-relaxed animate-in fade-in duration-300">
                   All checks passed ✓ — your workspace is ready. You can now continue with the next steps in the tabs above, or upload the required files to get started.
                 </div>
               )}
@@ -723,7 +723,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
             <div className="flex-1 pt-0.5">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-xs font-semibold text-foreground">Required Files</span>
-                <span className="text-[10px] text-muted-foreground/60">Must upload before automation</span>
+                <span className="text-[10px] text-foreground">Must upload before automation</span>
               </div>
               <div className="bg-background rounded-[8px] border border-amber-200 dark:border-amber-800/40 overflow-hidden shadow-sm">
                 <div className="bg-amber-50 dark:bg-amber-950/20 px-4 py-2.5 border-b border-amber-100 dark:border-amber-900/30">
@@ -739,7 +739,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                       <div className="w-5 h-5 rounded-[4px] bg-amber-500 flex items-center justify-center shrink-0 text-white text-[10px] font-bold">{item.n}</div>
                       <div className="flex-1">
                         <p className="text-xs font-medium text-foreground">{item.label}</p>
-                        <p className="text-[10px] text-muted-foreground">{item.sub}</p>
+                        <p className="text-[10px] text-foreground">{item.sub}</p>
                       </div>
                     </div>
                   ))}
@@ -761,7 +761,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
             <div className="flex-1 pt-0.5">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-xs font-semibold text-foreground">Luka</span>
-                <span className="text-[10px] text-muted-foreground/60">Engagement AI</span>
+                <span className="text-[10px] text-foreground">Engagement AI</span>
               </div>
               <div className="bg-background rounded-[8px] border border-border/60 px-4 py-3 shadow-sm inline-flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "0ms" }} />
@@ -777,7 +777,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
           <div className="flex justify-end pb-2">
             <button
               onClick={() => { if (selectedCompWs) selectCompWorkspace(selectedCompWs); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] border border-border bg-background text-xs text-muted-foreground hover:bg-muted/50 hover:border-primary/30 transition-all shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] border border-border bg-background text-xs text-foreground hover:bg-muted/50 hover:border-primary/30 transition-all shadow-sm"
             >
               <RotateCcw className="w-3 h-3" /> Rerun verification
             </button>
@@ -796,9 +796,9 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
       <div className="flex-1 pt-0.5">
         <div className="flex items-center gap-2 mb-1.5">
           <span className="text-xs font-semibold text-foreground">Luka</span>
-          <span className="text-[10px] text-muted-foreground/60">Engagement AI</span>
+          <span className="text-[10px] text-foreground">Engagement AI</span>
         </div>
-        <div className="bg-background rounded-[8px] border border-border/60 px-4 py-3 shadow-sm text-sm text-foreground/85 leading-relaxed">
+        <div className="bg-background rounded-[8px] border border-border/60 px-4 py-3 shadow-sm text-sm text-foreground leading-relaxed">
           {children}
         </div>
       </div>
@@ -820,7 +820,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
     <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] border border-border bg-background shadow-sm text-xs text-foreground">
       <FileText className="w-3 h-3 text-primary/60" />
       {name}
-      <button onClick={onRemove} className="ml-1 w-3.5 h-3.5 rounded-full hover:bg-muted/60 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">×</button>
+      <button onClick={onRemove} className="ml-1 w-3.5 h-3.5 rounded-full hover:bg-muted/60 flex items-center justify-center text-foreground hover:text-foreground transition-colors">×</button>
     </div>
   );
 
@@ -836,7 +836,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
       {uploading ? (
         <div className="flex flex-col items-center gap-2">
           <div className="w-7 h-7 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-muted-foreground">Uploading…</p>
+          <p className="text-xs text-foreground">Uploading…</p>
         </div>
       ) : uploaded ? (
         <div className="flex flex-col items-center gap-2">
@@ -849,7 +849,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
             <Upload className="w-4.5 h-4.5 text-primary" />
           </div>
           <p className="text-sm text-foreground"><span className="text-primary font-medium">Click to upload</span> or drag and drop</p>
-          <p className="text-xs text-muted-foreground mt-1">PDF files only</p>
+          <p className="text-xs text-foreground mt-1">PDF files only</p>
         </>
       )}
     </div>
@@ -928,7 +928,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                     <div className="divide-y divide-border/40">
                       {["Client acceptance & continuance", "Independence", "Knowledge of client business", "Planning"].map(item => (
                         <div key={item} className="flex items-center justify-between px-3 py-2">
-                          <span className="text-[11px] text-foreground/80">{item}</span>
+                          <span className="text-[11px] text-foreground">{item}</span>
                           {uploadedChecklists.length > 0
                             ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
                             : <div className="w-3.5 h-3.5 rounded-full border-2 border-border/50 shrink-0" />}
@@ -978,10 +978,10 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                     <FileText className="w-3.5 h-3.5 text-primary/70" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] text-muted-foreground mb-1">{row.label}</p>
+                    <p className="text-[10px] text-foreground mb-1">{row.label}</p>
                     <div className="flex items-center gap-2 border border-border rounded-[8px] px-3 py-1.5 bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer">
                       <span className="text-xs text-foreground flex-1 truncate">{row.value}</span>
-                      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <ChevronDown className="w-3.5 h-3.5 text-foreground shrink-0" />
                     </div>
                   </div>
                   <button
@@ -1023,7 +1023,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                 <LukaIcon size={9} />
               </div>
               <span className="text-xs font-semibold text-foreground flex-1">Luka suggested working paper threads</span>
-              <span className="text-[10px] text-muted-foreground">{Object.values(wpToggles).filter(Boolean).length} selected</span>
+              <span className="text-[10px] text-foreground">{Object.values(wpToggles).filter(Boolean).length} selected</span>
             </div>
             <div className="divide-y divide-border/40">
               {WP_THREADS.map(wp => (
@@ -1036,7 +1036,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                       {wp.label}
                       {wp.required && <span className="text-destructive ml-0.5 font-normal">*</span>}
                     </p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{wp.desc}</p>
+                    <p className="text-[11px] text-foreground mt-0.5 leading-relaxed">{wp.desc}</p>
                   </div>
                   <button
                     onClick={() => { setWpToggles(prev => ({ ...prev, [wp.id]: !prev[wp.id] })); markCompleted("workingpapers"); }}
@@ -1081,14 +1081,14 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
               <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-muted/30">
                 <span className="text-xs font-semibold text-foreground flex-1">Financial Statement Settings</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-muted-foreground">Last Year Files</span>
+                  <span className="text-[10px] text-foreground">Last Year Files</span>
                   <button
                     onClick={() => setFsExtractFromLastYear(!fsExtractFromLastYear)}
                     className={cn("relative w-9 h-5 rounded-full transition-colors", fsExtractFromLastYear ? "bg-primary" : "bg-muted")}
                   >
                     <span className={cn("absolute left-0 top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform", fsExtractFromLastYear ? "translate-x-4" : "translate-x-0.5")} />
                   </button>
-                  <span className="text-[10px] text-muted-foreground">Global Default</span>
+                  <span className="text-[10px] text-foreground">Global Default</span>
                 </div>
               </div>
 
@@ -1097,9 +1097,9 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                   onClick={() => setFsFormOpen(!fsFormOpen)}
                   className="flex items-center gap-2 w-full text-xs font-medium text-foreground hover:text-primary transition-colors mb-3"
                 >
-                  <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                  <FileText className="w-3.5 h-3.5 text-foreground" />
                   Formatting &amp; Data
-                  <span className="ml-auto text-muted-foreground text-base leading-none">{fsFormOpen ? "−" : "+"}</span>
+                  <span className="ml-auto text-foreground text-base leading-none">{fsFormOpen ? "−" : "+"}</span>
                 </button>
 
                 {fsFormOpen && (
@@ -1113,7 +1113,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                       { label: "Footer Placement", val: fsFooter, set: setFsFooter, opts: ["First Page Only", "All Pages", "No Footer"] },
                     ].map(field => (
                       <div key={field.label}>
-                        <p className="text-[10px] text-muted-foreground mb-1">{field.label}</p>
+                        <p className="text-[10px] text-foreground mb-1">{field.label}</p>
                         <div className="relative">
                           <select
                             value={field.val}
@@ -1122,7 +1122,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                           >
                             {field.opts.map(o => <option key={o}>{o}</option>)}
                           </select>
-                          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+                          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-foreground pointer-events-none" />
                         </div>
                       </div>
                     ))}
@@ -1139,7 +1139,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                         ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm shadow-primary/20"
                         : fsSaved
                           ? "bg-green-50 text-green-700 border border-green-200 cursor-default"
-                          : "bg-muted text-muted-foreground cursor-not-allowed"
+                          : "bg-muted text-foreground cursor-not-allowed"
                     )}
                   >
                     {fsSaved ? "Saved ✓" : "Save Settings"}
@@ -1173,11 +1173,11 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-[8px] border border-border bg-background px-4 py-3.5 shadow-sm">
                   <div className="flex items-center gap-2 mb-1">
-                    <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                    <Clock className="w-3.5 h-3.5 text-foreground" />
                     <span className="text-xl font-bold text-foreground">12 mins</span>
                   </div>
                   <p className="text-xs font-medium text-foreground">Completion time</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">After file analysis</p>
+                  <p className="text-[10px] text-foreground mt-0.5">After file analysis</p>
                 </div>
                 <div className="rounded-[8px] border border-border bg-background px-4 py-3.5 shadow-sm">
                   <div className="flex items-center gap-2 mb-1">
@@ -1187,7 +1187,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                     <span className="text-xl font-bold text-foreground">4.5 hrs</span>
                   </div>
                   <p className="text-xs font-medium text-foreground">Time saved</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">This engagement</p>
+                  <p className="text-[10px] text-foreground mt-0.5">This engagement</p>
                 </div>
               </div>
 
@@ -1198,7 +1198,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                 </div>
                 <div>
                   <p className="text-sm font-bold text-foreground">1.5 credits estimated</p>
-                  <p className="text-[10px] text-muted-foreground">Based on uploaded files and Trial Balance data</p>
+                  <p className="text-[10px] text-foreground">Based on uploaded files and Trial Balance data</p>
                 </div>
               </div>
 
@@ -1249,7 +1249,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
       <div className="px-6 pt-4 pb-3 border-b border-border shrink-0">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-semibold text-foreground tracking-wider uppercase">Automation Progress</span>
-          <span className="text-xs font-mono text-muted-foreground bg-muted px-2.5 py-1 rounded-md">{formatElapsed(automationElapsed)}</span>
+          <span className="text-xs font-mono text-foreground bg-muted px-2.5 py-1 rounded-md">{formatElapsed(automationElapsed)}</span>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
@@ -1281,7 +1281,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
           {automationLog.map((line, i) => {
             const isActive = i === automationLog.length - 1;
             return (
-              <div key={i} className={cn("flex items-center justify-center gap-2 text-sm animate-in fade-in duration-300", isActive ? "text-foreground" : "text-muted-foreground/50")}>
+              <div key={i} className={cn("flex items-center justify-center gap-2 text-sm animate-in fade-in duration-300", isActive ? "text-foreground" : "text-foreground")}>
                 {isActive ? (
                   <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
                 ) : (
@@ -1329,11 +1329,11 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
             </div>
             <div className="flex items-center gap-2">
               <button className="relative flex items-center justify-center w-7 h-7 rounded-lg hover:bg-muted transition-colors">
-                <Bell className="w-4 h-4 text-muted-foreground" />
+                <Bell className="w-4 h-4 text-foreground" />
                 <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary text-white text-[9px] flex items-center justify-center font-bold">5</span>
               </button>
               <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted transition-colors">
-                <Settings className="w-4 h-4 text-muted-foreground" />
+                <Settings className="w-4 h-4 text-foreground" />
               </button>
             </div>
           </div>
@@ -1374,7 +1374,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
           ].map((item, i) => (
             <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-card hover:bg-muted/20 transition-colors">
               <div className="w-6 h-6 rounded-full bg-muted/50 flex items-center justify-center shrink-0">
-                {item.icon === "bar" ? <Bell className="w-3 h-3 text-muted-foreground" /> : item.icon === "bank" ? <Building2 className="w-3 h-3 text-muted-foreground" /> : <FileText className="w-3 h-3 text-muted-foreground" />}
+                {item.icon === "bar" ? <Bell className="w-3 h-3 text-foreground" /> : item.icon === "bank" ? <Building2 className="w-3 h-3 text-foreground" /> : <FileText className="w-3 h-3 text-foreground" />}
               </div>
               <p className="text-sm text-foreground flex-1">{item.msg}</p>
               <button className={cn("text-xs font-medium px-3 py-1.5 rounded-lg transition-colors shrink-0", item.color)}>
@@ -1388,13 +1388,13 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
         <div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-foreground uppercase tracking-wider">Suggested Actions</span>
-            <span className="text-xs text-muted-foreground">5 active</span>
+            <span className="text-xs text-foreground">5 active</span>
           </div>
           <div className="space-y-1">
             {["Review covenant compliance threshold breach", "Reconcile accrued interest variance ($1,247)", "Generate FS disclosure note for long-term debt", "Update current portion classification", "Sign off on capital asset schedule"].map(action => (
               <div key={action} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted/30 transition-colors">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary/60 shrink-0" />
-                <p className="text-xs text-foreground/80 flex-1">{action}</p>
+                <p className="text-xs text-foreground flex-1">{action}</p>
                 <button className="text-[10px] text-primary opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity">→</button>
               </div>
             ))}
@@ -1406,7 +1406,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
       <div className={cn("pb-4 pt-2 shrink-0", viewMode === "full" ? "px-10" : "px-5")}>
         <div className="border border-border rounded-[12px] overflow-hidden bg-background dark:bg-card hover:border-primary/30 transition-all duration-200 luka-gradient-border">
           <div className="px-4 pt-2.5 pb-2">
-            <input type="text" placeholder="Type # for prompts or just ask anything..." className="w-full bg-transparent h-8 placeholder:text-muted-foreground/70 outline-none border-none text-sm text-foreground" />
+            <input type="text" placeholder="Type # for prompts or just ask anything..." className="w-full bg-transparent h-8 placeholder:text-foreground outline-none border-none text-sm text-foreground" />
           </div>
           <div className="px-3 pb-3 flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -1765,7 +1765,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                         "flex items-center gap-1.5 px-4 py-2 text-xs font-medium transition-colors relative whitespace-nowrap",
                         activeTab === id
                           ? "text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-t"
-                          : "text-muted-foreground hover:text-foreground"
+                          : "text-foreground hover:text-foreground"
                       )}
                     >
                       <Icon className="w-3 h-3" />
@@ -1814,7 +1814,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSidebarExpanded(!sidebarExpanded)}>
-                        <PanelLeftClose className="h-4 w-4 text-muted-foreground" />
+                        <PanelLeftClose className="h-4 w-4 text-foreground" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom"><p>Toggle Sidebar</p></TooltipContent>
@@ -1822,7 +1822,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button variant="ghost" size="icon" className={cn("h-8 w-8", viewMode === "full" && "bg-muted")} onClick={() => setViewMode(viewMode === "full" ? "half" : "full")}>
-                        <Maximize2 className="h-4 w-4 text-muted-foreground" />
+                        <Maximize2 className="h-4 w-4 text-foreground" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom"><p>{viewMode === "full" ? "Half Mode" : "Full Mode"}</p></TooltipContent>
@@ -1830,7 +1830,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Minus className="h-4 w-4 text-muted-foreground" />
+                        <Minus className="h-4 w-4 text-foreground" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom"><p>Minimize</p></TooltipContent>
@@ -1838,7 +1838,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onOpenChange(false)}>
-                        <X className="h-4 w-4 text-muted-foreground" />
+                        <X className="h-4 w-4 text-foreground" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom"><p>Close</p></TooltipContent>
@@ -1862,7 +1862,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                     </div>
                     <div className="text-center space-y-2">
                       <h2 className="text-2xl font-bold text-foreground">Automate Engagement?</h2>
-                      <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
+                      <p className="text-sm text-foreground max-w-xs leading-relaxed">
                         I'll guide you through the setup process and verify everything is ready for a smooth automation run
                       </p>
                     </div>
@@ -1915,8 +1915,8 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                           {/* ── TOP CONTEXT STRIP ── */}
                           <div className="flex items-center justify-between px-3 py-2">
                             {/* Left: engagement ref ← active step + QB badge */}
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
-                              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0 text-muted-foreground"><path d="M5 3H3a1 1 0 00-1 1v2a1 1 0 001 1h2a1 1 0 001-1V4a1 1 0 00-1-1zM13 3h-2a1 1 0 00-1 1v2a1 1 0 001 1h2a1 1 0 001-1V4a1 1 0 00-1-1zM5 9H3a1 1 0 00-1 1v2a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 00-1-1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M8 5v6M8 11l3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            <div className="flex items-center gap-1.5 text-xs text-foreground min-w-0">
+                              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0 text-foreground"><path d="M5 3H3a1 1 0 00-1 1v2a1 1 0 001 1h2a1 1 0 001-1V4a1 1 0 00-1-1zM13 3h-2a1 1 0 00-1 1v2a1 1 0 001 1h2a1 1 0 001-1V4a1 1 0 00-1-1zM5 9H3a1 1 0 00-1 1v2a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 00-1-1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M8 5v6M8 11l3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
                               <span className="font-semibold text-foreground truncate">{selectedCompWs?.ref ?? "Workspace"}</span>
                               <ArrowLeft className="w-3 h-3 opacity-40 shrink-0" />
                               <span className="truncate">{WIZARD_TABS.find(t => t.id === activeWizardTab)?.label ?? activeWizardTab}</span>
@@ -1928,7 +1928,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                       <span className="text-white font-black text-[6px] leading-none">QB</span>
                                       <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 border border-background" />
                                     </div>
-                                    <button className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors shrink-0">
+                                    <button className="w-5 h-5 flex items-center justify-center text-foreground hover:text-foreground transition-colors shrink-0">
                                       <Plus className="w-3 h-3" />
                                     </button>
                                   </div>
@@ -1939,7 +1939,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                             {/* Right: action button */}
                             <div className="flex items-center gap-2 shrink-0">
                               {lukaIsTyping || (verifyPhase !== "idle" && verifyPhase !== "done") ? (
-                                <button disabled className="flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] border border-border/40 bg-muted/30 text-xs font-medium text-muted-foreground/50 cursor-not-allowed">
+                                <button disabled className="flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] border border-border/40 bg-muted/30 text-xs font-medium text-foreground cursor-not-allowed">
                                   <span className="w-1.5 h-1.5 rounded-full bg-primary/50 animate-pulse" />
                                   Working…
                                 </button>
@@ -1972,9 +1972,9 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                               <div className="flex items-center gap-1.5 flex-wrap px-3 pt-2.5 pb-2">
                                 {attachedFiles.map(f => (
                                   <span key={f.id} className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-[6px] bg-muted/80 text-xs text-foreground">
-                                    <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
+                                    <FileText className="w-3 h-3 text-foreground shrink-0" />
                                     {f.name}
-                                    <button onClick={() => removeFile(f.id)} className="ml-0.5 w-4 h-4 rounded flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+                                    <button onClick={() => removeFile(f.id)} className="ml-0.5 w-4 h-4 rounded flex items-center justify-center text-foreground hover:text-foreground transition-colors">
                                       <X className="w-3 h-3" />
                                     </button>
                                   </span>
@@ -1995,7 +1995,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                 onKeyDown={handleKeyDown}
                                 disabled={lukaIsTyping || (verifyPhase !== "idle" && verifyPhase !== "done")}
                                 placeholder={lukaIsTyping || (verifyPhase !== "idle" && verifyPhase !== "done") ? "Luka is working…" : "Reply..."}
-                                className={cn("w-full bg-transparent h-7 outline-none border-none text-sm", lukaIsTyping || (verifyPhase !== "idle" && verifyPhase !== "done") ? "placeholder:text-muted-foreground/40 cursor-not-allowed" : "placeholder:text-muted-foreground/50", message.includes("#") ? "text-primary font-medium" : "text-foreground")}
+                                className={cn("w-full bg-transparent h-7 outline-none border-none text-sm", lukaIsTyping || (verifyPhase !== "idle" && verifyPhase !== "done") ? "placeholder:text-foreground cursor-not-allowed" : "placeholder:text-foreground", message.includes("#") ? "text-primary font-medium" : "text-foreground")}
                               />
                             </div>
                           </div>
@@ -2006,7 +2006,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                               <LukaAttachMenu onFilesAdded={addFiles} />
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <button className="flex items-center gap-1.5 px-2 h-7 rounded-[6px] hover:bg-muted/50 transition-colors text-xs text-muted-foreground hover:text-foreground">
+                                  <button className="flex items-center gap-1.5 px-2 h-7 rounded-[6px] hover:bg-muted/50 transition-colors text-xs text-foreground hover:text-foreground">
                                     {editMode === 'auto' ? 'Auto accept edits' : 'Ask permissions'}
                                     <ChevronDown className="w-3 h-3 opacity-40" />
                                   </button>
@@ -2014,20 +2014,20 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                 <DropdownMenuContent align="start" className="min-w-[220px]">
                                   <DropdownMenuItem onSelect={() => setEditMode('ask')} className="flex flex-col items-start gap-0.5 py-2 cursor-pointer">
                                     <span className="font-medium text-xs text-foreground">Ask permissions</span>
-                                    <span className="text-[11px] text-muted-foreground">Always ask before making changes</span>
+                                    <span className="text-[11px] text-foreground">Always ask before making changes</span>
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onSelect={() => setEditMode('auto')} className="flex flex-col items-start gap-0.5 py-2 cursor-pointer">
                                     <div className="flex items-center gap-1.5">
                                       <span className="font-mono text-[10px] opacity-60">&lt;/&gt;</span>
                                       <span className="font-medium text-xs text-foreground">Auto accept edits</span>
                                     </div>
-                                    <span className="text-[11px] text-muted-foreground">Automatically accept all file edits</span>
+                                    <span className="text-[11px] text-foreground">Automatically accept all file edits</span>
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </div>
                             <div className="flex items-center gap-0.5">
-                              <button className="flex items-center gap-1.5 px-2 h-7 rounded-[6px] hover:bg-muted/50 transition-colors text-xs text-muted-foreground hover:text-foreground">
+                              <button className="flex items-center gap-1.5 px-2 h-7 rounded-[6px] hover:bg-muted/50 transition-colors text-xs text-foreground hover:text-foreground">
                                 <Zap className="w-3 h-3 text-violet-400 shrink-0" />
                                 Luka AI
                                 <ChevronDown className="w-3 h-3 opacity-40" />
@@ -2038,7 +2038,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                 </Button>
                               ) : (
                                 <Button variant="ghost" size="icon" className="h-7 w-7 rounded-[6px]" onClick={() => setVoiceOpen(true)}>
-                                  <Mic className="h-3.5 w-3.5 text-muted-foreground" />
+                                  <Mic className="h-3.5 w-3.5 text-foreground" />
                                 </Button>
                               )}
                             </div>
@@ -2060,11 +2060,11 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                 {autopilotStep === null && (
                   <div className="flex-1 flex flex-col items-center justify-center gap-5 px-8 opacity-70">
                     <div className="w-14 h-14 rounded-full bg-muted/50 flex items-center justify-center">
-                      <Building2 className="w-7 h-7 text-muted-foreground/50" />
+                      <Building2 className="w-7 h-7 text-foreground" />
                     </div>
                     <div className="text-center space-y-1.5">
                       <p className="text-sm font-medium text-foreground">Select a workspace to start</p>
-                      <p className="text-xs text-muted-foreground max-w-[280px] leading-relaxed">
+                      <p className="text-xs text-foreground max-w-[280px] leading-relaxed">
                         Choose an active workspace from the sidebar and Luka will automatically prepare your engagement, or click New workspace to start a new engagement.
                       </p>
                     </div>
@@ -2072,7 +2072,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                       onClick={() => setNewWsModalOpen(true)}
                       className="inline-flex items-center gap-2 px-4 py-2 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted/60 hover:border-primary/40 transition-all duration-150 shadow-sm"
                     >
-                      <Plus className="w-3.5 h-3.5 text-muted-foreground" />
+                      <Plus className="w-3.5 h-3.5 text-foreground" />
                       New workspace
                     </button>
                   </div>
@@ -2113,7 +2113,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                           <div className="flex-1 pt-1.5 min-h-[28px] min-w-0 overflow-x-auto">
                             {isThinking ? (
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-muted-foreground luka-thinking-text">Thinking</span>
+                                <span className="text-sm font-medium text-foreground luka-thinking-text">Thinking</span>
                                 <span className="flex gap-0.5">
                                   <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-1" />
                                   <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-2" />
@@ -2152,13 +2152,13 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                           onChange={handleInputChange}
                           onKeyDown={handleKeyDown}
                           placeholder="Type # for prompts or just ask anything..."
-                          className={cn("w-full bg-transparent h-9 placeholder:text-muted-foreground/70 outline-none border-none text-sm", message.includes("#") ? "text-primary font-medium" : "text-foreground")}
+                          className={cn("w-full bg-transparent h-9 placeholder:text-foreground outline-none border-none text-sm", message.includes("#") ? "text-primary font-medium" : "text-foreground")}
                         />
                       </div>
                       <div className="px-3 pb-3 flex items-center justify-between">
                         <div className="flex items-center gap-1">
                           <LukaAttachMenu onFilesAdded={addFiles} />
-                          <Button variant="outline" size="icon" className="h-9 w-9 rounded-[10px]"><Inbox className="h-4 w-4 text-muted-foreground" /></Button>
+                          <Button variant="outline" size="icon" className="h-9 w-9 rounded-[10px]"><Inbox className="h-4 w-4 text-foreground" /></Button>
                           <div className="flex items-center gap-1.5 px-3 h-9 rounded-[10px] border border-border bg-background dark:bg-muted/20 text-sm text-foreground">
                             <span className="text-amber-500">✨</span>
                             <span className="text-sm font-medium">Gemini 3 Flash</span>
@@ -2166,11 +2166,11 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                         </div>
                         <div className="flex items-center gap-1">
                           <Button variant="ghost" size="icon" className="h-9 w-9 rounded-[10px]" onClick={() => setVoiceOpen(true)}>
-                            <Mic className="h-4 w-4 text-muted-foreground" />
+                            <Mic className="h-4 w-4 text-foreground" />
                           </Button>
                           <Button
                             size="icon"
-                            className={cn("h-9 w-9 rounded-full transition-all duration-200", message.trim() ? "bg-gradient-to-br from-[#8649F1] to-[#2355A4] hover:opacity-90 text-white shadow-md" : "bg-muted hover:bg-muted/80 text-muted-foreground")}
+                            className={cn("h-9 w-9 rounded-full transition-all duration-200", message.trim() ? "bg-gradient-to-br from-[#8649F1] to-[#2355A4] hover:opacity-90 text-white shadow-md" : "bg-muted hover:bg-muted/80 text-foreground")}
                             onClick={handleSend}
                           >
                             <Send className="h-4 w-4" />
@@ -2196,28 +2196,28 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                   <div className="w-12 h-12 rounded-[8px] bg-primary/10 flex items-center justify-center">
                     <Building2 className="w-6 h-6 text-primary" />
                   </div>
-                  <button onClick={() => { setNewWsModalOpen(false); setNewWsSearch(""); setNewWsSelected([]); }} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                  <button onClick={() => { setNewWsModalOpen(false); setNewWsSearch(""); setNewWsSelected([]); }} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors text-foreground hover:text-foreground">
                     <X className="w-4 h-4" />
                   </button>
                 </div>
                 <h2 className="text-lg font-semibold text-foreground">Add New Workspace</h2>
-                <p className="text-sm text-muted-foreground mt-1">Select from the below source connected engagements to add to your workspace.</p>
+                <p className="text-sm text-foreground mt-1">Select from the below source connected engagements to add to your workspace.</p>
               </div>
 
               {/* Search + sort row */}
               <div className="px-6 pb-3 flex items-center gap-2">
                 <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground" />
                   <input
                     value={newWsSearch}
                     onChange={e => setNewWsSearch(e.target.value)}
                     placeholder="Search clients"
-                    className="w-full pl-9 pr-3 py-2 rounded-[8px] border border-border bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-colors"
+                    className="w-full pl-9 pr-3 py-2 rounded-[8px] border border-border bg-background text-sm placeholder:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-colors"
                   />
                 </div>
                 <button
                   onClick={() => setNewWsSortAsc(s => !s)}
-                  className="w-9 h-9 flex items-center justify-center rounded-[8px] border border-border bg-muted/40 hover:bg-muted transition-colors text-muted-foreground"
+                  className="w-9 h-9 flex items-center justify-center rounded-[8px] border border-border bg-muted/40 hover:bg-muted transition-colors text-foreground"
                 >
                   <ArrowUpDown className="w-4 h-4" />
                 </button>
@@ -2253,7 +2253,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                         {/* Name + ref */}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-foreground truncate">{client.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">{client.ref}</p>
+                          <p className="text-xs text-foreground truncate">{client.ref}</p>
                         </div>
                         {/* Source badge */}
                         <div className={cn(

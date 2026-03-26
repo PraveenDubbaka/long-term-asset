@@ -88,7 +88,7 @@ export function CapAssetAJEsTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Adjusting Journal Entries</h2>
-          <p className="text-xs text-foreground/60 mt-0.5">
+          <p className="text-xs text-foreground mt-0.5">
             Capital asset workpaper AJEs · Year end October 31, 2024
           </p>
         </div>
@@ -119,7 +119,7 @@ export function CapAssetAJEsTab() {
             )}
             <div>
               <div className="text-sm font-medium text-foreground">{s.label}</div>
-              {!s.value && <div className="text-xs text-muted-foreground">{s.msg}</div>}
+              {!s.value && <div className="text-xs text-foreground">{s.msg}</div>}
             </div>
           </StyledCard>
         ))}
@@ -128,7 +128,7 @@ export function CapAssetAJEsTab() {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">Status:</span>
+          <span className="text-xs text-foreground">Status:</span>
           {(['All', 'Draft', 'Approved', 'Posted'] as const).map(s => (
             <button key={s} onClick={() => setFilterStatus(s)}
               className={`px-3 py-1 text-xs rounded-md border transition-colors ${
@@ -137,7 +137,7 @@ export function CapAssetAJEsTab() {
           ))}
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">Type:</span>
+          <span className="text-xs text-foreground">Type:</span>
           {(['All', 'Amortization', 'Disposal', 'Acquisition'] as const).map(t => (
             <button key={t} onClick={() => setFilterType(t as typeof filterType)}
               className={`px-3 py-1 text-xs rounded-md border transition-colors ${
@@ -164,8 +164,8 @@ export function CapAssetAJEsTab() {
               >
                 <div className="flex items-center gap-3 min-w-0">
                   {isOpen
-                    ? <ChevronDown  className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                    : <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
+                    ? <ChevronDown  className="w-4 h-4 text-foreground flex-shrink-0" />
+                    : <ChevronRight className="w-4 h-4 text-foreground flex-shrink-0" />}
                   <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded flex-shrink-0">{je.entryNo}</span>
                   <span className="font-medium text-foreground text-sm truncate">{je.description}</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${TYPE_COLOR[je.type]}`}>
@@ -184,7 +184,7 @@ export function CapAssetAJEsTab() {
                   <Badge variant={STATUS_CFG[je.status].variant} className="text-xs">
                     {STATUS_CFG[je.status].label}
                   </Badge>
-                  <span className="text-xs tabular-nums text-muted-foreground">Dr ${fmt(dr)}</span>
+                  <span className="text-xs tabular-nums text-foreground">Dr ${fmt(dr)}</span>
                 </div>
               </button>
 
@@ -193,7 +193,7 @@ export function CapAssetAJEsTab() {
                 <div className="border-t border-border">
                   {/* Rationale */}
                   <div className="px-4 py-3 bg-muted/20 border-b border-border">
-                    <p className="text-xs text-muted-foreground leading-relaxed">{je.rationale}</p>
+                    <p className="text-xs text-foreground leading-relaxed">{je.rationale}</p>
                     {je.notes && (
                       <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">
                         ⚑ {je.notes}
@@ -205,24 +205,24 @@ export function CapAssetAJEsTab() {
                   <table className="w-full text-sm border-collapse">
                     <thead>
                       <tr className="border-b border-border bg-muted/50">
-                        <th className="py-2 px-5 font-semibold text-foreground/40 text-left">Account</th>
-                        <th className="py-2 px-5 font-semibold text-foreground/40 text-left">GL Code</th>
-                        <th className="py-2 px-5 font-semibold text-foreground/40 text-right">Debit</th>
-                        <th className="py-2 px-5 font-semibold text-foreground/40 text-right">Credit</th>
-                        <th className="py-2 px-5 font-semibold text-foreground/40 text-left">Reference</th>
+                        <th className="py-2 px-5 font-semibold text-foreground text-left">Account</th>
+                        <th className="py-2 px-5 font-semibold text-foreground text-left">GL Code</th>
+                        <th className="py-2 px-5 font-semibold text-foreground text-right">Debit</th>
+                        <th className="py-2 px-5 font-semibold text-foreground text-right">Credit</th>
+                        <th className="py-2 px-5 font-semibold text-foreground text-left">Reference</th>
                       </tr>
                     </thead>
                     <tbody>
                       {je.lines.map((l, i) => (
                         <tr key={i} className="border-b border-border hover:bg-muted/30">
                           <td className="py-2.5 px-5 text-foreground">{l.account}</td>
-                          <td className="py-2.5 px-5 text-muted-foreground text-xs font-mono">{l.glCode}</td>
+                          <td className="py-2.5 px-5 text-foreground text-xs font-mono">{l.glCode}</td>
                           <td className="py-2.5 px-5 text-right tabular-nums text-foreground">{l.dr > 0 ? '$' + fmt(l.dr) : '—'}</td>
                           <td className="py-2.5 px-5 text-right tabular-nums text-foreground">{l.cr > 0 ? '$' + fmt(l.cr) : '—'}</td>
-                          <td className="py-2.5 px-5 text-muted-foreground text-xs">
+                          <td className="py-2.5 px-5 text-foreground text-xs">
                             {i === 0 && je.wpRef
                               ? <span className="font-mono">{je.wpRef}</span>
-                              : <span className="text-foreground/25">—</span>}
+                              : <span className="text-foreground">—</span>}
                           </td>
                         </tr>
                       ))}
@@ -262,7 +262,7 @@ export function CapAssetAJEsTab() {
         })}
 
         {filtered.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground text-sm">
+          <div className="text-center py-12 text-foreground text-sm">
             No AJEs match the selected filters.
           </div>
         )}

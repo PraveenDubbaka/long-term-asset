@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 
 function fmt(n: number, d = 2) { return n.toLocaleString('en-CA', { minimumFractionDigits: d, maximumFractionDigits: d }); }
 function fmtCAD(n: number) { return '$' + fmt(Math.abs(n)); }
-function glColor(n: number) { return n > 0 ? 'text-green-600' : n < 0 ? 'text-red-600' : 'text-muted-foreground'; }
+function glColor(n: number) { return n > 0 ? 'text-green-600' : n < 0 ? 'text-red-600' : 'text-foreground'; }
 
 export function InvGainLossTab() {
   const [section, setSection] = useState<'realized' | 'dividends' | 'unrealized'>('realized');
@@ -49,7 +49,7 @@ export function InvGainLossTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Gain / Loss Schedule</h2>
-          <p className="text-xs text-foreground/60 mt-0.5">Realized G/L · Dividend &amp; interest income · Unrealized G/L (disclosure only)</p>
+          <p className="text-xs text-foreground mt-0.5">Realized G/L · Dividend &amp; interest income · Unrealized G/L (disclosure only)</p>
         </div>
         <Button variant="secondary" size="sm" onClick={handleExport}>
           <Download className="w-3.5 h-3.5" /> Export
@@ -69,13 +69,13 @@ export function InvGainLossTab() {
           >
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs text-muted-foreground mb-1">{k.label}</p>
+                <p className="text-xs text-foreground mb-1">{k.label}</p>
                 <p className={`text-lg font-bold tabular-nums ${glColor(k.value)}`}>
                   {k.value >= 0 ? '+' : ''}{fmtCAD(k.value)}
                 </p>
-                <p className="text-xs text-muted-foreground mt-0.5">CAD</p>
+                <p className="text-xs text-foreground mt-0.5">CAD</p>
               </div>
-              <k.icon className="w-6 h-6 text-muted-foreground opacity-60" />
+              <k.icon className="w-6 h-6 text-foreground opacity-60" />
             </div>
           </StyledCard>
         ))}
@@ -86,7 +86,7 @@ export function InvGainLossTab() {
         <StyledCard className="overflow-hidden p-0">
           <div className="px-4 py-3 border-b border-border bg-muted/30">
             <h3 className="text-sm font-semibold text-foreground">Section A — Realized Gain / Loss</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Dispositions in FY 2025 (capital gains — Schedule 3)</p>
+            <p className="text-xs text-foreground mt-0.5">Dispositions in FY 2025 (capital gains — Schedule 3)</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -110,19 +110,19 @@ export function InvGainLossTab() {
                   <tr key={r.id} className="hover:bg-muted/20">
                     <td className="px-4 py-2.5">
                       <div className="font-medium text-sm text-foreground">{r.security}</div>
-                      <div className="text-xs font-mono text-muted-foreground">{r.ticker}</div>
+                      <div className="text-xs font-mono text-foreground">{r.ticker}</div>
                     </td>
                     <td className="px-3 py-2.5 text-xs text-foreground">{r.broker.split(' ')[0]}</td>
-                    <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{fmtDateDisplay(r.date)}</td>
+                    <td className="px-3 py-2.5 text-xs text-foreground whitespace-nowrap">{fmtDateDisplay(r.date)}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">{fmt(r.unitsSold, 0)}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">{fmt(r.proceedsLocal)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-muted-foreground">{fmt(r.wacCostLocal)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-foreground">{fmt(r.wacCostLocal)}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">
                       <span className={glColor(r.realizedGL_Local)}>
                         {r.realizedGL_Local >= 0 ? '+' : ''}{fmt(Math.abs(r.realizedGL_Local))}
                       </span>
                     </td>
-                    <td className="px-2 py-2.5 text-center text-xs font-mono text-muted-foreground">{r.currency}</td>
+                    <td className="px-2 py-2.5 text-center text-xs font-mono text-foreground">{r.currency}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono text-xs">
                       {r.currency === 'CAD' ? '—' : fmt(r.fxRate, 4)}
                     </td>
@@ -131,7 +131,7 @@ export function InvGainLossTab() {
                         {r.realizedGL_CAD >= 0 ? '+$' : '($'}{fmt(Math.abs(r.realizedGL_CAD))}{r.realizedGL_CAD < 0 ? ')' : ''}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-muted-foreground">{r.notes ?? ''}</td>
+                    <td className="px-3 py-2.5 text-xs text-foreground">{r.notes ?? ''}</td>
                   </tr>
                 ))}
               </tbody>
@@ -156,7 +156,7 @@ export function InvGainLossTab() {
         <StyledCard className="overflow-hidden p-0">
           <div className="px-4 py-3 border-b border-border bg-muted/30">
             <h3 className="text-sm font-semibold text-foreground">Section B — Dividend &amp; Interest Income</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Cash dividends received in FY 2025 · See AE-01 for ULVR ROC reclassification</p>
+            <p className="text-xs text-foreground mt-0.5">Cash dividends received in FY 2025 · See AE-01 for ULVR ROC reclassification</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -176,18 +176,18 @@ export function InvGainLossTab() {
                   <tr key={r.id} className="hover:bg-muted/20">
                     <td className="px-4 py-2.5">
                       <div className="font-medium text-sm text-foreground">{r.security}</div>
-                      <div className="text-xs font-mono text-muted-foreground">{r.ticker}</div>
+                      <div className="text-xs font-mono text-foreground">{r.ticker}</div>
                     </td>
                     <td className="px-3 py-2.5 text-xs text-foreground">{r.broker.split(' ')[0]}</td>
-                    <td className="px-3 py-2.5 text-center text-xs font-mono text-muted-foreground">{r.currency}</td>
+                    <td className="px-3 py-2.5 text-center text-xs font-mono text-foreground">{r.currency}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">{fmt(r.totalDivLocal)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums font-mono text-xs text-muted-foreground">
+                    <td className="px-3 py-2.5 text-right tabular-nums font-mono text-xs text-foreground">
                       {r.currency === 'CAD' ? '—' : fmt(r.avgFxRate, 4)}
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono font-semibold text-sm text-green-600">
                       +${fmt(r.totalDivCAD)}
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-muted-foreground">{r.notes ?? ''}</td>
+                    <td className="px-3 py-2.5 text-xs text-foreground">{r.notes ?? ''}</td>
                   </tr>
                 ))}
               </tbody>
@@ -212,7 +212,7 @@ export function InvGainLossTab() {
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-sm font-semibold text-foreground">Section C — Unrealized Gain / Loss</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">FMV disclosure only — ASPE Section 3856 (cost method). No income statement impact.</p>
+                <p className="text-xs text-foreground mt-0.5">FMV disclosure only — ASPE Section 3856 (cost method). No income statement impact.</p>
               </div>
               <Badge variant="warning" className="text-xs">Disclosure Only</Badge>
             </div>
@@ -237,19 +237,19 @@ export function InvGainLossTab() {
                   <tr key={r.id} className="hover:bg-muted/20">
                     <td className="px-4 py-2.5">
                       <div className="font-medium text-sm text-foreground">{r.security}</div>
-                      <div className="text-xs font-mono text-muted-foreground">{r.ticker}</div>
+                      <div className="text-xs font-mono text-foreground">{r.ticker}</div>
                     </td>
                     <td className="px-3 py-2.5 text-xs text-foreground">{r.broker.split(' ')[0]}</td>
-                    <td className="px-3 py-2.5 text-center text-xs font-mono text-muted-foreground">{r.currency}</td>
+                    <td className="px-3 py-2.5 text-center text-xs font-mono text-foreground">{r.currency}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">{fmt(r.yeUnits, 0)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-muted-foreground">{fmt(r.bookValueLocal)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-foreground">{fmt(r.bookValueLocal)}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">{fmt(r.yeFmvLocal)}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">
                       <span className={glColor(r.unrealizedGL_Local)}>
                         {r.unrealizedGL_Local >= 0 ? '+' : ''}{fmt(Math.abs(r.unrealizedGL_Local))}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums font-mono text-xs text-muted-foreground">
+                    <td className="px-3 py-2.5 text-right tabular-nums font-mono text-xs text-foreground">
                       {r.currency === 'CAD' ? '—' : fmt(r.yeFxRate, 4)}
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono font-semibold text-sm">

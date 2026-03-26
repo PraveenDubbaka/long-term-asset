@@ -59,7 +59,7 @@ export function AutopilotWorkingPapers({ loan, onComplete }: Props) {
           >
             <Upload className="w-10 h-10 text-primary/40 mx-auto mb-3" />
             <p className="text-sm text-primary font-medium">Click to upload prior year WPs</p>
-            <p className="text-xs text-muted-foreground mt-1">or drag and drop — PDF files only</p>
+            <p className="text-xs text-foreground mt-1">or drag and drop — PDF files only</p>
             <input ref={fileRef} type="file" multiple accept=".pdf" className="hidden" onChange={e => handleFiles(e.target.files)} />
           </div>
 
@@ -70,7 +70,7 @@ export function AutopilotWorkingPapers({ loan, onComplete }: Props) {
                   <FileText className="w-4 h-4 text-primary/60 shrink-0" />
                   <span className="text-xs text-foreground flex-1 truncate">{name}</span>
                   <button onClick={() => setUploadedFiles(prev => prev.filter((_, j) => j !== i))}>
-                    <X className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive transition-colors" />
+                    <X className="w-3.5 h-3.5 text-foreground hover:text-destructive transition-colors" />
                   </button>
                 </div>
               ))}
@@ -85,7 +85,7 @@ export function AutopilotWorkingPapers({ loan, onComplete }: Props) {
         {/* Right: what gets pre-populated */}
         <div className="w-52 shrink-0">
           <div className="border border-border rounded-xl p-4">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+            <p className="text-xs font-semibold text-foreground uppercase tracking-wider mb-3">
               Pre-populate from prior year
             </p>
             <div className="space-y-3">
@@ -94,7 +94,7 @@ export function AutopilotWorkingPapers({ loan, onComplete }: Props) {
                   <CheckCircle2 className="w-4 h-4 text-primary/60 shrink-0 mt-0.5" />
                   <div>
                     <p className="text-xs font-medium text-foreground">{item.label}</p>
-                    <p className="text-[10px] text-muted-foreground">{item.desc}</p>
+                    <p className="text-[10px] text-foreground">{item.desc}</p>
                   </div>
                 </div>
               ))}

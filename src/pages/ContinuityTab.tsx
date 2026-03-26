@@ -234,7 +234,7 @@ export function ContinuityTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Continuity Roll-Forward</h2>
-          <p className="text-xs text-foreground/60 mt-0.5">Opening → movements → closing by period</p>
+          <p className="text-xs text-foreground mt-0.5">Opening → movements → closing by period</p>
         </div>
         <div className="flex items-center gap-2">
           {/* Export selection picker */}
@@ -243,15 +243,15 @@ export function ContinuityTab() {
               onClick={() => setPickerOpen(o => !o)}
               className="input-double-border h-9 flex items-center gap-2 text-sm pl-3 pr-3 rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] cursor-pointer focus:outline-none min-w-[140px] justify-between"
             >
-              <span className="text-xs text-foreground/60 mr-1">For export:</span>
+              <span className="text-xs text-foreground mr-1">For export:</span>
               <span>{selectedLoanIds.length === loans.length ? 'All' : `${selectedLoanIds.length} loans`}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground/70 flex-shrink-0" />
+              <ChevronDown className="w-3.5 h-3.5 text-foreground flex-shrink-0" />
             </button>
             {pickerOpen && (
               <div className="absolute right-0 top-full mt-1 z-50 bg-card border border-border rounded-lg shadow-lg min-w-[220px] p-2">
                 <div className="flex items-center justify-between px-1 pb-2 mb-1 border-b border-border">
                   <button onClick={() => setSelectedLoanIds(loans.map(l => l.id))} className="text-xs text-primary hover:underline">Select All</button>
-                  <button onClick={() => setSelectedLoanIds(loans.slice(0, 1).map(l => l.id))} className="text-xs text-muted-foreground hover:underline">Clear</button>
+                  <button onClick={() => setSelectedLoanIds(loans.slice(0, 1).map(l => l.id))} className="text-xs text-foreground hover:underline">Clear</button>
                 </div>
                 {loans.map(l => (
                   <label key={l.id} className="flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer text-sm select-none">
@@ -295,14 +295,14 @@ export function ContinuityTab() {
                   className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md flex items-center justify-between"
                 >
                   <span>Export Selected</span>
-                  <span className="text-xs text-muted-foreground">{selectedLoanIds.length} loan{selectedLoanIds.length !== 1 ? 's' : ''}</span>
+                  <span className="text-xs text-foreground">{selectedLoanIds.length} loan{selectedLoanIds.length !== 1 ? 's' : ''}</span>
                 </button>
                 <button
                   onClick={() => handleExport(loans.map(l => l.id))}
                   className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md flex items-center justify-between"
                 >
                   <span>Export All</span>
-                  <span className="text-xs text-muted-foreground">{loans.length} loans</span>
+                  <span className="text-xs text-foreground">{loans.length} loans</span>
                 </button>
               </div>
             )}
@@ -314,7 +314,7 @@ export function ContinuityTab() {
       <div className="flex items-center gap-4 flex-wrap">
         {/* View selector (single) */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-foreground/60 whitespace-nowrap">View:</span>
+          <span className="text-xs text-foreground whitespace-nowrap">View:</span>
           <div className="relative">
             <select
               value={selectedLoanId}
@@ -326,7 +326,7 @@ export function ContinuityTab() {
                 <option key={l.id} value={l.id}>{l.name}</option>
               ))}
             </select>
-            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/70 pointer-events-none" />
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground pointer-events-none" />
           </div>
         </div>
 
@@ -372,7 +372,7 @@ export function ContinuityTab() {
                       {colVisible('openingBalance') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{fmtNumber(row.openingBalance)}</span></td>}
                       {colVisible('newBorrowings') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{fmtNumber(row.newBorrowings)}</span></td>}
                       {colVisible('principalRepayments') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-green-600">{row.repayments > 0 ? `(${fmtNumber(row.repayments)})` : '—'}</span></td>}
-                      {colVisible('interestRepayments') && <td className="px-3 py-2 tabular-nums text-right text-muted-foreground text-xs">—</td>}
+                      {colVisible('interestRepayments') && <td className="px-3 py-2 tabular-nums text-right text-foreground text-xs">—</td>}
                       {colVisible('fxTranslation') && <td className="px-3 py-2 tabular-nums text-right"><span className={row.fxTranslation < 0 ? 'text-destructive' : row.fxTranslation > 0 ? 'text-blue-600' : 'text-foreground'}>{fmtNumber(row.fxTranslation)}</span></td>}
                       {colVisible('closingBalance') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{fmtNumber(row.closingBalance)}</span></td>}
                       {colVisible('currentPortion') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{fmtNumber(row.currentPortion)}</span></td>}
@@ -545,7 +545,7 @@ export function ContinuityTab() {
                                   );
                                 })}
                                 {row.isManualAdjustment && <Badge variant="warning">Adj</Badge>}
-                                {row.notes && <span className="text-[11px] text-foreground/55 truncate max-w-[72px]" title={row.notes}>{row.notes}</span>}
+                                {row.notes && <span className="text-[11px] text-foreground truncate max-w-[72px]" title={row.notes}>{row.notes}</span>}
                               </div>
                             )}
                           </td>
@@ -568,7 +568,7 @@ export function ContinuityTab() {
                         {colVisible('openingBalance') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(allFirst.openingBalance)}</td>}
                         {colVisible('newBorrowings') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(allBorr)}</td>}
                         {colVisible('principalRepayments') && <td className="px-3 py-2.5 text-right tabular-nums text-green-600">{allRep > 0 ? `(${fmtNumber(allRep)})` : '—'}</td>}
-                        {colVisible('interestRepayments') && <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">—</td>}
+                        {colVisible('interestRepayments') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">—</td>}
                         {colVisible('fxTranslation') && <td className="px-3 py-2.5 text-right tabular-nums text-blue-600">{fmtNumber(allFx)}</td>}
                         {colVisible('closingBalance') && <td className="px-3 py-2.5 text-right tabular-nums font-bold text-primary">{fmtNumber(allLast.closingBalance)}</td>}
                         {colVisible('currentPortion') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(allLast.currentPortion)}</td>}
@@ -626,15 +626,15 @@ export function ContinuityTab() {
             <div className="bg-muted/70 rounded-lg px-3 py-2 font-mono text-[11px] text-foreground mb-2.5">
               Opening Balance × (Annual Rate ÷ 12)
             </div>
-            <p className="text-[11px] text-foreground/60 leading-relaxed mb-2.5">
+            <p className="text-[11px] text-foreground leading-relaxed mb-2.5">
               Interest accrued on the period's opening principal at the loan's annual rate, divided by 12 months. Represents amounts earned by the lender but not yet remitted.
             </p>
             <div className="border-t border-border/60 pt-2.5">
-              <p className="text-[10px] font-semibold text-foreground/45 uppercase tracking-wider mb-1.5">Day-count variants</p>
-              <div className="space-y-1 text-[11px] text-foreground/65 font-mono">
-                <div><span className="text-foreground/40 not-italic font-sans">ACT/365: </span>P × R × Days / 365</div>
-                <div><span className="text-foreground/40 not-italic font-sans">ACT/360: </span>P × R × Days / 360</div>
-                <div><span className="text-foreground/40 not-italic font-sans">30/360:  </span>P × R × 30 / 360</div>
+              <p className="text-[10px] font-semibold text-foreground uppercase tracking-wider mb-1.5">Day-count variants</p>
+              <div className="space-y-1 text-[11px] text-foreground font-mono">
+                <div><span className="text-foreground not-italic font-sans">ACT/365: </span>P × R × Days / 365</div>
+                <div><span className="text-foreground not-italic font-sans">ACT/360: </span>P × R × Days / 360</div>
+                <div><span className="text-foreground not-italic font-sans">30/360:  </span>P × R × 30 / 360</div>
               </div>
             </div>
           </div>
@@ -653,7 +653,7 @@ export function ContinuityTab() {
             style={{ left, top }}
           >
             <p className="text-xs font-semibold text-foreground mb-1.5">{note.title}</p>
-            <p className="text-xs text-foreground/65 leading-relaxed">{note.content}</p>
+            <p className="text-xs text-foreground leading-relaxed">{note.content}</p>
           </div>
         );
       })()}
@@ -674,7 +674,7 @@ export function ContinuityTab() {
             </div>
             {/* FS Item dropdown */}
             <div className="px-5 py-4 border-b border-border flex-shrink-0">
-              <p className="text-xs text-foreground/60 mb-2">Financial Statement Item to Link:</p>
+              <p className="text-xs text-foreground mb-2">Financial Statement Item to Link:</p>
               <div className="relative">
                 <select
                   value={fsPanelItem}
@@ -683,19 +683,19 @@ export function ContinuityTab() {
                 >
                   {FS_ITEMS.map(item => <option key={item} value={item}>{item}</option>)}
                 </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/70 pointer-events-none" />
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground pointer-events-none" />
               </div>
             </div>
             {/* Search */}
             <div className="px-5 py-3 border-b border-border flex-shrink-0">
-              <p className="text-xs text-foreground/60 mb-2">Select notes to link:</p>
+              <p className="text-xs text-foreground mb-2">Select notes to link:</p>
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60 pointer-events-none" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground pointer-events-none" />
                 <input
                   value={notesSearch}
                   onChange={e => setNotesSearch(e.target.value)}
                   placeholder="Search"
-                  className="w-full h-9 pl-8 pr-3 text-sm border border-[#dcdfe4] rounded-[10px] bg-background text-foreground focus:outline-none placeholder:text-muted-foreground/50"
+                  className="w-full h-9 pl-8 pr-3 text-sm border border-[#dcdfe4] rounded-[10px] bg-background text-foreground focus:outline-none placeholder:text-foreground"
                 />
               </div>
             </div>
@@ -711,7 +711,7 @@ export function ContinuityTab() {
                     else setPanelPendingNotes(prev => prev.filter(id => !filteredNotes.some(n => n.id === id)));
                   }}
                 />
-                <span className="text-foreground/70">Select all</span>
+                <span className="text-foreground">Select all</span>
               </label>
             </div>
             {/* Notes list */}
@@ -788,7 +788,7 @@ function AddContinuityRowModal({ open, onClose, loanId, onSave }: {
         <Input label="Notes" value={form.notes} onChange={(e) => setForm(p => ({ ...p, notes: e.target.value }))} />
         <label className="flex items-center gap-2 text-sm cursor-pointer">
           <input type="checkbox" checked={form.isManualAdjustment} onChange={(e) => setForm(p => ({ ...p, isManualAdjustment: e.target.checked }))} className="rounded border-border accent-primary" />
-          <span className="text-foreground/60">Mark as manual adjustment</span>
+          <span className="text-foreground">Mark as manual adjustment</span>
         </label>
       </div>
     </Modal>

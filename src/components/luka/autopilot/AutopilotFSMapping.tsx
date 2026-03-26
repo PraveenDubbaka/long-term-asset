@@ -64,7 +64,7 @@ export function AutopilotFSMapping({ loan, onComplete }: Props) {
           >
             <Upload className="w-8 h-8 text-primary/40 mx-auto mb-2" />
             <p className="text-sm text-primary font-medium">Upload prior year FS + Chart of Accounts</p>
-            <p className="text-xs text-muted-foreground">PDF files only</p>
+            <p className="text-xs text-foreground">PDF files only</p>
             <input ref={fileRef} type="file" multiple accept=".pdf" className="hidden" onChange={e => handleFiles(e.target.files)} />
           </div>
 
@@ -85,12 +85,12 @@ export function AutopilotFSMapping({ loan, onComplete }: Props) {
           {/* Settings */}
           <div className="border border-border rounded-xl overflow-hidden">
             <div className="px-4 py-2.5 bg-muted/40 border-b border-border">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Debt Presentation Settings</p>
+              <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Debt Presentation Settings</p>
             </div>
             <div className="p-4 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Current portion threshold</label>
+                  <label className="text-xs text-foreground block mb-1">Current portion threshold</label>
                   <input
                     type="number"
                     value={currentPortion}
@@ -100,7 +100,7 @@ export function AutopilotFSMapping({ loan, onComplete }: Props) {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Presentation currency</label>
+                  <label className="text-xs text-foreground block mb-1">Presentation currency</label>
                   <select
                     value={currency}
                     onChange={e => setCurrency(e.target.value)}
@@ -112,7 +112,7 @@ export function AutopilotFSMapping({ loan, onComplete }: Props) {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Rounding</label>
+                  <label className="text-xs text-foreground block mb-1">Rounding</label>
                   <select
                     value={rounding}
                     onChange={e => setRounding(e.target.value)}
@@ -124,7 +124,7 @@ export function AutopilotFSMapping({ loan, onComplete }: Props) {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground block mb-1">FX rate source</label>
+                  <label className="text-xs text-foreground block mb-1">FX rate source</label>
                   <select
                     value={fxRateSource}
                     onChange={e => setFxRateSource(e.target.value)}

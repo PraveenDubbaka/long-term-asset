@@ -32,21 +32,21 @@ export function AutopilotMagic({ loan, onStartMagic }: Props) {
               <Clock className="w-4 h-4 text-primary" />
             </div>
             <p className="text-lg font-bold text-foreground">8 mins</p>
-            <p className="text-[10px] text-muted-foreground">Completion time</p>
+            <p className="text-[10px] text-foreground">Completion time</p>
           </div>
           <div className="border border-border rounded-xl p-4 text-center bg-muted/20">
             <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-2">
               <Zap className="w-4 h-4 text-green-600" fill="currentColor" strokeWidth={0} />
             </div>
             <p className="text-lg font-bold text-foreground">3.2 hrs</p>
-            <p className="text-[10px] text-muted-foreground">Time saved</p>
+            <p className="text-[10px] text-foreground">Time saved</p>
           </div>
           <div className="border border-border rounded-xl p-4 text-center bg-muted/20">
             <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center mx-auto mb-2">
               <Diamond className="w-4 h-4 text-purple-600" />
             </div>
             <p className="text-lg font-bold text-foreground">1.2</p>
-            <p className="text-[10px] text-muted-foreground">Credits estimated</p>
+            <p className="text-[10px] text-foreground">Credits estimated</p>
           </div>
         </div>
 
@@ -67,7 +67,7 @@ export function AutopilotMagic({ loan, onStartMagic }: Props) {
               <LukaIcon size={24} />
             </div>
           </div>
-          <p className="text-sm text-muted-foreground text-center max-w-xs">
+          <p className="text-sm text-foreground text-center max-w-xs">
             Ready to automate your long-term debt workpapers
           </p>
         </div>

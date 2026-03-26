@@ -62,9 +62,9 @@ const CapitalAsset = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-1.5 text-sm font-medium hover:bg-muted/60 px-2 py-1 rounded-md transition-colors">
-                    <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Building2 className="h-3.5 w-3.5 text-foreground" />
                     <span>{eng.client}</span>
-                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                    <ChevronDown className="h-3 w-3 text-foreground" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-52">
@@ -77,15 +77,15 @@ const CapitalAsset = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+              <ChevronRight className="h-3.5 w-3.5 text-foreground" />
 
               {/* Engagement selector */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-1.5 text-sm font-medium hover:bg-muted/60 px-2 py-1 rounded-md transition-colors">
-                    <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                    <FileText className="h-3.5 w-3.5 text-foreground" />
                     <span>{engagementId ?? "COM-CON-Dec312024"}</span>
-                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                    <ChevronDown className="h-3 w-3 text-foreground" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-60">
@@ -94,7 +94,7 @@ const CapitalAsset = () => {
                       <FileText className="h-4 w-4" />
                       <div className="flex flex-col">
                         <span className="text-xs font-medium">{id}</span>
-                        <span className="text-xs text-muted-foreground">{e.client} · {e.yearEnd}</span>
+                        <span className="text-xs text-foreground">{e.client} · {e.yearEnd}</span>
                       </div>
                     </DropdownMenuItem>
                   ))}
@@ -136,7 +136,7 @@ const CapitalAsset = () => {
                   className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
                     activeTab === tab.id
                       ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted"
+                      : "text-foreground hover:bg-muted"
                   }`}
                 >
                   {tab.label}

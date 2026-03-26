@@ -83,11 +83,11 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     <div className="flex flex-col gap-1.5">
       {label && <label className="text-sm font-medium leading-none text-foreground">{label}</label>}
       <div className="relative flex items-center">
-        {prefix && <span className="absolute left-3 text-muted-foreground/70 text-xs">{prefix}</span>}
+        {prefix && <span className="absolute left-3 text-foreground text-xs">{prefix}</span>}
         <input
           ref={ref}
           className={cn(
-            'input-double-border w-full h-9 text-sm rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground placeholder:text-muted-foreground/70 transition-all duration-200',
+            'input-double-border w-full h-9 text-sm rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground placeholder:text-foreground transition-all duration-200',
             'hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)]',
             'disabled:cursor-not-allowed disabled:bg-muted/50 disabled:opacity-50',
             prefix ? 'pl-7' : 'pl-3',
@@ -97,10 +97,10 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           )}
           {...props}
         />
-        {suffix && <span className="absolute right-3 text-muted-foreground/70 text-xs">{suffix}</span>}
+        {suffix && <span className="absolute right-3 text-foreground text-xs">{suffix}</span>}
       </div>
       {error && <p className="text-xs text-destructive mt-0.5">{error}</p>}
-      {hint && !error && <p className="text-xs text-muted-foreground/70 mt-0.5">{hint}</p>}
+      {hint && !error && <p className="text-xs text-foreground mt-0.5">{hint}</p>}
     </div>
   )
 );
@@ -130,7 +130,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         >
           {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
-        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/70 pointer-events-none" />
+        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground pointer-events-none" />
       </div>
       {error && <p className="text-xs text-destructive mt-0.5">{error}</p>}
     </div>
@@ -149,7 +149,7 @@ export function Textarea({ label, error, className, ...props }: TextareaProps) {
       {label && <label className="text-sm font-medium leading-none text-foreground">{label}</label>}
       <textarea
         className={cn(
-          'input-double-border w-full text-sm px-3 py-2.5 rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground placeholder:text-muted-foreground/70 transition-all duration-200',
+          'input-double-border w-full text-sm px-3 py-2.5 rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground placeholder:text-foreground transition-all duration-200',
           'hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] resize-none',
           'disabled:cursor-not-allowed disabled:bg-muted/50 disabled:opacity-50',
           error && 'border-destructive hover:border-destructive',
@@ -188,9 +188,9 @@ export function Modal({ open, onClose, title, subtitle, children, size = 'md', f
         <div className="flex items-start justify-between px-5 py-4 border-b border-border">
           <div>
             {title && <h2 className="text-base font-semibold text-foreground">{title}</h2>}
-            {subtitle && <p className="text-xs text-foreground/60 mt-0.5">{subtitle}</p>}
+            {subtitle && <p className="text-xs text-foreground mt-0.5">{subtitle}</p>}
           </div>
-          <button onClick={onClose} className="text-foreground/50 hover:text-foreground transition-colors p-1 rounded-lg hover:bg-muted ml-3 flex-shrink-0">
+          <button onClick={onClose} className="text-foreground hover:text-foreground transition-colors p-1 rounded-lg hover:bg-muted ml-3 flex-shrink-0">
             <X className="w-4 h-4" />
           </button>
         </div>

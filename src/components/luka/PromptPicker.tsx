@@ -88,7 +88,7 @@ export function PromptPicker({ open, onSelect, onClose, filter }: PromptPickerPr
       </div>
 
       {/* Footer hint */}
-      <div className="px-4 py-2 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
+      <div className="px-4 py-2 border-t border-border flex items-center justify-between text-xs text-foreground">
         <div className="flex items-center gap-2">
           <kbd className="px-1.5 py-0.5 rounded border border-border bg-muted/50 text-[10px] font-medium">Use</kbd>
           <span className="inline-flex gap-1">

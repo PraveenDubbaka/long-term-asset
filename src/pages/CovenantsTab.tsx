@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
-  Plus, AlertCircle, AlertTriangle, CheckCircle, XCircle, Edit3, ChevronDown,
+  Plus, AlertCircle, AlertTriangle, CheckCircle, XCircle, ChevronDown,
   ChevronRight, FileText, Trash2, Sparkles, TrendingDown, TrendingUp, Minus, Download,
-  BookOpen, Wand2, CheckSquare, Square, ArrowRight,
+  BookOpen, Wand2, CheckSquare, Square, ArrowRight, Check, X, Edit3,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { fmtCurrency, exportToExcel, buildCovenantsExport } from '../lib/utils';
@@ -22,7 +22,7 @@ const STATUS_CONFIG: Record<CovenantStatus, { label: string; color: string; icon
   OK:        { label: 'OK',       color: 'text-emerald-700', icon: CheckCircle,   bg: 'bg-emerald-50', border: 'border-emerald-200' },
   'At Risk': { label: 'At Risk',  color: 'text-amber-700',   icon: AlertTriangle, bg: 'bg-amber-50',   border: 'border-amber-200'  },
   Breached:  { label: 'Breached', color: 'text-red-700',     icon: XCircle,       bg: 'bg-red-50',     border: 'border-red-200'    },
-  Unknown:   { label: 'Unknown',  color: 'text-foreground/60', icon: AlertCircle, bg: 'bg-muted',      border: 'border-border'     },
+  Unknown:   { label: 'Unknown',  color: 'text-foreground', icon: AlertCircle, bg: 'bg-muted',      border: 'border-border'     },
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -50,16 +50,14 @@ const getMarginLabel = (c: Covenant): string => {
 
 // ─── Main Tab ─────────────────────────────────────────────────────────────────
 export function CovenantsTab() {
-  const { loans, covenants, updateCovenant, addCovenant, deleteCovenant } = useStore(s => ({
+  const { loans, covenants, updateCovenant, addCovenant, deleteCovenant, updateLoan } = useStore(s => ({
     loans: s.loans.filter(l => l.status !== 'Inactive'), covenants: s.covenants,
-    updateCovenant: s.updateCovenant, addCovenant: s.addCovenant, deleteCovenant: s.deleteCovenant,
+    updateCovenant: s.updateCovenant, addCovenant: s.addCovenant, deleteCovenant: s.deleteCovenant, updateLoan: s.updateLoan,
   }));
 
   const loansWithCovenants = loans.filter(l => l.covenantIds && l.covenantIds.length > 0);
   const [selectedLoanId, setSelectedLoanId] = useState<string>(loansWithCovenants[0]?.id || '');
-  const [expandedId, setExpandedId]         = useState<string | null>(null);
-  const [editCovenant, setEditCovenant]     = useState<Covenant | null>(null);
-  const [addOpen, setAddOpen]               = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const breached  = covenants.filter(c => c.status === 'Breached');
   const atRisk    = covenants.filter(c => c.status === 'At Risk');
@@ -73,6 +71,87 @@ export function CovenantsTab() {
     toast.success(`Exported ${covenants.length} covenant${covenants.length !== 1 ? 's' : ''}`);
   };
 
+  // table edit mode
+  const [tableEditMode, setTableEditMode] = useState(false);
+  const [tableEdits, setTableEdits]       = useState<Record<string, Partial<Covenant>>>({});
+  const [draftNewRows, setDraftNewRows]   = useState<(Partial<Covenant> & { _newId: string })[]>([]);
+  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
+
+  const IIC = 'h-7 w-full min-w-0 px-1.5 text-xs border border-border rounded bg-background focus:outline-none focus:border-primary/40';
+
+  const enterEditMode  = () => { setTableEditMode(true); setTableEdits({}); setDraftNewRows([]); setPendingDeletes(new Set()); };
+  const cancelEditMode = () => { setTableEditMode(false); setTableEdits({}); setDraftNewRows([]); setPendingDeletes(new Set()); };
+  const saveAllEdits   = () => {
+    Object.entries(tableEdits).forEach(([id, patch]) => updateCovenant(id, patch));
+    const newIds: string[] = [];
+    draftNewRows.forEach(r => {
+      const { _newId, ...data } = r;
+      void _newId;
+      const newId = `cov-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
+      addCovenant({ ...data, id: newId, loanId: selectedLoanId } as unknown as Covenant);
+      newIds.push(newId);
+    });
+    if (newIds.length > 0 && selectedLoan) {
+      updateLoan(selectedLoanId, { covenantIds: [...(selectedLoan.covenantIds ?? []), ...newIds] });
+    }
+    pendingDeletes.forEach(id => {
+      deleteCovenant(id);
+      if (selectedLoan) {
+        updateLoan(selectedLoanId, { covenantIds: (selectedLoan.covenantIds ?? []).filter(cid => cid !== id) });
+      }
+    });
+    toast.success('Covenants saved');
+    cancelEditMode();
+  };
+  const setEdit = (id: string, field: keyof Covenant, value: unknown) =>
+    setTableEdits(p => ({ ...p, [id]: { ...(p[id] ?? {}), [field]: value } }));
+  const setDraftEdit = (_newId: string, field: keyof Covenant, value: unknown) =>
+    setDraftNewRows(p => p.map(r => r._newId === _newId ? { ...r, [field]: value } : r));
+
+  const mkId = () => `fl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+  const applyTemplateToEdit = (id: string, templateId: string) => {
+    const tmpl = COVENANT_TEMPLATES.find(t => t.id === templateId);
+    if (!tmpl) { setEdit(id, 'name', templateId); return; }
+    setTableEdits(p => ({
+      ...p,
+      [id]: {
+        ...(p[id] ?? {}),
+        name:              tmpl.id,
+        operator:          tmpl.operator,
+        threshold:         tmpl.threshold,
+        isRatioCovenant:   tmpl.isRatio,
+        useFormulaBuilder: true,
+        formula:           tmpl.label,
+        formulaLines:      tmpl.numeratorLines.map(l => ({ ...l, id: mkId() })),
+        denominatorLines:  (tmpl.denominatorLines ?? []).map(l => ({ ...l, id: mkId() })),
+      },
+    }));
+  };
+
+  const applyTemplateToDraft = (_newId: string, templateId: string) => {
+    const tmpl = COVENANT_TEMPLATES.find(t => t.id === templateId);
+    if (!tmpl) { setDraftEdit(_newId, 'name', templateId); return; }
+    setDraftNewRows(p => p.map(r => r._newId !== _newId ? r : {
+      ...r,
+      name:              tmpl.id,
+      operator:          tmpl.operator,
+      threshold:         tmpl.threshold,
+      isRatioCovenant:   tmpl.isRatio,
+      useFormulaBuilder: true,
+      formula:           tmpl.label,
+      formulaLines:      tmpl.numeratorLines.map(l => ({ ...l, id: mkId() })),
+      denominatorLines:  (tmpl.denominatorLines ?? []).map(l => ({ ...l, id: mkId() })),
+    }));
+  };
+  const addDraftRow = () => {
+    const _newId = `new-${Date.now()}`;
+    setTableEditMode(true);
+    setDraftNewRows(p => [...p, { _newId, type: 'Quantitative', status: 'Unknown', operator: '>=', threshold: 0, frequency: 'Annual', formulaLines: [], denominatorLines: [] }]);
+  };
+  const toggleDelete = (id: string) =>
+    setPendingDeletes(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
   return (
     <div className="p-6 space-y-5">
 
@@ -80,15 +159,30 @@ export function CovenantsTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Covenant Monitoring</h2>
-          <p className="text-xs text-foreground/60 mt-0.5">Quantitative and qualitative covenant tracking with GL formula builder</p>
+          <p className="text-xs text-foreground mt-0.5">Quantitative and qualitative covenant tracking with GL formula builder</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" size="sm" onClick={handleExport}>
             <Download className="w-3.5 h-3.5 mr-1" /> Export
           </Button>
-          <Button variant="default" size="sm" onClick={() => setAddOpen(true)}>
-            <Plus className="w-3.5 h-3.5 mr-1" /> Add Covenant
-          </Button>
+          {tableEditMode ? (<>
+            <Button variant="secondary" size="sm" onClick={addDraftRow}>
+              <Plus className="w-3.5 h-3.5 mr-1" /> Add Row
+            </Button>
+            <Button variant="default" size="sm" onClick={saveAllEdits}>
+              <Check className="w-3.5 h-3.5 mr-1" /> Save
+            </Button>
+            <Button variant="secondary" size="sm" onClick={cancelEditMode}>
+              <X className="w-3.5 h-3.5 mr-1" /> Cancel
+            </Button>
+          </>) : (<>
+            <Button variant="secondary" size="sm" onClick={enterEditMode}>
+              <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit
+            </Button>
+            <Button variant="default" size="sm" onClick={addDraftRow}>
+              <Plus className="w-3.5 h-3.5 mr-1" /> Add Covenant
+            </Button>
+          </>)}
         </div>
       </div>
 
@@ -106,7 +200,7 @@ export function CovenantsTab() {
             </div>
             <div className="flex flex-col">
               <span className="text-xl font-bold leading-none text-primary">{s.count}</span>
-              <span className="text-[11px] font-medium text-foreground/60 leading-tight mt-0.5 whitespace-nowrap">{s.label}</span>
+              <span className="text-[11px] font-medium text-foreground leading-tight mt-0.5 whitespace-nowrap">{s.label}</span>
             </div>
           </div>
         ))}
@@ -118,7 +212,7 @@ export function CovenantsTab() {
 
         {/* Toolbar */}
         <div className="flex items-center gap-3 px-5 py-3 border-b border-border bg-muted/30 flex-wrap">
-          <span className="text-xs font-semibold text-foreground/50 uppercase tracking-wide whitespace-nowrap">Loan</span>
+          <span className="text-xs font-semibold text-foreground uppercase tracking-wide whitespace-nowrap">Loan</span>
           <div className="relative">
             <select
               className="input-double-border h-9 text-sm pl-3 pr-8 rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground appearance-none transition-all duration-200 hover:border-[hsl(210_25%_75%)] cursor-pointer focus:outline-none"
@@ -129,18 +223,18 @@ export function CovenantsTab() {
                 ? <option value="">No loans with covenants</option>
                 : loansWithCovenants.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
             </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground/40" />
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground" />
           </div>
           {selectedLoan && (
             <>
-              <span className="text-xs text-foreground/30">·</span>
-              <span className="text-xs text-foreground/60">{selectedLoan.lender}</span>
-              <span className="text-xs text-foreground/30">·</span>
-              <span className="text-xs font-mono text-foreground/50">{selectedLoan.refNumber}</span>
+              <span className="text-xs text-foreground">·</span>
+              <span className="text-xs text-foreground">{selectedLoan.lender}</span>
+              <span className="text-xs text-foreground">·</span>
+              <span className="text-xs font-mono text-foreground">{selectedLoan.refNumber}</span>
               <Badge variant="outline" className="text-xs">{selectedLoan.currency}</Badge>
             </>
           )}
-          <div className="ml-auto text-xs text-foreground/40">{loanCovenants.length} covenant{loanCovenants.length !== 1 ? 's' : ''}</div>
+          <div className="ml-auto text-xs text-foreground">{loanCovenants.length} covenant{loanCovenants.length !== 1 ? 's' : ''}</div>
         </div>
 
         {/* Table */}
@@ -161,28 +255,31 @@ export function CovenantsTab() {
                   ['Last Tested', 'text-right',  'hidden xl:table-cell'],
                   ['Actions',     'text-center', ''],
                 ].map(([h, align, extra]) => (
-                  <th key={h as string} className={`py-2.5 px-3 text-xs font-semibold text-foreground/50 uppercase tracking-wide whitespace-nowrap ${align} ${extra}`}>
+                  <th key={h as string} className={`py-2.5 px-3 text-xs font-semibold text-foreground uppercase tracking-wide whitespace-nowrap ${align} ${extra}`}>
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {loanCovenants.length === 0 ? (
-                <tr><td colSpan={11} className="px-5 py-12 text-center text-sm text-foreground/40">No covenants for this loan</td></tr>
-              ) : loanCovenants.map(cov => {
+              {loanCovenants.length === 0 && draftNewRows.length === 0 ? (
+                <tr><td colSpan={11} className="px-5 py-12 text-center text-sm text-foreground">No covenants for this loan</td></tr>
+              ) : null}
+
+              {/* Existing covenant rows */}
+              {loanCovenants.map(covBase => {
+                const cov = { ...covBase, ...(tableEdits[covBase.id] ?? {}) } as Covenant;
+                const isDeleted = pendingDeletes.has(covBase.id);
                 const cfg = STATUS_CONFIG[cov.status];
                 const Icon = cfg.icon;
                 const gauge = getGaugePercent(cov);
                 const margin = getMarginLabel(cov);
                 const isExpanded = expandedId === cov.id;
-                const isAlerted = cov.status === 'Breached' || cov.status === 'At Risk';
 
                 // Projected status
                 const projSt = (cov.projectedValue !== undefined && cov.threshold !== undefined && cov.operator)
                   ? getProjectedStatus(cov.projectedValue, cov.threshold, cov.operator)
                   : null;
-                const projCfg = projSt ? STATUS_CONFIG[projSt] : null;
                 const projDirection = (cov.projectedValue !== undefined && cov.currentValue !== undefined)
                   ? (cov.projectedValue > cov.currentValue ? 'up' : cov.projectedValue < cov.currentValue ? 'down' : 'flat')
                   : null;
@@ -190,54 +287,101 @@ export function CovenantsTab() {
                 return (
                   <React.Fragment key={cov.id}>
                     <tr
-                      className={`border-b border-border transition-colors cursor-pointer select-none ${
+                      className={`border-b border-border transition-colors ${isDeleted ? 'opacity-40' : ''} ${
                         isExpanded ? 'bg-primary/[0.025]'
                         : cov.status === 'Breached' ? 'bg-red-50/40 hover:bg-red-50/60'
                         : cov.status === 'At Risk'  ? 'bg-amber-50/30 hover:bg-amber-50/50'
                         : 'hover:bg-muted/30'
                       }`}
-                      onClick={() => setExpandedId(isExpanded ? null : cov.id)}
                     >
                       {/* Expand chevron */}
-                      <td className="px-3 py-3 w-8">
-                        {isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-foreground/40" /> : <ChevronRight className="w-3.5 h-3.5 text-foreground/25" />}
+                      <td
+                        className="px-3 py-2 w-8 cursor-pointer select-none"
+                        onClick={() => setExpandedId(isExpanded ? null : cov.id)}
+                      >
+                        {isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-foreground" />}
                       </td>
 
                       {/* Name */}
-                      <td className="px-3 py-3 font-medium text-foreground text-left">
+                      <td className="px-3 py-2 text-left">
                         <div className="flex items-center gap-1.5">
                           <Icon className={`w-3.5 h-3.5 ${cfg.color} flex-shrink-0`} />
-                          <span>{cov.name}</span>
+                          {tableEditMode ? (
+                            <select
+                              value={cov.name ?? ''}
+                              onChange={e => applyTemplateToEdit(covBase.id, e.target.value)}
+                              className={`${IIC} font-medium ${isDeleted ? 'line-through' : ''}`}
+                            >
+                              <option value="">— Select covenant —</option>
+                              {COVENANT_TEMPLATES.map(t => (
+                                <option key={t.id} value={t.id}>{t.label}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="font-medium text-sm text-foreground truncate">{cov.name || '—'}</span>
+                          )}
                           {cov.useFormulaBuilder && (
-                            <span title="Formula Builder enabled" className="text-primary/50 flex-shrink-0">
-                              <Sparkles className="w-3 h-3" />
-                            </span>
+                            <span title="Formula Builder"><Sparkles className="w-3 h-3 text-primary/50 flex-shrink-0" /></span>
                           )}
                         </div>
                       </td>
 
                       {/* Type */}
-                      <td className="px-3 py-3 text-left"><Badge variant="outline" className="text-xs">{cov.type}</Badge></td>
+                      <td className="px-3 py-2 text-left">
+                        {tableEditMode ? (
+                          <select value={cov.type} onChange={e => setEdit(covBase.id, 'type', e.target.value as Covenant['type'])} className={IIC}>
+                            <option value="Quantitative">Quantitative</option>
+                            <option value="Qualitative">Qualitative</option>
+                          </select>
+                        ) : (
+                          <span className="text-xs text-foreground">{cov.type}</span>
+                        )}
+                      </td>
 
                       {/* Status */}
-                      <td className="px-3 py-3 text-left">
-                        <Badge variant={cov.status === 'Breached' ? 'destructive' : cov.status === 'At Risk' ? 'warning' : cov.status === 'OK' ? 'success' : 'outline'}>
-                          {cfg.label}
-                        </Badge>
+                      <td className="px-3 py-2 text-left">
+                        {tableEditMode ? (
+                          <select
+                            value={cov.status}
+                            onChange={e => setEdit(covBase.id, 'status', e.target.value as CovenantStatus)}
+                            className={IIC}
+                          >
+                            <option value="OK">OK</option>
+                            <option value="At Risk">At Risk</option>
+                            <option value="Breached">Breached</option>
+                            <option value="Unknown">Unknown</option>
+                          </select>
+                        ) : (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.bg} ${cfg.color} border ${cfg.border}`}>
+                            <Icon className="w-3 h-3" /> {cfg.label}
+                          </span>
+                        )}
                       </td>
 
                       {/* Current Value */}
-                      <td className="px-3 py-3 text-right tabular-nums font-medium text-foreground/80">
-                        {cov.type === 'Quantitative' ? fmtCovenantValue(cov, cov.currentValue) : '—'}
+                      <td className="px-3 py-2 text-right">
+                        {cov.type === 'Quantitative' ? (
+                          tableEditMode ? (
+                            <input
+                              type="number"
+                              value={cov.currentValue ?? ''}
+                              onChange={e => setEdit(covBase.id, 'currentValue', parseFloat(e.target.value) || 0)}
+                              placeholder="—"
+                              className={`${IIC} text-right tabular-nums`}
+                            />
+                          ) : (
+                            <span className="tabular-nums text-sm font-medium">{fmtCovenantValue(cov, cov.currentValue)}</span>
+                          )
+                        ) : <span className="text-foreground text-xs">—</span>}
                       </td>
 
                       {/* Projected Value */}
-                      <td className="px-3 py-3 text-right hidden lg:table-cell">
+                      <td className="px-3 py-2 text-right hidden lg:table-cell">
                         {cov.type === 'Quantitative' && cov.projectedValue !== undefined ? (
                           <div className="flex items-center justify-end gap-1">
                             {projDirection === 'up'   && <TrendingUp   className="w-3 h-3 text-emerald-500 flex-shrink-0" />}
                             {projDirection === 'down' && <TrendingDown  className="w-3 h-3 text-red-500 flex-shrink-0" />}
-                            {projDirection === 'flat' && <Minus         className="w-3 h-3 text-foreground/30 flex-shrink-0" />}
+                            {projDirection === 'flat' && <Minus         className="w-3 h-3 text-foreground flex-shrink-0" />}
                             <span className={`tabular-nums text-sm font-medium ${
                               projSt === 'Breached' ? 'text-red-600'
                               : projSt === 'At Risk' ? 'text-amber-600'
@@ -253,19 +397,41 @@ export function CovenantsTab() {
                             )}
                           </div>
                         ) : (
-                          <span className="text-foreground/30 text-xs">—</span>
+                          <span className="text-foreground text-xs">—</span>
                         )}
                       </td>
 
                       {/* Threshold */}
-                      <td className="px-3 py-3 text-right tabular-nums text-xs text-foreground/60">
-                        {cov.type === 'Quantitative' && cov.threshold !== undefined
-                          ? `${cov.operator} ${fmtCovenantValue(cov, cov.threshold)}`
-                          : '—'}
+                      <td className="px-3 py-2 text-right">
+                        {cov.type === 'Quantitative' ? (
+                          tableEditMode ? (
+                            <div className="flex items-center justify-end gap-1">
+                              <select
+                                value={cov.operator ?? '>='}
+                                onChange={e => setEdit(covBase.id, 'operator', e.target.value as Covenant['operator'])}
+                                className={`${IIC} w-14 text-center`}
+                              >
+                                <option value=">=">≥</option>
+                                <option value="<=">≤</option>
+                                <option value=">">{'>'}</option>
+                                <option value="<">{'<'}</option>
+                              </select>
+                              <input
+                                type="number"
+                                value={cov.threshold ?? ''}
+                                onChange={e => setEdit(covBase.id, 'threshold', parseFloat(e.target.value) || 0)}
+                                placeholder="—"
+                                className={`${IIC} text-right tabular-nums`}
+                              />
+                            </div>
+                          ) : (
+                            <span className="tabular-nums text-sm">{cov.operator} {fmtCovenantValue(cov, cov.threshold)}</span>
+                          )
+                        ) : <span className="text-foreground text-xs">—</span>}
                       </td>
 
-                      {/* Headroom */}
-                      <td className="px-3 py-3 text-right min-w-[110px]">
+                      {/* Headroom — read-only gauge */}
+                      <td className="px-3 py-2 text-right min-w-[110px]">
                         {cov.type === 'Quantitative' && cov.currentValue !== undefined ? (
                           <div className="flex flex-col items-end gap-1">
                             <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
@@ -273,27 +439,47 @@ export function CovenantsTab() {
                             </div>
                             <span className={`text-xs font-medium tabular-nums ${cov.status === 'Breached' ? 'text-red-600' : cov.status === 'At Risk' ? 'text-amber-600' : 'text-emerald-600'}`}>{margin}</span>
                           </div>
-                        ) : <span className="text-foreground/30 text-xs">—</span>}
+                        ) : <span className="text-foreground text-xs">—</span>}
                       </td>
 
                       {/* Frequency */}
-                      <td className="px-3 py-3 text-right text-xs text-foreground/60 hidden xl:table-cell">{cov.frequency}</td>
+                      <td className="px-3 py-2 text-right hidden xl:table-cell">
+                        {tableEditMode ? (
+                          <select value={cov.frequency} onChange={e => setEdit(covBase.id, 'frequency', e.target.value as Covenant['frequency'])} className={IIC}>
+                            <option value="Monthly">Monthly</option>
+                            <option value="Quarterly">Quarterly</option>
+                            <option value="Annual">Annual</option>
+                          </select>
+                        ) : (
+                          <span className="text-xs text-foreground">{cov.frequency}</span>
+                        )}
+                      </td>
 
                       {/* Last Tested */}
-                      <td className="px-3 py-3 text-right text-xs text-foreground/60 whitespace-nowrap hidden xl:table-cell">
-                        {cov.lastTested || <span className="text-foreground/30">Not tested</span>}
+                      <td className="px-3 py-2 text-right hidden xl:table-cell">
+                        {tableEditMode ? (
+                          <input
+                            type="date"
+                            value={cov.lastTested || ''}
+                            onChange={e => setEdit(covBase.id, 'lastTested', e.target.value)}
+                            className={`${IIC} text-right`}
+                          />
+                        ) : (
+                          <span className="text-xs text-foreground tabular-nums">{cov.lastTested || '—'}</span>
+                        )}
                       </td>
 
                       {/* Actions */}
-                      <td className="px-3 py-3 text-center" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-center gap-0.5">
-                          <button onClick={() => setEditCovenant(cov)} className="p-1.5 hover:bg-muted rounded-lg transition-colors" title="Edit covenant">
-                            <Edit3 className="w-3 h-3 text-primary" />
+                      <td className="px-3 py-2 text-center">
+                        {tableEditMode && (
+                          <button
+                            onClick={() => toggleDelete(covBase.id)}
+                            className={`p-1.5 rounded-lg transition-colors ${isDeleted ? 'hover:bg-emerald-500/10 text-emerald-600' : 'hover:bg-destructive/10 text-destructive'}`}
+                            title={isDeleted ? 'Restore' : 'Delete'}
+                          >
+                            {isDeleted ? <Check className="w-3 h-3" /> : <Trash2 className="w-3 h-3" />}
                           </button>
-                          <button onClick={() => { deleteCovenant(cov.id); toast.success('Covenant removed'); }} className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors" title="Remove">
-                            <Trash2 className="w-3 h-3 text-destructive" />
-                          </button>
-                        </div>
+                        )}
                       </td>
                     </tr>
 
@@ -301,16 +487,46 @@ export function CovenantsTab() {
                     {isExpanded && (
                       <tr className="border-b border-border">
                         <td colSpan={11} className="bg-muted/20 px-6 py-4">
-                          <div className="flex items-start gap-5 text-xs">
-                            {/* Formula */}
+                          <div className="flex items-start gap-6 text-xs">
+
+                            {/* Formula / Method */}
                             <div className="flex-1">
-                              <div className="font-semibold text-foreground/50 uppercase tracking-wider mb-2">Formula / Method</div>
-                              {cov.useFormulaBuilder && cov.formulaLines ? (
-                                <FormulaDisplay cov={cov} />
+                              <div className="font-semibold text-foreground uppercase tracking-wider mb-2">Formula / Method</div>
+                              {cov.useFormulaBuilder && cov.formulaLines?.length ? (
+                                <FormulaDisplay
+                                  cov={cov}
+                                  editMode={tableEditMode}
+                                  onUpdateNumeratorLine={(lineId, amt) => {
+                                    const updated = (cov.formulaLines ?? []).map(l => l.id === lineId ? { ...l, amount: amt } : l);
+                                    setEdit(covBase.id, 'formulaLines', updated);
+                                    const numTotal = updated.reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
+                                    const denTotal = (cov.denominatorLines ?? []).reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
+                                    const cv = cov.isRatioCovenant ? (denTotal !== 0 ? numTotal / denTotal : 0) : numTotal;
+                                    setEdit(covBase.id, 'currentValue', Math.round(cv * 10000) / 10000);
+                                  }}
+                                  onUpdateDenominatorLine={(lineId, amt) => {
+                                    const updated = (cov.denominatorLines ?? []).map(l => l.id === lineId ? { ...l, amount: amt } : l);
+                                    setEdit(covBase.id, 'denominatorLines', updated);
+                                    const numTotal = (cov.formulaLines ?? []).reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
+                                    const denTotal = updated.reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
+                                    const cv = cov.isRatioCovenant ? (denTotal !== 0 ? numTotal / denTotal : 0) : numTotal;
+                                    setEdit(covBase.id, 'currentValue', Math.round(cv * 10000) / 10000);
+                                  }}
+                                />
+                              ) : tableEditMode ? (
+                                <textarea
+                                  rows={2}
+                                  value={cov.formula || ''}
+                                  onChange={e => setEdit(covBase.id, 'formula', e.target.value)}
+                                  placeholder="Describe the formula or calculation method…"
+                                  className="w-full text-xs font-mono bg-background border border-border rounded-lg px-2.5 py-2 resize-none focus:outline-none focus:border-primary/40 text-foreground placeholder:text-foreground transition-colors leading-relaxed"
+                                />
                               ) : (
-                                <div className="font-mono bg-background px-2.5 py-2 rounded-lg border border-border text-foreground">{cov.formula || '—'}</div>
+                                <p className="text-foreground leading-relaxed whitespace-pre-wrap">{cov.formula || '—'}</p>
                               )}
                             </div>
+
+
                           </div>
                         </td>
                       </tr>
@@ -318,35 +534,138 @@ export function CovenantsTab() {
                   </React.Fragment>
                 );
               })}
+
+              {/* Draft new rows */}
+              {draftNewRows.map(draft => (
+                <React.Fragment key={draft._newId}>
+                  <tr className="border-b border-border bg-primary/[0.015] hover:bg-primary/[0.03] transition-colors">
+                    <td className="px-3 py-2 w-8" />
+
+                    {/* Name */}
+                    <td className="px-3 py-2 text-left">
+                      <select
+                        value={draft.name ?? ''}
+                        onChange={e => applyTemplateToDraft(draft._newId, e.target.value)}
+                        className={`${IIC} font-medium`}
+                        autoFocus
+                      >
+                        <option value="">— Select covenant —</option>
+                        {COVENANT_TEMPLATES.map(t => (
+                          <option key={t.id} value={t.id}>{t.label}</option>
+                        ))}
+                      </select>
+                    </td>
+
+                    {/* Type */}
+                    <td className="px-3 py-2 text-left">
+                      <select value={draft.type ?? 'Quantitative'} onChange={e => setDraftEdit(draft._newId, 'type', e.target.value as Covenant['type'])} className={IIC}>
+                        <option value="Quantitative">Quantitative</option>
+                        <option value="Qualitative">Qualitative</option>
+                      </select>
+                    </td>
+
+                    {/* Status */}
+                    <td className="px-3 py-2 text-left">
+                      <select value={draft.status ?? 'Unknown'} onChange={e => setDraftEdit(draft._newId, 'status', e.target.value as CovenantStatus)} className={IIC}>
+                        <option value="OK">OK</option>
+                        <option value="At Risk">At Risk</option>
+                        <option value="Breached">Breached</option>
+                        <option value="Unknown">Unknown</option>
+                      </select>
+                    </td>
+
+                    {/* Current Value */}
+                    <td className="px-3 py-2 text-right">
+                      {(draft.type ?? 'Quantitative') === 'Quantitative' ? (
+                        <input
+                          type="number"
+                          value={draft.currentValue ?? ''}
+                          onChange={e => setDraftEdit(draft._newId, 'currentValue', parseFloat(e.target.value) || 0)}
+                          placeholder="—"
+                          className={`${IIC} text-right tabular-nums`}
+                        />
+                      ) : <span className="text-foreground text-xs">—</span>}
+                    </td>
+
+                    {/* Projected Value — blank for drafts */}
+                    <td className="px-3 py-2 text-right hidden lg:table-cell">
+                      <span className="text-foreground text-xs">—</span>
+                    </td>
+
+                    {/* Threshold */}
+                    <td className="px-3 py-2 text-right">
+                      {(draft.type ?? 'Quantitative') === 'Quantitative' ? (
+                        <div className="flex items-center justify-end gap-1">
+                          <select
+                            value={draft.operator ?? '>='}
+                            onChange={e => setDraftEdit(draft._newId, 'operator', e.target.value as Covenant['operator'])}
+                            className={`${IIC} w-14 text-center`}
+                          >
+                            <option value=">=">≥</option>
+                            <option value="<=">≤</option>
+                            <option value=">">{'>'}</option>
+                            <option value="<">{'<'}</option>
+                          </select>
+                          <input
+                            type="number"
+                            value={draft.threshold ?? ''}
+                            onChange={e => setDraftEdit(draft._newId, 'threshold', parseFloat(e.target.value) || 0)}
+                            placeholder="—"
+                            className={`${IIC} text-right tabular-nums`}
+                          />
+                        </div>
+                      ) : <span className="text-foreground text-xs">—</span>}
+                    </td>
+
+                    {/* Headroom — blank for drafts */}
+                    <td className="px-3 py-2 text-right min-w-[110px]">
+                      <span className="text-foreground text-xs">—</span>
+                    </td>
+
+                    {/* Frequency */}
+                    <td className="px-3 py-2 text-right hidden xl:table-cell">
+                      <select value={draft.frequency ?? 'Annual'} onChange={e => setDraftEdit(draft._newId, 'frequency', e.target.value as Covenant['frequency'])} className={IIC}>
+                        <option value="Monthly">Monthly</option>
+                        <option value="Quarterly">Quarterly</option>
+                        <option value="Annual">Annual</option>
+                      </select>
+                    </td>
+
+                    {/* Last Tested — blank for drafts */}
+                    <td className="px-3 py-2 text-right hidden xl:table-cell">
+                      <span className="text-foreground text-xs">—</span>
+                    </td>
+
+                    {/* Actions — remove draft */}
+                    <td className="px-3 py-2 text-center">
+                      <button
+                        onClick={() => setDraftNewRows(p => p.filter(r => r._newId !== draft._newId))}
+                        className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors text-destructive"
+                        title="Remove"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </td>
+                  </tr>
+                </React.Fragment>
+              ))}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Modal */}
-      <CovenantFormModal
-        open={!!editCovenant || addOpen}
-        onClose={() => { setEditCovenant(null); setAddOpen(false); }}
-        covenant={editCovenant}
-        loans={loans}
-        onSave={(cov) => {
-          if (editCovenant) {
-            updateCovenant(editCovenant.id, cov);
-            toast.success('Covenant updated');
-            setEditCovenant(null);
-          } else {
-            addCovenant({ ...cov, id: `cov-${Date.now()}` } as Covenant);
-            toast.success('Covenant added');
-            setAddOpen(false);
-          }
-        }}
-      />
+      {/* CovenantFormModal retained for formula builder access if needed */}
     </div>
   );
 }
 
-// ─── FormulaDisplay (read-only in expanded row) ───────────────────────────────
-function FormulaDisplay({ cov }: { cov: Covenant }) {
+// ─── FormulaDisplay (read-only + editable in expanded row) ───────────────────
+function FormulaDisplay({ cov, editMode = false, onUpdateNumeratorLine, onUpdateDenominatorLine }: {
+  cov: Covenant;
+  editMode?: boolean;
+  onUpdateNumeratorLine?: (lineId: string, amount: number) => void;
+  onUpdateDenominatorLine?: (lineId: string, amount: number) => void;
+}) {
   const numLines = cov.formulaLines ?? [];
   const denLines = cov.denominatorLines ?? [];
 
@@ -354,17 +673,28 @@ function FormulaDisplay({ cov }: { cov: Covenant }) {
   const denTotal = denLines.reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
 
   const fmtAmt = (v: number) => v === 0 ? '$0' : `$${v.toLocaleString('en-CA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  const IIC = 'h-6 w-28 px-1.5 text-xs text-right tabular-nums border border-border rounded bg-background focus:outline-none focus:border-primary/40';
 
-  const LineRows = ({ lines }: { lines: CovenantFormulaLine[] }) => (
+  const LineRows = ({ lines, onUpdate }: { lines: CovenantFormulaLine[]; onUpdate?: (id: string, amt: number) => void }) => (
     <>
       {lines.map(l => {
         const glName = GL_ACCOUNTS.find(a => a.code === l.glAccount)?.name ?? l.glAccount;
         return (
           <div key={l.id} className="flex items-center gap-2 py-0.5">
             <span className={`w-4 text-center font-mono font-bold ${l.sign === '+' ? 'text-emerald-600' : 'text-red-500'}`}>{l.sign}</span>
-            <span className="flex-1 text-foreground/70 truncate" title={glName}>{l.description || glName}</span>
-            <span className="tabular-nums font-mono text-foreground/50 text-[11px]">{l.glAccount}</span>
-            <span className="tabular-nums font-semibold text-foreground/80">{fmtAmt(l.amount * l.multiplier)}</span>
+            <span className="flex-1 text-foreground truncate" title={glName}>{l.description || glName}</span>
+            <span className="tabular-nums font-mono text-foreground text-[11px]">{l.glAccount}</span>
+            {editMode && onUpdate ? (
+              <input
+                type="number"
+                className={IIC}
+                value={l.amount === 0 ? '' : l.amount}
+                placeholder="0"
+                onChange={e => onUpdate(l.id, parseFloat(e.target.value) || 0)}
+              />
+            ) : (
+              <span className="tabular-nums font-semibold text-foreground">{fmtAmt(l.amount * l.multiplier)}</span>
+            )}
           </div>
         );
       })}
@@ -375,28 +705,28 @@ function FormulaDisplay({ cov }: { cov: Covenant }) {
     <div className="bg-background border border-border rounded-lg px-3 py-2.5 space-y-2">
       {cov.isRatioCovenant ? (
         <>
-          <div className="text-[10px] font-semibold text-foreground/40 uppercase tracking-wider">Numerator</div>
-          <LineRows lines={numLines} />
+          <div className="text-[10px] font-semibold text-foreground uppercase tracking-wider">Numerator</div>
+          <LineRows lines={numLines} onUpdate={onUpdateNumeratorLine} />
           <div className="border-t border-border pt-1.5 flex justify-between text-[11px]">
-            <span className="text-foreground/40">Numerator Total</span>
+            <span className="text-foreground">Numerator Total</span>
             <span className="font-bold text-foreground">{fmtAmt(numTotal)}</span>
           </div>
-          <div className="text-[10px] font-semibold text-foreground/40 uppercase tracking-wider pt-1">Denominator</div>
-          <LineRows lines={denLines} />
+          <div className="text-[10px] font-semibold text-foreground uppercase tracking-wider pt-1">Denominator</div>
+          <LineRows lines={denLines} onUpdate={onUpdateDenominatorLine} />
           <div className="border-t border-border pt-1.5 flex justify-between text-[11px]">
-            <span className="text-foreground/40">Denominator Total</span>
+            <span className="text-foreground">Denominator Total</span>
             <span className="font-bold text-foreground">{fmtAmt(denTotal)}</span>
           </div>
           <div className="border-t-2 border-primary/20 pt-1.5 text-xs font-bold">
-            <span className="text-foreground/60">{fmtAmt(numTotal)} ÷ {fmtAmt(denTotal)} = </span>
+            <span className="text-foreground">{fmtAmt(numTotal)} ÷ {fmtAmt(denTotal)} = </span>
             <span className="text-primary">{denTotal !== 0 ? (numTotal / denTotal).toFixed(2) : '—'}x</span>
           </div>
         </>
       ) : (
         <>
-          <LineRows lines={numLines} />
+          <LineRows lines={numLines} onUpdate={onUpdateNumeratorLine} />
           <div className="border-t-2 border-primary/20 pt-1.5 flex justify-between text-xs font-bold">
-            <span className="text-foreground/60">Total</span>
+            <span className="text-foreground">Total</span>
             <span className="text-primary">{fmtAmt(numTotal)}</span>
           </div>
         </>
@@ -470,7 +800,7 @@ function CovenantFormModal({ open, onClose, covenant, loans, onSave }: {
         {(['details', 'definition', 'formula'] as const).map(t => (
           <button
             key={t}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === t ? 'border-primary text-primary' : 'border-transparent text-foreground/60 hover:text-foreground'}`}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === t ? 'border-primary text-primary' : 'border-transparent text-foreground hover:text-foreground'}`}
             onClick={() => setActiveTab(t)}
           >
             {t === 'details' ? 'Details' : t === 'definition' ? (
@@ -514,7 +844,7 @@ function CovenantFormModal({ open, onClose, covenant, loans, onSave }: {
           <label className="flex items-center gap-2 text-sm cursor-pointer">
             <input type="checkbox" checked={form.disclosureRequired || false}
               onChange={e => setForm(p => ({ ...p, disclosureRequired: e.target.checked }))} className="accent-primary" />
-            <span className="text-foreground/60">Disclosure required in financial statements</span>
+            <span className="text-foreground">Disclosure required in financial statements</span>
           </label>
         </div>
       )}
@@ -586,7 +916,7 @@ function DefinitionParserTab({
     for (const r of ranges) {
       if (r.start > cursor) parts.push(rawText.slice(cursor, r.start));
       parts.push(
-        <mark key={r.id} className={`rounded px-0.5 ${r.selected ? 'bg-primary/20 text-primary font-medium' : 'bg-muted line-through text-muted-foreground'}`}>
+        <mark key={r.id} className={`rounded px-0.5 ${r.selected ? 'bg-primary/20 text-primary font-medium' : 'bg-muted line-through text-foreground'}`}>
           {rawText.slice(r.start, r.end)}
         </mark>
       );
@@ -609,9 +939,9 @@ function DefinitionParserTab({
 
       {/* Input */}
       <div>
-        <label className="block text-xs font-semibold text-foreground/60 mb-1.5 uppercase tracking-wider">Covenant Definition Text (from agreement)</label>
+        <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wider">Covenant Definition Text (from agreement)</label>
         <textarea
-          className="w-full h-32 text-xs border border-border rounded-lg px-3 py-2 bg-background resize-none focus:outline-none focus:border-primary/40 placeholder:text-muted-foreground/40 font-mono leading-relaxed"
+          className="w-full h-32 text-xs border border-border rounded-lg px-3 py-2 bg-background resize-none focus:outline-none focus:border-primary/40 placeholder:text-foreground font-mono leading-relaxed"
           placeholder={`Paste the exact covenant definition from the loan agreement here.\n\nExample: "DSCR means, for any period, the ratio of (a) EBITDA for such period to (b) the sum of all scheduled principal payments and interest expense on all outstanding long-term debt during such period, excluding any non-recurring or one-time charges."`}
           value={rawText}
           onChange={e => { setRawText(e.target.value); setParsed(false); setSuggestions([]); }}
@@ -624,9 +954,9 @@ function DefinitionParserTab({
 
       {/* Highlighted text preview */}
       {parsed && (
-        <div className="border border-border rounded-lg px-3 py-2.5 bg-muted/30 text-xs leading-relaxed font-mono text-foreground/70">
+        <div className="border border-border rounded-lg px-3 py-2.5 bg-muted/30 text-xs leading-relaxed font-mono text-foreground">
           {suggestions.length === 0
-            ? <span className="text-muted-foreground italic">No known financial terms detected. Try pasting more of the covenant definition, or add lines manually in the Formula Builder.</span>
+            ? <span className="text-foreground italic">No known financial terms detected. Try pasting more of the covenant definition, or add lines manually in the Formula Builder.</span>
             : highlightedText
           }
         </div>
@@ -636,7 +966,7 @@ function DefinitionParserTab({
       {parsed && suggestions.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-foreground/60 uppercase tracking-wider">{suggestions.filter(s => s.selected).length} of {suggestions.length} components selected</span>
+            <span className="text-xs font-semibold text-foreground uppercase tracking-wider">{suggestions.filter(s => s.selected).length} of {suggestions.length} components selected</span>
             <button className="text-xs text-primary hover:underline" onClick={() => setSuggestions(s => s.map(x => ({ ...x, selected: true })))}>Select all</button>
           </div>
 
@@ -645,13 +975,13 @@ function DefinitionParserTab({
             if (!rows.length) return null;
             return (
               <div key={section}>
-                <div className="text-[10px] font-semibold text-foreground/40 uppercase tracking-wider mb-1.5">
+                <div className="text-[10px] font-semibold text-foreground uppercase tracking-wider mb-1.5">
                   {section === 'numerator' ? 'Numerator / Dividend' : 'Denominator / Divisor'}
                 </div>
                 <div className="border border-border rounded-lg overflow-hidden">
                   {rows.map((s, i) => (
                     <div key={s.id} className={`flex items-start gap-2.5 px-3 py-2.5 text-xs ${i > 0 ? 'border-t border-border' : ''} ${s.selected ? 'bg-background' : 'bg-muted/30 opacity-60'}`}>
-                      <button className="mt-0.5 shrink-0 text-foreground/50 hover:text-primary" onClick={() => toggle(s.id)}>
+                      <button className="mt-0.5 shrink-0 text-foreground hover:text-primary" onClick={() => toggle(s.id)}>
                         {s.selected ? <CheckSquare className="w-3.5 h-3.5 text-primary" /> : <Square className="w-3.5 h-3.5" />}
                       </button>
                       <button
@@ -661,10 +991,10 @@ function DefinitionParserTab({
                       >{s.sign}</button>
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-foreground">{s.rule.description}</div>
-                        <div className="text-muted-foreground mt-0.5">
+                        <div className="text-foreground mt-0.5">
                           GL <span className="font-mono">{s.rule.glCode}</span>
                           <span className="mx-1.5 text-border">·</span>
-                          Matched: "<span className="text-foreground/70 italic">{s.matchedKeyword}</span>"
+                          Matched: "<span className="text-foreground italic">{s.matchedKeyword}</span>"
                           {s.isExclusion && <span className="ml-1.5 text-amber-600 font-medium">· Exclusion context detected</span>}
                         </div>
                         {s.rule.note && <div className="mt-1 text-amber-600 text-[10px]">⚠ {s.rule.note}</div>}
@@ -681,7 +1011,7 @@ function DefinitionParserTab({
               <ArrowRight className="w-3.5 h-3.5 mr-1.5" />
               Apply {suggestions.filter(s => s.selected).length} Selected Lines to Formula Builder
             </Button>
-            <p className="text-[10px] text-muted-foreground text-center mt-1.5">GL amounts will be set to $0 — fill them in the Formula Builder tab</p>
+            <p className="text-[10px] text-foreground text-center mt-1.5">GL amounts will be set to $0 — fill them in the Formula Builder tab</p>
           </div>
         </div>
       )}
@@ -756,19 +1086,19 @@ function FormulaBuilderTab({
       <table className="w-full text-xs">
         <thead>
           <tr className="bg-muted border-b border-border">
-            <th className="px-2 py-1.5 text-left w-8 font-medium text-foreground/50">±</th>
-            <th className="px-2 py-1.5 text-left font-medium text-foreground/50">Description</th>
-            <th className="px-2 py-1.5 text-left font-medium text-foreground/50 w-44">GL Account</th>
-            <th className="px-2 py-1.5 text-right font-medium text-foreground/50 w-28">Current ($)</th>
-            <th className="px-2 py-1.5 text-right font-medium text-foreground/50 w-28">Projected ($)</th>
-            <th className="px-2 py-1.5 text-right font-medium text-foreground/50 w-14">× Mult</th>
-            <th className="px-2 py-1.5 text-right font-medium text-foreground/50 w-24">Result</th>
+            <th className="px-2 py-1.5 text-left w-8 font-medium text-foreground">±</th>
+            <th className="px-2 py-1.5 text-left font-medium text-foreground">Description</th>
+            <th className="px-2 py-1.5 text-left font-medium text-foreground w-44">GL Account</th>
+            <th className="px-2 py-1.5 text-right font-medium text-foreground w-28">Current ($)</th>
+            <th className="px-2 py-1.5 text-right font-medium text-foreground w-28">Projected ($)</th>
+            <th className="px-2 py-1.5 text-right font-medium text-foreground w-14">× Mult</th>
+            <th className="px-2 py-1.5 text-right font-medium text-foreground w-24">Result</th>
             <th className="w-6" />
           </tr>
         </thead>
         <tbody>
           {lines.length === 0 && (
-            <tr><td colSpan={8} className="px-3 py-3 text-center text-foreground/30 italic">No rows — click + Add Row</td></tr>
+            <tr><td colSpan={8} className="px-3 py-3 text-center text-foreground italic">No rows — click + Add Row</td></tr>
           )}
           {lines.map(l => {
             const glName = GL_ACCOUNTS.find(a => a.code === l.glAccount)?.name;
@@ -825,7 +1155,7 @@ function FormulaBuilderTab({
                 </td>
                 {/* Delete */}
                 <td className="px-1 py-1.5 text-center">
-                  <button onClick={() => removeLine(section, l.id)} className="p-0.5 hover:text-red-500 text-foreground/30 transition-colors">
+                  <button onClick={() => removeLine(section, l.id)} className="p-0.5 hover:text-red-500 text-foreground transition-colors">
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </td>
@@ -847,10 +1177,10 @@ function FormulaBuilderTab({
     const projTotal = lines.reduce((s, l) => s + l.projectedAmount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
     return (
       <div className="flex items-center justify-between text-xs px-3 py-1.5 bg-muted/30 rounded-lg border border-border">
-        <span className="text-foreground/50 font-medium">{label} Total</span>
+        <span className="text-foreground font-medium">{label} Total</span>
         <div className="flex items-center gap-4">
-          <span className="tabular-nums"><span className="text-foreground/40 mr-1">Current:</span><span className="font-bold text-foreground">{total >= 1000 ? `$${(total / 1000).toFixed(0)}K` : total.toFixed(2)}</span></span>
-          <span className="tabular-nums"><span className="text-foreground/40 mr-1">Projected:</span><span className="font-bold text-foreground/70">{projTotal >= 1000 ? `$${(projTotal / 1000).toFixed(0)}K` : projTotal.toFixed(2)}</span></span>
+          <span className="tabular-nums"><span className="text-foreground mr-1">Current:</span><span className="font-bold text-foreground">{total >= 1000 ? `$${(total / 1000).toFixed(0)}K` : total.toFixed(2)}</span></span>
+          <span className="tabular-nums"><span className="text-foreground mr-1">Projected:</span><span className="font-bold text-foreground">{projTotal >= 1000 ? `$${(projTotal / 1000).toFixed(0)}K` : projTotal.toFixed(2)}</span></span>
         </div>
       </div>
     );
@@ -864,13 +1194,13 @@ function FormulaBuilderTab({
           <input type="checkbox" checked={form.useFormulaBuilder ?? false}
             onChange={toggleFormula} className="accent-primary" />
           <span className="font-medium text-foreground">Enable Formula Builder</span>
-          <span className="text-xs text-foreground/50">(auto-computes Current &amp; Projected values)</span>
+          <span className="text-xs text-foreground">(auto-computes Current &amp; Projected values)</span>
         </label>
       </div>
 
       {/* Template selector */}
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs font-semibold text-foreground/60 uppercase tracking-wide whitespace-nowrap">Template</span>
+        <span className="text-xs font-semibold text-foreground uppercase tracking-wide whitespace-nowrap">Template</span>
         <div className="relative flex-1 min-w-[260px]">
           <select
             className="input-double-border h-9 text-sm pl-3 pr-8 w-full rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground appearance-none focus:outline-none cursor-pointer"
@@ -880,12 +1210,12 @@ function FormulaBuilderTab({
             <option value="">— Select standard covenant template —</option>
             {COVENANT_TEMPLATES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground/40" />
+          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground" />
         </div>
         <Button variant="secondary" size="sm" onClick={applyTemplate}>
           <Sparkles className="w-3.5 h-3.5 mr-1" /> Apply Template
         </Button>
-        <label className="flex items-center gap-1.5 text-xs text-foreground/60 cursor-pointer ml-2">
+        <label className="flex items-center gap-1.5 text-xs text-foreground cursor-pointer ml-2">
           <input type="checkbox" checked={form.isRatioCovenant ?? true}
             onChange={e => setForm(p => ({ ...p, isRatioCovenant: e.target.checked }))} className="accent-primary" />
           Ratio covenant (Numerator ÷ Denominator)
@@ -894,7 +1224,7 @@ function FormulaBuilderTab({
 
       {/* Numerator section */}
       <div className="space-y-2">
-        <div className="text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+        <div className="text-xs font-semibold text-foreground uppercase tracking-wider">
           {form.isRatioCovenant ? 'Numerator' : 'Formula Lines'}
         </div>
         <LineTable section="formula" lines={form.formulaLines ?? []} />
@@ -906,7 +1236,7 @@ function FormulaBuilderTab({
       {/* Denominator section (ratio only) */}
       {form.isRatioCovenant && (
         <div className="space-y-2">
-          <div className="text-xs font-semibold text-foreground/60 uppercase tracking-wider">Denominator</div>
+          <div className="text-xs font-semibold text-foreground uppercase tracking-wider">Denominator</div>
           <LineTable section="denominator" lines={form.denominatorLines ?? []} />
           {(form.denominatorLines?.length ?? 0) > 0 && (
             <SectionTotal lines={form.denominatorLines ?? []} label="Denominator" />
@@ -924,11 +1254,11 @@ function FormulaBuilderTab({
             const sCfg = status ? STATUS_CONFIG[status] : null;
             return (
               <div key={label} className={`rounded-xl p-4 border ${sCfg ? sCfg.bg + ' ' + sCfg.border : 'bg-muted border-border'}`}>
-                <div className={`text-xs font-semibold mb-1 ${sCfg?.color ?? 'text-foreground/60'}`}>{label}</div>
+                <div className={`text-xs font-semibold mb-1 ${sCfg?.color ?? 'text-foreground'}`}>{label}</div>
                 <div className={`text-2xl font-bold tabular-nums ${sCfg?.color ?? 'text-foreground'}`}>{fmtV(value)}</div>
                 {status && <div className={`text-xs mt-1 ${sCfg?.color ?? ''}`}>Status: {status}</div>}
                 {form.threshold !== undefined && (
-                  <div className={`text-xs mt-0.5 ${sCfg?.color ?? 'text-foreground/50'}`}>Threshold: {form.operator} {fmtV(form.threshold)}</div>
+                  <div className={`text-xs mt-0.5 ${sCfg?.color ?? 'text-foreground'}`}>Threshold: {form.operator} {fmtV(form.threshold)}</div>
                 )}
               </div>
             );

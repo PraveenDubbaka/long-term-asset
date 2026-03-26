@@ -48,7 +48,7 @@ export function InvFXTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">FX Schedule</h2>
-          <p className="text-xs text-foreground/60 mt-0.5">Foreign-currency position translation · Historical CAD cost vs year-end FMV · Rates source: BoC</p>
+          <p className="text-xs text-foreground mt-0.5">Foreign-currency position translation · Historical CAD cost vs year-end FMV · Rates source: BoC</p>
         </div>
         <Button variant="secondary" size="sm" onClick={handleExport}>
           <Download className="w-3.5 h-3.5" /> Export
@@ -66,10 +66,10 @@ export function InvFXTab() {
           <StyledCard key={k.label} className="p-3">
             <div className="flex items-center gap-2 mb-1">
               <TrendingUp className="w-4 h-4 text-primary opacity-70" />
-              <span className="text-xs text-muted-foreground">{k.label}</span>
+              <span className="text-xs text-foreground">{k.label}</span>
             </div>
             <div className="text-xl font-bold tabular-nums text-foreground">{k.value}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">{k.sub}</div>
+            <div className="text-xs text-foreground mt-0.5">{k.sub}</div>
           </StyledCard>
         ))}
       </div>
@@ -79,7 +79,7 @@ export function InvFXTab() {
         {([['schedule', 'FX Translation Schedule'], ['rates', 'FX Rates Table']] as const).map(([id, label]) => (
           <button key={id} onClick={() => setActiveTab(id)}
             className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-              activeTab === id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
+              activeTab === id ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted'
             }`}>{label}</button>
         ))}
       </div>
@@ -109,11 +109,11 @@ export function InvFXTab() {
                   <tr key={r.id} className="hover:bg-muted/30">
                     <td className="px-4 py-2.5">
                       <div className="font-medium text-sm text-foreground">{r.security}</div>
-                      <div className="text-xs font-mono text-muted-foreground">{r.ticker}</div>
+                      <div className="text-xs font-mono text-foreground">{r.ticker}</div>
                     </td>
                     <td className="px-3 py-2.5">
                       <div className="text-sm text-foreground">{r.broker}</div>
-                      <div className="text-xs text-muted-foreground">…{r.acctLast4}</div>
+                      <div className="text-xs text-foreground">…{r.acctLast4}</div>
                     </td>
                     <td className="px-3 py-2.5 text-center">
                       <Badge variant="outline" className="text-xs">{r.currency}</Badge>
@@ -123,8 +123,8 @@ export function InvFXTab() {
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">{fmt(r.acqRate)}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono font-semibold text-sm">{fmtCAD(r.cadCost)}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">{fmt(r.yeFxRate)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-muted-foreground">{fmt2(r.fmvForeign)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-muted-foreground">{fmtCAD(r.fmvCAD)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-foreground">{fmt2(r.fmvForeign)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-foreground">{fmtCAD(r.fmvCAD)}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono font-semibold text-sm">
                       <span className={r.unrealizedGL_CAD >= 0 ? 'text-green-600' : 'text-red-600'}>
                         {r.unrealizedGL_CAD >= 0 ? '+$' : '($'}{fmt2(Math.abs(r.unrealizedGL_CAD))}{r.unrealizedGL_CAD < 0 ? ')' : ''}
@@ -139,7 +139,7 @@ export function InvFXTab() {
                   <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm">{fmtCAD(totalFxCostCAD)}</td>
                   <td />
                   <td />
-                  <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm text-muted-foreground">{fmtCAD(totalFmvCAD)}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm text-foreground">{fmtCAD(totalFmvCAD)}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm text-green-600">
                     +${fmt2(totalGL_CAD)}
                   </td>
@@ -147,7 +147,7 @@ export function InvFXTab() {
               </tfoot>
             </table>
           </div>
-          <div className="px-4 py-2 text-xs text-muted-foreground border-t border-border">
+          <div className="px-4 py-2 text-xs text-foreground border-t border-border">
             ① FMV and Unrealized G/L disclosed per ASPE 3856.06(c) — no income statement impact under cost method.
           </div>
         </StyledCard>
@@ -170,11 +170,11 @@ export function InvFXTab() {
               <tbody className="divide-y divide-border">
                 {fxRates.map((r, i) => (
                   <tr key={i} className={`hover:bg-muted/20 ${r.notes?.includes('Year-end') ? 'bg-primary/5 font-semibold' : ''}`}>
-                    <td className="px-4 py-2 text-xs text-muted-foreground whitespace-nowrap">{fmtDateDisplay(r.date)}</td>
+                    <td className="px-4 py-2 text-xs text-foreground whitespace-nowrap">{fmtDateDisplay(r.date)}</td>
                     <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{fmt(r.usdCad)}</td>
                     <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{fmt(r.eurCad)}</td>
                     <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{fmt(r.gbpCad)}</td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">{r.notes ?? ''}</td>
+                    <td className="px-3 py-2 text-xs text-foreground">{r.notes ?? ''}</td>
                   </tr>
                 ))}
               </tbody>
@@ -191,7 +191,7 @@ export function InvFXTab() {
                   <td className="px-3 py-2.5 text-right tabular-nums font-mono font-semibold text-sm">{fmt(yeRate.usdCad)}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums font-mono font-semibold text-sm">{fmt(yeRate.eurCad)}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums font-mono font-semibold text-sm">{fmt(yeRate.gbpCad)}</td>
-                  <td className="px-3 py-2.5 text-xs text-muted-foreground">▶ Used for YE FMV translation</td>
+                  <td className="px-3 py-2.5 text-xs text-foreground">▶ Used for YE FMV translation</td>
                 </tr>
               </tfoot>
             </table>

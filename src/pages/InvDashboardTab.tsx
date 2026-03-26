@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 
 function fmt(n: number, d = 2) { return n.toLocaleString('en-CA', { minimumFractionDigits: d, maximumFractionDigits: d }); }
 function fmtCAD(n: number) { return '$' + fmt(Math.abs(n)); }
-function glColor(n: number) { return n > 0 ? 'text-green-600' : n < 0 ? 'text-red-600' : 'text-muted-foreground'; }
+function glColor(n: number) { return n > 0 ? 'text-green-600' : n < 0 ? 'text-red-600' : 'text-foreground'; }
 
 export function InvDashboardTab() {
   const totalOpen     = glSummaryRows.reduce((s, r) => s + r.openingCAD, 0);
@@ -42,7 +42,7 @@ export function InvDashboardTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Investment Dashboard</h2>
-          <p className="text-xs text-foreground/60 mt-0.5">GL roll-forward summary · FY January 1 – December 31, 2025 · ASPE cost method</p>
+          <p className="text-xs text-foreground mt-0.5">GL roll-forward summary · FY January 1 – December 31, 2025 · ASPE cost method</p>
         </div>
         <Button variant="secondary" size="sm" onClick={handleExport}>
           <Download className="w-3.5 h-3.5" /> Export GL Summary
@@ -61,7 +61,7 @@ export function InvDashboardTab() {
             <k.icon className={`w-8 h-8 ${k.color} opacity-70`} />
             <div>
               <div className={`text-sm font-bold tabular-nums ${k.color}`}>{k.value}</div>
-              <div className="text-xs text-muted-foreground">{k.label}</div>
+              <div className="text-xs text-foreground">{k.label}</div>
             </div>
           </StyledCard>
         ))}
@@ -78,9 +78,9 @@ export function InvDashboardTab() {
             { label: '= Closing Balance', value: fmtCAD(totalClose), color: 'text-foreground font-bold' },
           ].map((item, i) => (
             <React.Fragment key={item.label}>
-              {i > 0 && <span className="text-muted-foreground">→</span>}
+              {i > 0 && <span className="text-foreground">→</span>}
               <div className="flex flex-col items-center bg-muted rounded-lg px-4 py-2">
-                <span className="text-xs text-muted-foreground whitespace-nowrap">{item.label}</span>
+                <span className="text-xs text-foreground whitespace-nowrap">{item.label}</span>
                 <span className={`tabular-nums font-mono text-sm ${item.color}`}>{item.value}</span>
               </div>
             </React.Fragment>
@@ -91,14 +91,14 @@ export function InvDashboardTab() {
       {/* Income summary */}
       <div className="grid grid-cols-3 gap-3">
         <StyledCard className="p-4">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Realized Gain / Loss</div>
+          <div className="text-xs text-foreground uppercase tracking-wider mb-2">Realized Gain / Loss</div>
           <div className={`text-xl font-bold tabular-nums ${glColor(totalRealGL)}`}>
             {totalRealGL >= 0 ? '+' : ''}{fmtCAD(totalRealGL)}
           </div>
           <div className="mt-2 space-y-1">
             {realizedRows.map(r => (
               <div key={r.id} className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">{r.ticker} ({fmtDateDisplay(r.date)})</span>
+                <span className="text-foreground">{r.ticker} ({fmtDateDisplay(r.date)})</span>
                 <span className={`tabular-nums ${glColor(r.realizedGL_CAD)}`}>
                   {r.realizedGL_CAD >= 0 ? '+$' : '($'}{fmt(Math.abs(r.realizedGL_CAD))}{r.realizedGL_CAD < 0 ? ')' : ''}
                 </span>
@@ -107,27 +107,27 @@ export function InvDashboardTab() {
           </div>
         </StyledCard>
         <StyledCard className="p-4">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Dividend Income</div>
+          <div className="text-xs text-foreground uppercase tracking-wider mb-2">Dividend Income</div>
           <div className="text-xl font-bold tabular-nums text-green-600">+{fmtCAD(totalDiv)}</div>
           <div className="mt-2 space-y-1">
             {dividendRows.map(r => (
               <div key={r.id} className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">{r.ticker} ({r.broker.split(' ')[0]})</span>
+                <span className="text-foreground">{r.ticker} ({r.broker.split(' ')[0]})</span>
                 <span className="tabular-nums text-green-600">+${fmt(r.totalDivCAD)}</span>
               </div>
             ))}
           </div>
         </StyledCard>
         <StyledCard className="p-4">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">FMV vs Book (Dec 31)</div>
+          <div className="text-xs text-foreground uppercase tracking-wider mb-2">FMV vs Book (Dec 31)</div>
           <div className="text-xl font-bold tabular-nums text-green-600">+{fmtCAD(totalUnreal)}</div>
-          <div className="text-xs text-muted-foreground mt-1">Disclosure only — ASPE cost method</div>
+          <div className="text-xs text-foreground mt-1">Disclosure only — ASPE cost method</div>
           <div className="mt-2 grid grid-cols-2 gap-1">
-            <div className="text-xs text-muted-foreground">Book Value:</div>
+            <div className="text-xs text-foreground">Book Value:</div>
             <div className="text-xs tabular-nums font-mono text-right">{fmtCAD(totalClose)}</div>
-            <div className="text-xs text-muted-foreground">Fair Value:</div>
+            <div className="text-xs text-foreground">Fair Value:</div>
             <div className="text-xs tabular-nums font-mono text-right text-green-600">{fmtCAD(totalFmvCAD)}</div>
-            <div className="text-xs text-muted-foreground">Difference:</div>
+            <div className="text-xs text-foreground">Difference:</div>
             <div className="text-xs tabular-nums font-mono text-right text-green-600">+{fmtCAD(totalFmvCAD - totalClose)}</div>
           </div>
         </StyledCard>
@@ -161,12 +161,12 @@ export function InvDashboardTab() {
                   <td className="px-4 py-2.5 text-sm font-medium text-foreground">{r.security}</td>
                   <td className="px-3 py-2.5">
                     <div className="text-xs text-foreground">{r.broker}</div>
-                    <div className="text-xs text-muted-foreground">…{r.acctLast4}</div>
+                    <div className="text-xs text-foreground">…{r.acctLast4}</div>
                   </td>
                   <td className="px-3 py-2.5 text-center">
                     <Badge variant="outline" className="text-xs">{r.currency}</Badge>
                   </td>
-                  <td className="px-3 py-2.5 text-right tabular-nums font-mono text-xs text-muted-foreground">
+                  <td className="px-3 py-2.5 text-right tabular-nums font-mono text-xs text-foreground">
                     {r.openingCAD > 0 ? fmtCAD(r.openingCAD) : '—'}
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">{fmtCAD(r.purchasesCAD)}</td>
@@ -178,13 +178,13 @@ export function InvDashboardTab() {
                       ? <span className={glColor(r.realizedGL_CAD)}>
                           {r.realizedGL_CAD > 0 ? '+' : ''}{fmtCAD(r.realizedGL_CAD)}
                         </span>
-                      : <span className="text-muted-foreground text-xs">—</span>}
+                      : <span className="text-foreground text-xs">—</span>}
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">
-                    {r.dividendsCAD > 0 ? <span className="text-green-600">+{fmtCAD(r.dividendsCAD)}</span> : <span className="text-muted-foreground text-xs">—</span>}
+                    {r.dividendsCAD > 0 ? <span className="text-green-600">+{fmtCAD(r.dividendsCAD)}</span> : <span className="text-foreground text-xs">—</span>}
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">
-                    {r.rocCAD !== 0 ? <span className="text-amber-600">{fmtCAD(r.rocCAD)}</span> : <span className="text-muted-foreground text-xs">—</span>}
+                    {r.rocCAD !== 0 ? <span className="text-amber-600">{fmtCAD(r.rocCAD)}</span> : <span className="text-foreground text-xs">—</span>}
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm">{fmtCAD(r.closingCAD)}</td>
                 </tr>
@@ -193,7 +193,7 @@ export function InvDashboardTab() {
             <tfoot>
               <tr className="border-t-2 border-border bg-muted/60">
                 <td colSpan={3} className="px-4 py-2.5 text-xs font-semibold">TOTALS</td>
-                <td className="px-3 py-2.5 text-right tabular-nums font-mono text-xs text-muted-foreground">—</td>
+                <td className="px-3 py-2.5 text-right tabular-nums font-mono text-xs text-foreground">—</td>
                 <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm">{fmtCAD(totalPurch)}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm text-red-500">({fmtCAD(totalDisp)})</td>
                 <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm">

@@ -48,7 +48,7 @@ export function InvWACTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Weighted Average Cost Schedule</h2>
-          <p className="text-xs text-foreground/60 mt-0.5">Running WAC per security / broker account · Realized G/L on each disposition</p>
+          <p className="text-xs text-foreground mt-0.5">Running WAC per security / broker account · Realized G/L on each disposition</p>
         </div>
         <Button variant="secondary" size="sm" onClick={handleExport}>
           <Download className="w-3.5 h-3.5" /> Export
@@ -58,7 +58,7 @@ export function InvWACTab() {
       {/* Summary strip */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">Security:</span>
+          <span className="text-xs text-foreground">Security:</span>
           {tickers.map(t => (
             <button key={t} onClick={() => setFilterTicker(t)}
               className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
@@ -67,7 +67,7 @@ export function InvWACTab() {
           ))}
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Total Realized G/L:</span>
+          <span className="text-xs text-foreground">Total Realized G/L:</span>
           <Badge variant={totalRealizedGL >= 0 ? 'success' : 'destructive'} className="tabular-nums text-xs">
             {totalRealizedGL >= 0 ? '+' : ''}${fmt(Math.abs(totalRealizedGL))} Local
           </Badge>
@@ -87,20 +87,20 @@ export function InvWACTab() {
                 onClick={() => setExpandedId(isOpen ? null : g.id)}
               >
                 <div className="flex items-center gap-3">
-                  {isOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                  {isOpen ? <ChevronDown className="w-4 h-4 text-foreground" /> : <ChevronRight className="w-4 h-4 text-foreground" />}
                   <div>
                     <span className="font-semibold text-foreground text-sm">{g.security}</span>
-                    <span className="text-muted-foreground text-xs ml-2">({g.ticker})</span>
+                    <span className="text-foreground text-xs ml-2">({g.ticker})</span>
                   </div>
-                  <span className="text-xs text-muted-foreground">{g.broker} …{g.acctLast4}</span>
+                  <span className="text-xs text-foreground">{g.broker} …{g.acctLast4}</span>
                   <Badge variant="outline" className="text-xs">{g.currency}</Badge>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
-                  <span className="text-xs text-muted-foreground">Closing units:</span>
+                  <span className="text-xs text-foreground">Closing units:</span>
                   <span className="font-mono tabular-nums text-sm font-semibold">
                     {fmt(g.rows[g.rows.length - 1]?.cumulUnits ?? 0, 0)}
                   </span>
-                  <span className="text-xs text-muted-foreground ml-2">Realized G/L:</span>
+                  <span className="text-xs text-foreground ml-2">Realized G/L:</span>
                   <Badge variant={g.totalRealizedGL > 0 ? 'success' : g.totalRealizedGL < 0 ? 'destructive' : 'outline'} className="text-xs tabular-nums">
                     {g.totalRealizedGL !== 0
                       ? `${g.totalRealizedGL > 0 ? '+' : ''}${sym}${fmt(Math.abs(g.totalRealizedGL))} ${g.currency}`
@@ -132,7 +132,7 @@ export function InvWACTab() {
                     <tbody className="divide-y divide-border">
                       {g.rows.map(r => (
                         <tr key={r.id} className={`hover:bg-muted/20 ${r.txnType === 'Closing' ? 'bg-muted/30 font-medium' : ''}`}>
-                          <td className="px-4 py-2 text-xs text-muted-foreground whitespace-nowrap">{fmtDateDisplay(r.date)}</td>
+                          <td className="px-4 py-2 text-xs text-foreground whitespace-nowrap">{fmtDateDisplay(r.date)}</td>
                           <td className="px-3 py-2">
                             <Badge variant={(TXN_COLORS[r.txnType] ?? 'outline') as Parameters<typeof Badge>[0]['variant']} className="text-xs whitespace-nowrap">
                               {r.txnType}
@@ -151,9 +151,9 @@ export function InvWACTab() {
                               ? <span className={r.realizedGL > 0 ? 'text-green-600' : 'text-red-600'}>
                                   {r.realizedGL > 0 ? '+' : ''}{sym}{fmt(Math.abs(r.realizedGL))}
                                 </span>
-                              : <span className="text-muted-foreground text-xs">—</span>}
+                              : <span className="text-foreground text-xs">—</span>}
                           </td>
-                          <td className="px-3 py-2 text-xs text-muted-foreground">{r.notes ?? ''}</td>
+                          <td className="px-3 py-2 text-xs text-foreground">{r.notes ?? ''}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -167,7 +167,7 @@ export function InvWACTab() {
                             ? <span className={g.totalRealizedGL > 0 ? 'text-green-600' : 'text-red-600'}>
                                 {g.totalRealizedGL > 0 ? '+' : ''}{sym}{fmt(Math.abs(g.totalRealizedGL))}
                               </span>
-                            : <span className="text-muted-foreground">—</span>}
+                            : <span className="text-foreground">—</span>}
                         </td>
                         <td />
                       </tr>

@@ -59,13 +59,13 @@ export function WpGlobalHeader({ title }: { title?: string }) {
         {/* Center — Ask Luka */}
         <div className="flex-1 flex justify-center">
           <div className="ask-luka-bar flex items-center bg-white dark:bg-card rounded-full pl-3 pr-1 py-1 gap-2 min-w-[300px] border border-[#dcdfe4] dark:border-[hsl(220_15%_30%)] transition-all duration-300">
-            <Zap className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+            <Zap className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
             <Input
               type="text"
               placeholder="Type here.."
               value={askLukaQuery}
               onChange={e => setAskLukaQuery(e.target.value)}
-              className="border-0 bg-transparent h-6 text-sm text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-0 focus-visible:ring-offset-0 px-0 flex-1 rounded-none"
+              className="border-0 bg-transparent h-6 text-sm text-foreground placeholder:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 px-0 flex-1 rounded-none"
             />
             <Button
               className="h-7 px-3 rounded-full bg-gradient-to-r from-[#1C63A6] to-[#7A31D8] hover:from-[#1a5a96] hover:to-[#6a2bc2] text-white text-xs font-medium gap-1.5 shadow-md"
@@ -101,7 +101,7 @@ export function WpGlobalHeader({ title }: { title?: string }) {
                 {fontSizes.map(size => (
                   <span
                     key={size}
-                    className={`font-semibold transition-all duration-200 ${fontSize === size ? 'text-primary' : 'text-muted-foreground/40'}`}
+                    className={`font-semibold transition-all duration-200 ${fontSize === size ? 'text-primary' : 'text-foreground'}`}
                     style={{ fontSize: size === 'A' ? '11px' : size === 'AA' ? '13px' : '15px' }}
                   >A</span>
                 ))}
@@ -119,7 +119,7 @@ export function WpGlobalHeader({ title }: { title?: string }) {
               >
                 <div className="relative w-5 h-5">
                   <Sun  className={`h-5 w-5 text-amber-400 absolute transition-all duration-500 ${isDarkMode ? 'rotate-0 scale-100 opacity-100' : 'rotate-90 scale-0 opacity-0'}`} />
-                  <Moon className={`h-5 w-5 text-muted-foreground absolute transition-all duration-500 ${isDarkMode ? '-rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100'}`} />
+                  <Moon className={`h-5 w-5 text-foreground absolute transition-all duration-500 ${isDarkMode ? '-rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100'}`} />
                 </div>
               </div>
             </TooltipTrigger>
@@ -130,7 +130,7 @@ export function WpGlobalHeader({ title }: { title?: string }) {
           <Popover open={notifOpen} onOpenChange={setNotifOpen}>
             <PopoverTrigger asChild>
               <div className="flex items-center justify-center w-9 h-9 rounded-xl cursor-pointer hover:bg-muted transition-colors relative">
-                <Bell className={`h-5 w-5 text-muted-foreground icon-bell ${unreadCount > 0 ? 'animate-[swing_1.5s_ease-in-out_infinite]' : ''}`} />
+                <Bell className={`h-5 w-5 text-foreground icon-bell ${unreadCount > 0 ? 'animate-[swing_1.5s_ease-in-out_infinite]' : ''}`} />
                 {unreadCount > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-destructive text-[9px] text-white flex items-center justify-center font-medium">
                     {unreadCount}
@@ -147,7 +147,7 @@ export function WpGlobalHeader({ title }: { title?: string }) {
               </div>
               <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border">
                 <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground" />
                   <Input value={notifSearch} onChange={e => setNotifSearch(e.target.value)} placeholder="Search" className="h-8 pl-8 text-xs" />
                 </div>
                 <button onClick={() => setNotifications(p => p.map(n => ({ ...n, read: true })))} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-lg transition-colors whitespace-nowrap">
@@ -159,7 +159,7 @@ export function WpGlobalHeader({ title }: { title?: string }) {
               </div>
               <ScrollArea className="max-h-[360px]">
                 {filteredNotifs.length === 0 ? (
-                  <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">No notifications</div>
+                  <div className="flex items-center justify-center py-10 text-sm text-foreground">No notifications</div>
                 ) : (
                   <div className="divide-y divide-border">
                     {filteredNotifs.map(notif => (
@@ -173,11 +173,11 @@ export function WpGlobalHeader({ title }: { title?: string }) {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-foreground">{notif.sender}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                          <p className="text-xs text-foreground mt-0.5 leading-relaxed">
                             <span className="text-primary">Notified you:</span> {notif.message}
                           </p>
                         </div>
-                        <span className="text-[10px] text-muted-foreground shrink-0">{notif.time}</span>
+                        <span className="text-[10px] text-foreground shrink-0">{notif.time}</span>
                       </div>
                     ))}
                   </div>
@@ -197,25 +197,25 @@ export function WpGlobalHeader({ title }: { title?: string }) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem className="gap-3 py-3 cursor-pointer">
-                <UserCircle className="h-5 w-5 text-muted-foreground" />
+                <UserCircle className="h-5 w-5 text-foreground" />
                 <span>My Account</span>
               </DropdownMenuItem>
               <DropdownMenuItem className="gap-3 py-3 cursor-pointer">
-                <Building2 className="h-5 w-5 text-muted-foreground" />
+                <Building2 className="h-5 w-5 text-foreground" />
                 <span>Firm Profile</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="gap-3 py-3 cursor-pointer" onClick={() => setSettingsOpen(true)}>
-                <Settings className="h-5 w-5 text-muted-foreground" />
+                <Settings className="h-5 w-5 text-foreground" />
                 <span>Settings</span>
               </DropdownMenuItem>
               <DropdownMenuItem className="gap-3 py-3 cursor-pointer">
-                <CreditCard className="h-5 w-5 text-muted-foreground" />
+                <CreditCard className="h-5 w-5 text-foreground" />
                 <span>Billing</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="gap-3 py-3 cursor-pointer">
-                <Gift className="h-5 w-5 text-muted-foreground" />
+                <Gift className="h-5 w-5 text-foreground" />
                 <span>What's New</span>
               </DropdownMenuItem>
               <DropdownMenuItem className="gap-3 py-3 cursor-pointer text-destructive focus:text-destructive">

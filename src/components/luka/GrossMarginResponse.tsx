@@ -105,7 +105,7 @@ function ComparisonDropdown({
           open && "border-[#074075] ring-2 ring-[#074075]/15"
         )}
       >
-        <span className="absolute -top-2.5 left-2.5 px-1 bg-white dark:bg-card text-[11px] text-muted-foreground whitespace-nowrap leading-none">
+        <span className="absolute -top-2.5 left-2.5 px-1 bg-white dark:bg-card text-[11px] text-foreground whitespace-nowrap leading-none">
           Select Comparison View*
         </span>
         <span className="font-medium text-foreground whitespace-nowrap">{label}</span>
@@ -588,7 +588,7 @@ export function GrossMarginResponse({ revealStep }: GrossMarginResponseProps) {
                     "hover:bg-muted/40",
                     periodTab === tab
                       ? "text-foreground font-semibold bg-muted/30"
-                      : "text-muted-foreground"
+                      : "text-foreground"
                   )}
                 >
                   {tab}
@@ -609,7 +609,7 @@ export function GrossMarginResponse({ revealStep }: GrossMarginResponseProps) {
                         className={cn("p-1.5 rounded transition-colors", !isGraph ? "bg-muted/60" : "hover:bg-muted/50")}
                         onClick={() => setViewMode("table")}
                       >
-                        <LayoutGrid className={cn("h-4 w-4", !isGraph ? "text-foreground" : "text-muted-foreground")} />
+                        <LayoutGrid className={cn("h-4 w-4", !isGraph ? "text-foreground" : "text-foreground")} />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom"><p>Table View</p></TooltipContent>
@@ -625,7 +625,7 @@ export function GrossMarginResponse({ revealStep }: GrossMarginResponseProps) {
                         className={cn("p-1.5 rounded transition-colors", isGraph ? "bg-muted/60" : "hover:bg-muted/50")}
                         onClick={() => setViewMode("graph")}
                       >
-                        <BarChart3 className={cn("h-4 w-4", isGraph ? "text-foreground" : "text-muted-foreground")} />
+                        <BarChart3 className={cn("h-4 w-4", isGraph ? "text-foreground" : "text-foreground")} />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom"><p>Graph View</p></TooltipContent>
