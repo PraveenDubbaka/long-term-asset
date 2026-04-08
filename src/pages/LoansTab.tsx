@@ -451,8 +451,8 @@ const LOANS_COLS: ColDef<LoansColId>[] = [
   { id: 'actions',            label: 'Actions',             pinned: true },
 ];
 
-export function LoansTab() {
-  const { loans, addLoan, updateLoan, addBanDocument, banDocuments, settings, reconciliation } = useStore(s => ({
+export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
+  const { loans: allLoans, addLoan, updateLoan, addBanDocument, banDocuments, settings, reconciliation } = useStore(s => ({
     loans: s.loans,
     addLoan: s.addLoan,
     updateLoan: s.updateLoan,
@@ -461,6 +461,8 @@ export function LoansTab() {
     settings: s.settings,
     reconciliation: s.reconciliation,
   }));
+
+  const loans = isEmpty ? [] : allLoans;
 
   // Period date label: fiscal year-end Dec 31 2024 → opening balance is Jan 1, 2024
   const balancePeriodLabel = (() => {

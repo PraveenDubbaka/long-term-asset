@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import {
   Building2, ChevronDown, ChevronRight, FileText, Settings2,
   Landmark, PencilLine, FileSpreadsheet, ClipboardCheck, DollarSign,
@@ -41,6 +41,8 @@ const tabs = [
 
 const LongTermAssetPage = () => {
   const { engagementId } = useParams<{ engagementId: string }>();
+  const [searchParams] = useSearchParams();
+  const isEmpty = searchParams.get("new") === "true";
   const [activeTab, setActiveTab] = useState("loans");
 
   const eng = engagementsData[engagementId ?? ""] ?? {
@@ -156,7 +158,7 @@ const LongTermAssetPage = () => {
 
           {/* ── Active tab ──────────────────────────────────────────── */}
           <div className="flex-1">
-            {activeTab === "loans"        && <LoansTab />}
+            {activeTab === "loans"        && <LoansTab isEmpty={isEmpty} />}
             {activeTab === "continuity"   && <ContinuityTab />}
             {activeTab === "amortization" && <AmortizationTab />}
             {activeTab === "covenants"    && <CovenantsTab />}

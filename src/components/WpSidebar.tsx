@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, ChevronLeft, Search, Plus, Expand, Trash2, F
 import { Input } from "@/components/wp-ui/input";
 import { Button } from "@/components/wp-ui/button";
 import { Checkbox } from "@/components/wp-ui/checkbox";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/wp-ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@/components/wp-ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/wp-ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/wp-ui/tooltip";
 import lukaLogo from "@/assets/luka-logo.png";
@@ -731,6 +731,7 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
   const [isNavExpanded, setIsNavExpanded] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["co"]));
   const [allSectionsExpanded, setAllSectionsExpanded] = useState(false);
+  const [addedWpChildren, setAddedWpChildren] = useState<Record<string, Array<{ id: string; label: string; route: string }>>>({});
   const [showSignoffs, setShowSignoffs] = useState(false);
   const banDocuments = useStore(s => s.banDocuments);
 
@@ -1021,21 +1022,36 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
                   return <Folder className="h-4 w-4 text-primary flex-shrink-0" />;
                 };
 
+                const addWpToFolder = (nodeId: string, label: string, route: string) => {
+                  const engId = location.pathname.split("/engagements/")[1]?.split("/")[0];
+                  const id = `wp-added-${Date.now()}`;
+                  setAddedWpChildren(prev => ({
+                    ...prev,
+                    [nodeId]: [...(prev[nodeId] ?? []), { id, label, route }],
+                  }));
+                  setExpandedSections(prev => new Set([...prev, nodeId]));
+                  if (engId) navigate(`/engagements/${engId}/${route}?new=true`);
+                };
+
                 const renderNode = (node: SectionNode, depth: number = 0): React.ReactNode => {
-                  const hasChildren = node.children && node.children.length > 0;
+                  const dynamicChildren: SectionNode[] = (addedWpChildren[node.id] ?? []).map(c => ({
+                    id: c.id, label: c.label, icon: 'folder' as const, route: `${c.route}?new=true`,
+                  }));
+                  const allChildren = [...(node.children ?? []), ...dynamicChildren];
+                  const hasChildren = allChildren.length > 0;
                   const isOpen = expandedSections.has(node.id);
                   const isLeaf = !hasChildren;
+                  const engId = location.pathname.split("/engagements/")[1]?.split("/")[0];
 
                   return (
-                    <div key={node.id}>
+                    <div key={node.id} className="group/node">
                       <div
                         className="flex items-center gap-1.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted transition-colors text-sm"
                         style={{ paddingLeft: `${depth * 16 + 8}px` }}
                         onClick={() => {
                           if (node.route) {
-                            const engId = location.pathname.split("/engagements/")[1]?.split("/")[0];
                             if (engId) navigate(`/engagements/${engId}/${node.route}`);
-                          } else if (hasChildren) {
+                          } else if (hasChildren || node.children) {
                             setExpandedSections(prev => {
                               const next = new Set(prev);
                               if (next.has(node.id)) next.delete(node.id);
@@ -1054,10 +1070,59 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
                         {node.code && <span className="font-semibold text-primary">{node.code}</span>}
                         <span className="truncate flex-1 text-foreground">{node.label}</span>
                         {node.hasPlus && <Plus className="h-4 w-4 text-foreground hover:text-foreground flex-shrink-0" />}
+                        {/* Kebab menu */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              className="opacity-0 group-hover/node:opacity-100 p-0.5 rounded hover:bg-primary/10 transition-all text-foreground flex-shrink-0"
+                              onClick={e => e.stopPropagation()}
+                              title="More options"
+                            >
+                              <MoreVertical className="h-3.5 w-3.5" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" side="right" className="min-w-[180px]">
+                            <DropdownMenuItem>
+                              <Copy className="h-4 w-4 mr-2" /> Duplicate
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Pencil className="h-4 w-4 mr-2" /> Rename
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <FolderInput className="h-4 w-4 mr-2" /> Move to different folder
+                            </DropdownMenuItem>
+                            {/* Add Workpaper submenu — shown for folder nodes */}
+                            {!isLeaf && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuSub>
+                                  <DropdownMenuSubTrigger>
+                                    <Plus className="h-4 w-4 mr-2" /> Add Workpaper
+                                  </DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent>
+                                    <DropdownMenuItem onClick={() => addWpToFolder(node.id, 'Long-term Asset', 'long-term-asset')}>
+                                      <Folder className="h-4 w-4 mr-2 text-primary" /> Long-term Asset
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => addWpToFolder(node.id, 'Capital Asset', 'capital-asset')}>
+                                      <Folder className="h-4 w-4 mr-2 text-primary" /> Capital Asset
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => addWpToFolder(node.id, 'Investment', 'investment')}>
+                                      <Folder className="h-4 w-4 mr-2 text-primary" /> Investment
+                                    </DropdownMenuItem>
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                              </>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-destructive hover:!bg-destructive/10 hover:!text-destructive [&>svg]:text-destructive [&:hover>svg]:text-destructive">
+                              <Trash2 className="h-4 w-4 mr-2" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                       {isOpen && hasChildren && (
                         <div>
-                          {node.children!.map(child => renderNode(child, depth + 1))}
+                          {allChildren.map(child => renderNode(child, depth + 1))}
                         </div>
                       )}
                     </div>
