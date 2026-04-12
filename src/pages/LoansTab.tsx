@@ -578,10 +578,10 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
     toast.success(`Exported ${filteredLoans.length} loan${filteredLoans.length !== 1 ? 's' : ''}`);
   };
 
-  // Shared inline input / select class
-  const IIC  = 'h-7 w-full min-w-0 px-1.5 text-sm border border-border rounded bg-background focus:outline-none focus:border-primary/40 focus:ring-0';
+  // Shared inline input / select class — matches global Input component style exactly
+  const IIC  = 'input-double-border h-9 w-full min-w-0 px-3 text-sm border border-[#dcdfe4] rounded-[10px] bg-white text-foreground placeholder:text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] focus:outline-none focus:ring-0 dark:bg-card dark:border-[hsl(220_15%_30%)]';
   // TIIC: same as IIC but no fixed height — for AutoTextarea (wraps & grows with content)
-  const TIIC = 'w-full min-w-0 px-1.5 py-1 text-sm border border-border rounded bg-background focus:outline-none focus:border-primary/40 focus:ring-0 leading-snug';
+  const TIIC = 'input-double-border w-full min-w-0 px-3 py-2 text-sm border border-[#dcdfe4] rounded-[10px] bg-white text-foreground placeholder:text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] focus:outline-none focus:ring-0 leading-snug dark:bg-card dark:border-[hsl(220_15%_30%)]';
   const iv    = (id: string, f: keyof Loan) => (e: React.ChangeEvent<HTMLInputElement>) => setEdit(id, f, e.target.value);
   const ivTA  = (id: string, f: keyof Loan) => (e: React.ChangeEvent<HTMLTextAreaElement>) => setEdit(id, f, e.target.value);
   const ivNum = (id: string, f: keyof Loan) => (e: React.ChangeEvent<HTMLInputElement>) => setEdit(id, f, parseFloat(e.target.value) || 0);
@@ -945,7 +945,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('rate') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input type="number" step="0.01" className={"h-7 w-20 px-1.5 text-sm text-right border border-border rounded bg-background focus:outline-none focus:border-primary/40" + reqCls(ed.rate ?? l.rate)} value={ed.rate ?? l.rate} onChange={ivNum(l.id,'rate')} onClick={e => e.stopPropagation()} />
+                          ? <input type="number" step="0.01" className={`${IIC} text-right w-20` + reqCls(ed.rate ?? l.rate)} value={ed.rate ?? l.rate} onChange={ivNum(l.id,'rate')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums text-foreground whitespace-nowrap float-right">{fmtPct(l.rate)}</span>}
                       </td>
                     )}
@@ -1002,7 +1002,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                       <td className="px-3 py-1.5 text-right">
                         {ie
                           ? <input type="number" min="0" step="1"
-                              className="h-7 w-28 px-1.5 text-sm text-right border border-border rounded bg-background focus:outline-none focus:border-primary/40 font-mono"
+                              className={`${IIC} text-right w-28 font-mono`}
                               value={ed.monthlyPayment ?? l.monthlyPayment ?? ''}
                               placeholder={(() => { const p = calcMonthlyPayment(l); return p ? Math.round(p).toString() : ''; })()}
                               onChange={ivNum(l.id,'monthlyPayment')} onClick={e => e.stopPropagation()} />

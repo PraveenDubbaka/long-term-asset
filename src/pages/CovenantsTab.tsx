@@ -77,7 +77,7 @@ export function CovenantsTab() {
   const [draftNewRows, setDraftNewRows]   = useState<(Partial<Covenant> & { _newId: string })[]>([]);
   const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
 
-  const IIC = 'h-7 w-full min-w-0 px-1.5 text-xs border border-border rounded bg-background focus:outline-none focus:border-primary/40';
+  const IIC = 'input-double-border h-9 w-full min-w-0 px-3 text-xs border border-[#dcdfe4] rounded-[10px] bg-white text-foreground placeholder:text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] focus:outline-none focus:ring-0 dark:bg-card dark:border-[hsl(220_15%_30%)]';
 
   const enterEditMode  = () => { setTableEditMode(true); setTableEdits({}); setDraftNewRows([]); setPendingDeletes(new Set()); };
   const cancelEditMode = () => { setTableEditMode(false); setTableEdits({}); setDraftNewRows([]); setPendingDeletes(new Set()); };
@@ -673,7 +673,7 @@ function FormulaDisplay({ cov, editMode = false, onUpdateNumeratorLine, onUpdate
   const denTotal = denLines.reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
 
   const fmtAmt = (v: number) => v === 0 ? '$0' : `$${v.toLocaleString('en-CA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-  const IIC = 'h-6 w-28 px-1.5 text-xs text-right tabular-nums border border-border rounded bg-background focus:outline-none focus:border-primary/40';
+  const IIC = 'input-double-border h-9 w-28 px-3 text-xs text-right tabular-nums border border-[#dcdfe4] rounded-[10px] bg-white text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] focus:outline-none focus:ring-0 dark:bg-card dark:border-[hsl(220_15%_30%)]';
 
   const LineRows = ({ lines, onUpdate }: { lines: CovenantFormulaLine[]; onUpdate?: (id: string, amt: number) => void }) => (
     <>
