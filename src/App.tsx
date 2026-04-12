@@ -18,9 +18,10 @@ import { ReportsTab }       from './pages/ReportsTab';
 import { SettingsTab }      from './pages/SettingsTab';
 
 /* ── Working-Papers Portal ── */
-import LongTermAssetPage from './pages/LongTermAssetPage';
-import CapitalAsset      from './pages/CapitalAsset';
-import InvestmentPage    from './pages/InvestmentPage';
+import LongTermAssetPage        from './pages/LongTermAssetPage';
+import CapitalAsset             from './pages/CapitalAsset';
+import InvestmentPage           from './pages/InvestmentPage';
+import NotesFinancialInfoPage   from './pages/NotesFinancialInfoPage';
 
 const queryClient = new QueryClient();
 
@@ -74,6 +75,10 @@ export default function App() {
             <Route
               path="/engagements/:engagementId/investment"
               element={<InvestmentPage />}
+            />
+            <Route
+              path="/engagements/:engagementId/notes-financial-info"
+              element={<NotesFinancialInfoPage />}
             />
 
             {/* ── Default: redirect root to long-term-asset ── */}
