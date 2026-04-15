@@ -54,6 +54,7 @@ export interface Loan {
   wpRefs?: string[]; // IDs of BAN documents referenced by this loan
   fxRateToCAD?: number; // for non-CAD loans
   monthlyPayment?: number; // manual override; if absent, computed from PMT
+  closingBalance?: number; // closing balance as at the fiscal year-end date
 }
 
 export interface AmortizationRow {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Download, ChevronDown, ChevronRight } from 'lucide-react';
-import { useTableColumns, ColumnToggleButton, useColumnResize, ThResizable, type ColDef } from '@/components/table-utils';
+import { useTableColumns, useColumnResize, ThResizable, type ColDef } from '@/components/table-utils';
 import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
 import { StyledCard } from '@/components/wp-ui/card';
@@ -147,7 +147,6 @@ export function CapAssetScheduleTab() {
           <Button variant="secondary" size="sm" onClick={handleExport}>
             <Download className="w-3.5 h-3.5" /> Export
           </Button>
-          <ColumnToggleButton columns={CAP_COLS} isVisible={capVisible} onToggle={capToggle} />
         </div>
       </div>
 

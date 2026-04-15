@@ -67,6 +67,7 @@ export const initialLoans: Loan[] = [
     currency: 'CAD',
     originalPrincipal: 5_000_000,
     currentBalance: 3_750_000,
+    closingBalance: 3_750_000,   // Dec 31, 2024 — matches currentBalance
     rate: 5.25,
     interestType: 'Fixed',
     dayCountBasis: 'ACT/365',
@@ -97,6 +98,7 @@ export const initialLoans: Loan[] = [
     currency: 'CAD',
     originalPrincipal: 2_000_000,
     currentBalance: 875_000,
+    closingBalance: 875_000,   // Dec 31, 2024 — matches currentBalance
     creditLimit: 2_000_000,
     rate: 7.45,
     interestType: 'Variable',
@@ -131,6 +133,7 @@ export const initialLoans: Loan[] = [
     currency: 'USD',
     originalPrincipal: 1_500_000,
     currentBalance: 1_125_000,
+    closingBalance: 1_125_000,   // Dec 31, 2024 — USD closing balance
     rate: 6.10,
     interestType: 'Fixed',
     dayCountBasis: '30/360',
@@ -162,6 +165,7 @@ export const initialLoans: Loan[] = [
     currency: 'CAD',
     originalPrincipal: 1_800_000,
     currentBalance: 1_200_000,
+    closingBalance: 1_200_000,   // Dec 31, 2024 — matches currentBalance
     rate: 6.40,
     interestType: 'Fixed',
     dayCountBasis: 'ACT/365',
@@ -192,6 +196,7 @@ export const initialLoans: Loan[] = [
     currency: 'CAD',
     originalPrincipal: 500_000,
     currentBalance: 500_000,
+    closingBalance: 500_000,   // Dec 31, 2024 — interest-only, no change
     rate: 3.00,
     interestType: 'Fixed',
     dayCountBasis: 'ACT/365',
@@ -222,6 +227,7 @@ export const initialLoans: Loan[] = [
     currency: 'CAD',
     originalPrincipal: 285_000,
     currentBalance: 198_400,
+    closingBalance: 198_400,   // Dec 31, 2024 — matches currentBalance
     rate: 8.90,
     interestType: 'Fixed',
     dayCountBasis: 'ACT/365',
@@ -252,6 +258,7 @@ export const initialLoans: Loan[] = [
     currency: 'EUR',
     originalPrincipal: 750_000,
     currentBalance: 420_000,
+    closingBalance: 420_000,   // Dec 31, 2024 — EUR closing balance
     creditLimit: 750_000,
     rate: 4.75,
     interestType: 'Variable',
@@ -287,6 +294,7 @@ export const initialLoans: Loan[] = [
     currency: 'CAD',
     originalPrincipal: 4_200_000,
     currentBalance: 3_810_000,
+    closingBalance: 3_810_000,   // Dec 31, 2024 — matches currentBalance
     rate: 4.95,
     interestType: 'Fixed',
     dayCountBasis: 'ACT/365',
@@ -317,6 +325,7 @@ export const initialLoans: Loan[] = [
     currency: 'CAD',
     originalPrincipal: 1_500_000,
     currentBalance: 0,
+    closingBalance: 0,   // Dec 31, 2024 — fully refinanced, nil balance
     rate: 9.50,
     interestType: 'Variable',
     benchmark: 'Prime',

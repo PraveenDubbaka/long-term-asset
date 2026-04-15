@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { Plus, Upload, FileSearch, Edit3, EyeOff, Eye, ListFilter, Tag, Check, X, Download, ArrowLeft, Paperclip, FileText } from 'lucide-react';
+import { Plus, Upload, FileSearch, Edit3, ListFilter, Tag, Check, X, Download, ArrowLeft, Paperclip, FileText, Pencil, Trash2 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { fmtCurrency, fmtPct, fmtDateDisplay, exportToExcel, buildLoanRegisterExport } from '../lib/utils';
 import { Button } from '@/components/wp-ui/button';
@@ -9,7 +9,7 @@ import { StyledCard } from '@/components/wp-ui/card';
 import { Modal, Input, Select, Textarea, Tooltip } from '../components/ui';
 import type { Loan, LoanType, LoanStatus, InterestType, Currency, DayCountBasis, PaymentType, BanDocument } from '../types';
 import toast from 'react-hot-toast';
-import { useTableColumns, ColumnToggleButton, useColumnResize, ThResizable, type ColDef } from '@/components/table-utils';
+import { useTableColumns, useColumnResize, ThResizable, type ColDef } from '@/components/table-utils';
 import { accountMappings as allGLAccounts } from '../data/mockData';
 
 const LOAN_TYPES: { value: string; label: string }[] = [
@@ -420,7 +420,7 @@ function LoanRefCell({ loanId, refs, banDocs, onChange }: {
 type LoansColId =
   | 'name' | 'lender' | 'rate' | 'interestType' | 'monthlyPayment'
   | 'startDate' | 'maturity' | 'collateral' | 'type' | 'currency'
-  | 'origAmt' | 'fxRate' | 'balance' | 'glPrincipal' | 'dayCount'
+  | 'origAmt' | 'fxRate' | 'balance' | 'closingBalance' | 'glPrincipal' | 'dayCount'
   | 'paymentType' | 'status' | 'attachments' | 'actions'
   | 'tenureMonths' | 'firstPaymentDate' | 'compoundingFreq' | 'balloonAmt' | 'interestOnlyPeriod';
 
@@ -440,6 +440,7 @@ const LOANS_COLS: ColDef<LoansColId>[] = [
   { id: 'origAmt',            label: 'Orig. Loan Amt' },
   { id: 'fxRate',             label: 'FX Rate' },
   { id: 'balance',            label: 'Converted Amt' },
+  { id: 'closingBalance',     label: 'Closing Balance' },
   { id: 'glPrincipal',        label: 'GL Principal' },
   { id: 'dayCount',           label: 'Day Count' },
   { id: 'paymentType',        label: 'Payment Type' },
@@ -451,11 +452,89 @@ const LOANS_COLS: ColDef<LoansColId>[] = [
   { id: 'actions',            label: 'Actions',             pinned: true },
 ];
 
+// ── Empty state for brand-new workpapers ──────────────────────────────────
+function EmptyLoansState({ onUpload, onAddRow }: { onUpload: () => void; onAddRow: () => void }) {
+  const [dragging, setDragging] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    if (e.dataTransfer.files.length > 0) onUpload();
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center py-16 px-8 gap-6">
+      {/* Heading */}
+      <div className="text-center">
+        <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+          <FileText className="w-7 h-7 text-muted-foreground" />
+        </div>
+        <h3 className="text-base font-semibold text-foreground mb-1">No Loan Data Found</h3>
+        <p className="text-sm text-muted-foreground max-w-sm">
+          This workpaper has no loans yet. Upload a loan agreement document or add a loan manually to get started.
+        </p>
+      </div>
+
+      {/* Two options side by side */}
+      <div className="flex flex-col sm:flex-row gap-4 w-full max-w-xl">
+
+        {/* Drop zone / upload option */}
+        <div
+          className={`flex-1 flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-xl px-6 py-8 transition-colors cursor-pointer ${
+            dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-muted/30'
+          }`}
+          onDragOver={e => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={handleDrop}
+          onClick={() => onUpload()}
+        >
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Upload className="w-5 h-5 text-primary" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-medium text-foreground">Upload Loan Data</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Click to browse or drag &amp; drop a file here
+            </p>
+            <p className="text-[11px] text-muted-foreground/70 mt-1">PDF, Excel, or image supported</p>
+          </div>
+          <input ref={fileRef} type="file" className="hidden" accept=".pdf,.xlsx,.xls,.png,.jpg,.jpeg" onChange={() => onUpload()} />
+        </div>
+
+        {/* Divider */}
+        <div className="flex sm:flex-col items-center justify-center gap-2 text-xs text-muted-foreground select-none">
+          <div className="flex-1 h-px sm:h-auto sm:w-px bg-border" />
+          <span className="px-1">or</span>
+          <div className="flex-1 h-px sm:h-auto sm:w-px bg-border" />
+        </div>
+
+        {/* Manual entry option */}
+        <div
+          className="flex-1 flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-xl px-6 py-8 border-border hover:border-primary/50 hover:bg-muted/30 transition-colors cursor-pointer"
+          onClick={onAddRow}
+        >
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+            <Plus className="w-5 h-5 text-emerald-600" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-medium text-foreground">Add Manually</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Add a new row and enter loan details directly in the table
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
-  const { loans: allLoans, addLoan, updateLoan, addBanDocument, banDocuments, settings, reconciliation } = useStore(s => ({
+  const { loans: allLoans, addLoan, updateLoan, deleteLoan, addBanDocument, banDocuments, settings, reconciliation } = useStore(s => ({
     loans: s.loans,
     addLoan: s.addLoan,
     updateLoan: s.updateLoan,
+    deleteLoan: s.deleteLoan,
     addBanDocument: s.addBanDocument,
     banDocuments: s.banDocuments,
     settings: s.settings,
@@ -473,11 +552,22 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
       .format(new Date(year, 0, 1)); // Jan 1 of that year
   })();
 
+  const closingPeriodLabel = (() => {
+    const fye = settings?.fiscalYearEnd;
+    if (!fye) return null;
+    // Fiscal year-end date itself — e.g. Dec 31, 2024
+    return new Intl.DateTimeFormat('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })
+      .format(new Date(fye + 'T00:00:00'));
+  })();
+
   const [editLoan, setEditLoan] = useState<Loan | null>(null);
   const [viewLoan, setViewLoan] = useState<Loan | null>(null);
-  const [tableEditMode, setTableEditMode] = useState(false);
-  const [tableEdits, setTableEdits] = useState<Record<string, Partial<Loan>>>({});
+  const [editingLoanId, setEditingLoanId] = useState<string | null>(null);
+  const [rowEdits, setRowEdits] = useState<Partial<Loan>>({});
   const [ocrPendingIds, setOcrPendingIds] = useState<Set<string>>(new Set());
+  // Inline new-row state
+  const [addingRow, setAddingRow] = useState(false);
+  const [newRowEdits, setNRE] = useState<Partial<Loan>>({ ...defaultLoan });
   const [pageView, setPageView] = useState<'list' | 'add'>('list');
   const [addTab, setAddTab] = useState<'ocr' | 'manual'>('ocr');
   const [attachDrawerLoan, setAttachDrawerLoan] = useState<Loan | null>(null);
@@ -485,7 +575,6 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
   const attachFileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<Partial<Loan>>(defaultLoan);
   const [openFilter, setOpenFilter] = useState<string | null>(null);
-  const [showInactive, setShowInactive] = useState(false);
 
   const { isVisible, toggle, setWidth, getWidth, visibleCount } = useTableColumns('loans', LOANS_COLS);
   const { onResizeStart } = useColumnResize(setWidth);
@@ -546,7 +635,6 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
   const uniqueGLCodes = [...new Set(loans.map(l => l.glPrincipalAccount).filter((c): c is string => Boolean(c)))].sort();
 
   const filteredLoans = loans.filter(l => {
-    if (!showInactive && l.status === 'Inactive') return false;
     if (filters.refNumber && !l.refNumber.toLowerCase().includes(filters.refNumber.toLowerCase())) return false;
     if (filters.name && !l.name.toLowerCase().includes(filters.name.toLowerCase())) return false;
     if (filters.lender && !l.lender.toLowerCase().includes(filters.lender.toLowerCase())) return false;
@@ -562,16 +650,49 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
   const openAdd = () => { setForm(defaultLoan); setAddTab('ocr'); setPageView('add'); };
   const openEdit = (loan: Loan) => { setEditLoan(loan); setForm({ ...loan }); };
 
-  const enterEditMode  = () => { setTableEditMode(true); setTableEdits({}); };
-  const saveAllEdits   = () => {
-    const changed = Object.entries(tableEdits);
-    changed.forEach(([id, vals]) => updateLoan(id, vals));
-    toast.success(changed.length > 0 ? `${changed.length} loan${changed.length !== 1 ? 's' : ''} updated` : 'No changes');
-    setTableEditMode(false); setTableEdits({}); setOcrPendingIds(new Set());
+  const startEdit = (id: string) => {
+    const loan = loans.find(l => l.id === id);
+    setEditingLoanId(id);
+    setRowEdits(loan ? { ...loan } : {});
   };
-  const cancelEditMode = () => { setTableEditMode(false); setTableEdits({}); setOcrPendingIds(new Set()); };
-  const setEdit = (loanId: string, field: keyof Loan, value: unknown) =>
-    setTableEdits(prev => ({ ...prev, [loanId]: { ...(prev[loanId] ?? {}), [field]: value } }));
+  const saveEdit = () => {
+    if (!editingLoanId) return;
+    updateLoan(editingLoanId, rowEdits);
+    toast.success('Loan updated');
+    setEditingLoanId(null);
+    setRowEdits({});
+  };
+  const cancelEdit = () => {
+    setEditingLoanId(null);
+    setRowEdits({});
+    setOcrPendingIds(new Set());
+  };
+  const setEdit = (field: keyof Loan, value: unknown) =>
+    setRowEdits(prev => ({ ...prev, [field]: value }));
+
+  // ── Inline new-row helpers ──────────────────────────────────────
+  const setNR = (field: keyof Loan, value: unknown) =>
+    setNRE(prev => ({ ...prev, [field]: value }));
+  const nrIV    = (f: keyof Loan) => (e: React.ChangeEvent<HTMLInputElement>)    => setNR(f, e.target.value);
+  const nrIVTA  = (f: keyof Loan) => (e: React.ChangeEvent<HTMLTextAreaElement>) => setNR(f, e.target.value);
+  const nrIVNum = (f: keyof Loan) => (e: React.ChangeEvent<HTMLInputElement>)    => setNR(f, parseFloat(e.target.value) || 0);
+  const nrIVSel = (f: keyof Loan) => (e: React.ChangeEvent<HTMLSelectElement>)   => setNR(f, e.target.value);
+  const addNewRow  = () => { setNRE({ ...defaultLoan }); setAddingRow(true); };
+  const cancelNewRow = () => { setAddingRow(false); setNRE({ ...defaultLoan }); };
+  const saveNewRow = () => {
+    if (!newRowEdits.name?.trim())   { toast.error('Loan name is required');   return; }
+    if (!newRowEdits.lender?.trim()) { toast.error('Lender name is required'); return; }
+    const newLoan: Loan = {
+      ...defaultLoan,
+      ...newRowEdits,
+      id: `loan-${Date.now()}`,
+      refNumber: newRowEdits.refNumber || '',
+    } as Loan;
+    addLoan(newLoan);
+    toast.success('Loan added');
+    setAddingRow(false);
+    setNRE({ ...defaultLoan });
+  };
 
   const handleExport = async () => {
     await exportToExcel({ 'Loan Register': buildLoanRegisterExport(filteredLoans) }, 'Loan_Register.xlsx');
@@ -582,10 +703,10 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
   const IIC  = 'input-double-border h-9 w-full min-w-0 px-3 text-sm border border-[#dcdfe4] rounded-[10px] bg-white text-foreground placeholder:text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] focus:outline-none focus:ring-0 dark:bg-card dark:border-[hsl(220_15%_30%)]';
   // TIIC: same as IIC but no fixed height — for AutoTextarea (wraps & grows with content)
   const TIIC = 'input-double-border w-full min-w-0 px-3 py-2 text-sm border border-[#dcdfe4] rounded-[10px] bg-white text-foreground placeholder:text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] focus:outline-none focus:ring-0 leading-snug dark:bg-card dark:border-[hsl(220_15%_30%)]';
-  const iv    = (id: string, f: keyof Loan) => (e: React.ChangeEvent<HTMLInputElement>) => setEdit(id, f, e.target.value);
-  const ivTA  = (id: string, f: keyof Loan) => (e: React.ChangeEvent<HTMLTextAreaElement>) => setEdit(id, f, e.target.value);
-  const ivNum = (id: string, f: keyof Loan) => (e: React.ChangeEvent<HTMLInputElement>) => setEdit(id, f, parseFloat(e.target.value) || 0);
-  const ivSel = (id: string, f: keyof Loan) => (e: React.ChangeEvent<HTMLSelectElement>) => setEdit(id, f, e.target.value);
+  const iv    = (f: keyof Loan) => (e: React.ChangeEvent<HTMLInputElement>) => setEdit(f, e.target.value);
+  const ivTA  = (f: keyof Loan) => (e: React.ChangeEvent<HTMLTextAreaElement>) => setEdit(f, e.target.value);
+  const ivNum = (f: keyof Loan) => (e: React.ChangeEvent<HTMLInputElement>) => setEdit(f, parseFloat(e.target.value) || 0);
+  const ivSel = (f: keyof Loan) => (e: React.ChangeEvent<HTMLSelectElement>) => setEdit(f, e.target.value);
 
   const handleSave = () => {
     if (!form.name || !form.lender) { toast.error('Name and lender are required'); return; }
@@ -604,15 +725,6 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
       toast.success('Loan added');
       setPageView('list');
     }
-  };
-
-  const handleArchive = (loan: Loan) => {
-    updateLoan(loan.id, { status: 'Inactive' });
-    toast.success(`${loan.name} archived`);
-  };
-  const handleRestore = (loan: Loan) => {
-    updateLoan(loan.id, { status: 'Active' });
-    toast.success(`${loan.name} restored`);
   };
 
   const handleAttachFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -640,7 +752,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
   };
 
   // ── GL Account Summary (computed from filteredLoans, live) ────────────────
-  // Inactive loans are excluded from ALL totals/calculations even when showInactive reveals them in the table
+  // Inactive loans are excluded from all totals/calculations
   const loansForTotals = filteredLoans.filter(l => l.status !== 'Inactive');
 
   const toGL = (l: Loan, field: keyof Loan) =>
@@ -703,35 +815,12 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
           <Button variant="secondary" size="sm" onClick={handleExport}>
             <Download className="w-3.5 h-3.5 mr-1" /> Export
           </Button>
-          <ColumnToggleButton columns={LOANS_COLS} isVisible={isVisible} onToggle={toggle} />
-          <button
-            onClick={() => setShowInactive(v => !v)}
-            title={showInactive ? 'Hide inactive loans' : 'Show inactive loans'}
-            className={[
-              'flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg border transition-colors',
-              showInactive
-                ? 'border-amber-300 bg-amber-50 text-amber-700'
-                : 'border-border bg-background text-foreground hover:text-foreground hover:bg-muted/50',
-            ].join(' ')}
-          >
-            <EyeOff className="w-3.5 h-3.5" />
-            {showInactive ? 'Hiding shown' : 'Show Inactive'}
-          </button>
-          {tableEditMode ? (<>
-            <Button variant="default" size="sm" onClick={saveAllEdits}>
-              <Check className="w-3.5 h-3.5 mr-1" /> Save
-            </Button>
-            <Button variant="secondary" size="sm" onClick={cancelEditMode}>
-              <X className="w-3.5 h-3.5 mr-1" /> Cancel
-            </Button>
-          </>) : (<>
-            <Button variant="secondary" size="sm" onClick={enterEditMode}>
-              <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit
-            </Button>
-            <Button variant="default" size="sm" onClick={openAdd}>
-              <Plus className="w-3.5 h-3.5 mr-1" /> Add Loan
-            </Button>
-          </>)}
+          <Button variant="outline" size="sm" onClick={() => { setForm(defaultLoan); setAddTab('ocr'); setPageView('add'); }}>
+            <Upload className="w-3.5 h-3.5 mr-1" /> Upload Loan
+          </Button>
+          <Button variant="default" size="sm" onClick={addNewRow} disabled={addingRow}>
+            <Plus className="w-3.5 h-3.5 mr-1" /> Add Loan
+          </Button>
         </div>
       </div>
 
@@ -816,6 +905,18 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                       </span>
                     </ThResizable>
                   )}
+                  {isVisible('closingBalance') && (
+                    <ThResizable colId="closingBalance" width={getWidth('closingBalance')} onResizeStart={rh('closingBalance')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
+                      <span className="flex flex-col items-end gap-0.5">
+                        <span>Closing Balance</span>
+                        {closingPeriodLabel && (
+                          <span className="text-[10px] font-normal normal-case tracking-normal text-foreground leading-none">
+                            as at {closingPeriodLabel}
+                          </span>
+                        )}
+                      </span>
+                    </ThResizable>
+                  )}
                   {isVisible('glPrincipal') && (
                     <ThResizable colId="glPrincipal" width={getWidth('glPrincipal')} onResizeStart={rh('glPrincipal')} className="text-center px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
                       <div className="flex items-center gap-1 group/th">GL Principal
@@ -862,7 +963,176 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                 </tr>
               </thead>
               <tbody>
-                {filteredLoans.length === 0 && (
+                {/* ── Inline new-row ──────────────────────────────── */}
+                {addingRow && (
+                  <tr className="border-b border-border bg-primary/[0.03] ring-1 ring-inset ring-primary/20">
+                    {/* Loan Name */}
+                    <td className="px-3 py-1.5 min-w-[120px] max-w-[180px]">
+                      <textarea rows={1} className={TIIC} value={newRowEdits.name ?? ''} onChange={nrIVTA('name')} placeholder="Loan name *" onClick={e => e.stopPropagation()} autoFocus />
+                    </td>
+                    {isVisible('lender') && (
+                      <td className="px-3 py-1.5 min-w-[100px] max-w-[150px]">
+                        <textarea rows={1} className={TIIC} value={newRowEdits.lender ?? ''} onChange={nrIVTA('lender')} placeholder="Lender *" onClick={e => e.stopPropagation()} />
+                      </td>
+                    )}
+                    {isVisible('collateral') && (
+                      <td className="px-3 py-1.5 max-w-[180px]">
+                        <textarea rows={1} className={TIIC} value={newRowEdits.securityDescription ?? ''} onChange={nrIVTA('securityDescription')} placeholder="Collateral" onClick={e => e.stopPropagation()} />
+                      </td>
+                    )}
+                    {isVisible('type') && (
+                      <td className="px-3 py-1.5">
+                        <LoanTypeCombo iic={IIC} value={newRowEdits.type ?? 'Term'} onChange={val => setNR('type', val)} onClick={e => e.stopPropagation()} />
+                      </td>
+                    )}
+                    {isVisible('interestType') && (
+                      <td className="px-3 py-1.5">
+                        <select className={`${IIC} cursor-pointer`} value={newRowEdits.interestType ?? 'Fixed'} onChange={nrIVSel('interestType')} onClick={e => e.stopPropagation()}>
+                          <option value="Fixed">Fixed</option>
+                          <option value="Variable">Variable</option>
+                          <option value="Floating">Floating (Prime-based)</option>
+                          <option value="Hybrid">Hybrid (Fixed → Variable)</option>
+                          <option value="Step Rate">Step Rate</option>
+                        </select>
+                      </td>
+                    )}
+                    {isVisible('rate') && (
+                      <td className="px-3 py-1.5">
+                        <input type="number" step="0.01" className={`${IIC} text-right w-20`} value={newRowEdits.rate ?? ''} onChange={nrIVNum('rate')} placeholder="0.00" onClick={e => e.stopPropagation()} />
+                      </td>
+                    )}
+                    {isVisible('startDate') && (
+                      <td className="px-3 py-1.5">
+                        <input type="date" className={IIC} value={newRowEdits.startDate ?? ''} onChange={nrIV('startDate')} onClick={e => e.stopPropagation()} />
+                      </td>
+                    )}
+                    {isVisible('maturity') && (
+                      <td className="px-3 py-1.5">
+                        <input type="date" className={IIC} value={newRowEdits.maturityDate ?? ''} onChange={nrIV('maturityDate')} onClick={e => e.stopPropagation()} />
+                      </td>
+                    )}
+                    {isVisible('tenureMonths') && (
+                      <td className="px-3 py-1.5">
+                        <input type="number" min="1" className={`${IIC} text-right w-20`} value={newRowEdits.tenureMonths ?? ''} onChange={nrIVNum('tenureMonths')} placeholder="—" onClick={e => e.stopPropagation()} />
+                      </td>
+                    )}
+                    {isVisible('firstPaymentDate') && (
+                      <td className="px-3 py-1.5">
+                        <input type="date" className={IIC} value={newRowEdits.firstPaymentDate ?? ''} onChange={nrIV('firstPaymentDate')} onClick={e => e.stopPropagation()} />
+                      </td>
+                    )}
+                    {isVisible('currency') && (
+                      <td className="px-3 py-1.5">
+                        <select className={`${IIC} cursor-pointer`} value={newRowEdits.currency ?? 'CAD'} onChange={nrIVSel('currency')} onClick={e => e.stopPropagation()}>
+                          <option value="CAD">CAD</option>
+                          <option value="USD">USD</option>
+                          <option value="EUR">EUR</option>
+                          <option value="GBP">GBP</option>
+                        </select>
+                      </td>
+                    )}
+                    {isVisible('monthlyPayment') && (
+                      <td className="px-3 py-1.5">
+                        <input type="number" min="0" step="1" className={`${IIC} text-right w-28 font-mono`} value={newRowEdits.monthlyPayment ?? ''} onChange={nrIVNum('monthlyPayment')} placeholder="—" onClick={e => e.stopPropagation()} />
+                      </td>
+                    )}
+                    {isVisible('origAmt') && (
+                      <td className="px-3 py-1.5">
+                        <input type="number" className={`${IIC} text-right`} value={newRowEdits.originalPrincipal ?? ''} onChange={nrIVNum('originalPrincipal')} placeholder="0" onClick={e => e.stopPropagation()} />
+                      </td>
+                    )}
+                    {isVisible('fxRate') && (
+                      <td className="px-3 py-1.5">
+                        <input type="number" step="0.0001" className={`${IIC} text-right w-24`} value={newRowEdits.fxRateToCAD ?? ''} onChange={e => setNR('fxRateToCAD', parseFloat(e.target.value) || undefined)} placeholder="—" onClick={e => e.stopPropagation()} />
+                      </td>
+                    )}
+                    {isVisible('balance') && (
+                      <td className="px-3 py-1.5">
+                        <input type="number" className={`${IIC} text-right`} value={newRowEdits.originalPrincipal ?? ''} onChange={nrIVNum('originalPrincipal')} placeholder="0" onClick={e => e.stopPropagation()} />
+                      </td>
+                    )}
+                    {isVisible('closingBalance') && (
+                      <td className="px-3 py-1.5">
+                        <input type="number" className={`${IIC} text-right`} value={newRowEdits.closingBalance ?? ''} onChange={nrIVNum('closingBalance')} placeholder="0" onClick={e => e.stopPropagation()} />
+                      </td>
+                    )}
+                    {isVisible('glPrincipal') && (
+                      <td className="px-3 py-1.5 text-center">
+                        <GLCombobox iic={IIC} value={newRowEdits.glPrincipalAccount ?? '2100'} onChange={v => setNR('glPrincipalAccount', v)} onClick={e => e.stopPropagation()} />
+                      </td>
+                    )}
+                    {isVisible('dayCount') && (
+                      <td className="px-3 py-1.5">
+                        <select className={`${IIC} cursor-pointer font-mono`} value={newRowEdits.dayCountBasis ?? 'ACT/365'} onChange={nrIVSel('dayCountBasis')} onClick={e => e.stopPropagation()}>
+                          <option value="ACT/365">ACT/365</option>
+                          <option value="ACT/360">ACT/360</option>
+                          <option value="30/360">30/360</option>
+                        </select>
+                      </td>
+                    )}
+                    {isVisible('paymentType') && (
+                      <td className="px-3 py-1.5">
+                        <select className={`${IIC} cursor-pointer`} value={newRowEdits.paymentType ?? 'P&I'} onChange={nrIVSel('paymentType')} onClick={e => e.stopPropagation()}>
+                          <option value="P&I">P&amp;I</option>
+                          <option value="Interest-only">Interest-only</option>
+                          <option value="Balloon">Balloon</option>
+                        </select>
+                      </td>
+                    )}
+                    {isVisible('compoundingFreq') && (
+                      <td className="px-3 py-1.5">
+                        <select className={`${IIC} cursor-pointer`} value={newRowEdits.compoundingFrequency ?? 'Monthly'} onChange={nrIVSel('compoundingFrequency')} onClick={e => e.stopPropagation()}>
+                          <option value="Monthly">Monthly</option>
+                          <option value="Quarterly">Quarterly</option>
+                          <option value="Semi-annual">Semi-annual</option>
+                          <option value="Annual">Annual</option>
+                        </select>
+                      </td>
+                    )}
+                    {isVisible('interestOnlyPeriod') && (
+                      <td className="px-3 py-1.5 text-right">
+                        <input type="number" min="0" className={`${IIC} text-right w-20`} value={newRowEdits.interestOnlyPeriodMonths ?? ''} onChange={nrIVNum('interestOnlyPeriodMonths')} placeholder="—" onClick={e => e.stopPropagation()} />
+                      </td>
+                    )}
+                    {isVisible('balloonAmt') && (
+                      <td className="px-3 py-1.5 text-right">
+                        <input type="number" min="0" className={`${IIC} text-right w-28`} value={newRowEdits.balloonAmount ?? ''} onChange={nrIVNum('balloonAmount')} placeholder="—" onClick={e => e.stopPropagation()} />
+                      </td>
+                    )}
+                    {isVisible('status') && (
+                      <td className="px-3 py-1.5">
+                        <select className={`${IIC} cursor-pointer`} value={newRowEdits.status ?? 'Active'} onChange={nrIVSel('status')} onClick={e => e.stopPropagation()}>
+                          <option value="Active">Active</option>
+                          <option value="Inactive">Inactive</option>
+                          <option value="Closed">Closed</option>
+                          <option value="Replaced">Replaced</option>
+                          <option value="Refinanced">Refinanced</option>
+                        </select>
+                      </td>
+                    )}
+                    {/* Refs — empty for new row */}
+                    <td className="px-3 py-1.5 w-36" />
+                    {/* Actions */}
+                    <td className="px-3 py-1.5 text-center" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center gap-1 justify-center">
+                        <button onClick={saveNewRow} className="p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-600" title="Save loan"><Check className="w-3.5 h-3.5" /></button>
+                        <button onClick={cancelNewRow} className="p-1.5 hover:bg-muted rounded-lg text-foreground" title="Cancel"><X className="w-3.5 h-3.5" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                {filteredLoans.length === 0 && !addingRow && loans.length === 0 && isEmpty && (
+                  /* ── Brand-new workpaper: rich empty state ── */
+                  <tr>
+                    <td colSpan={visibleCount} className="px-0 py-0">
+                      <EmptyLoansState
+                        onUpload={() => { setForm(defaultLoan); setAddTab('ocr'); setPageView('add'); }}
+                        onAddRow={addNewRow}
+                      />
+                    </td>
+                  </tr>
+                )}
+                {filteredLoans.length === 0 && !addingRow && (loans.length > 0 || !isEmpty) && (
                   <tr>
                     <td colSpan={visibleCount} className="px-3 py-10 text-center text-sm text-foreground">
                       No loans match the current filters.{' '}
@@ -871,8 +1141,8 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                   </tr>
                 )}
                 {filteredLoans.map(l => {
-                  const ie = tableEditMode;
-                  const ed = tableEdits[l.id] ?? {};
+                  const ie = editingLoanId === l.id;
+                  const ed = ie ? rowEdits : {};
                   const isOcrPending = ocrPendingIds.has(l.id);
                   // Amber highlight for OCR-imported rows with missing required fields
                   const reqCls = (val: unknown) =>
@@ -892,14 +1162,14 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {/* Loan Name */}
                     <td className="px-3 py-1.5 min-w-[120px] max-w-[180px]">
                       {ie
-                        ? <AutoTextarea className={TIIC + reqCls(ed.name ?? l.name)} value={ed.name ?? l.name} onChange={ivTA(l.id,'name')} onClick={e => e.stopPropagation()} />
+                        ? <AutoTextarea className={TIIC + reqCls(ed.name ?? l.name)} value={ed.name ?? l.name} onChange={ivTA('name')} onClick={e => e.stopPropagation()} />
                         : <span className="font-medium text-foreground break-words leading-tight">{l.name}</span>}
                     </td>
                     {/* Lender */}
                     {isVisible('lender') && (
                       <td className="px-3 py-1.5 min-w-[100px] max-w-[150px]">
                         {ie
-                          ? <AutoTextarea className={TIIC + reqCls(ed.lender ?? l.lender)} value={ed.lender ?? l.lender} onChange={ivTA(l.id,'lender')} onClick={e => e.stopPropagation()} />
+                          ? <AutoTextarea className={TIIC + reqCls(ed.lender ?? l.lender)} value={ed.lender ?? l.lender} onChange={ivTA('lender')} onClick={e => e.stopPropagation()} />
                           : <span className="text-foreground break-words leading-tight block">{l.lender}</span>}
                       </td>
                     )}
@@ -907,7 +1177,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('collateral') && (
                       <td className="px-3 py-1.5 max-w-[180px]">
                         {ie
-                          ? <AutoTextarea className={TIIC} value={ed.securityDescription ?? l.securityDescription ?? ''} onChange={ivTA(l.id,'securityDescription')} onClick={e => e.stopPropagation()} />
+                          ? <AutoTextarea className={TIIC} value={ed.securityDescription ?? l.securityDescription ?? ''} onChange={ivTA('securityDescription')} onClick={e => e.stopPropagation()} />
                           : <span className="text-foreground text-xs leading-tight line-clamp-2">{l.securityDescription || '—'}</span>}
                       </td>
                     )}
@@ -916,7 +1186,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                       <td className="px-3 py-1.5">
                         {ie
                           ? <LoanTypeCombo iic={IIC} value={ed.type ?? l.type}
-                              onChange={val => setEdit(l.id, 'type', val)}
+                              onChange={val => setEdit('type', val)}
                               onClick={e => e.stopPropagation()} />
                           : typeBadge(l.type)}
                       </td>
@@ -925,7 +1195,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('interestType') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <select className={`${IIC} cursor-pointer`} value={ed.interestType ?? l.interestType} onChange={ivSel(l.id,'interestType')} onClick={e => e.stopPropagation()}>
+                          ? <select className={`${IIC} cursor-pointer`} value={ed.interestType ?? l.interestType} onChange={ivSel('interestType')} onClick={e => e.stopPropagation()}>
                               <option value="Fixed">Fixed</option>
                               <option value="Variable">Variable</option>
                               <option value="Floating">Floating (Prime-based)</option>
@@ -945,7 +1215,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('rate') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input type="number" step="0.01" className={`${IIC} text-right w-20` + reqCls(ed.rate ?? l.rate)} value={ed.rate ?? l.rate} onChange={ivNum(l.id,'rate')} onClick={e => e.stopPropagation()} />
+                          ? <input type="number" step="0.01" className={`${IIC} text-right w-20` + reqCls(ed.rate ?? l.rate)} value={ed.rate ?? l.rate} onChange={ivNum('rate')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums text-foreground whitespace-nowrap float-right">{fmtPct(l.rate)}</span>}
                       </td>
                     )}
@@ -953,7 +1223,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('startDate') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input type="date" className={IIC} value={ed.startDate ?? l.startDate ?? ''} onChange={iv(l.id,'startDate')} onClick={e => e.stopPropagation()} />
+                          ? <input type="date" className={IIC} value={ed.startDate ?? l.startDate ?? ''} onChange={iv('startDate')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums text-foreground whitespace-nowrap">{fmtDateDisplay(l.startDate || '')}</span>}
                       </td>
                     )}
@@ -961,7 +1231,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('maturity') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input type="date" className={IIC + reqCls(ed.maturityDate ?? l.maturityDate)} value={ed.maturityDate ?? l.maturityDate ?? ''} onChange={iv(l.id,'maturityDate')} onClick={e => e.stopPropagation()} />
+                          ? <input type="date" className={IIC + reqCls(ed.maturityDate ?? l.maturityDate)} value={ed.maturityDate ?? l.maturityDate ?? ''} onChange={iv('maturityDate')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums text-foreground whitespace-nowrap">{fmtDateDisplay(l.maturityDate)}</span>}
                       </td>
                     )}
@@ -969,7 +1239,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('tenureMonths') && (
                       <td className="px-3 py-1.5 text-right">
                         {ie
-                          ? <input type="number" min="1" className={`${IIC} text-right w-20`} value={ed.tenureMonths ?? l.tenureMonths ?? ''} onChange={ivNum(l.id,'tenureMonths')} onClick={e => e.stopPropagation()} placeholder={l.startDate && l.maturityDate ? String(Math.round((new Date(l.maturityDate).getTime() - new Date(l.startDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44))) : ''} />
+                          ? <input type="number" min="1" className={`${IIC} text-right w-20`} value={ed.tenureMonths ?? l.tenureMonths ?? ''} onChange={ivNum('tenureMonths')} onClick={e => e.stopPropagation()} placeholder={l.startDate && l.maturityDate ? String(Math.round((new Date(l.maturityDate).getTime() - new Date(l.startDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44))) : ''} />
                           : <span className="tabular-nums text-foreground whitespace-nowrap">
                               {l.tenureMonths ?? (l.startDate && l.maturityDate ? Math.round((new Date(l.maturityDate).getTime() - new Date(l.startDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)) : null) ?? '—'}
                               {!l.tenureMonths && l.startDate && l.maturityDate && <span className="text-foreground text-[10px] ml-1" title="Auto-calculated">~</span>}
@@ -980,7 +1250,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('firstPaymentDate') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input type="date" className={IIC} value={ed.firstPaymentDate ?? l.firstPaymentDate ?? ''} onChange={iv(l.id,'firstPaymentDate')} onClick={e => e.stopPropagation()} />
+                          ? <input type="date" className={IIC} value={ed.firstPaymentDate ?? l.firstPaymentDate ?? ''} onChange={iv('firstPaymentDate')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums text-foreground whitespace-nowrap">{l.firstPaymentDate ? fmtDateDisplay(l.firstPaymentDate) : '—'}</span>}
                       </td>
                     )}
@@ -988,7 +1258,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('currency') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <select className={`${IIC} cursor-pointer`} value={ed.currency ?? l.currency} onChange={ivSel(l.id,'currency')} onClick={e => e.stopPropagation()}>
+                          ? <select className={`${IIC} cursor-pointer`} value={ed.currency ?? l.currency} onChange={ivSel('currency')} onClick={e => e.stopPropagation()}>
                               <option value="CAD">CAD</option>
                               <option value="USD">USD</option>
                               <option value="EUR">EUR</option>
@@ -1005,7 +1275,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                               className={`${IIC} text-right w-28 font-mono`}
                               value={ed.monthlyPayment ?? l.monthlyPayment ?? ''}
                               placeholder={(() => { const p = calcMonthlyPayment(l); return p ? Math.round(p).toString() : ''; })()}
-                              onChange={ivNum(l.id,'monthlyPayment')} onClick={e => e.stopPropagation()} />
+                              onChange={ivNum('monthlyPayment')} onClick={e => e.stopPropagation()} />
                           : (() => {
                               const pmt = calcMonthlyPayment(l);
                               return pmt !== null
@@ -1018,7 +1288,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('origAmt') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input type="number" className={`${IIC} text-right` + reqCls(ed.originalPrincipal ?? l.originalPrincipal)} value={ed.originalPrincipal ?? l.originalPrincipal} onChange={ivNum(l.id,'originalPrincipal')} onClick={e => e.stopPropagation()} />
+                          ? <input type="number" className={`${IIC} text-right` + reqCls(ed.originalPrincipal ?? l.originalPrincipal)} value={ed.originalPrincipal ?? l.originalPrincipal} onChange={ivNum('originalPrincipal')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums text-foreground whitespace-nowrap float-right">{fmtCurrency(l.originalPrincipal, 'CAD')}</span>}
                       </td>
                     )}
@@ -1031,7 +1301,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                             ? <input type="number" step="0.0001" min="0.0001"
                                 className={`${IIC} text-right w-24`}
                                 value={ed.fxRateToCAD ?? getFxRate(l)}
-                                onChange={e => setEdit(l.id, 'fxRateToCAD', parseFloat(e.target.value) || getFxRate(l))} />
+                                onChange={e => setEdit('fxRateToCAD', parseFloat(e.target.value) || getFxRate(l))} />
                             : <Badge variant="outline" className="tabular-nums font-mono">{getFxRate(l).toFixed(4)}</Badge>}
                       </td>
                     )}
@@ -1039,15 +1309,30 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('balance') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input type="number" className={`${IIC} text-right` + reqCls(ed.originalPrincipal ?? l.originalPrincipal)} value={ed.originalPrincipal ?? l.originalPrincipal} onChange={ivNum(l.id,'originalPrincipal')} onClick={e => e.stopPropagation()} />
+                          ? <input type="number" className={`${IIC} text-right` + reqCls(ed.originalPrincipal ?? l.originalPrincipal)} value={ed.originalPrincipal ?? l.originalPrincipal} onChange={ivNum('originalPrincipal')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums font-semibold text-foreground whitespace-nowrap float-right">{fmtCurrency(l.originalPrincipal * getFxRate(l), 'CAD')}</span>}
+                      </td>
+                    )}
+                    {/* Closing Balance */}
+                    {isVisible('closingBalance') && (
+                      <td className="px-3 py-1.5">
+                        {ie
+                          ? <input type="number" className={`${IIC} text-right`} value={ed.closingBalance ?? l.closingBalance ?? ''} onChange={ivNum('closingBalance')} onClick={e => e.stopPropagation()} />
+                          : <span className="tabular-nums font-semibold text-foreground whitespace-nowrap float-right">
+                              {(() => {
+                                const val = l.closingBalance ?? l.currentBalance;
+                                return val != null && val !== 0
+                                  ? fmtCurrency(val * getFxRate(l), 'CAD')
+                                  : <span className="text-muted-foreground text-xs">—</span>;
+                              })()}
+                            </span>}
                       </td>
                     )}
                     {/* GL Principal */}
                     {isVisible('glPrincipal') && (
                       <td className="px-3 py-1.5 text-center">
                         {ie
-                          ? <GLCombobox iic={IIC} value={ed.glPrincipalAccount ?? l.glPrincipalAccount ?? ''} onChange={v => setEdit(l.id, 'glPrincipalAccount', v)} onClick={e => e.stopPropagation()} />
+                          ? <GLCombobox iic={IIC} value={ed.glPrincipalAccount ?? l.glPrincipalAccount ?? ''} onChange={v => setEdit('glPrincipalAccount', v)} onClick={e => e.stopPropagation()} />
                           : <span className="text-foreground whitespace-nowrap font-mono">{l.glPrincipalAccount}</span>}
                       </td>
                     )}
@@ -1055,7 +1340,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('dayCount') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <select className={`${IIC} cursor-pointer font-mono`} value={ed.dayCountBasis ?? l.dayCountBasis} onChange={ivSel(l.id,'dayCountBasis')} onClick={e => e.stopPropagation()}>
+                          ? <select className={`${IIC} cursor-pointer font-mono`} value={ed.dayCountBasis ?? l.dayCountBasis} onChange={ivSel('dayCountBasis')} onClick={e => e.stopPropagation()}>
                               <option value="ACT/365">ACT/365</option>
                               <option value="ACT/360">ACT/360</option>
                               <option value="30/360">30/360</option>
@@ -1067,7 +1352,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('paymentType') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <select className={`${IIC} cursor-pointer`} value={ed.paymentType ?? l.paymentType} onChange={ivSel(l.id,'paymentType')} onClick={e => e.stopPropagation()}>
+                          ? <select className={`${IIC} cursor-pointer`} value={ed.paymentType ?? l.paymentType} onChange={ivSel('paymentType')} onClick={e => e.stopPropagation()}>
                               <option value="P&I">P&amp;I</option>
                               <option value="Interest-only">Interest-only</option>
                               <option value="Balloon">Balloon</option>
@@ -1079,7 +1364,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('compoundingFreq') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <select className={`${IIC} cursor-pointer`} value={ed.compoundingFrequency ?? l.compoundingFrequency ?? 'Monthly'} onChange={ivSel(l.id,'compoundingFrequency')} onClick={e => e.stopPropagation()}>
+                          ? <select className={`${IIC} cursor-pointer`} value={ed.compoundingFrequency ?? l.compoundingFrequency ?? 'Monthly'} onChange={ivSel('compoundingFrequency')} onClick={e => e.stopPropagation()}>
                               <option value="Monthly">Monthly</option>
                               <option value="Quarterly">Quarterly</option>
                               <option value="Semi-annual">Semi-annual</option>
@@ -1092,7 +1377,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('interestOnlyPeriod') && (
                       <td className="px-3 py-1.5 text-right">
                         {ie
-                          ? <input type="number" min="0" className={`${IIC} text-right w-20`} value={ed.interestOnlyPeriodMonths ?? l.interestOnlyPeriodMonths ?? ''} onChange={ivNum(l.id,'interestOnlyPeriodMonths')} onClick={e => e.stopPropagation()} />
+                          ? <input type="number" min="0" className={`${IIC} text-right w-20`} value={ed.interestOnlyPeriodMonths ?? l.interestOnlyPeriodMonths ?? ''} onChange={ivNum('interestOnlyPeriodMonths')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums text-foreground whitespace-nowrap">{l.interestOnlyPeriodMonths ?? '—'}</span>}
                       </td>
                     )}
@@ -1100,7 +1385,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('balloonAmt') && (
                       <td className="px-3 py-1.5 text-right">
                         {ie
-                          ? <input type="number" min="0" className={`${IIC} text-right w-28`} value={ed.balloonAmount ?? l.balloonAmount ?? ''} onChange={ivNum(l.id,'balloonAmount')} onClick={e => e.stopPropagation()} />
+                          ? <input type="number" min="0" className={`${IIC} text-right w-28`} value={ed.balloonAmount ?? l.balloonAmount ?? ''} onChange={ivNum('balloonAmount')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums text-foreground whitespace-nowrap">{l.balloonAmount ? fmtCurrency(l.balloonAmount, l.currency) : '—'}</span>}
                       </td>
                     )}
@@ -1108,7 +1393,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('status') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <select className={`${IIC} cursor-pointer`} value={ed.status ?? l.status} onChange={ivSel(l.id,'status')} onClick={e => e.stopPropagation()}>
+                          ? <select className={`${IIC} cursor-pointer`} value={ed.status ?? l.status} onChange={ivSel('status')} onClick={e => e.stopPropagation()}>
                               <option value="Active">Active</option>
                               <option value="Inactive">Inactive</option>
                               <option value="Closed">Closed</option>
@@ -1128,15 +1413,17 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                       />
                     </td>
                     {/* Actions */}
-                    <td className="px-3 py-1.5 text-center w-10" onClick={e => e.stopPropagation()}>
-                      {l.status === 'Inactive' ? (
-                        <button className="p-1.5 hover:bg-emerald-50 rounded-lg transition-colors" title="Restore loan" onClick={() => handleRestore(l)}>
-                          <Eye className="w-3.5 h-3.5 text-emerald-600" />
-                        </button>
+                    <td className="px-3 py-1.5 text-center" onClick={e => e.stopPropagation()}>
+                      {ie ? (
+                        <div className="flex items-center gap-1 justify-center">
+                          <button onClick={saveEdit} className="p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-600" title="Save"><Check className="w-3.5 h-3.5" /></button>
+                          <button onClick={cancelEdit} className="p-1.5 hover:bg-muted rounded-lg text-foreground" title="Cancel"><X className="w-3.5 h-3.5" /></button>
+                        </div>
                       ) : (
-                        <button className="p-1.5 hover:bg-muted rounded-lg transition-colors" title="Archive loan (hide without deleting)" onClick={() => handleArchive(l)}>
-                          <EyeOff className="w-3.5 h-3.5 text-foreground hover:text-foreground" />
-                        </button>
+                        <div className="flex items-center gap-1 justify-center">
+                          <button onClick={() => startEdit(l.id)} className="p-1.5 hover:bg-muted rounded-lg text-foreground" title="Edit"><Pencil className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => deleteLoan(l.id)} className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -1156,7 +1443,8 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                   + (isVisible('tenureMonths') ? 1 : 0)
                   + (isVisible('firstPaymentDate') ? 1 : 0)
                   + (isVisible('currency') ? 1 : 0);
-                const ftTrailing = (isVisible('glPrincipal') ? 1 : 0)
+                const ftTrailing = (isVisible('closingBalance') ? 1 : 0)
+                  + (isVisible('glPrincipal') ? 1 : 0)
                   + (isVisible('dayCount') ? 1 : 0)
                   + (isVisible('paymentType') ? 1 : 0)
                   + (isVisible('compoundingFreq') ? 1 : 0)
@@ -1187,6 +1475,11 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                       {isVisible('balance') && (
                         <td className="px-3 py-2 text-right tabular-nums text-sm font-bold text-foreground whitespace-nowrap">
                           {fmtCurrency(totalConvertedAmt, 'CAD')}
+                        </td>
+                      )}
+                      {isVisible('closingBalance') && (
+                        <td className="px-3 py-2 text-right tabular-nums text-sm font-bold text-foreground whitespace-nowrap">
+                          {fmtCurrency(filteredLoans.reduce((s, l) => s + ((l.closingBalance ?? l.currentBalance ?? 0) * getFxRate(l)), 0), 'CAD')}
                         </td>
                       )}
                       <td colSpan={ftTrailing} className="px-3 py-2 text-right text-xs text-foreground italic whitespace-nowrap">
@@ -1367,74 +1660,35 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
       {/* Add Loan Inline Page — tabbed */}
       {pageView === 'add' && (
         <div className="flex flex-col">
-          {/* Header: breadcrumb + tab switcher */}
-          <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-border">
-            <div className="flex items-center gap-2">
-              <button onClick={() => setPageView('list')} className="flex items-center gap-1.5 text-sm text-foreground hover:text-foreground transition-colors">
-                <ArrowLeft className="w-4 h-4" /> Back to Loans
-              </button>
-              <span className="text-foreground mx-1">/</span>
-              <span className="text-sm font-semibold text-foreground">Add Loan</span>
-            </div>
-            <div className="flex items-center bg-muted rounded-lg p-0.5 gap-0.5">
-              {([
-                { id: 'ocr'    as const, label: 'Add from OCR',  icon: <FileSearch className="w-3 h-3" /> },
-                { id: 'manual' as const, label: 'Add Manually',  icon: <Plus className="w-3 h-3" /> },
-              ]).map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setAddTab(t.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                    addTab === t.id
-                      ? 'bg-background text-foreground shadow-sm border border-border'
-                      : 'text-foreground hover:text-foreground'
-                  }`}
-                >
-                  {t.icon} {t.label}
-                </button>
-              ))}
-            </div>
+          {/* Header: breadcrumb only */}
+          <div className="flex items-center px-6 pt-5 pb-3 border-b border-border">
+            <button onClick={() => setPageView('list')} className="flex items-center gap-1.5 text-sm text-foreground hover:text-foreground transition-colors">
+              <ArrowLeft className="w-4 h-4" /> Back to Loans
+            </button>
+            <span className="text-foreground mx-1">/</span>
+            <span className="text-sm font-semibold text-foreground">Upload Loan</span>
           </div>
-          {/* Tab content */}
-          {addTab === 'ocr' && (
-            <OcrImportPage
-              onBack={() => setPageView('list')}
-              onImport={(loans) => {
-                // For each extracted loan, create a Loan Agreement document (LAG folder)
-                // and link it back via wpRefs
-                const nextLagNum = banDocuments.filter(d => d.folder === 'LAG').length + 1;
-                loans.forEach((loan, i) => {
-                  const lagId   = `LAG-${nextLagNum + i}`;
-                  const lagName = `${loan.name.replace(/\s+/g, '_')}_Agreement_${new Date().toISOString().slice(0, 10)}.pdf`;
-                  addBanDocument({ id: lagId, code: lagId, name: lagName, folder: 'LAG' });
-                  addLoan({ ...loan, wpRefs: [...(loan.wpRefs ?? []), lagId] });
-                });
-                const ids = new Set(loans.map(l => l.id));
-                setOcrPendingIds(ids);
-                setTableEditMode(true);
-                setTableEdits({});
-                setPageView('list');
-                toast.success(
-                  `${loans.length} loan${loans.length !== 1 ? 's' : ''} extracted — documents saved to Loan Agreements folder`,
-                  { duration: 5000 }
-                );
-              }}
-              hideHeader
-            />
-          )}
-          {addTab === 'manual' && (
-            <div className="px-[25%] py-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 160px)' }}>
-              <StyledCard>
-                <div className="px-6 py-5">
-                  <AddLoanFormContent form={form} setForm={setForm} />
-                  <div className="flex justify-end gap-2 pt-4 border-t border-border mt-4">
-                    <Button variant="secondary" onClick={() => setPageView('list')}>Cancel</Button>
-                    <Button variant="default" onClick={handleSave}><Plus className="w-3.5 h-3.5 mr-1" /> Add Loan</Button>
-                  </div>
-                </div>
-              </StyledCard>
-            </div>
-          )}
+          {/* OCR upload — only option */}
+          <OcrImportPage
+            onBack={() => setPageView('list')}
+            onImport={(loans) => {
+              const nextLagNum = banDocuments.filter(d => d.folder === 'LAG').length + 1;
+              loans.forEach((loan, i) => {
+                const lagId   = `LAG-${nextLagNum + i}`;
+                const lagName = `${loan.name.replace(/\s+/g, '_')}_Agreement_${new Date().toISOString().slice(0, 10)}.pdf`;
+                addBanDocument({ id: lagId, code: lagId, name: lagName, folder: 'LAG' });
+                addLoan({ ...loan, wpRefs: [...(loan.wpRefs ?? []), lagId] });
+              });
+              const ids = new Set(loans.map(l => l.id));
+              setOcrPendingIds(ids);
+              setPageView('list');
+              toast.success(
+                `${loans.length} loan${loans.length !== 1 ? 's' : ''} extracted — documents saved to Loan Agreements folder`,
+                { duration: 5000 }
+              );
+            }}
+            hideHeader
+          />
         </div>
       )}
 

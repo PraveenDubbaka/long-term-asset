@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Download, Plus } from 'lucide-react';
-import { useTableColumns, ColumnToggleButton, useColumnResize, ThResizable, type ColDef } from '@/components/table-utils';
+import { useTableColumns, useColumnResize, ThResizable, type ColDef } from '@/components/table-utils';
 import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
 import { StyledCard } from '@/components/wp-ui/card';
@@ -120,7 +120,6 @@ export function InvHoldingsTab() {
           <Button variant="secondary" size="sm" onClick={handleExport}>
             <Download className="w-3.5 h-3.5" /> Export
           </Button>
-          <ColumnToggleButton columns={INV_COLS} isVisible={invVisible} onToggle={invToggle} />
           <Button variant="default" size="sm" onClick={() => toast.success('Use Import Excel to add positions')}>
             <Plus className="w-3.5 h-3.5" /> Add Holding
           </Button>

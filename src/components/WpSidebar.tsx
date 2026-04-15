@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ChevronDown, ChevronRight, ChevronLeft, Search, Plus, Expand, Trash2, Folder, Headphones, Check, FileText, FileBarChart, StickyNote, Table, Copy, Pencil, FolderInput, MoreVertical, GripVertical, X, Save, Files, Settings, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronLeft, Search, Plus, Expand, Trash2, Folder, Headphones, Check, FileText, FileBarChart, StickyNote, Table, Copy, Pencil, FolderInput, MoreVertical, GripVertical, X, Save, Files, Settings, RefreshCw, ArrowUpDown, Hash, HandHelping, AlertCircle, MessageSquare, FilePlus, BookOpen } from "lucide-react";
 import { Input } from "@/components/wp-ui/input";
 import { Button } from "@/components/wp-ui/button";
 import { Checkbox } from "@/components/wp-ui/checkbox";
@@ -732,6 +732,10 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["co"]));
   const [allSectionsExpanded, setAllSectionsExpanded] = useState(false);
   const [addedWpChildren, setAddedWpChildren] = useState<Record<string, Array<{ id: string; label: string; route: string }>>>({});
+  const [renamingWpId, setRenamingWpId] = useState<string | null>(null);
+  const [wpRenameValue, setWpRenameValue] = useState('');
+  const [deleteConfirmWp, setDeleteConfirmWp] = useState<{ id: string; label: string } | null>(null);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
   const [showSignoffs, setShowSignoffs] = useState(false);
   const banDocuments = useStore(s => s.banDocuments);
 
@@ -1022,110 +1026,210 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
                   return <Folder className="h-4 w-4 text-primary flex-shrink-0" />;
                 };
 
-                const addWpToFolder = (nodeId: string, label: string, route: string) => {
+                // Add workbook directly after the clicked book node — auto-increments number (A1, A2, A3…)
+                const addWpAfterNode = (nodeId: string, parentCode: string, wpType: string, route: string) => {
                   const engId = location.pathname.split("/engagements/")[1]?.split("/")[0];
                   const id = `wp-added-${Date.now()}`;
-                  setAddedWpChildren(prev => ({
-                    ...prev,
-                    [nodeId]: [...(prev[nodeId] ?? []), { id, label, route }],
-                  }));
-                  setExpandedSections(prev => new Set([...prev, nodeId]));
-                  if (engId) navigate(`/engagements/${engId}/${route}?new=true`);
+                  let computedLabel = '';
+                  setAddedWpChildren(prev => {
+                    const existing = prev[nodeId] ?? [];
+                    const nextNum = existing.length + 1;
+                    computedLabel = `${parentCode}${nextNum} ${wpType}`;
+                    return {
+                      ...prev,
+                      [nodeId]: [...existing, { id, label: computedLabel, route }],
+                    };
+                  });
+                  if (engId) navigate({ pathname: `/engagements/${engId}/${route}`, search: `?new=true&label=${encodeURIComponent(computedLabel)}` });
                 };
 
                 const renderNode = (node: SectionNode, depth: number = 0): React.ReactNode => {
-                  const dynamicChildren: SectionNode[] = (addedWpChildren[node.id] ?? []).map(c => ({
-                    id: c.id, label: c.label, icon: 'folder' as const, route: `${c.route}?new=true`,
-                  }));
-                  const allChildren = [...(node.children ?? []), ...dynamicChildren];
-                  const hasChildren = allChildren.length > 0;
+                  const hasChildren = (node.children ?? []).length > 0;
                   const isOpen = expandedSections.has(node.id);
-                  const isLeaf = !hasChildren;
+                  const isLeafBook = node.icon === 'book';
                   const engId = location.pathname.split("/engagements/")[1]?.split("/")[0];
+                  // Items added after this specific node (rendered as siblings right below)
+                  const addedAfter = addedWpChildren[node.id] ?? [];
 
                   return (
-                    <div key={node.id} className="group/node">
-                      <div
-                        className="flex items-center gap-1.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted transition-colors text-sm"
-                        style={{ paddingLeft: `${depth * 16 + 8}px` }}
-                        onClick={() => {
-                          if (node.route) {
-                            if (engId) navigate(`/engagements/${engId}/${node.route}`);
-                          } else if (hasChildren || node.children) {
-                            setExpandedSections(prev => {
-                              const next = new Set(prev);
-                              if (next.has(node.id)) next.delete(node.id);
-                              else next.add(node.id);
-                              return next;
-                            });
-                          }
-                        }}
-                      >
-                        {hasChildren ? (
-                          isOpen ? <ChevronDown className="h-3.5 w-3.5 text-foreground flex-shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
-                        ) : (
-                          <span className="w-3.5 flex-shrink-0" />
-                        )}
-                        {renderIcon(isLeaf ? node.icon : "folder")}
-                        {node.code && <span className="font-semibold text-primary">{node.code}</span>}
-                        <span className="truncate flex-1 text-foreground">{node.label}</span>
-                        {node.hasPlus && <Plus className="h-4 w-4 text-foreground hover:text-foreground flex-shrink-0" />}
-                        {/* Kebab menu */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              className="opacity-0 group-hover/node:opacity-100 p-0.5 rounded hover:bg-primary/10 transition-all text-foreground flex-shrink-0"
-                              onClick={e => e.stopPropagation()}
-                              title="More options"
-                            >
-                              <MoreVertical className="h-3.5 w-3.5" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" side="right" className="min-w-[180px]">
-                            <DropdownMenuItem>
-                              <Copy className="h-4 w-4 mr-2" /> Duplicate
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Pencil className="h-4 w-4 mr-2" /> Rename
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <FolderInput className="h-4 w-4 mr-2" /> Move to different folder
-                            </DropdownMenuItem>
-                            {/* Add Workpaper submenu — shown for folder nodes */}
-                            {!isLeaf && (
-                              <>
+                    <React.Fragment key={node.id}>
+                      <div className="group/node">
+                        <div
+                          className="flex items-center gap-1.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted transition-colors text-sm"
+                          style={{ paddingLeft: `${depth * 16 + 8}px` }}
+                          onClick={() => {
+                            if (node.route) {
+                              if (engId) navigate(`/engagements/${engId}/${node.route}`);
+                            } else if (hasChildren) {
+                              setExpandedSections(prev => {
+                                const next = new Set(prev);
+                                if (next.has(node.id)) next.delete(node.id);
+                                else next.add(node.id);
+                                return next;
+                              });
+                            }
+                          }}
+                        >
+                          {hasChildren ? (
+                            isOpen ? <ChevronDown className="h-3.5 w-3.5 text-foreground flex-shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
+                          ) : (
+                            <span className="w-3.5 flex-shrink-0" />
+                          )}
+                          {renderIcon(node.icon ?? (hasChildren ? "folder" : undefined))}
+                          {node.code && <span className="font-semibold text-primary">{node.code}</span>}
+                          <span className="truncate flex-1 text-foreground">{node.label}</span>
+                          {node.hasPlus && <Plus className="h-4 w-4 text-foreground hover:text-foreground flex-shrink-0" />}
+
+                          {/* Kebab — only on book (leadsheet) nodes */}
+                          {isLeafBook && (
+                            <div onClick={e => e.stopPropagation()}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  className="opacity-0 group-hover/node:opacity-100 p-0.5 rounded hover:bg-primary/10 transition-all text-foreground flex-shrink-0"
+                                  onClick={e => e.stopPropagation()}
+                                  title="More options"
+                                >
+                                  <MoreVertical className="h-3.5 w-3.5" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start" side="right" className="min-w-[190px]">
+                                <DropdownMenuItem><ArrowUpDown className="h-4 w-4 mr-2" /> Reorder</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem><HandHelping className="h-4 w-4 mr-2" /> Raise a request</DropdownMenuItem>
+                                <DropdownMenuItem><AlertCircle className="h-4 w-4 mr-2" /> Raise issue</DropdownMenuItem>
+                                <DropdownMenuItem><MessageSquare className="h-4 w-4 mr-2" /> Add comment</DropdownMenuItem>
+                                <DropdownMenuItem><FilePlus className="h-4 w-4 mr-2" /> Add document</DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuSub>
                                   <DropdownMenuSubTrigger>
-                                    <Plus className="h-4 w-4 mr-2" /> Add Workpaper
+                                    <BookOpen className="h-4 w-4 mr-2" /> Add Workpapers
                                   </DropdownMenuSubTrigger>
                                   <DropdownMenuSubContent>
-                                    <DropdownMenuItem onClick={() => addWpToFolder(node.id, 'Long-term Asset', 'long-term-asset')}>
+                                    <DropdownMenuItem onClick={() => addWpAfterNode(node.id, node.code ?? '', 'Long-term Asset', 'long-term-asset')}>
                                       <Folder className="h-4 w-4 mr-2 text-primary" /> Long-term Asset
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => addWpToFolder(node.id, 'Capital Asset', 'capital-asset')}>
+                                    <DropdownMenuItem onClick={() => addWpAfterNode(node.id, node.code ?? '', 'Capital Asset', 'capital-asset')}>
                                       <Folder className="h-4 w-4 mr-2 text-primary" /> Capital Asset
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => addWpToFolder(node.id, 'Investment', 'investment')}>
+                                    <DropdownMenuItem onClick={() => addWpAfterNode(node.id, node.code ?? '', 'Investment', 'investment')}>
                                       <Folder className="h-4 w-4 mr-2 text-primary" /> Investment
                                     </DropdownMenuItem>
                                   </DropdownMenuSubContent>
                                 </DropdownMenuSub>
-                              </>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive hover:!bg-destructive/10 hover:!text-destructive [&>svg]:text-destructive [&:hover>svg]:text-destructive">
-                              <Trash2 className="h-4 w-4 mr-2" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                      {isOpen && hasChildren && (
-                        <div>
-                          {allChildren.map(child => renderNode(child, depth + 1))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
+                        {isOpen && hasChildren && (
+                          <div>
+                            {node.children!.map(child => renderNode(child, depth + 1))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Workbooks added directly after this node — rendered as siblings at same depth */}
+                      {addedAfter.map(c => (
+                        <div key={c.id} className="group/node">
+                          <div
+                            className="flex items-center gap-1.5 py-1.5 px-2 rounded-md cursor-pointer hover:bg-muted transition-colors text-sm"
+                            style={{ paddingLeft: `${depth * 16 + 8}px` }}
+                            onClick={() => { if (engId) navigate({ pathname: `/engagements/${engId}/${c.route}`, search: `?new=true&label=${encodeURIComponent(c.label)}` }); }}
+                          >
+                            <span className="w-3.5 flex-shrink-0" />
+                            {renderIcon('book')}
+                            {(() => {
+                              // Split "A1 Long-term Asset" → prefix "A1", suffix "Long-term Asset"
+                              const spaceIdx = c.label.indexOf(' ');
+                              const prefix = spaceIdx > -1 ? c.label.slice(0, spaceIdx) : c.label;
+                              const suffix = spaceIdx > -1 ? c.label.slice(spaceIdx + 1) : '';
+                              const saveRename = (val: string) => {
+                                const newLabel = val.trim() ? `${prefix} ${val.trim()}` : c.label;
+                                setAddedWpChildren(prev => {
+                                  const updated = { ...prev };
+                                  for (const key of Object.keys(updated)) {
+                                    updated[key] = updated[key].map(item => item.id === c.id ? { ...item, label: newLabel } : item);
+                                  }
+                                  return updated;
+                                });
+                                setRenamingWpId(null);
+                              };
+                              return (
+                                <>
+                                  <span className="font-semibold text-primary flex-shrink-0">{prefix}</span>
+                                  {renamingWpId === c.id ? (
+                                    <input
+                                      autoFocus
+                                      className="flex-1 text-xs border border-primary/40 rounded px-1 py-0.5 bg-background outline-none min-w-0 ml-1"
+                                      value={wpRenameValue}
+                                      onChange={e => setWpRenameValue(e.target.value)}
+                                      onClick={e => e.stopPropagation()}
+                                      onKeyDown={e => {
+                                        if (e.key === 'Enter') saveRename(wpRenameValue);
+                                        else if (e.key === 'Escape') setRenamingWpId(null);
+                                        e.stopPropagation();
+                                      }}
+                                      onBlur={() => saveRename(wpRenameValue)}
+                                    />
+                                  ) : (
+                                    <span className="truncate flex-1 text-foreground ml-1">{suffix}</span>
+                                  )}
+                                </>
+                              );
+                            })()}
+                            {/* Kebab for added workbook items */}
+                            <div onClick={e => e.stopPropagation()}>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    className="opacity-0 group-hover/node:opacity-100 p-0.5 rounded hover:bg-primary/10 transition-all text-foreground flex-shrink-0"
+                                    title="More options"
+                                  >
+                                    <MoreVertical className="h-3.5 w-3.5" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" side="right" className="min-w-[190px]">
+                                  <DropdownMenuItem><ArrowUpDown className="h-4 w-4 mr-2" /> Reorder</DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem><HandHelping className="h-4 w-4 mr-2" /> Raise a request</DropdownMenuItem>
+                                  <DropdownMenuItem><AlertCircle className="h-4 w-4 mr-2" /> Raise issue</DropdownMenuItem>
+                                  <DropdownMenuItem><MessageSquare className="h-4 w-4 mr-2" /> Add comment</DropdownMenuItem>
+                                  <DropdownMenuItem><FilePlus className="h-4 w-4 mr-2" /> Add document</DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger>
+                                      <BookOpen className="h-4 w-4 mr-2" /> Add Workpapers
+                                    </DropdownMenuSubTrigger>
+                                    <DropdownMenuSubContent>
+                                      <DropdownMenuItem onClick={() => addWpAfterNode(node.id, node.code ?? '', 'Long-term Asset', 'long-term-asset')}>
+                                        <Folder className="h-4 w-4 mr-2 text-primary" /> Long-term Asset
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => addWpAfterNode(node.id, node.code ?? '', 'Capital Asset', 'capital-asset')}>
+                                        <Folder className="h-4 w-4 mr-2 text-primary" /> Capital Asset
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => addWpAfterNode(node.id, node.code ?? '', 'Investment', 'investment')}>
+                                        <Folder className="h-4 w-4 mr-2 text-primary" /> Investment
+                                      </DropdownMenuItem>
+                                    </DropdownMenuSubContent>
+                                  </DropdownMenuSub>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => { const si = c.label.indexOf(' '); setWpRenameValue(si > -1 ? c.label.slice(si + 1) : c.label); setRenamingWpId(c.id); }}>
+                                    <Pencil className="h-4 w-4 mr-2" /> Rename
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="text-destructive hover:!bg-destructive/10 hover:!text-destructive [&>svg]:text-destructive [&:hover>svg]:text-destructive"
+                                    onClick={() => { setDeleteConfirmWp({ id: c.id, label: c.label }); setDeleteConfirmInput(''); }}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" /> Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </React.Fragment>
                   );
                 };
 
@@ -1390,7 +1494,7 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
             <DialogTitle>Rename Checklist</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <Input value={renameValue} onChange={e => setRenameValue(e.target.value)} placeholder="Enter new name" className="w-full" autoFocus onKeyDown={e => {
+            <Input value={renameValue} onChange={e => setWpRenameValue(e.target.value)} placeholder="Enter new name" className="w-full" autoFocus onKeyDown={e => {
             if (e.key === "Enter") handleRenameConfirm();
           }} />
           </div>
@@ -1612,6 +1716,91 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
             </Button>
             <Button variant="default" onClick={() => setWpSettingsOpen(false)}>
               Save Settings
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete Confirmation Modal ──────────────────────────────── */}
+      <Dialog open={deleteConfirmWp !== null} onOpenChange={open => { if (!open) { setDeleteConfirmWp(null); setDeleteConfirmInput(''); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              Delete Workpaper
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-foreground">
+              <p className="font-medium text-destructive mb-1">This action cannot be undone.</p>
+              <p>All work done in <span className="font-semibold">{deleteConfirmWp?.label}</span> will be permanently lost and cannot be recovered.</p>
+            </div>
+
+            <div>
+              <p className="text-sm text-foreground mb-2">We recommend exporting your data before deleting:</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full border-dashed gap-2"
+                onClick={() => {
+                  const data = { workpaper: deleteConfirmWp?.label, exportedAt: new Date().toISOString(), message: "No data available for export in this demo." };
+                  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${(deleteConfirmWp?.label ?? 'workpaper').replace(/\s+/g, '_')}_export.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Export Workpaper Data
+              </Button>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">
+                Type <span className="font-mono font-bold text-destructive">DELETE</span> to confirm:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmInput}
+                onChange={e => setDeleteConfirmInput(e.target.value)}
+                placeholder="Type DELETE to confirm"
+                className="input-double-border h-9 w-full min-w-0 px-3 text-sm border border-[#dcdfe4] rounded-[10px] bg-white text-foreground placeholder:text-muted-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] focus:outline-none focus:ring-0 dark:bg-card dark:border-[hsl(220_15%_30%)]"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 pt-2">
+            <Button variant="outline" onClick={() => { setDeleteConfirmWp(null); setDeleteConfirmInput(''); }}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteConfirmInput.toLowerCase() !== 'delete'}
+              onClick={() => {
+                if (!deleteConfirmWp) return;
+                const targetId = deleteConfirmWp.id;
+                setAddedWpChildren(prev => {
+                  const next: typeof prev = {};
+                  for (const [key, arr] of Object.entries(prev)) {
+                    const filtered = arr.filter(c => c.id !== targetId);
+                    if (filtered.length > 0) next[key] = filtered;
+                  }
+                  return next;
+                });
+                setDeleteConfirmWp(null);
+                setDeleteConfirmInput('');
+              }}
+            >
+              Proceed &amp; Delete
             </Button>
           </DialogFooter>
         </DialogContent>
