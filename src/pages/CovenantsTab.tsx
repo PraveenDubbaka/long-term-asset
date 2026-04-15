@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Plus, AlertCircle, AlertTriangle, CheckCircle, XCircle, ChevronDown,
   ChevronRight, FileText, Trash2, Sparkles, TrendingDown, TrendingUp, Minus, Download,
-  BookOpen, Wand2, CheckSquare, Square, ArrowRight, Check, X, Edit3,
+  BookOpen, Wand2, CheckSquare, Square, ArrowRight, Check, X, Pencil,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { fmtCurrency, exportToExcel, buildCovenantsExport } from '../lib/utils';
@@ -59,10 +59,6 @@ export function CovenantsTab() {
   const [selectedLoanId, setSelectedLoanId] = useState<string>(loansWithCovenants[0]?.id || '');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const breached  = covenants.filter(c => c.status === 'Breached');
-  const atRisk    = covenants.filter(c => c.status === 'At Risk');
-  const ok        = covenants.filter(c => c.status === 'OK');
-
   const selectedLoan  = loans.find(l => l.id === selectedLoanId);
   const loanCovenants = selectedLoan ? covenants.filter(c => selectedLoan.covenantIds.includes(c.id)) : [];
 
@@ -71,61 +67,49 @@ export function CovenantsTab() {
     toast.success(`Exported ${covenants.length} covenant${covenants.length !== 1 ? 's' : ''}`);
   };
 
-  // table edit mode
-  const [tableEditMode, setTableEditMode] = useState(false);
-  const [tableEdits, setTableEdits]       = useState<Record<string, Partial<Covenant>>>({});
+  // per-row edit state
+  const [editingCovId, setEditingCovId]   = useState<string | null>(null);
+  const [rowEdits, setRowEdits]           = useState<Partial<Covenant>>({});
   const [draftNewRows, setDraftNewRows]   = useState<(Partial<Covenant> & { _newId: string })[]>([]);
-  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
 
   const IIC = 'input-double-border h-9 w-full min-w-0 px-3 text-xs border border-[#dcdfe4] rounded-[10px] bg-white text-foreground placeholder:text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] focus:outline-none focus:ring-0 dark:bg-card dark:border-[hsl(220_15%_30%)]';
 
-  const enterEditMode  = () => { setTableEditMode(true); setTableEdits({}); setDraftNewRows([]); setPendingDeletes(new Set()); };
-  const cancelEditMode = () => { setTableEditMode(false); setTableEdits({}); setDraftNewRows([]); setPendingDeletes(new Set()); };
-  const saveAllEdits   = () => {
-    Object.entries(tableEdits).forEach(([id, patch]) => updateCovenant(id, patch));
-    const newIds: string[] = [];
-    draftNewRows.forEach(r => {
-      const { _newId, ...data } = r;
-      void _newId;
-      const newId = `cov-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
-      addCovenant({ ...data, id: newId, loanId: selectedLoanId } as unknown as Covenant);
-      newIds.push(newId);
-    });
-    if (newIds.length > 0 && selectedLoan) {
-      updateLoan(selectedLoanId, { covenantIds: [...(selectedLoan.covenantIds ?? []), ...newIds] });
-    }
-    pendingDeletes.forEach(id => {
-      deleteCovenant(id);
-      if (selectedLoan) {
-        updateLoan(selectedLoanId, { covenantIds: (selectedLoan.covenantIds ?? []).filter(cid => cid !== id) });
-      }
-    });
-    toast.success('Covenants saved');
-    cancelEditMode();
+  const startEdit = (id: string) => {
+    const cov = covenants.find(c => c.id === id);
+    setEditingCovId(id);
+    setRowEdits(cov ? { ...cov } : {});
   };
-  const setEdit = (id: string, field: keyof Covenant, value: unknown) =>
-    setTableEdits(p => ({ ...p, [id]: { ...(p[id] ?? {}), [field]: value } }));
+  const saveEdit = () => {
+    if (!editingCovId) return;
+    updateCovenant(editingCovId, rowEdits);
+    toast.success('Covenant saved');
+    setEditingCovId(null);
+    setRowEdits({});
+  };
+  const cancelEdit = () => {
+    setEditingCovId(null);
+    setRowEdits({});
+  };
+  const setEdit = (field: keyof Covenant, value: unknown) =>
+    setRowEdits(p => ({ ...p, [field]: value }));
   const setDraftEdit = (_newId: string, field: keyof Covenant, value: unknown) =>
     setDraftNewRows(p => p.map(r => r._newId === _newId ? { ...r, [field]: value } : r));
 
   const mkId = () => `fl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
-  const applyTemplateToEdit = (id: string, templateId: string) => {
+  const applyTemplateToEdit = (_id: string, templateId: string) => {
     const tmpl = COVENANT_TEMPLATES.find(t => t.id === templateId);
-    if (!tmpl) { setEdit(id, 'name', templateId); return; }
-    setTableEdits(p => ({
+    if (!tmpl) { setEdit('name', templateId); return; }
+    setRowEdits(p => ({
       ...p,
-      [id]: {
-        ...(p[id] ?? {}),
-        name:              tmpl.id,
-        operator:          tmpl.operator,
-        threshold:         tmpl.threshold,
-        isRatioCovenant:   tmpl.isRatio,
-        useFormulaBuilder: true,
-        formula:           tmpl.label,
-        formulaLines:      tmpl.numeratorLines.map(l => ({ ...l, id: mkId() })),
-        denominatorLines:  (tmpl.denominatorLines ?? []).map(l => ({ ...l, id: mkId() })),
-      },
+      name:              tmpl.id,
+      operator:          tmpl.operator,
+      threshold:         tmpl.threshold,
+      isRatioCovenant:   tmpl.isRatio,
+      useFormulaBuilder: true,
+      formula:           tmpl.label,
+      formulaLines:      tmpl.numeratorLines.map(l => ({ ...l, id: mkId() })),
+      denominatorLines:  (tmpl.denominatorLines ?? []).map(l => ({ ...l, id: mkId() })),
     }));
   };
 
@@ -146,11 +130,18 @@ export function CovenantsTab() {
   };
   const addDraftRow = () => {
     const _newId = `new-${Date.now()}`;
-    setTableEditMode(true);
+    setEditingCovId(null);
+    setRowEdits({});
     setDraftNewRows(p => [...p, { _newId, type: 'Quantitative', status: 'Unknown', operator: '>=', threshold: 0, frequency: 'Annual', formulaLines: [], denominatorLines: [] }]);
   };
-  const toggleDelete = (id: string) =>
-    setPendingDeletes(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const handleDeleteCov = (id: string) => {
+    deleteCovenant(id);
+    if (selectedLoan) {
+      updateLoan(selectedLoanId, { covenantIds: (selectedLoan.covenantIds ?? []).filter(cid => cid !== id) });
+    }
+    if (editingCovId === id) { setEditingCovId(null); setRowEdits({}); }
+    toast.success('Covenant deleted');
+  };
 
   return (
     <div className="p-6 space-y-5">
@@ -165,46 +156,12 @@ export function CovenantsTab() {
           <Button variant="secondary" size="sm" onClick={handleExport}>
             <Download className="w-3.5 h-3.5 mr-1" /> Export
           </Button>
-          {tableEditMode ? (<>
-            <Button variant="secondary" size="sm" onClick={addDraftRow}>
-              <Plus className="w-3.5 h-3.5 mr-1" /> Add Row
-            </Button>
-            <Button variant="default" size="sm" onClick={saveAllEdits}>
-              <Check className="w-3.5 h-3.5 mr-1" /> Save
-            </Button>
-            <Button variant="secondary" size="sm" onClick={cancelEditMode}>
-              <X className="w-3.5 h-3.5 mr-1" /> Cancel
-            </Button>
-          </>) : (<>
-            <Button variant="secondary" size="sm" onClick={enterEditMode}>
-              <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit
-            </Button>
-            <Button variant="default" size="sm" onClick={addDraftRow}>
-              <Plus className="w-3.5 h-3.5 mr-1" /> Add Covenant
-            </Button>
-          </>)}
+          <Button variant="default" size="sm" onClick={addDraftRow}>
+            <Plus className="w-3.5 h-3.5 mr-1" /> Add Covenant
+          </Button>
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          { label: 'Breached',        count: breached.length,  icon: XCircle,       iconBg: 'bg-red-50',     iconColor: 'text-red-600'     },
-          { label: 'At Risk',         count: atRisk.length,    icon: AlertTriangle, iconBg: 'bg-amber-50',   iconColor: 'text-amber-500'   },
-          { label: 'OK',              count: ok.length,        icon: CheckCircle,   iconBg: 'bg-emerald-50', iconColor: 'text-emerald-600' },
-          { label: 'Total Covenants', count: covenants.length, icon: FileText,      iconBg: 'bg-primary/10', iconColor: 'text-primary'     },
-        ].map(s => (
-          <div key={s.label} className="flex items-center gap-3 px-5 py-3 bg-card border border-border shadow-sm cursor-default hover:shadow-md transition-shadow" style={{ borderRadius: '12px' }}>
-            <div className={`w-9 h-9 rounded-lg ${s.iconBg} flex items-center justify-center shrink-0`}>
-              <s.icon className={`w-4 h-4 ${s.iconColor}`} />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xl font-bold leading-none text-primary">{s.count}</span>
-              <span className="text-[11px] font-medium text-foreground leading-tight mt-0.5 whitespace-nowrap">{s.label}</span>
-            </div>
-          </div>
-        ))}
-      </div>
 
 
       {/* Loan Selector + Table */}
@@ -250,7 +207,6 @@ export function CovenantsTab() {
                   ['Current',     'text-right',  ''],
                   ['Projected',   'text-right',  'hidden lg:table-cell'],
                   ['Threshold',   'text-right',  ''],
-                  ['Headroom',    'text-right',  ''],
                   ['Frequency',   'text-right',  'hidden xl:table-cell'],
                   ['Last Tested', 'text-right',  'hidden xl:table-cell'],
                   ['Actions',     'text-center', ''],
@@ -263,17 +219,15 @@ export function CovenantsTab() {
             </thead>
             <tbody>
               {loanCovenants.length === 0 && draftNewRows.length === 0 ? (
-                <tr><td colSpan={11} className="px-5 py-12 text-center text-sm text-foreground">No covenants for this loan</td></tr>
+                <tr><td colSpan={10} className="px-5 py-12 text-center text-sm text-foreground">No covenants for this loan</td></tr>
               ) : null}
 
               {/* Existing covenant rows */}
               {loanCovenants.map(covBase => {
-                const cov = { ...covBase, ...(tableEdits[covBase.id] ?? {}) } as Covenant;
-                const isDeleted = pendingDeletes.has(covBase.id);
+                const isEditing = editingCovId === covBase.id;
+                const cov = { ...covBase, ...(isEditing ? rowEdits : {}) } as Covenant;
                 const cfg = STATUS_CONFIG[cov.status];
                 const Icon = cfg.icon;
-                const gauge = getGaugePercent(cov);
-                const margin = getMarginLabel(cov);
                 const isExpanded = expandedId === cov.id;
 
                 // Projected status
@@ -287,8 +241,9 @@ export function CovenantsTab() {
                 return (
                   <React.Fragment key={cov.id}>
                     <tr
-                      className={`border-b border-border transition-colors ${isDeleted ? 'opacity-40' : ''} ${
+                      className={`border-b border-border transition-colors ${
                         isExpanded ? 'bg-primary/[0.025]'
+                        : isEditing ? 'bg-primary/[0.03]'
                         : cov.status === 'Breached' ? 'bg-red-50/40 hover:bg-red-50/60'
                         : cov.status === 'At Risk'  ? 'bg-amber-50/30 hover:bg-amber-50/50'
                         : 'hover:bg-muted/30'
@@ -306,11 +261,11 @@ export function CovenantsTab() {
                       <td className="px-3 py-2 text-left">
                         <div className="flex items-center gap-1.5">
                           <Icon className={`w-3.5 h-3.5 ${cfg.color} flex-shrink-0`} />
-                          {tableEditMode ? (
+                          {isEditing ? (
                             <select
                               value={cov.name ?? ''}
                               onChange={e => applyTemplateToEdit(covBase.id, e.target.value)}
-                              className={`${IIC} font-medium ${isDeleted ? 'line-through' : ''}`}
+                              className={`${IIC} font-medium`}
                             >
                               <option value="">— Select covenant —</option>
                               {COVENANT_TEMPLATES.map(t => (
@@ -320,16 +275,13 @@ export function CovenantsTab() {
                           ) : (
                             <span className="font-medium text-sm text-foreground truncate">{cov.name || '—'}</span>
                           )}
-                          {cov.useFormulaBuilder && (
-                            <span title="Formula Builder"><Sparkles className="w-3 h-3 text-primary/50 flex-shrink-0" /></span>
-                          )}
                         </div>
                       </td>
 
                       {/* Type */}
                       <td className="px-3 py-2 text-left">
-                        {tableEditMode ? (
-                          <select value={cov.type} onChange={e => setEdit(covBase.id, 'type', e.target.value as Covenant['type'])} className={IIC}>
+                        {isEditing ? (
+                          <select value={cov.type} onChange={e => setEdit('type', e.target.value as Covenant['type'])} className={IIC}>
                             <option value="Quantitative">Quantitative</option>
                             <option value="Qualitative">Qualitative</option>
                           </select>
@@ -338,34 +290,21 @@ export function CovenantsTab() {
                         )}
                       </td>
 
-                      {/* Status */}
+                      {/* Status — read-only, computed by system */}
                       <td className="px-3 py-2 text-left">
-                        {tableEditMode ? (
-                          <select
-                            value={cov.status}
-                            onChange={e => setEdit(covBase.id, 'status', e.target.value as CovenantStatus)}
-                            className={IIC}
-                          >
-                            <option value="OK">OK</option>
-                            <option value="At Risk">At Risk</option>
-                            <option value="Breached">Breached</option>
-                            <option value="Unknown">Unknown</option>
-                          </select>
-                        ) : (
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.bg} ${cfg.color} border ${cfg.border}`}>
-                            <Icon className="w-3 h-3" /> {cfg.label}
-                          </span>
-                        )}
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.bg} ${cfg.color} border ${cfg.border}`}>
+                          <Icon className="w-3 h-3" /> {cfg.label}
+                        </span>
                       </td>
 
                       {/* Current Value */}
                       <td className="px-3 py-2 text-right">
                         {cov.type === 'Quantitative' ? (
-                          tableEditMode ? (
+                          isEditing ? (
                             <input
                               type="number"
                               value={cov.currentValue ?? ''}
-                              onChange={e => setEdit(covBase.id, 'currentValue', parseFloat(e.target.value) || 0)}
+                              onChange={e => setEdit('currentValue', parseFloat(e.target.value) || 0)}
                               placeholder="—"
                               className={`${IIC} text-right tabular-nums`}
                             />
@@ -404,11 +343,11 @@ export function CovenantsTab() {
                       {/* Threshold */}
                       <td className="px-3 py-2 text-right">
                         {cov.type === 'Quantitative' ? (
-                          tableEditMode ? (
+                          isEditing ? (
                             <div className="flex items-center justify-end gap-1">
                               <select
                                 value={cov.operator ?? '>='}
-                                onChange={e => setEdit(covBase.id, 'operator', e.target.value as Covenant['operator'])}
+                                onChange={e => setEdit('operator', e.target.value as Covenant['operator'])}
                                 className={`${IIC} w-14 text-center`}
                               >
                                 <option value=">=">≥</option>
@@ -419,7 +358,7 @@ export function CovenantsTab() {
                               <input
                                 type="number"
                                 value={cov.threshold ?? ''}
-                                onChange={e => setEdit(covBase.id, 'threshold', parseFloat(e.target.value) || 0)}
+                                onChange={e => setEdit('threshold', parseFloat(e.target.value) || 0)}
                                 placeholder="—"
                                 className={`${IIC} text-right tabular-nums`}
                               />
@@ -430,22 +369,11 @@ export function CovenantsTab() {
                         ) : <span className="text-foreground text-xs">—</span>}
                       </td>
 
-                      {/* Headroom — read-only gauge */}
-                      <td className="px-3 py-2 text-right min-w-[110px]">
-                        {cov.type === 'Quantitative' && cov.currentValue !== undefined ? (
-                          <div className="flex flex-col items-end gap-1">
-                            <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full transition-all ${cov.status === 'Breached' ? 'bg-red-500' : cov.status === 'At Risk' ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, gauge)}%` }} />
-                            </div>
-                            <span className={`text-xs font-medium tabular-nums ${cov.status === 'Breached' ? 'text-red-600' : cov.status === 'At Risk' ? 'text-amber-600' : 'text-emerald-600'}`}>{margin}</span>
-                          </div>
-                        ) : <span className="text-foreground text-xs">—</span>}
-                      </td>
 
                       {/* Frequency */}
                       <td className="px-3 py-2 text-right hidden xl:table-cell">
-                        {tableEditMode ? (
-                          <select value={cov.frequency} onChange={e => setEdit(covBase.id, 'frequency', e.target.value as Covenant['frequency'])} className={IIC}>
+                        {isEditing ? (
+                          <select value={cov.frequency} onChange={e => setEdit('frequency', e.target.value as Covenant['frequency'])} className={IIC}>
                             <option value="Monthly">Monthly</option>
                             <option value="Quarterly">Quarterly</option>
                             <option value="Annual">Annual</option>
@@ -457,11 +385,11 @@ export function CovenantsTab() {
 
                       {/* Last Tested */}
                       <td className="px-3 py-2 text-right hidden xl:table-cell">
-                        {tableEditMode ? (
+                        {isEditing ? (
                           <input
                             type="date"
                             value={cov.lastTested || ''}
-                            onChange={e => setEdit(covBase.id, 'lastTested', e.target.value)}
+                            onChange={e => setEdit('lastTested', e.target.value)}
                             className={`${IIC} text-right`}
                           />
                         ) : (
@@ -471,14 +399,16 @@ export function CovenantsTab() {
 
                       {/* Actions */}
                       <td className="px-3 py-2 text-center">
-                        {tableEditMode && (
-                          <button
-                            onClick={() => toggleDelete(covBase.id)}
-                            className={`p-1.5 rounded-lg transition-colors ${isDeleted ? 'hover:bg-emerald-500/10 text-emerald-600' : 'hover:bg-destructive/10 text-destructive'}`}
-                            title={isDeleted ? 'Restore' : 'Delete'}
-                          >
-                            {isDeleted ? <Check className="w-3 h-3" /> : <Trash2 className="w-3 h-3" />}
-                          </button>
+                        {isEditing ? (
+                          <div className="flex items-center gap-1 justify-center">
+                            <button onClick={saveEdit} className="p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-600" title="Save"><Check className="w-3.5 h-3.5" /></button>
+                            <button onClick={cancelEdit} className="p-1.5 hover:bg-muted rounded-lg text-foreground" title="Cancel"><X className="w-3.5 h-3.5" /></button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 justify-center">
+                            <button onClick={() => startEdit(covBase.id)} className="p-1.5 hover:bg-muted rounded-lg text-foreground" title="Edit"><Pencil className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleDeleteCov(covBase.id)} className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -486,7 +416,7 @@ export function CovenantsTab() {
                     {/* Expanded Detail Row */}
                     {isExpanded && (
                       <tr className="border-b border-border">
-                        <td colSpan={11} className="bg-muted/20 px-6 py-4">
+                        <td colSpan={10} className="bg-muted/20 px-6 py-4">
                           <div className="flex items-start gap-6 text-xs">
 
                             {/* Formula / Method */}
@@ -495,29 +425,29 @@ export function CovenantsTab() {
                               {cov.useFormulaBuilder && cov.formulaLines?.length ? (
                                 <FormulaDisplay
                                   cov={cov}
-                                  editMode={tableEditMode}
+                                  editMode={isEditing}
                                   onUpdateNumeratorLine={(lineId, amt) => {
                                     const updated = (cov.formulaLines ?? []).map(l => l.id === lineId ? { ...l, amount: amt } : l);
-                                    setEdit(covBase.id, 'formulaLines', updated);
+                                    setEdit('formulaLines', updated);
                                     const numTotal = updated.reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
                                     const denTotal = (cov.denominatorLines ?? []).reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
                                     const cv = cov.isRatioCovenant ? (denTotal !== 0 ? numTotal / denTotal : 0) : numTotal;
-                                    setEdit(covBase.id, 'currentValue', Math.round(cv * 10000) / 10000);
+                                    setEdit('currentValue', Math.round(cv * 10000) / 10000);
                                   }}
                                   onUpdateDenominatorLine={(lineId, amt) => {
                                     const updated = (cov.denominatorLines ?? []).map(l => l.id === lineId ? { ...l, amount: amt } : l);
-                                    setEdit(covBase.id, 'denominatorLines', updated);
+                                    setEdit('denominatorLines', updated);
                                     const numTotal = (cov.formulaLines ?? []).reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
                                     const denTotal = updated.reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
                                     const cv = cov.isRatioCovenant ? (denTotal !== 0 ? numTotal / denTotal : 0) : numTotal;
-                                    setEdit(covBase.id, 'currentValue', Math.round(cv * 10000) / 10000);
+                                    setEdit('currentValue', Math.round(cv * 10000) / 10000);
                                   }}
                                 />
-                              ) : tableEditMode ? (
+                              ) : isEditing ? (
                                 <textarea
                                   rows={2}
                                   value={cov.formula || ''}
-                                  onChange={e => setEdit(covBase.id, 'formula', e.target.value)}
+                                  onChange={e => setEdit('formula', e.target.value)}
                                   placeholder="Describe the formula or calculation method…"
                                   className="w-full text-xs font-mono bg-background border border-border rounded-lg px-2.5 py-2 resize-none focus:outline-none focus:border-primary/40 text-foreground placeholder:text-foreground transition-colors leading-relaxed"
                                 />
@@ -564,14 +494,11 @@ export function CovenantsTab() {
                       </select>
                     </td>
 
-                    {/* Status */}
+                    {/* Status — read-only, computed by system */}
                     <td className="px-3 py-2 text-left">
-                      <select value={draft.status ?? 'Unknown'} onChange={e => setDraftEdit(draft._newId, 'status', e.target.value as CovenantStatus)} className={IIC}>
-                        <option value="OK">OK</option>
-                        <option value="At Risk">At Risk</option>
-                        <option value="Breached">Breached</option>
-                        <option value="Unknown">Unknown</option>
-                      </select>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground border border-border">
+                        <AlertCircle className="w-3 h-3" /> Unknown
+                      </span>
                     </td>
 
                     {/* Current Value */}
@@ -617,10 +544,6 @@ export function CovenantsTab() {
                       ) : <span className="text-foreground text-xs">—</span>}
                     </td>
 
-                    {/* Headroom — blank for drafts */}
-                    <td className="px-3 py-2 text-right min-w-[110px]">
-                      <span className="text-foreground text-xs">—</span>
-                    </td>
 
                     {/* Frequency */}
                     <td className="px-3 py-2 text-right hidden xl:table-cell">
@@ -636,15 +559,34 @@ export function CovenantsTab() {
                       <span className="text-foreground text-xs">—</span>
                     </td>
 
-                    {/* Actions — remove draft */}
+                    {/* Actions — save / remove draft */}
                     <td className="px-3 py-2 text-center">
-                      <button
-                        onClick={() => setDraftNewRows(p => p.filter(r => r._newId !== draft._newId))}
-                        className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors text-destructive"
-                        title="Remove"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                      <div className="flex items-center gap-1 justify-center">
+                        <button
+                          onClick={() => {
+                            const { _newId, ...data } = draft;
+                            void _newId;
+                            const newId = `cov-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
+                            addCovenant({ ...data, id: newId, loanId: selectedLoanId } as unknown as Covenant);
+                            if (selectedLoan) {
+                              updateLoan(selectedLoanId, { covenantIds: [...(selectedLoan.covenantIds ?? []), newId] });
+                            }
+                            setDraftNewRows(p => p.filter(r => r._newId !== draft._newId));
+                            toast.success('Covenant added');
+                          }}
+                          className="p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-600"
+                          title="Save"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setDraftNewRows(p => p.filter(r => r._newId !== draft._newId))}
+                          className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors text-destructive"
+                          title="Remove"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 </React.Fragment>
@@ -724,7 +666,22 @@ function FormulaDisplay({ cov, editMode = false, onUpdateNumeratorLine, onUpdate
         </>
       ) : (
         <>
+          <div className="text-[10px] font-semibold text-foreground uppercase tracking-wider">Numerator</div>
           <LineRows lines={numLines} onUpdate={onUpdateNumeratorLine} />
+          <div className="border-t border-border pt-1.5 flex justify-between text-[11px]">
+            <span className="text-foreground">Numerator Total</span>
+            <span className="font-bold text-foreground">{fmtAmt(numTotal)}</span>
+          </div>
+          {denLines.length > 0 && (
+            <>
+              <div className="text-[10px] font-semibold text-foreground uppercase tracking-wider pt-1">Denominator</div>
+              <LineRows lines={denLines} onUpdate={onUpdateDenominatorLine} />
+              <div className="border-t border-border pt-1.5 flex justify-between text-[11px]">
+                <span className="text-foreground">Denominator Total</span>
+                <span className="font-bold text-foreground">{fmtAmt(denTotal)}</span>
+              </div>
+            </>
+          )}
           <div className="border-t-2 border-primary/20 pt-1.5 flex justify-between text-xs font-bold">
             <span className="text-foreground">Total</span>
             <span className="text-primary">{fmtAmt(numTotal)}</span>
@@ -832,8 +789,6 @@ function CovenantFormModal({ open, onClose, covenant, loans, onSave }: {
                 placeholder={form.useFormulaBuilder ? 'Auto from formula' : ''} />
               <Input label="Projected Value" type="number" value={form.projectedValue || ''} onChange={fn('projectedValue')}
                 placeholder={form.useFormulaBuilder ? 'Auto from formula' : ''} />
-              <Select label="Status" value={form.status || 'Unknown'} onChange={f('status')}
-                options={[{ value: 'OK', label: 'OK' }, { value: 'At Risk', label: 'At Risk' }, { value: 'Breached', label: 'Breached' }, { value: 'Unknown', label: 'Unknown' }]} />
             </div>
           )}
           <Select label="Frequency" value={form.frequency || 'Annual'} onChange={f('frequency')}

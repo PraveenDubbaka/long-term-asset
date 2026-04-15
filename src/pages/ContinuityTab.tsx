@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Download, Edit3, Trash2, ChevronDown, Check, Search, FileText, X, Info } from 'lucide-react';
-import { useTableColumns, ColumnToggleButton, useColumnResize, ThResizable, type ColDef } from '@/components/table-utils';
+import { Download, Trash2, ChevronDown, Check, Search, FileText, X, Info, Pencil } from 'lucide-react';
+import { useTableColumns, useColumnResize, ThResizable, type ColDef } from '@/components/table-utils';
 import { exportToExcel } from '../lib/utils';
 import { useStore } from '../store/useStore';
 import { fmtCurrency, formatPeriod, fmtNumber } from '../lib/utils';
@@ -61,10 +61,45 @@ function calcCurrentPortion(loan: Loan, closingBalance: number, period: string):
 }
 
 
+/** Returns [current(yr0), yr1, yr2, yr3, yr4, yr5, thereafter] principal repayments */
+function calcMaturityLadder(
+  loan: Loan, closingBalance: number, period: string,
+): [number, number, number, number, number, number, number] {
+  if (closingBalance <= 0) return [0, 0, 0, 0, 0, 0, 0];
+  if (loan.type === 'LOC' || loan.type === 'Revolver') return [closingBalance, 0, 0, 0, 0, 0, 0];
+  const [y, m] = period.split('-').map(Number);
+  const maturity = new Date(loan.maturityDate);
+  const monthsToMaturity = Math.max(0,
+    (maturity.getFullYear() - y) * 12 + (maturity.getMonth() + 1 - m));
+  if (monthsToMaturity <= 0) return [closingBalance, 0, 0, 0, 0, 0, 0];
+  const result: [number, number, number, number, number, number, number] = [0, 0, 0, 0, 0, 0, 0];
+  if (loan.paymentType === 'Interest-only' || loan.paymentType === 'Balloon') {
+    result[Math.min(Math.floor((monthsToMaturity - 1) / 12), 6)] = closingBalance;
+    return result;
+  }
+  const r = loan.rate / 100 / 12;
+  const n = monthsToMaturity;
+  let bal = closingBalance;
+  if (r === 0) {
+    const mp = bal / n;
+    for (let i = 1; i <= n; i++) result[Math.min(Math.floor((i - 1) / 12), 6)] += mp;
+  } else {
+    const pmt = bal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+    for (let i = 1; i <= n && bal > 0.01; i++) {
+      const interest = bal * r;
+      const principal = Math.min(pmt - interest, bal);
+      result[Math.min(Math.floor((i - 1) / 12), 6)] += principal;
+      bal -= principal;
+    }
+  }
+  return result.map(Math.round) as [number, number, number, number, number, number, number];
+}
+
+
 type ContColId =
   | 'period' | 'openingBalance' | 'newBorrowings' | 'principalRepayments'
   | 'interestRepayments' | 'fxTranslation' | 'closingBalance'
-  | 'currentPortion' | 'longTerm' | 'accruedInterest' | 'notes' | 'actions';
+  | 'accruedInterest' | 'actions';
 
 const CONT_COLS: ColDef<ContColId>[] = [
   { id: 'period',               label: 'Period',           pinned: true },
@@ -74,31 +109,27 @@ const CONT_COLS: ColDef<ContColId>[] = [
   { id: 'interestRepayments',   label: '− Interest' },
   { id: 'fxTranslation',        label: '± FX' },
   { id: 'closingBalance',       label: 'Closing Balance' },
-  { id: 'currentPortion',       label: 'Current Portion' },
-  { id: 'longTerm',             label: 'Long-Term' },
   { id: 'accruedInterest',      label: 'Accrued Int.' },
-  { id: 'notes',                label: 'Notes' },
   { id: 'actions',              label: '',                 pinned: true },
 ];
 
 const ALL_LOANS_ID = '__all__';
 
 export function ContinuityTab() {
-  const { loans, continuity, addContinuityRow, updateContinuityRow, deleteContinuityRow } = useStore(s => ({
+  const { loans, continuity, addContinuityRow, updateContinuityRow, deleteContinuityRow, settings } = useStore(s => ({
     loans: s.loans.filter(l => l.status !== 'Inactive'),
     continuity: s.continuity,
     addContinuityRow: s.addContinuityRow,
     updateContinuityRow: s.updateContinuityRow,
     deleteContinuityRow: s.deleteContinuityRow,
+    settings: s.settings,
   }));
 
-  const [selectedLoanId, setSelectedLoanId] = useState<string>(loans[0]?.id || '');
-  const [selectedLoanIds, setSelectedLoanIds] = useState<string[]>(loans.map(l => l.id));
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [contView, setContView] = useState<'rollforward' | 'repayment'>('rollforward');
+  const [selectedLoanId, setSelectedLoanId] = useState<string>(ALL_LOANS_ID);
   const [addOpen, setAddOpen] = useState(false);
-  const [tableEditMode, setTableEditMode] = useState(false);
-  const [tableEdits, setTableEdits] = useState<Record<string, Partial<ContinuityRow>>>({});
+  const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const [rowEdits, setRowEdits] = useState<Partial<ContinuityRow>>({});
 
   // Notes link panel state
   const [notesPanelRowId, setNotesPanelRowId] = useState<string | null>(null);
@@ -113,28 +144,8 @@ export function ContinuityTab() {
   const { onResizeStart: colResizeStart } = useColumnResize(colSetWidth);
   const crh = (id: ContColId) => (e: React.MouseEvent) => colResizeStart(id, e, colGetWidth(id) ?? 120);
 
-  // Cancel edit mode when switching loans
-  useEffect(() => { cancelTableEdit(); }, [selectedLoanId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const pickerRef  = useRef<HTMLDivElement>(null);
-  const exportRef  = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) setPickerOpen(false);
-      if (exportRef.current && !exportRef.current.contains(e.target as Node)) setExportMenuOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const toggleLoan = (id: string) => {
-    setSelectedLoanIds(prev =>
-      prev.includes(id)
-        ? prev.length > 1 ? prev.filter(x => x !== id) : prev  // keep ≥1
-        : [...prev, id]
-    );
-  };
+  // Cancel edit when switching loans
+  useEffect(() => { setEditingRowId(null); setRowEdits({}); }, [selectedLoanId]);
 
   const handleExport = async (loanIds: string[]) => {
     const toExport = loans.filter(l => loanIds.includes(l.id));
@@ -148,44 +159,49 @@ export function ContinuityTab() {
     }
     await exportToExcel(data, 'ContinuityRollForward.xlsx');
     toast.success(`Exported ${toExport.length} loan${toExport.length !== 1 ? 's' : ''}`);
-    setExportMenuOpen(false);
   };
 
   const selectedLoan = loans.find(l => l.id === selectedLoanId);
   const loanRows = continuity.filter(r => r.loanId === selectedLoanId).sort((a, b) => a.period.localeCompare(b.period));
 
   const activeLoanIds = new Set(loans.map(l => l.id));
-  const consolidatedByPeriod = MONTHS.map(period => {
-    const rows = continuity.filter(r => r.period === period && activeLoanIds.has(r.loanId));
-    return {
-      period,
-      openingBalance: rows.reduce((s, r) => s + r.openingBalance, 0),
-      newBorrowings: rows.reduce((s, r) => s + r.newBorrowings, 0),
-      repayments: rows.reduce((s, r) => s + r.repayments, 0),
-      fxTranslation: rows.reduce((s, r) => s + r.fxTranslation, 0),
-      closingBalance: rows.reduce((s, r) => s + r.closingBalance, 0),
-      currentPortion: rows.reduce((s, r) => s + r.currentPortion, 0),
-      longTermPortion: rows.reduce((s, r) => s + r.longTermPortion, 0),
-      accruedInterest: rows.reduce((s, r) => s + r.accruedInterest, 0),
-    };
-  }).filter(p => p.closingBalance > 0);
 
-  // Bulk table edit mode — all rows editable simultaneously
-  const startTableEdit = (rows: ContinuityRow[]) => {
-    const edits: Record<string, Partial<ContinuityRow>> = {};
-    rows.forEach(r => { edits[r.id] = { ...r }; });
-    setTableEdits(edits);
-    setTableEditMode(true);
+  // All-loans view: one row per loan (FY summary) — includes all loans, falls back to loan-level data when no continuity rows exist
+  const consolidatedByLoan = loans.map(loan => {
+    const rows = continuity.filter(r => r.loanId === loan.id).sort((a, b) => a.period.localeCompare(b.period));
+    const first = rows[0];
+    const last  = rows[rows.length - 1];
+    return {
+      loanId:           loan.id,
+      loanName:         loan.name,
+      lender:           loan.lender,
+      currency:         loan.currency,
+      openingBalance:   first?.openingBalance ?? (loan.closingBalance ?? loan.currentBalance ?? 0),
+      newBorrowings:    rows.reduce((s, r) => s + r.newBorrowings, 0),
+      repayments:       rows.reduce((s, r) => s + r.repayments, 0),
+      fxTranslation:    rows.reduce((s, r) => s + r.fxTranslation, 0),
+      closingBalance:   last?.closingBalance ?? (loan.closingBalance ?? loan.currentBalance ?? 0),
+      currentPortion:   last?.currentPortion ?? loan.currentPortion ?? 0,
+      longTermPortion:  last?.longTermPortion ?? loan.longTermPortion ?? 0,
+      accruedInterest:  last?.accruedInterest ?? loan.accruedInterest ?? 0,
+    };
+  });
+
+  // Per-row edit helpers
+  const startEdit = (row: ContinuityRow) => {
+    setEditingRowId(row.id);
+    setRowEdits({ ...row });
   };
-  const saveTableEdit = (rows: ContinuityRow[]) => {
-    Object.entries(tableEdits).forEach(([id, vals]) => updateContinuityRow(id, vals));
-    toast.success(`${rows.length} row${rows.length !== 1 ? 's' : ''} saved`);
-    setTableEditMode(false);
-    setTableEdits({});
+  const saveEdit = () => {
+    if (!editingRowId) return;
+    updateContinuityRow(editingRowId, rowEdits);
+    toast.success('Row saved');
+    setEditingRowId(null);
+    setRowEdits({});
   };
-  const cancelTableEdit = () => { setTableEditMode(false); setTableEdits({}); };
-  const setCEdit = (id: string, field: keyof ContinuityRow, value: unknown) =>
-    setTableEdits(prev => ({ ...prev, [id]: { ...(prev[id] ?? {}), [field]: value } }));
+  const cancelEdit = () => { setEditingRowId(null); setRowEdits({}); };
+  const setCEdit = (field: keyof ContinuityRow, value: unknown) =>
+    setRowEdits(prev => ({ ...prev, [field]: value }));
 
   // Notes panel helpers
   const openNotesPanel = (rowId: string) => {
@@ -224,8 +240,6 @@ export function ContinuityTab() {
   const opening = loanRows[0];
   const closing = loanRows[loanRows.length - 1];
 
-  const closingCurrentPortion = (closing && selectedLoan) ? calcCurrentPortion(selectedLoan, closing.closingBalance, closing.period) : 0;
-  const closingLongTerm = closing ? closing.closingBalance - closingCurrentPortion : 0;
 
 
   return (
@@ -237,79 +251,86 @@ export function ContinuityTab() {
           <p className="text-xs text-foreground mt-0.5">Opening → movements → closing by period</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Export selection picker */}
-          <div className="relative" ref={pickerRef}>
-            <button
-              onClick={() => setPickerOpen(o => !o)}
-              className="input-double-border h-9 flex items-center gap-2 text-sm pl-3 pr-3 rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] cursor-pointer focus:outline-none min-w-[140px] justify-between"
-            >
-              <span className="text-xs text-foreground mr-1">For export:</span>
-              <span>{selectedLoanIds.length === loans.length ? 'All' : `${selectedLoanIds.length} loans`}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-foreground flex-shrink-0" />
-            </button>
-            {pickerOpen && (
-              <div className="absolute right-0 top-full mt-1 z-50 bg-card border border-border rounded-lg shadow-lg min-w-[220px] p-2">
-                <div className="flex items-center justify-between px-1 pb-2 mb-1 border-b border-border">
-                  <button onClick={() => setSelectedLoanIds(loans.map(l => l.id))} className="text-xs text-primary hover:underline">Select All</button>
-                  <button onClick={() => setSelectedLoanIds(loans.slice(0, 1).map(l => l.id))} className="text-xs text-foreground hover:underline">Clear</button>
-                </div>
-                {loans.map(l => (
-                  <label key={l.id} className="flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer text-sm select-none">
-                    <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${selectedLoanIds.includes(l.id) ? 'bg-primary border-primary' : 'border-border bg-background'}`}>
-                      {selectedLoanIds.includes(l.id) && <Check className="w-2.5 h-2.5 text-white" />}
-                    </div>
-                    <input type="checkbox" checked={selectedLoanIds.includes(l.id)} onChange={() => toggleLoan(l.id)} className="sr-only" />
-                    <span className="text-foreground leading-tight">{l.name}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-          {/* Column toggle */}
-          <ColumnToggleButton columns={CONT_COLS} isVisible={colVisible} onToggle={colToggle} />
-          {/* Edit Table / Save All / Cancel — hidden in All Loans view */}
-          {selectedLoanId !== ALL_LOANS_ID && tableEditMode ? (
-            <div className="flex items-center gap-2">
-              <Button variant="secondary" size="sm" onClick={cancelTableEdit}>
-                <X className="w-3.5 h-3.5 mr-1" /> Cancel
-              </Button>
-              <Button size="sm" onClick={() => saveTableEdit(loanRows)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white border-0">
-                <Check className="w-3.5 h-3.5 mr-1" /> Save All
-              </Button>
-            </div>
-          ) : selectedLoanId !== ALL_LOANS_ID ? (
-            <Button variant="secondary" size="sm" onClick={() => startTableEdit(loanRows)}>
-              <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit Table
+          {contView === 'rollforward' && (
+            <Button variant="secondary" size="sm" onClick={() => handleExport(loans.map(l => l.id))}>
+              <Download className="w-3.5 h-3.5 mr-1" /> Export
             </Button>
-          ) : null}
-          {/* Export dropdown */}
-          <div className="relative" ref={exportRef}>
-            <Button variant="secondary" size="sm" onClick={() => setExportMenuOpen(o => !o)}>
-              <Download className="w-3.5 h-3.5 mr-1" /> Export <ChevronDown className="w-3 h-3 ml-1" />
-            </Button>
-            {exportMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 z-50 bg-card border border-border rounded-lg shadow-lg min-w-[210px] p-1">
-                <button
-                  onClick={() => handleExport(selectedLoanIds)}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md flex items-center justify-between"
-                >
-                  <span>Export Selected</span>
-                  <span className="text-xs text-foreground">{selectedLoanIds.length} loan{selectedLoanIds.length !== 1 ? 's' : ''}</span>
-                </button>
-                <button
-                  onClick={() => handleExport(loans.map(l => l.id))}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md flex items-center justify-between"
-                >
-                  <span>Export All</span>
-                  <span className="text-xs text-foreground">{loans.length} loans</span>
-                </button>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
+      {/* Sub-tab bar */}
+      <div className="flex items-center gap-1 border-b border-border -mx-6 px-6">
+        {(['rollforward', 'repayment'] as const).map(v => (
+          <button
+            key={v}
+            onClick={() => setContView(v)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              contView === v ? 'border-primary text-primary' : 'border-transparent text-foreground hover:text-foreground'
+            }`}
+          >
+            {v === 'rollforward' ? 'Roll-Forward' : 'Repayment Schedule'}
+          </button>
+        ))}
+      </div>
+
+      {contView === 'repayment' && (() => {
+        const period = settings?.currentPeriod ?? '2024-12';
+        const baseYear = parseInt(period.split('-')[0]);
+        const yearLabels = Array.from({ length: 6 }, (_, i) => String(baseYear + i + 1)).concat(['Thereafter']);
+        const repayRows = loans.filter(l => l.status !== 'Inactive').map(l => {
+          const ladder = calcMaturityLadder(l, l.closingBalance ?? l.currentBalance ?? 0, period);
+          return { loan: l, ladder, total: ladder.reduce((s, v) => s + v, 0) };
+        });
+        const colTotals = yearLabels.map((_, i) => repayRows.reduce((s, r) => s + (r.ladder[i] ?? 0), 0));
+        const grandTotal = colTotals.reduce((s, v) => s + v, 0);
+        return (
+          <StyledCard className="overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-muted border-b border-border">
+                    <th className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-left whitespace-nowrap">Facility</th>
+                    {yearLabels.map(lbl => (
+                      <th key={lbl} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right whitespace-nowrap">{lbl}</th>
+                    ))}
+                    <th className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right whitespace-nowrap">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {repayRows.map(({ loan: l, ladder, total }) => (
+                    <tr key={l.id} className="border-b border-border hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-2.5 whitespace-nowrap">
+                        <div className="font-medium text-foreground leading-tight">{l.name}</div>
+                        <div className="text-[11px] text-muted-foreground">{l.lender} · {l.currency}</div>
+                      </td>
+                      {ladder.map((v, i) => (
+                        <td key={i} className={`px-4 py-2.5 text-right tabular-nums ${i === 0 ? 'text-primary font-medium' : 'text-foreground'}`}>
+                          {v > 0 ? fmtNumber(v) : '—'}
+                        </td>
+                      ))}
+                      <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-foreground">{fmtNumber(total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="sticky bottom-0 z-10">
+                  <tr className="bg-muted/80 border-t-2 border-primary/20 font-semibold">
+                    <td className="px-4 py-2.5 text-foreground whitespace-nowrap">Total · {repayRows.length} facilities</td>
+                    {colTotals.map((v, i) => (
+                      <td key={i} className={`px-4 py-2.5 text-right tabular-nums ${i === 0 ? 'text-primary' : 'text-foreground'}`}>
+                        {v > 0 ? fmtNumber(v) : '—'}
+                      </td>
+                    ))}
+                    <td className="px-4 py-2.5 text-right tabular-nums font-bold text-primary">{fmtNumber(grandTotal)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </StyledCard>
+        );
+      })()}
+
+      {contView === 'rollforward' && <>
       {/* Loan Selectors */}
       <div className="flex items-center gap-4 flex-wrap">
         {/* View selector (single) */}
@@ -340,15 +361,15 @@ export function ContinuityTab() {
               <table className="w-full text-sm">
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-muted border-b border-border">
-                    <ThResizable colId="period" width={colGetWidth('period')} onResizeStart={crh('period')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Period</ThResizable>
+                    <ThResizable colId="period" width={colGetWidth('period')} onResizeStart={crh('period')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
+                      {selectedLoanId === ALL_LOANS_ID ? 'Loan' : 'Period'}
+                    </ThResizable>
                     {colVisible('openingBalance') && <ThResizable colId="openingBalance" width={colGetWidth('openingBalance')} onResizeStart={crh('openingBalance')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Opening Balance</ThResizable>}
                     {colVisible('newBorrowings') && <ThResizable colId="newBorrowings" width={colGetWidth('newBorrowings')} onResizeStart={crh('newBorrowings')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">+ New Borr.</ThResizable>}
                     {colVisible('principalRepayments') && <ThResizable colId="principalRepayments" width={colGetWidth('principalRepayments')} onResizeStart={crh('principalRepayments')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">− Principal</ThResizable>}
                     {colVisible('interestRepayments') && <ThResizable colId="interestRepayments" width={colGetWidth('interestRepayments')} onResizeStart={crh('interestRepayments')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">− Interest</ThResizable>}
                     {colVisible('fxTranslation') && <ThResizable colId="fxTranslation" width={colGetWidth('fxTranslation')} onResizeStart={crh('fxTranslation')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">± FX</ThResizable>}
                     {colVisible('closingBalance') && <ThResizable colId="closingBalance" width={colGetWidth('closingBalance')} onResizeStart={crh('closingBalance')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Closing Balance</ThResizable>}
-                    {colVisible('currentPortion') && <ThResizable colId="currentPortion" width={colGetWidth('currentPortion')} onResizeStart={crh('currentPortion')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Current Portion</ThResizable>}
-                    {colVisible('longTerm') && <ThResizable colId="longTerm" width={colGetWidth('longTerm')} onResizeStart={crh('longTerm')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Long-Term</ThResizable>}
                     {colVisible('accruedInterest') && (
                       <ThResizable colId="accruedInterest" width={colGetWidth('accruedInterest')} onResizeStart={crh('accruedInterest')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
                         <span className="flex items-center gap-1">
@@ -361,29 +382,48 @@ export function ContinuityTab() {
                         </span>
                       </ThResizable>
                     )}
-                    {colVisible('notes') && <ThResizable colId="notes" width={colGetWidth('notes')} onResizeStart={crh('notes')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Notes</ThResizable>}
                     <ThResizable colId="actions" width={colGetWidth('actions')} onResizeStart={crh('actions')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap"></ThResizable>
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedLoanId === ALL_LOANS_ID ? consolidatedByPeriod.map(row => (
-                    <tr key={row.period} className="border-b border-border hover:bg-muted/30 transition-colors">
-                      <td className="px-3 py-2 font-medium text-foreground whitespace-nowrap">{formatPeriod(row.period)}</td>
-                      {colVisible('openingBalance') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{fmtNumber(row.openingBalance)}</span></td>}
-                      {colVisible('newBorrowings') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{fmtNumber(row.newBorrowings)}</span></td>}
-                      {colVisible('principalRepayments') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-green-600">{row.repayments > 0 ? `(${fmtNumber(row.repayments)})` : '—'}</span></td>}
-                      {colVisible('interestRepayments') && <td className="px-3 py-2 tabular-nums text-right text-foreground text-xs">—</td>}
-                      {colVisible('fxTranslation') && <td className="px-3 py-2 tabular-nums text-right"><span className={row.fxTranslation < 0 ? 'text-destructive' : row.fxTranslation > 0 ? 'text-blue-600' : 'text-foreground'}>{fmtNumber(row.fxTranslation)}</span></td>}
-                      {colVisible('closingBalance') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{fmtNumber(row.closingBalance)}</span></td>}
-                      {colVisible('currentPortion') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{fmtNumber(row.currentPortion)}</span></td>}
-                      {colVisible('longTerm') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{fmtNumber(row.longTermPortion)}</span></td>}
-                      {colVisible('accruedInterest') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-amber-600">{fmtNumber(row.accruedInterest)}</span></td>}
-                      {colVisible('notes') && <td className="px-3 py-2" />}
-                      <td className="px-3 py-2" />
-                    </tr>
-                  )) : loanRows.map(row => {
-                    const isEditing = tableEditMode;
-                    const ed = (tableEdits[row.id] ?? row) as typeof row;
+                  {selectedLoanId === ALL_LOANS_ID ? (
+                    <>
+                      {consolidatedByLoan.map(row => (
+                        <tr key={row.loanId} className="border-b border-border hover:bg-muted/30 transition-colors">
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <div className="font-medium text-foreground leading-tight">{row.loanName}</div>
+                            <div className="text-[11px] text-muted-foreground">{row.lender} · {row.currency}</div>
+                          </td>
+                          {colVisible('openingBalance') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{fmtNumber(row.openingBalance)}</span></td>}
+                          {colVisible('newBorrowings') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{row.newBorrowings > 0 ? fmtNumber(row.newBorrowings) : '—'}</span></td>}
+                          {colVisible('principalRepayments') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-green-600">{row.repayments > 0 ? `(${fmtNumber(row.repayments)})` : '—'}</span></td>}
+                          {colVisible('interestRepayments') && <td className="px-3 py-2 tabular-nums text-right text-foreground text-xs">—</td>}
+                          {colVisible('fxTranslation') && <td className="px-3 py-2 tabular-nums text-right"><span className={row.fxTranslation < 0 ? 'text-destructive' : row.fxTranslation > 0 ? 'text-blue-600' : 'text-foreground'}>{row.fxTranslation !== 0 ? fmtNumber(row.fxTranslation) : '—'}</span></td>}
+                          {colVisible('closingBalance') && <td className="px-3 py-2 tabular-nums text-right font-semibold"><span className="text-foreground">{fmtNumber(row.closingBalance)}</span></td>}
+                          {colVisible('accruedInterest') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-amber-600">{row.accruedInterest > 0 ? fmtNumber(row.accruedInterest) : '—'}</span></td>}
+                          <td className="px-3 py-2 text-center">
+                            <div className="flex items-center gap-1 justify-center">
+                              <button
+                                onClick={() => setSelectedLoanId(row.loanId)}
+                                className="p-1.5 hover:bg-muted rounded-lg text-foreground"
+                                title="Edit periods"
+                              ><Pencil className="w-3.5 h-3.5" /></button>
+                              <button
+                                onClick={() => {
+                                  continuity.filter(r => r.loanId === row.loanId).forEach(r => deleteContinuityRow(r.id));
+                                  toast.success('Continuity rows deleted');
+                                }}
+                                className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive"
+                                title="Delete continuity rows"
+                              ><Trash2 className="w-3.5 h-3.5" /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </>
+                  ) : loanRows.map(row => {
+                    const isEditing = editingRowId === row.id;
+                    const ed = (isEditing ? rowEdits : row) as typeof row;
                     const loan = loans.find(l => l.id === row.loanId);
                     const computedInterest = (loan && row.repayments > 0)
                       ? Math.round(row.openingBalance * (loan.rate / 100 / 12))
@@ -391,9 +431,6 @@ export function ContinuityTab() {
                     const computedPrincipal = row.repayments > 0
                       ? row.repayments - computedInterest
                       : 0;
-                    const computedCurrentPortion = loan ? calcCurrentPortion(loan, row.closingBalance, row.period) : row.currentPortion;
-                    const computedLongTerm = row.closingBalance - computedCurrentPortion;
-
                     return (
                       <tr
                         key={row.id}
@@ -410,7 +447,7 @@ export function ContinuityTab() {
                           <td className="px-3 py-2 tabular-nums text-right">
                             {isEditing ? (
                               <input type="number" value={ed.openingBalance ?? 0}
-                                onChange={e => setCEdit(row.id, 'openingBalance', parseFloat(e.target.value) || 0)}
+                                onChange={e => setCEdit('openingBalance', parseFloat(e.target.value) || 0)}
                                 className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
                             ) : (
                               <span className="text-foreground">{fmtNumber(row.openingBalance)}</span>
@@ -421,7 +458,7 @@ export function ContinuityTab() {
                           <td className="px-3 py-2 tabular-nums text-right">
                             {isEditing ? (
                               <input type="number" value={ed.newBorrowings ?? 0}
-                                onChange={e => setCEdit(row.id, 'newBorrowings', parseFloat(e.target.value) || 0)}
+                                onChange={e => setCEdit('newBorrowings', parseFloat(e.target.value) || 0)}
                                 className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
                             ) : (
                               <span className="text-foreground">{fmtNumber(row.newBorrowings)}</span>
@@ -433,7 +470,7 @@ export function ContinuityTab() {
                           <td className="px-3 py-2 tabular-nums text-right">
                             {isEditing ? (
                               <input type="number" value={ed.principalRepayments ?? computedPrincipal}
-                                onChange={e => setCEdit(row.id, 'principalRepayments', parseFloat(e.target.value) || 0)}
+                                onChange={e => setCEdit('principalRepayments', parseFloat(e.target.value) || 0)}
                                 className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
                             ) : (
                               <span className="text-green-600">
@@ -447,7 +484,7 @@ export function ContinuityTab() {
                           <td className="px-3 py-2 tabular-nums text-right">
                             {isEditing ? (
                               <input type="number" value={ed.interestRepayments ?? computedInterest}
-                                onChange={e => setCEdit(row.id, 'interestRepayments', parseFloat(e.target.value) || 0)}
+                                onChange={e => setCEdit('interestRepayments', parseFloat(e.target.value) || 0)}
                                 className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
                             ) : (
                               <span className="text-amber-600">
@@ -461,7 +498,7 @@ export function ContinuityTab() {
                           <td className="px-3 py-2 tabular-nums text-right">
                             {isEditing ? (
                               <input type="number" value={ed.fxTranslation ?? 0}
-                                onChange={e => setCEdit(row.id, 'fxTranslation', parseFloat(e.target.value) || 0)}
+                                onChange={e => setCEdit('fxTranslation', parseFloat(e.target.value) || 0)}
                                 className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
                             ) : (
                               <span className={row.fxTranslation < 0 ? 'text-destructive' : row.fxTranslation > 0 ? 'text-blue-600' : 'text-foreground'}>
@@ -475,32 +512,10 @@ export function ContinuityTab() {
                           <td className="px-3 py-2 tabular-nums text-right">
                             {isEditing ? (
                               <input type="number" value={ed.closingBalance ?? 0}
-                                onChange={e => setCEdit(row.id, 'closingBalance', parseFloat(e.target.value) || 0)}
+                                onChange={e => setCEdit('closingBalance', parseFloat(e.target.value) || 0)}
                                 className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
                             ) : (
                               <span className="text-foreground">{fmtNumber(row.closingBalance)}</span>
-                            )}
-                          </td>
-                        )}
-                        {colVisible('currentPortion') && (
-                          <td className="px-3 py-2 tabular-nums text-right">
-                            {isEditing ? (
-                              <input type="number" value={ed.currentPortion ?? computedCurrentPortion}
-                                onChange={e => setCEdit(row.id, 'currentPortion', parseFloat(e.target.value) || 0)}
-                                className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
-                            ) : (
-                              <span className="text-foreground">{fmtNumber(computedCurrentPortion)}</span>
-                            )}
-                          </td>
-                        )}
-                        {colVisible('longTerm') && (
-                          <td className="px-3 py-2 tabular-nums text-right">
-                            {isEditing ? (
-                              <input type="number" value={ed.longTermPortion ?? computedLongTerm}
-                                onChange={e => setCEdit(row.id, 'longTermPortion', parseFloat(e.target.value) || 0)}
-                                className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
-                            ) : (
-                              <span className="text-foreground">{fmtNumber(computedLongTerm)}</span>
                             )}
                           </td>
                         )}
@@ -508,77 +523,59 @@ export function ContinuityTab() {
                           <td className="px-3 py-2 tabular-nums text-right">
                             {isEditing ? (
                               <input type="number" value={ed.accruedInterest ?? 0}
-                                onChange={e => setCEdit(row.id, 'accruedInterest', parseFloat(e.target.value) || 0)}
+                                onChange={e => setCEdit('accruedInterest', parseFloat(e.target.value) || 0)}
                                 className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
                             ) : (
                               <span className="text-amber-600">{fmtNumber(row.accruedInterest)}</span>
                             )}
                           </td>
                         )}
-                        {colVisible('notes') && (
-                          <td className="px-3 py-2 min-w-[120px]">
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                value={ed.notes ?? ''}
-                                onChange={e => setCEdit(row.id, 'notes', e.target.value)}
-                                placeholder="Notes…"
-                                className="h-7 w-full text-xs px-2 border border-primary/40 rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
-                              />
-                            ) : (
-                              <div className="flex items-center gap-1 flex-wrap">
-                                {(rowLinkedNotes[row.id] ?? []).sort((a, b) => a - b).map(noteId => {
-                                  const note = DISCLOSURE_NOTES.find(n => n.id === noteId);
-                                  if (!note) return null;
-                                  return (
-                                    <span
-                                      key={noteId}
-                                      onMouseEnter={e => {
-                                        const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                                        setHoveredNote({ rowId: row.id, noteId, x: r.left, y: r.top });
-                                      }}
-                                      onMouseLeave={() => setHoveredNote(null)}
-                                      className="inline-flex items-center text-[11px] font-semibold text-primary bg-primary/10 hover:bg-primary/20 rounded px-1.5 py-0.5 cursor-default transition-colors leading-none"
-                                    >
-                                      {noteId}
-                                    </span>
-                                  );
-                                })}
-                                {row.isManualAdjustment && <Badge variant="warning">Adj</Badge>}
-                                {row.notes && <span className="text-[11px] text-foreground truncate max-w-[72px]" title={row.notes}>{row.notes}</span>}
-                              </div>
-                            )}
-                          </td>
-                        )}
-                        <td className="px-3 py-2" />
+                        <td className="px-3 py-2 text-center">
+                          {isEditing ? (
+                            <div className="flex items-center gap-1 justify-center">
+                              <button onClick={saveEdit} className="p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-600" title="Save"><Check className="w-3.5 h-3.5" /></button>
+                              <button onClick={cancelEdit} className="p-1.5 hover:bg-muted rounded-lg text-foreground" title="Cancel"><X className="w-3.5 h-3.5" /></button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 justify-center">
+                              <button onClick={() => startEdit(row)} className="p-1.5 hover:bg-muted rounded-lg text-foreground" title="Edit"><Pencil className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => deleteContinuityRow(row.id)} className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </div>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
                 </tbody>
-                {selectedLoanId === ALL_LOANS_ID ? consolidatedByPeriod.length > 0 && (() => {
-                  const allFirst = consolidatedByPeriod[0];
-                  const allLast  = consolidatedByPeriod[consolidatedByPeriod.length - 1];
-                  const allRep   = consolidatedByPeriod.reduce((s, r) => s + r.repayments, 0);
-                  const allBorr  = consolidatedByPeriod.reduce((s, r) => s + r.newBorrowings, 0);
-                  const allFx    = consolidatedByPeriod.reduce((s, r) => s + r.fxTranslation, 0);
+                {/* sticky tfoot — All-loans grand total OR single-loan FY total */}
+                {selectedLoanId === ALL_LOANS_ID && consolidatedByLoan.length > 0 && (() => {
+                  const gt = consolidatedByLoan.reduce((s, r) => ({
+                    openingBalance:  s.openingBalance  + r.openingBalance,
+                    newBorrowings:   s.newBorrowings   + r.newBorrowings,
+                    repayments:      s.repayments      + r.repayments,
+                    fxTranslation:   s.fxTranslation   + r.fxTranslation,
+                    closingBalance:  s.closingBalance   + r.closingBalance,
+                    currentPortion:  s.currentPortion  + r.currentPortion,
+                    longTermPortion: s.longTermPortion  + r.longTermPortion,
+                    accruedInterest: s.accruedInterest  + r.accruedInterest,
+                  }), { openingBalance:0, newBorrowings:0, repayments:0, fxTranslation:0, closingBalance:0, currentPortion:0, longTermPortion:0, accruedInterest:0 });
                   return (
                     <tfoot className="sticky bottom-0 z-10">
                       <tr className="bg-muted/80 border-t-2 border-primary/20 font-semibold">
-                        <td className="px-3 py-2.5 text-foreground">FY Total</td>
-                        {colVisible('openingBalance') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(allFirst.openingBalance)}</td>}
-                        {colVisible('newBorrowings') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(allBorr)}</td>}
-                        {colVisible('principalRepayments') && <td className="px-3 py-2.5 text-right tabular-nums text-green-600">{allRep > 0 ? `(${fmtNumber(allRep)})` : '—'}</td>}
-                        {colVisible('interestRepayments') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">—</td>}
-                        {colVisible('fxTranslation') && <td className="px-3 py-2.5 text-right tabular-nums text-blue-600">{fmtNumber(allFx)}</td>}
-                        {colVisible('closingBalance') && <td className="px-3 py-2.5 text-right tabular-nums font-bold text-primary">{fmtNumber(allLast.closingBalance)}</td>}
-                        {colVisible('currentPortion') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(allLast.currentPortion)}</td>}
-                        {colVisible('longTerm') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(allLast.longTermPortion)}</td>}
-                        {colVisible('accruedInterest') && <td className="px-3 py-2.5 text-right tabular-nums text-amber-600">{fmtNumber(allLast.accruedInterest)}</td>}
-                        <td colSpan={colVisible('notes') ? 2 : 1} />
+                        <td className="px-3 py-2.5 text-foreground whitespace-nowrap">Total · {consolidatedByLoan.length} facilities</td>
+                        {colVisible('openingBalance') && <td className="px-3 py-2.5 tabular-nums text-right text-foreground">{fmtNumber(gt.openingBalance)}</td>}
+                        {colVisible('newBorrowings') && <td className="px-3 py-2.5 tabular-nums text-right text-foreground">{gt.newBorrowings > 0 ? fmtNumber(gt.newBorrowings) : '—'}</td>}
+                        {colVisible('principalRepayments') && <td className="px-3 py-2.5 tabular-nums text-right text-green-600">{gt.repayments > 0 ? `(${fmtNumber(gt.repayments)})` : '—'}</td>}
+                        {colVisible('interestRepayments') && <td className="px-3 py-2.5" />}
+                        {colVisible('fxTranslation') && <td className="px-3 py-2.5 tabular-nums text-right text-foreground">{gt.fxTranslation !== 0 ? fmtNumber(gt.fxTranslation) : '—'}</td>}
+                        {colVisible('closingBalance') && <td className="px-3 py-2.5 tabular-nums text-right font-bold text-primary">{fmtNumber(gt.closingBalance)}</td>}
+                        {colVisible('accruedInterest') && <td className="px-3 py-2.5 tabular-nums text-right text-amber-600">{fmtNumber(gt.accruedInterest)}</td>}
+                        <td />
                       </tr>
                     </tfoot>
                   );
-                })() : totals && (
+                })()}
+                {selectedLoanId !== ALL_LOANS_ID && totals && (
                   <tfoot className="sticky bottom-0 z-10">
                     <tr className="bg-muted/80 border-t-2 border-primary/20 font-semibold">
                       <td className="px-3 py-2.5 text-foreground">FY2024 Total</td>
@@ -588,16 +585,111 @@ export function ContinuityTab() {
                       {colVisible('interestRepayments') && <td className="px-3 py-2.5 text-right tabular-nums text-amber-600">{totals.interestRepayments > 0 ? `(${fmtNumber(totals.interestRepayments)})` : '—'}</td>}
                       {colVisible('fxTranslation') && <td className="px-3 py-2.5 text-right tabular-nums text-blue-600">{fmtNumber(totals.fxTranslation)}</td>}
                       {colVisible('closingBalance') && <td className="px-3 py-2.5 text-right tabular-nums font-bold text-primary">{fmtNumber(closing?.closingBalance || 0)}</td>}
-                      {colVisible('currentPortion') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(closingCurrentPortion)}</td>}
-                      {colVisible('longTerm') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(closingLongTerm)}</td>}
                       {colVisible('accruedInterest') && <td className="px-3 py-2.5 text-right tabular-nums text-amber-600">{fmtNumber(closing?.accruedInterest || 0)}</td>}
-                      <td colSpan={colVisible('notes') ? 2 : 1} />
+                      <td />
                     </tr>
                   </tfoot>
                 )}
               </table>
             </div>
           </StyledCard>
+
+          {/* ── Maturity Ladder / Balance Sheet Classification ───────── */}
+          {(() => {
+            const period = settings?.currentPeriod ?? '2024-12';
+            const baseYear = parseInt(period.split('-')[0]);
+            const colHeaders = [
+              `Current (${baseYear + 1})`,
+              'Long-Term',
+              String(baseYear + 2), String(baseYear + 3),
+              String(baseYear + 4), String(baseYear + 5), String(baseYear + 6),
+              'Thereafter', 'Total',
+            ];
+            const source = selectedLoanId === ALL_LOANS_ID ? consolidatedByLoan : consolidatedByLoan.filter(r => r.loanId === selectedLoanId);
+            const ladderRows = source.map(row => {
+              const loan = loans.find(l => l.id === row.loanId);
+              const ladder = loan ? calcMaturityLadder(loan, row.closingBalance, period) : ([0,0,0,0,0,0,0] as [number,number,number,number,number,number,number]);
+              return { ...row, ladder };
+            });
+            const totals = ladderRows.reduce(
+              (s, r) => r.ladder.map((v, i) => s[i] + v) as [number,number,number,number,number,number,number],
+              [0,0,0,0,0,0,0] as [number,number,number,number,number,number,number],
+            );
+            const grandTotal = totals.reduce((s, v) => s + v, 0);
+            return (
+              <StyledCard className="overflow-hidden">
+                <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Balance Sheet Classification</h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Current portion + maturity ladder (principal repayments by year)</p>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-muted border-b border-border">
+                        <th className="text-left px-3 py-2.5 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Loan</th>
+                        {colHeaders.map((h, i) => (
+                          <th key={i} className={`text-right px-3 py-2.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap ${i === 0 ? 'text-primary' : i === colHeaders.length - 1 ? 'text-foreground' : 'text-foreground'}`}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ladderRows.map(row => {
+                        const total = row.ladder.reduce((s, v) => s + v, 0);
+                        const longTerm = row.ladder.slice(1).reduce((s, v) => s + v, 0);
+                        return (
+                          <tr key={row.loanId} className="border-b border-border hover:bg-muted/30 transition-colors">
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              <div className="font-medium text-foreground leading-tight text-sm">{row.loanName}</div>
+                              {selectedLoanId === ALL_LOANS_ID && <div className="text-[11px] text-muted-foreground">{row.lender} · {row.currency}</div>}
+                            </td>
+                            {/* Current */}
+                            <td className="px-3 py-2 tabular-nums text-right text-primary font-medium">
+                              {row.ladder[0] > 0 ? fmtNumber(row.ladder[0]) : '—'}
+                            </td>
+                            {/* Long-Term summary */}
+                            <td className="px-3 py-2 tabular-nums text-right text-foreground font-medium">
+                              {longTerm > 0 ? fmtNumber(longTerm) : '—'}
+                            </td>
+                            {/* Year breakdown (yr1–yr5 + thereafter) */}
+                            {row.ladder.slice(1).map((v, i) => (
+                              <td key={i} className="px-3 py-2 tabular-nums text-right text-muted-foreground text-xs">
+                                {v > 0 ? fmtNumber(v) : '—'}
+                              </td>
+                            ))}
+                            <td className="px-3 py-2 tabular-nums text-right font-semibold text-foreground">{fmtNumber(total)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    {ladderRows.length > 1 && (
+                      <tfoot className="sticky bottom-0 z-10">
+                        <tr className="bg-muted/80 border-t-2 border-primary/20 font-semibold">
+                          <td className="px-3 py-2.5 text-foreground whitespace-nowrap">Total · {ladderRows.length} facilities</td>
+                          {/* Current */}
+                          <td className="px-3 py-2.5 tabular-nums text-right text-primary">
+                            {totals[0] > 0 ? fmtNumber(totals[0]) : '—'}
+                          </td>
+                          {/* Long-Term */}
+                          <td className="px-3 py-2.5 tabular-nums text-right text-foreground">
+                            {totals.slice(1).reduce((s, v) => s + v, 0) > 0 ? fmtNumber(totals.slice(1).reduce((s, v) => s + v, 0)) : '—'}
+                          </td>
+                          {/* yr1–thereafter */}
+                          {totals.slice(1).map((v, i) => (
+                            <td key={i} className="px-3 py-2.5 tabular-nums text-right text-foreground text-xs">
+                              {v > 0 ? fmtNumber(v) : '—'}
+                            </td>
+                          ))}
+                          <td className="px-3 py-2.5 tabular-nums text-right font-bold text-primary">{fmtNumber(grandTotal)}</td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+              </StyledCard>
+            );
+          })()}
 
           {selectedLoan?.type === 'LOC' && (
             <div className="flex items-start gap-3 p-3.5 rounded-xl bg-blue-50 border border-blue-200 dark:bg-blue-950/20 dark:border-blue-800">
@@ -610,7 +702,7 @@ export function ContinuityTab() {
           )}
         </div>
       )}
-
+      </>}
 
       {/* Accrued Interest formula tooltip — fixed position */}
       {aiTooltipPos && (

@@ -575,7 +575,6 @@ export default function NotesTab() {
 
   // ── Additional content blocks ─────────────────────────────────────────
   const [blocks, setBlocks]         = useState<BlockD[]>([]);
-  const [addMenuOpen, setAddMenuOpen] = useState(false);
 
   const addBlock = (type: 'table' | 'text') => {
     const id = uid();
@@ -589,7 +588,6 @@ export default function NotesTab() {
         rows: [],
       }]);
     }
-    setAddMenuOpen(false);
   };
 
   const updateBlock = (updated: BlockD) =>
@@ -871,41 +869,6 @@ export default function NotesTab() {
           )
         )}
 
-        {/* + Add Type button */}
-        <div className="relative inline-block">
-          <Button
-            variant="default"
-            size="sm"
-            onClick={() => setAddMenuOpen(v => !v)}
-            className="gap-1.5 h-8 text-xs"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Add Type
-            <ChevronDown className="w-3 h-3 ml-0.5 opacity-70" />
-          </Button>
-
-          {addMenuOpen && (
-            <>
-              {/* Click-away overlay */}
-              <div className="fixed inset-0 z-10" onClick={() => setAddMenuOpen(false)} />
-              {/* Dropdown — opens upward so it's never clipped at page bottom */}
-              <div className="absolute left-0 bottom-full mb-1 z-20 bg-card border border-border rounded-md shadow-lg overflow-hidden min-w-[120px]">
-                <button
-                  onClick={() => addBlock('table')}
-                  className="w-full text-left px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
-                >
-                  Table
-                </button>
-                <button
-                  onClick={() => addBlock('text')}
-                  className="w-full text-left px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
-                >
-                  Text
-                </button>
-              </div>
-            </>
-          )}
-        </div>
       </div>
 
     </div>
