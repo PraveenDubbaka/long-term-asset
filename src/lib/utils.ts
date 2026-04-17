@@ -16,31 +16,40 @@ export function fmtCurrency(value: number, currency: Currency = 'CAD', compact =
   if (compact && Math.abs(value) >= 1_000) {
     return `${prefix}${(value / 1_000).toFixed(0)}K`;
   }
-  return `${prefix}${value.toLocaleString('en-CA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  return `${prefix}${value.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export function fmtPct(value: number, decimals = 2): string {
   return `${value.toFixed(decimals)}%`;
 }
 
+const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+/** Formats an ISO date string (YYYY-MM-DD) as "Dec 31 2024" */
 export function fmtDate(dateStr: string): string {
   if (!dateStr) return '—';
-  return dateStr; // already YYYY-MM-DD
+  const [y, m, d] = dateStr.split('-');
+  if (!y || !m || !d) return dateStr;
+  const mon = MONTH_ABBR[parseInt(m, 10) - 1];
+  if (!mon) return dateStr;
+  return `${mon} ${d.padStart(2,'0')} ${y}`;
 }
 
 export function fmtDateDisplay(dateStr: string): string {
   if (!dateStr) return '—';
   const [y, m, d] = dateStr.split('-');
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return `${months[parseInt(m) - 1]} ${parseInt(d)}, ${y}`;
+  if (!y || !m || !d) return '—';
+  const mon = MONTH_ABBR[parseInt(m, 10) - 1];
+  if (!mon) return '—';
+  return `${mon} ${d.padStart(2,'0')} ${y}`;
 }
 
-export function fmtNumber(value: number, decimals = 0): string {
+export function fmtNumber(value: number, decimals = 2): string {
   return value.toLocaleString('en-CA', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
 export function fmtVariance(value: number, currency: Currency = 'CAD'): string {
-  if (value === 0) return '—';
+  if (value === 0) return '00';
   const sign = value > 0 ? '+' : '';
   return `${sign}${fmtCurrency(value, currency)}`;
 }

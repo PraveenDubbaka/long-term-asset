@@ -5,7 +5,7 @@ import { fmtCurrency, fmtDateDisplay, exportToExcel, buildActivityExport } from 
 import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
 import { StyledCard } from '@/components/wp-ui/card';
-import { Modal, Input, Select } from '../components/ui';
+import { Modal, Input, DateInput, Select } from '../components/ui';
 import type { ActivityItem, ActivityStatus } from '../types';
 import toast from 'react-hot-toast';
 
@@ -172,14 +172,14 @@ export function ActivityTab() {
                       {item.type === 'Draw' && <span className="text-xs text-primary ml-1">(Draw)</span>}
                     </td>
                     <td className="px-4 py-2"><Badge variant="outline">{item.type}</Badge></td>
-                    <td className="px-4 py-2 text-right tabular-nums text-green-600 whitespace-nowrap">
-                      {item.principalAmount !== undefined ? fmtCurrency(item.principalAmount, loan?.currency || 'CAD') : '—'}
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums text-amber-600 whitespace-nowrap">
-                      {item.interestAmount !== undefined ? fmtCurrency(item.interestAmount, loan?.currency || 'CAD') : '—'}
+                    <td className="px-4 py-2 text-right tabular-nums text-foreground whitespace-nowrap">
+                      {item.principalAmount !== undefined ? fmtCurrency(item.principalAmount, loan?.currency || 'CAD') : '00'}
                     </td>
                     <td className="px-4 py-2 text-right tabular-nums text-foreground whitespace-nowrap">
-                      {item.feesAmount !== undefined && item.feesAmount > 0 ? fmtCurrency(item.feesAmount, loan?.currency || 'CAD') : '—'}
+                      {item.interestAmount !== undefined ? fmtCurrency(item.interestAmount, loan?.currency || 'CAD') : '00'}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums text-foreground whitespace-nowrap">
+                      {item.feesAmount !== undefined && item.feesAmount > 0 ? fmtCurrency(item.feesAmount, loan?.currency || 'CAD') : '00'}
                     </td>
                     <td className="px-4 py-2"><StatusBadge s={item.status} /></td>
                     <td className="px-4 py-2">
@@ -297,7 +297,7 @@ function AddActivityModal({ open, onClose, loans, onSave }: {
       <div className="space-y-3">
         <Select label="Loan" value={form.loanId} onChange={e => setForm(p => ({ ...p, loanId: e.target.value }))}
           options={[{ value: '', label: 'Select loan…' }, ...loans.map(l => ({ value: l.id, label: l.name }))]} />
-        <Input label="Date" type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} />
+        <DateInput label="Date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} />
         <Input label="Description" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
         <Input label="Amount" type="number" value={form.totalAmount} onChange={e => setForm(p => ({ ...p, totalAmount: parseFloat(e.target.value) || 0 }))} prefix="$" hint="Use positive for payments, negative for draws" />
         <Select label="Type" value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value as any }))}

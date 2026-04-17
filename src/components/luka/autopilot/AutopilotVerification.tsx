@@ -38,7 +38,7 @@ export function AutopilotVerification({ loan, settings, onComplete }: Props) {
     { label: "Rate & type", value: `${loan.rate}% ${loan.interestType}` },
     { label: "GL — Principal", value: loan.glPrincipalAccount },
     { label: "GL — Interest Exp.", value: loan.glInterestExpenseAccount },
-    { label: "Maturity date", value: new Date(loan.maturityDate).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" }) },
+    { label: "Maturity date", value: (() => { const d = new Date(loan.maturityDate); return `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}-${d.getFullYear()}`; })() },
     { label: "Day count basis", value: loan.dayCountBasis },
     { label: "Covenants", value: `${loan.covenantIds.length} covenant(s) tracked` },
     { label: "Team members", value: "Preparer / Reviewer / Partner" },

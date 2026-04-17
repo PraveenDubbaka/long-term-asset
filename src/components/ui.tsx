@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
-import { X, ChevronDown, Check, AlertTriangle, Info, CheckCircle, XCircle } from 'lucide-react';
+import { X, ChevronDown, Check, AlertTriangle, Info, CheckCircle, XCircle, Calendar } from 'lucide-react';
 
 // ─── BUTTON ───────────────────────────────────────────────────────────────────
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -105,6 +105,200 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   )
 );
 Input.displayName = 'Input';
+
+// ─── DATE INPUT ───────────────────────────────────────────────────────────────
+// Stores/receives ISO (YYYY-MM-DD) but displays and accepts MM-DD-YYYY.
+function isoToMDY(iso: string): string {
+  if (!iso) return '';
+  const p = iso.split('-');
+  if (p.length !== 3 || p[0].length !== 4) return '';
+  return `${p[1]}-${p[2]}-${p[0]}`;
+}
+function mdyToIso(mdy: string): string {
+  if (!mdy) return '';
+  const p = mdy.replace(/\//g, '-').split('-');
+  if (p.length !== 3) return '';
+  const [m, d, y] = p;
+  if (m.length === 2 && d.length === 2 && y.length === 4) return `${y}-${m}-${d}`;
+  return '';
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyChangeHandler = (e: any) => void;
+
+interface DateInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type' | 'value' | 'onChange'> {
+  value?: string;          // ISO YYYY-MM-DD
+  onChange?: AnyChangeHandler;
+  label?: string;
+  error?: string;
+  hint?: string;
+}
+
+export function DateInput({ value = '', onChange, label, error, hint, className, ...rest }: DateInputProps) {
+  const [display, setDisplay] = useState(() => isoToMDY(value));
+  const pickerRef = useRef<HTMLInputElement>(null);
+
+  // Sync display when controlled value changes externally
+  useEffect(() => { setDisplay(isoToMDY(value)); }, [value]);
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    setDisplay(raw);
+    const iso = mdyToIso(raw);
+    onChange?.({ target: { value: iso } });
+  };
+
+  // Native date picker fires ISO (YYYY-MM-DD) → convert to MM-DD-YYYY for display
+  const handlePickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const iso = e.target.value;
+    if (!iso) return;
+    setDisplay(isoToMDY(iso));
+    onChange?.({ target: { value: iso } });
+  };
+
+  const handleBlur = () => {
+    // Normalise display on blur (e.g. after typing a full date)
+    const iso = mdyToIso(display);
+    if (iso) setDisplay(isoToMDY(iso));
+  };
+
+  const inputEl = (
+    <div className="relative min-w-[130px]">
+      {/* Visible text input showing MM-DD-YYYY — right padding reserves space for icon */}
+      <input
+        type="text"
+        value={display}
+        placeholder="MM-DD-YYYY"
+        onChange={handleTextChange}
+        onBlur={handleBlur}
+        className={cn(
+          'input-double-border w-full h-9 text-sm rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card',
+          'text-foreground placeholder:text-foreground transition-all duration-200',
+          'hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)]',
+          'focus:outline-none focus:ring-0',
+          'disabled:cursor-not-allowed disabled:bg-muted/50 disabled:opacity-50',
+          error && 'border-destructive hover:border-destructive',
+          className,
+          'pl-3 pr-9'  // always last — wins over any px-* in caller's className
+        )}
+        {...rest}
+      />
+      {/* Decorative calendar icon — pointer-events-none so clicks pass through to the date input below */}
+      <span className="absolute inset-y-0 right-2.5 flex items-center pointer-events-none text-muted-foreground">
+        <Calendar className="w-4 h-4" />
+      </span>
+      {/* Transparent native date input covers the icon zone — clicking it opens the system picker */}
+      <input
+        ref={pickerRef}
+        type="date"
+        value={value}
+        onChange={handlePickerChange}
+        tabIndex={-1}
+        className="absolute inset-y-0 right-0 w-9 opacity-0 cursor-pointer"
+        aria-hidden="true"
+      />
+    </div>
+  );
+
+  if (!label && !error && !hint) return inputEl;
+  return (
+    <div className="flex flex-col gap-1.5">
+      {label && <label className="text-sm font-medium leading-none text-foreground">{label}</label>}
+      {inputEl}
+      {error && <p className="text-xs text-destructive mt-0.5">{error}</p>}
+      {hint && !error && <p className="text-xs text-foreground mt-0.5">{hint}</p>}
+    </div>
+  );
+}
+
+// ─── AMOUNT INPUT ─────────────────────────────────────────────────────────────
+// Displays value with Canadian/US comma-thousands formatting when unfocused.
+// Fires onChange with raw numeric string (commas stripped) for parseFloat compatibility.
+interface AmountInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type' | 'value' | 'onChange'> {
+  value?: number | string;
+  onChange?: AnyChangeHandler;
+  label?: string;
+  error?: string;
+  hint?: string;
+  prefix?: string;
+  suffix?: string;
+  decimals?: number; // significant decimal places shown when formatted (default 2)
+}
+
+const CA_FMT = new Intl.NumberFormat('en-CA', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+
+function fmtAmount(v: number | string | undefined, decimals: number): string {
+  if (v == null || v === '' || v === 0 && String(v) === '') return '';
+  const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/,/g, ''));
+  if (isNaN(n)) return '';
+  return new Intl.NumberFormat('en-CA', { minimumFractionDigits: 0, maximumFractionDigits: decimals }).format(n);
+}
+
+export function AmountInput({ value, onChange, label, error, hint, prefix, suffix, decimals = 2, className, onFocus: _onFocus, onBlur: _onBlur, ...rest }: AmountInputProps) {
+  const [focused, setFocused] = useState(false);
+  const [localRaw, setLocalRaw] = useState('');
+
+  // When focusing, seed localRaw with the raw number (no commas)
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    const n = typeof value === 'number' ? value : parseFloat(String(value ?? '').replace(/,/g, ''));
+    setLocalRaw(isNaN(n) ? '' : String(n));
+    setFocused(true);
+    _onFocus?.(e);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    setLocalRaw(raw);
+    // Strip commas so existing parseFloat handlers work correctly
+    const stripped = raw.replace(/,/g, '');
+    onChange?.({ target: { value: stripped } });
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    setFocused(false);
+    _onBlur?.(e);
+  };
+
+  const displayValue = focused ? localRaw : fmtAmount(value, decimals);
+
+  const inputEl = (
+    <div className="relative">
+      {prefix && <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-foreground text-xs">{prefix}</span>}
+      <input
+        type="text"
+        inputMode="decimal"
+        value={displayValue}
+        onChange={handleChange}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        className={cn(
+          'input-double-border w-full h-9 text-sm rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card',
+          'text-foreground placeholder:text-foreground transition-all duration-200',
+          'hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)]',
+          'focus:outline-none focus:ring-0',
+          'disabled:cursor-not-allowed disabled:bg-muted/50 disabled:opacity-50',
+          error && 'border-destructive hover:border-destructive',
+          prefix ? 'pl-8' : 'pl-3',
+          suffix ? 'pr-8' : 'pr-3',
+          className,
+          'text-right'
+        )}
+        {...rest}
+      />
+      {suffix && <span className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-foreground text-xs">{suffix}</span>}
+    </div>
+  );
+
+  if (!label && !error && !hint) return inputEl;
+  return (
+    <div className="flex flex-col gap-1.5">
+      {label && <label className="text-sm font-medium leading-none text-foreground">{label}</label>}
+      {inputEl}
+      {error && <p className="text-xs text-destructive mt-0.5">{error}</p>}
+      {hint && !error && <p className="text-xs text-foreground mt-0.5">{hint}</p>}
+    </div>
+  );
+}
 
 // ─── SELECT ───────────────────────────────────────────────────────────────────
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {

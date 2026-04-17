@@ -1,13 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { Plus, Upload, FileSearch, Edit3, ListFilter, Tag, Check, X, Download, ArrowLeft, Paperclip, FileText, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Upload, FileSearch, Edit3, ListFilter, Tag, Check, X, Download, ArrowLeft, Paperclip, FileText, Pencil, Trash2, ChevronDown } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { useWorkpaperLoans } from '../contexts/WorkpaperContext';
 import { fmtCurrency, fmtPct, fmtDateDisplay, exportToExcel, buildLoanRegisterExport } from '../lib/utils';
 import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
 import { StyledCard } from '@/components/wp-ui/card';
-import { Modal, Input, Select, Textarea, Tooltip } from '../components/ui';
-import type { Loan, LoanType, LoanStatus, InterestType, Currency, DayCountBasis, PaymentType, BanDocument } from '../types';
+import { Modal, Input, AmountInput, DateInput, Select, Textarea, Tooltip } from '../components/ui';
+import type { Loan, LoanType, LoanStatus, InterestType, Currency, DayCountBasis, PaymentType, BanDocument, FxRateType } from '../types';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/wp-ui/dropdown-menu';
 import toast from 'react-hot-toast';
 import { useTableColumns, useColumnResize, ThResizable, type ColDef } from '@/components/table-utils';
 import { accountMappings as allGLAccounts } from '../data/mockData';
@@ -18,6 +20,7 @@ const LOAN_TYPES: { value: string; label: string }[] = [
   { value: 'Revolver', label: 'Revolver' },
   { value: 'Mortgage', label: 'Mortgage' },
   { value: 'Bridge', label: 'Bridge Loan' },
+  { value: 'Custom', label: 'Custom' },
 ];
 
 const defaultLoan: Partial<Loan> = {
@@ -40,7 +43,7 @@ function typeBadge(t: LoanType) {
   return <Badge variant="outline">{t}</Badge>;
 }
 
-const LOAN_TYPE_SUGGESTIONS = ['Term','LOC','Revolver','Mortgage','Bridge','Demand','Construction','Mezzanine','Subordinated','Equipment'];
+const LOAN_TYPE_SUGGESTIONS = ['Term','LOC','Revolver','Mortgage','Bridge','Demand','Construction','Mezzanine','Subordinated','Equipment','Custom'];
 
 function LoanTypeCombo({ value, iic, onChange, onClick }: {
   value: string; iic: string;
@@ -430,7 +433,7 @@ const LOANS_COLS: ColDef<LoansColId>[] = [
   { id: 'collateral',         label: 'Collateral' },
   { id: 'type',               label: 'Type' },
   { id: 'interestType',       label: 'Rate Type' },
-  { id: 'rate',               label: 'Int. Rate' },
+  { id: 'rate',               label: 'Int. Rate (%)' },
   { id: 'startDate',          label: 'Start' },
   { id: 'maturity',           label: 'Maturity' },
   { id: 'tenureMonths',       label: 'Tenure (mo.)' },
@@ -438,7 +441,7 @@ const LOANS_COLS: ColDef<LoansColId>[] = [
   { id: 'currency',           label: 'CCY' },
   { id: 'monthlyPayment',     label: 'Mo. Payment' },
   { id: 'origAmt',            label: 'Orig. Loan Amt' },
-  { id: 'fxRate',             label: 'FX Rate' },
+  { id: 'fxRate',             label: 'FX Rate',             defaultWidth: 140 },
   { id: 'balance',            label: 'Converted Amt' },
   { id: 'closingBalance',     label: 'Closing Balance' },
   { id: 'glPrincipal',        label: 'GL Principal' },
@@ -529,8 +532,51 @@ function EmptyLoansState({ onUpload, onAddRow }: { onUpload: () => void; onAddRo
   );
 }
 
-export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
-  const { loans: allLoans, addLoan, updateLoan, deleteLoan, addBanDocument, banDocuments, settings, reconciliation } = useStore(s => ({
+// ─── FX Rate Type ──────────────────────────────────────────────────────────────
+
+const FX_RATE_TYPE_OPTIONS: { value: FxRateType; label: string; abbr: string; description: string }[] = [
+  { value: 'Closing',    label: 'Closing Rate',    abbr: 'CLO', description: 'Period-end / year-end spot rate' },
+  { value: 'Spot',       label: 'Spot Rate',        abbr: 'SPT', description: 'Rate at the transaction date' },
+  { value: 'Average',    label: 'Average Rate',     abbr: 'AVG', description: 'Average rate over the period' },
+  { value: 'Historical', label: 'Historical Rate',  abbr: 'HIS', description: 'Rate at original acquisition date' },
+  { value: 'Custom',     label: 'Custom Rate',      abbr: 'CST', description: 'Manually overridden rate' },
+];
+
+function FxRateTypeDropdown({ value, onChange, compact = false }: { value?: FxRateType; onChange: (v: FxRateType) => void; compact?: boolean }) {
+  const current = FX_RATE_TYPE_OPTIONS.find(o => o.value === value) ?? FX_RATE_TYPE_OPTIONS[0];
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className={`flex items-center gap-1 rounded-md border border-border bg-muted text-foreground hover:bg-muted/60 transition-colors focus:outline-none ${compact ? 'px-1.5 py-0.5 text-[10px] h-5' : 'px-2 py-1 text-xs h-6 w-full justify-between'}`}
+        >
+          <span className="font-medium">{compact ? current.abbr : current.label}</span>
+          <ChevronDown className="w-3 h-3 opacity-40 shrink-0" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" side="bottom" className="min-w-[230px]">
+        <DropdownMenuLabel className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide px-3 py-1.5">Exchange Rate Type</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {FX_RATE_TYPE_OPTIONS.map(opt => (
+          <DropdownMenuItem key={opt.value} onSelect={() => onChange(opt.value)} className="flex items-start gap-2.5 py-2.5">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[10px] bg-muted px-1 py-0.5 rounded text-foreground">{opt.abbr}</span>
+                <span className="font-medium text-xs">{opt.label}</span>
+                {(value ?? 'Closing') === opt.value && <Check className="w-3 h-3 ml-auto opacity-70" />}
+              </div>
+              <span className="text-[11px] text-muted-foreground mt-0.5 block">{opt.description}</span>
+            </div>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+export function LoansTab() {
+  const { loans: allLoans, addLoan: storeAddLoan, updateLoan: storeUpdateLoan, deleteLoan: storeDeleteLoan, addBanDocument, banDocuments, settings, reconciliation } = useStore(s => ({
     loans: s.loans,
     addLoan: s.addLoan,
     updateLoan: s.updateLoan,
@@ -541,23 +587,26 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
     reconciliation: s.reconciliation,
   }));
 
-  const loans = isEmpty ? [] : allLoans;
+  const wpCtx = useWorkpaperLoans();
+  const loans = wpCtx ? wpCtx.loans : allLoans;
+  const addLoan    = wpCtx ? wpCtx.addLoan    : storeAddLoan;
+  const updateLoan = wpCtx ? wpCtx.updateLoan : storeUpdateLoan;
+  const deleteLoan = wpCtx ? wpCtx.deleteLoan : storeDeleteLoan;
 
   // Period date label: fiscal year-end Dec 31 2024 → opening balance is Jan 1, 2024
   const balancePeriodLabel = (() => {
     const fye = settings?.fiscalYearEnd;
     if (!fye) return null;
     const year = new Date(fye + 'T00:00:00').getFullYear();
-    return new Intl.DateTimeFormat('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })
-      .format(new Date(year, 0, 1)); // Jan 1 of that year
+    const d = new Date(year, 0, 1);
+    const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return fmtDateDisplay(iso);
   })();
 
   const closingPeriodLabel = (() => {
     const fye = settings?.fiscalYearEnd;
     if (!fye) return null;
-    // Fiscal year-end date itself — e.g. Dec 31, 2024
-    return new Intl.DateTimeFormat('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })
-      .format(new Date(fye + 'T00:00:00'));
+    return fmtDateDisplay(fye);
   })();
 
   const [editLoan, setEditLoan] = useState<Loan | null>(null);
@@ -816,10 +865,10 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
             <Download className="w-3.5 h-3.5 mr-1" /> Export
           </Button>
           <Button variant="outline" size="sm" onClick={() => { setForm(defaultLoan); setAddTab('ocr'); setPageView('add'); }}>
-            <Upload className="w-3.5 h-3.5 mr-1" /> Upload Loan
+            <Upload className="w-3.5 h-3.5 mr-1" /> Upload
           </Button>
           <Button variant="default" size="sm" onClick={addNewRow} disabled={addingRow}>
-            <Plus className="w-3.5 h-3.5 mr-1" /> Add Loan
+            <Plus className="w-3.5 h-3.5 mr-1" /> Add
           </Button>
         </div>
       </div>
@@ -827,7 +876,8 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
       {/* Loan Table */}
       <div className="px-6">
         <StyledCard className="overflow-hidden">
-          <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 'calc(100vh - 192px)', minHeight: '260px' }}>
+          <div className="overflow-x-auto" style={{ overflowY: 'clip' }}>
+            <div style={{ maxHeight: 'calc(100vh - 192px)', overflowY: 'auto' }}>
             <table className="w-full text-sm">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-muted border-b border-border">
@@ -857,7 +907,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     <ThResizable colId="interestType" width={getWidth('interestType')} onResizeStart={rh('interestType')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Rate Type</ThResizable>
                   )}
                   {isVisible('rate') && (
-                    <ThResizable colId="rate" width={getWidth('rate')} onResizeStart={rh('rate')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Int. Rate</ThResizable>
+                    <ThResizable colId="rate" width={getWidth('rate')} onResizeStart={rh('rate')} className="text-right px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Int. Rate (%)</ThResizable>
                   )}
                   {isVisible('startDate') && (
                     <ThResizable colId="startDate" width={getWidth('startDate')} onResizeStart={rh('startDate')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Start</ThResizable>
@@ -1003,12 +1053,12 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     )}
                     {isVisible('startDate') && (
                       <td className="px-3 py-1.5">
-                        <input type="date" className={IIC} value={newRowEdits.startDate ?? ''} onChange={nrIV('startDate')} onClick={e => e.stopPropagation()} />
+                        <DateInput className={IIC} value={newRowEdits.startDate ?? ''} onChange={nrIV('startDate')} onClick={e => e.stopPropagation()} />
                       </td>
                     )}
                     {isVisible('maturity') && (
                       <td className="px-3 py-1.5">
-                        <input type="date" className={IIC} value={newRowEdits.maturityDate ?? ''} onChange={nrIV('maturityDate')} onClick={e => e.stopPropagation()} />
+                        <DateInput className={IIC} value={newRowEdits.maturityDate ?? ''} onChange={nrIV('maturityDate')} onClick={e => e.stopPropagation()} />
                       </td>
                     )}
                     {isVisible('tenureMonths') && (
@@ -1018,7 +1068,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     )}
                     {isVisible('firstPaymentDate') && (
                       <td className="px-3 py-1.5">
-                        <input type="date" className={IIC} value={newRowEdits.firstPaymentDate ?? ''} onChange={nrIV('firstPaymentDate')} onClick={e => e.stopPropagation()} />
+                        <DateInput className={IIC} value={newRowEdits.firstPaymentDate ?? ''} onChange={nrIV('firstPaymentDate')} onClick={e => e.stopPropagation()} />
                       </td>
                     )}
                     {isVisible('currency') && (
@@ -1033,27 +1083,30 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     )}
                     {isVisible('monthlyPayment') && (
                       <td className="px-3 py-1.5">
-                        <input type="number" min="0" step="1" className={`${IIC} text-right w-28 font-mono`} value={newRowEdits.monthlyPayment ?? ''} onChange={nrIVNum('monthlyPayment')} placeholder="—" onClick={e => e.stopPropagation()} />
+                        <AmountInput className={`${IIC} w-28 font-mono`} value={newRowEdits.monthlyPayment ?? ''} onChange={nrIVNum('monthlyPayment')} placeholder="—" onClick={e => e.stopPropagation()} />
                       </td>
                     )}
                     {isVisible('origAmt') && (
                       <td className="px-3 py-1.5">
-                        <input type="number" className={`${IIC} text-right`} value={newRowEdits.originalPrincipal ?? ''} onChange={nrIVNum('originalPrincipal')} placeholder="0" onClick={e => e.stopPropagation()} />
+                        <AmountInput className={IIC} value={newRowEdits.originalPrincipal ?? ''} onChange={nrIVNum('originalPrincipal')} placeholder="0" onClick={e => e.stopPropagation()} />
                       </td>
                     )}
                     {isVisible('fxRate') && (
-                      <td className="px-3 py-1.5">
-                        <input type="number" step="0.0001" className={`${IIC} text-right w-24`} value={newRowEdits.fxRateToCAD ?? ''} onChange={e => setNR('fxRateToCAD', parseFloat(e.target.value) || undefined)} placeholder="—" onClick={e => e.stopPropagation()} />
+                      <td className="px-3 py-1.5" onClick={e => e.stopPropagation()}>
+                        <div className="flex flex-col gap-1" style={{ minWidth: '8rem' }}>
+                          <FxRateTypeDropdown value={newRowEdits.fxRateType as FxRateType} onChange={v => setNR('fxRateType', v)} />
+                          <input type="number" step="0.0001" className={`${IIC} text-right`} value={newRowEdits.fxRateToCAD ?? ''} onChange={e => setNR('fxRateToCAD', parseFloat(e.target.value) || undefined)} placeholder="—" />
+                        </div>
                       </td>
                     )}
                     {isVisible('balance') && (
                       <td className="px-3 py-1.5">
-                        <input type="number" className={`${IIC} text-right`} value={newRowEdits.originalPrincipal ?? ''} onChange={nrIVNum('originalPrincipal')} placeholder="0" onClick={e => e.stopPropagation()} />
+                        <AmountInput className={IIC} value={newRowEdits.originalPrincipal ?? ''} onChange={nrIVNum('originalPrincipal')} placeholder="0" onClick={e => e.stopPropagation()} />
                       </td>
                     )}
                     {isVisible('closingBalance') && (
                       <td className="px-3 py-1.5">
-                        <input type="number" className={`${IIC} text-right`} value={newRowEdits.closingBalance ?? ''} onChange={nrIVNum('closingBalance')} placeholder="0" onClick={e => e.stopPropagation()} />
+                        <AmountInput className={IIC} value={newRowEdits.closingBalance ?? ''} onChange={nrIVNum('closingBalance')} placeholder="0" onClick={e => e.stopPropagation()} />
                       </td>
                     )}
                     {isVisible('glPrincipal') && (
@@ -1096,7 +1149,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     )}
                     {isVisible('balloonAmt') && (
                       <td className="px-3 py-1.5 text-right">
-                        <input type="number" min="0" className={`${IIC} text-right w-28`} value={newRowEdits.balloonAmount ?? ''} onChange={nrIVNum('balloonAmount')} placeholder="—" onClick={e => e.stopPropagation()} />
+                        <AmountInput className={`${IIC} w-28`} value={newRowEdits.balloonAmount ?? ''} onChange={nrIVNum('balloonAmount')} placeholder="—" onClick={e => e.stopPropagation()} />
                       </td>
                     )}
                     {isVisible('status') && (
@@ -1121,18 +1174,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     </td>
                   </tr>
                 )}
-                {filteredLoans.length === 0 && !addingRow && loans.length === 0 && isEmpty && (
-                  /* ── Brand-new workpaper: rich empty state ── */
-                  <tr>
-                    <td colSpan={visibleCount} className="px-0 py-0">
-                      <EmptyLoansState
-                        onUpload={() => { setForm(defaultLoan); setAddTab('ocr'); setPageView('add'); }}
-                        onAddRow={addNewRow}
-                      />
-                    </td>
-                  </tr>
-                )}
-                {filteredLoans.length === 0 && !addingRow && (loans.length > 0 || !isEmpty) && (
+                {filteredLoans.length === 0 && !addingRow && loans.length > 0 && (
                   <tr>
                     <td colSpan={visibleCount} className="px-3 py-10 text-center text-sm text-foreground">
                       No loans match the current filters.{' '}
@@ -1223,7 +1265,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('startDate') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input type="date" className={IIC} value={ed.startDate ?? l.startDate ?? ''} onChange={iv('startDate')} onClick={e => e.stopPropagation()} />
+                          ? <DateInput className={IIC} value={ed.startDate ?? l.startDate ?? ''} onChange={iv('startDate')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums text-foreground whitespace-nowrap">{fmtDateDisplay(l.startDate || '')}</span>}
                       </td>
                     )}
@@ -1231,7 +1273,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('maturity') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input type="date" className={IIC + reqCls(ed.maturityDate ?? l.maturityDate)} value={ed.maturityDate ?? l.maturityDate ?? ''} onChange={iv('maturityDate')} onClick={e => e.stopPropagation()} />
+                          ? <DateInput className={IIC + reqCls(ed.maturityDate ?? l.maturityDate)} value={ed.maturityDate ?? l.maturityDate ?? ''} onChange={iv('maturityDate')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums text-foreground whitespace-nowrap">{fmtDateDisplay(l.maturityDate)}</span>}
                       </td>
                     )}
@@ -1250,7 +1292,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('firstPaymentDate') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input type="date" className={IIC} value={ed.firstPaymentDate ?? l.firstPaymentDate ?? ''} onChange={iv('firstPaymentDate')} onClick={e => e.stopPropagation()} />
+                          ? <DateInput className={IIC} value={ed.firstPaymentDate ?? l.firstPaymentDate ?? ''} onChange={iv('firstPaymentDate')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums text-foreground whitespace-nowrap">{l.firstPaymentDate ? fmtDateDisplay(l.firstPaymentDate) : '—'}</span>}
                       </td>
                     )}
@@ -1271,8 +1313,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('monthlyPayment') && (
                       <td className="px-3 py-1.5 text-right">
                         {ie
-                          ? <input type="number" min="0" step="1"
-                              className={`${IIC} text-right w-28 font-mono`}
+                          ? <AmountInput className={`${IIC} w-28 font-mono`}
                               value={ed.monthlyPayment ?? l.monthlyPayment ?? ''}
                               placeholder={(() => { const p = calcMonthlyPayment(l); return p ? Math.round(p).toString() : ''; })()}
                               onChange={ivNum('monthlyPayment')} onClick={e => e.stopPropagation()} />
@@ -1288,28 +1329,35 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('origAmt') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input type="number" className={`${IIC} text-right` + reqCls(ed.originalPrincipal ?? l.originalPrincipal)} value={ed.originalPrincipal ?? l.originalPrincipal} onChange={ivNum('originalPrincipal')} onClick={e => e.stopPropagation()} />
+                          ? <AmountInput className={IIC + reqCls(ed.originalPrincipal ?? l.originalPrincipal)} value={ed.originalPrincipal ?? l.originalPrincipal} onChange={ivNum('originalPrincipal')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums text-foreground whitespace-nowrap float-right">{fmtCurrency(l.originalPrincipal, 'CAD')}</span>}
                       </td>
                     )}
                     {/* FX Rate */}
                     {isVisible('fxRate') && (
-                      <td className="px-3 py-1.5 text-right" onClick={e => e.stopPropagation()}>
+                      <td className="px-3 py-1.5" onClick={e => e.stopPropagation()}>
                         {l.currency === 'CAD'
                           ? <span className="text-foreground text-xs tabular-nums">—</span>
                           : ie
-                            ? <input type="number" step="0.0001" min="0.0001"
-                                className={`${IIC} text-right w-24`}
-                                value={ed.fxRateToCAD ?? getFxRate(l)}
-                                onChange={e => setEdit('fxRateToCAD', parseFloat(e.target.value) || getFxRate(l))} />
-                            : <Badge variant="outline" className="tabular-nums font-mono">{getFxRate(l).toFixed(4)}</Badge>}
+                            ? <div className="flex flex-col gap-1" style={{ minWidth: '8rem' }}>
+                                <FxRateTypeDropdown value={(ed.fxRateType ?? l.fxRateType) as FxRateType} onChange={v => setEdit('fxRateType', v)} />
+                                <input type="number" step="0.0001" min="0.0001"
+                                  className={`${IIC} text-right`}
+                                  value={ed.fxRateToCAD ?? getFxRate(l)}
+                                  onChange={e => setEdit('fxRateToCAD', parseFloat(e.target.value) || getFxRate(l))} />
+                              </div>
+                            : <div className="flex flex-col items-end gap-0.5">
+                                <Badge variant="outline" className="tabular-nums font-mono">{getFxRate(l).toFixed(4)}</Badge>
+                                <span className="text-[10px] text-muted-foreground font-mono">{(l.fxRateType ?? 'Closing')}</span>
+                              </div>
+                        }
                       </td>
                     )}
                     {/* Converted Amt */}
                     {isVisible('balance') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input type="number" className={`${IIC} text-right` + reqCls(ed.originalPrincipal ?? l.originalPrincipal)} value={ed.originalPrincipal ?? l.originalPrincipal} onChange={ivNum('originalPrincipal')} onClick={e => e.stopPropagation()} />
+                          ? <AmountInput className={IIC + reqCls(ed.originalPrincipal ?? l.originalPrincipal)} value={ed.originalPrincipal ?? l.originalPrincipal} onChange={ivNum('originalPrincipal')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums font-semibold text-foreground whitespace-nowrap float-right">{fmtCurrency(l.originalPrincipal * getFxRate(l), 'CAD')}</span>}
                       </td>
                     )}
@@ -1317,7 +1365,7 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('closingBalance') && (
                       <td className="px-3 py-1.5">
                         {ie
-                          ? <input type="number" className={`${IIC} text-right`} value={ed.closingBalance ?? l.closingBalance ?? ''} onChange={ivNum('closingBalance')} onClick={e => e.stopPropagation()} />
+                          ? <AmountInput className={IIC} value={ed.closingBalance ?? l.closingBalance ?? ''} onChange={ivNum('closingBalance')} onClick={e => e.stopPropagation()} />
                           : <span className="tabular-nums font-semibold text-foreground whitespace-nowrap float-right">
                               {(() => {
                                 const val = l.closingBalance ?? l.currentBalance;
@@ -1385,8 +1433,8 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                     {isVisible('balloonAmt') && (
                       <td className="px-3 py-1.5 text-right">
                         {ie
-                          ? <input type="number" min="0" className={`${IIC} text-right w-28`} value={ed.balloonAmount ?? l.balloonAmount ?? ''} onChange={ivNum('balloonAmount')} onClick={e => e.stopPropagation()} />
-                          : <span className="tabular-nums text-foreground whitespace-nowrap">{l.balloonAmount ? fmtCurrency(l.balloonAmount, l.currency) : '—'}</span>}
+                          ? <AmountInput className={`${IIC} w-28`} value={ed.balloonAmount ?? l.balloonAmount ?? ''} onChange={ivNum('balloonAmount')} onClick={e => e.stopPropagation()} />
+                          : <span className="tabular-nums text-foreground whitespace-nowrap">{l.balloonAmount ? fmtCurrency(l.balloonAmount, l.currency) : '00'}</span>}
                       </td>
                     )}
                     {/* Status */}
@@ -1490,7 +1538,15 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
                 );
               })()}
             </table>
+            </div>{/* end vertical-scroll inner div */}
           </div>
+          {/* ── Brand-new workpaper: rich empty state — outside scroll container so always visible ── */}
+          {filteredLoans.length === 0 && !addingRow && loans.length === 0 && (
+            <EmptyLoansState
+              onUpload={() => { setForm(defaultLoan); setAddTab('ocr'); setPageView('add'); }}
+              onAddRow={addNewRow}
+            />
+          )}
         </StyledCard>
       </div>
 
@@ -1657,38 +1713,81 @@ export function LoansTab({ isEmpty = false }: { isEmpty?: boolean }) {
         document.body
       )}
 
-      {/* Add Loan Inline Page — tabbed */}
+      {/* Add Loan Inline Page — tabbed (Upload | Manual) */}
       {pageView === 'add' && (
         <div className="flex flex-col">
-          {/* Header: breadcrumb only */}
-          <div className="flex items-center px-6 pt-5 pb-3 border-b border-border">
-            <button onClick={() => setPageView('list')} className="flex items-center gap-1.5 text-sm text-foreground hover:text-foreground transition-colors">
-              <ArrowLeft className="w-4 h-4" /> Back to Loans
-            </button>
-            <span className="text-foreground mx-1">/</span>
-            <span className="text-sm font-semibold text-foreground">Upload Loan</span>
+          {/* Header: breadcrumb + tab switcher */}
+          <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-border">
+            <div className="flex items-center gap-1.5">
+              <button onClick={() => setPageView('list')} className="flex items-center gap-1.5 text-sm text-foreground hover:text-foreground transition-colors">
+                <ArrowLeft className="w-4 h-4" /> Back to Loans
+              </button>
+              <span className="text-foreground mx-1">/</span>
+              <span className="text-sm font-semibold text-foreground">
+                {addTab === 'ocr' ? 'Upload Loan' : 'Add Loan Manually'}
+              </span>
+            </div>
+            {/* Tab toggle */}
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
+              <button
+                onClick={() => setAddTab('ocr')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${addTab === 'ocr' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                <Upload className="w-3.5 h-3.5" /> Upload
+              </button>
+              <button
+                onClick={() => { setAddTab('manual'); setForm({ ...defaultLoan }); }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${addTab === 'manual' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                <Plus className="w-3.5 h-3.5" /> Manual Entry
+              </button>
+            </div>
           </div>
-          {/* OCR upload — only option */}
-          <OcrImportPage
-            onBack={() => setPageView('list')}
-            onImport={(loans) => {
-              const nextLagNum = banDocuments.filter(d => d.folder === 'LAG').length + 1;
-              loans.forEach((loan, i) => {
-                const lagId   = `LAG-${nextLagNum + i}`;
-                const lagName = `${loan.name.replace(/\s+/g, '_')}_Agreement_${new Date().toISOString().slice(0, 10)}.pdf`;
-                addBanDocument({ id: lagId, code: lagId, name: lagName, folder: 'LAG' });
-                addLoan({ ...loan, wpRefs: [...(loan.wpRefs ?? []), lagId] });
-              });
-              const ids = new Set(loans.map(l => l.id));
-              setOcrPendingIds(ids);
-              setPageView('list');
-              toast.success(
-                `${loans.length} loan${loans.length !== 1 ? 's' : ''} extracted — documents saved to Loan Agreements folder`,
-                { duration: 5000 }
-              );
-            }}
-            hideHeader
-          />
+
+          {/* OCR tab */}
+          {addTab === 'ocr' && (
+            <OcrImportPage
+              onBack={() => setPageView('list')}
+              onImport={(loans) => {
+                const nextLagNum = banDocuments.filter(d => d.folder === 'LAG').length + 1;
+                loans.forEach((loan, i) => {
+                  const lagId   = `LAG-${nextLagNum + i}`;
+                  const lagName = `${loan.name.replace(/\s+/g, '_')}_Agreement_${new Date().toISOString().slice(0, 10)}.pdf`;
+                  addBanDocument({ id: lagId, code: lagId, name: lagName, folder: 'LAG' });
+                  addLoan({ ...loan, wpRefs: [...(loan.wpRefs ?? []), lagId] });
+                });
+                const ids = new Set(loans.map(l => l.id));
+                setOcrPendingIds(ids);
+                setPageView('list');
+                toast.success(
+                  `${loans.length} loan${loans.length !== 1 ? 's' : ''} extracted — documents saved to Loan Agreements folder`,
+                  { duration: 5000 }
+                );
+              }}
+              hideHeader
+            />
+          )}
+
+          {/* Manual Entry tab */}
+          {addTab === 'manual' && (
+            <div className="px-[20%] py-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 120px)' }}>
+              <StyledCard>
+                <div className="px-6 py-5 space-y-1">
+                  <h3 className="text-sm font-semibold text-foreground">New Loan Details</h3>
+                  <p className="text-xs text-muted-foreground">Fill in the loan information below. Fields marked * are required.</p>
+                </div>
+                <div className="px-6 pb-5">
+                  <AddLoanFormContent form={form} setForm={setForm} />
+                </div>
+                <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border bg-muted/30">
+                  <Button variant="secondary" onClick={() => setPageView('list')}>Cancel</Button>
+                  <Button variant="default" onClick={handleSave}>
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Save Loan
+                  </Button>
+                </div>
+              </StyledCard>
+            </div>
+          )}
         </div>
       )}
 
@@ -2314,7 +2413,7 @@ function AddLoanFormContent({ form, setForm }: { form: Partial<Loan>; setForm: (
           { value: 'Fixed', label: 'Fixed Rate' }, { value: 'Variable', label: 'Variable Rate' },
         ]} />
         <Input label="Int. Rate (%)" type="number" value={form.rate || ''} onChange={fn('rate')} suffix="%" />
-        <Input label="Mo. Payment" type="number" value={form.monthlyPayment ?? ''} onChange={fn('monthlyPayment')} prefix="$" placeholder={computedMoPayment || '0'} />
+        <AmountInput label="Mo. Payment" value={form.monthlyPayment ?? ''} onChange={fn('monthlyPayment')} prefix="$" placeholder={computedMoPayment || '0'} />
       </div>
 
       {/* Row 4b — Variable rate extras (Benchmark + Spread) */}
@@ -2324,23 +2423,30 @@ function AddLoanFormContent({ form, setForm }: { form: Partial<Loan>; setForm: (
       </>}
 
       {/* Row 5 — Start · Maturity · Tenure */}
-      <Input label="Start Date" type="date" value={form.startDate || ''} onChange={f('startDate')} />
-      <Input label="Maturity Date" type="date" value={form.maturityDate || ''} onChange={f('maturityDate')} />
+      <DateInput label="Start Date" value={form.startDate || ''} onChange={f('startDate')} />
+      <DateInput label="Maturity Date" value={form.maturityDate || ''} onChange={f('maturityDate')} />
       <Input label="Loan Tenure (months)" type="number" value={form.tenureMonths ?? ''} onChange={fn('tenureMonths')} placeholder={
         form.startDate && form.maturityDate
           ? String(Math.round((new Date(form.maturityDate).getTime() - new Date(form.startDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)))
           : ''
       } hint="Auto-calculated from dates if left blank" />
-      <Input label="First Payment Date" type="date" value={form.firstPaymentDate || ''} onChange={f('firstPaymentDate')} />
+      <DateInput label="First Payment Date" value={form.firstPaymentDate || ''} onChange={f('firstPaymentDate')} />
 
-      {/* Row 6 — Orig. Loan Amt · FX Rate (if non-CAD) / Bal. Loan Amt (matches Orig. Loan Amt + FX Rate + Converted Amt columns) */}
-      <Input label="Orig. Loan Amt" type="number" value={form.originalPrincipal || ''} onChange={fn('originalPrincipal')} prefix={form.currency || 'CAD'} />
+      {/* Row 6 — Orig. Loan Amt · FX Rate (if non-CAD) / Bal. Loan Amt */}
+      <AmountInput label="Orig. Loan Amt" value={form.originalPrincipal || ''} onChange={fn('originalPrincipal')} prefix={form.currency || 'CAD'} />
       {isFx
-        ? <Input label={`FX Rate (${form.currency} → CAD)`} type="number" step="0.0001" value={form.fxRateToCAD || ''} onChange={fn('fxRateToCAD')} placeholder="e.g. 1.3530" />
-        : <Input label="Bal. Loan Amt" type="number" value={form.currentBalance || ''} onChange={fn('currentBalance')} prefix="$" />
+        ? <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-foreground">FX Rate ({form.currency} → CAD)</label>
+            <FxRateTypeDropdown value={form.fxRateType as FxRateType} onChange={v => setForm({ ...form, fxRateType: v })} />
+            <input type="number" step="0.0001" placeholder="e.g. 1.3530"
+              className="input-double-border h-9 w-full px-3 text-sm border border-[#dcdfe4] rounded-[10px] bg-white text-foreground placeholder:text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] focus:outline-none dark:bg-card dark:border-[hsl(220_15%_30%)]"
+              value={form.fxRateToCAD || ''}
+              onChange={fn('fxRateToCAD')} />
+          </div>
+        : <AmountInput label="Bal. Loan Amt" value={form.currentBalance || ''} onChange={fn('currentBalance')} prefix="$" />
       }
       {isFx && (
-        <Input label="Bal. Loan Amt" type="number" value={form.currentBalance || ''} onChange={fn('currentBalance')} prefix={form.currency} />
+        <AmountInput label="Bal. Loan Amt" value={form.currentBalance || ''} onChange={fn('currentBalance')} prefix={form.currency} />
       )}
 
       {/* Row 7 — Day Count · Payment Type · Compounding Frequency */}
@@ -2358,7 +2464,7 @@ function AddLoanFormContent({ form, setForm }: { form: Partial<Loan>; setForm: (
 
       {/* Conditional: Balloon Amount (only for Balloon payment type) */}
       {form.paymentType === 'Balloon' && (
-        <Input label="Balloon Amount" type="number" value={form.balloonAmount ?? ''} onChange={fn('balloonAmount')} prefix={form.currency || 'CAD'} placeholder="Final lump-sum payment" />
+        <AmountInput label="Balloon Amount" value={form.balloonAmount ?? ''} onChange={fn('balloonAmount')} prefix={form.currency || 'CAD'} placeholder="Final lump-sum payment" />
       )}
 
       {/* Row 8 — Payment Frequency · Compounding Frequency */}
@@ -2376,7 +2482,7 @@ function AddLoanFormContent({ form, setForm }: { form: Partial<Loan>; setForm: (
         { value: 'Active', label: 'Active' }, { value: 'Inactive', label: 'Inactive' },
         { value: 'Closed', label: 'Closed' }, { value: 'Replaced', label: 'Replaced' }, { value: 'Refinanced', label: 'Refinanced' },
       ]} />
-      <Input label="Last Payment Date" type="date" value={form.lastPaymentDate || ''} onChange={f('lastPaymentDate')} />
+      <DateInput label="Last Payment Date" value={form.lastPaymentDate || ''} onChange={f('lastPaymentDate')} />
 
       {/* GL Mappings — searchable autocomplete (matches GL Principal column) */}
       <div className="col-span-2 border-t border-border pt-3 mt-1">

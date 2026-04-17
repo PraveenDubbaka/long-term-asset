@@ -294,10 +294,10 @@ export function CapAssetDashboardTab() {
                 </td>
                 <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm">${fmt(totalCost2024)}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm text-primary">
-                  {totalAdditions > 0 ? '+$' + fmt(totalAdditions) : '—'}
+                  {totalAdditions > 0 ? '+$' + fmt(totalAdditions) : '00'}
                 </td>
                 <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm text-red-500">
-                  {totalDisposals > 0 ? '$' + fmt(totalDisposals) : '—'}
+                  {totalDisposals > 0 ? '$' + fmt(totalDisposals) : '00'}
                 </td>
                 <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm text-amber-600">${fmt(totalAmortExp)}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm text-foreground">${fmt(totalAccumAmort)}</td>

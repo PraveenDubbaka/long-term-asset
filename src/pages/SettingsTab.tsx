@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Save, Lock, Unlock } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { Button, Card, Input, Select, Badge, Alert, SectionHeader } from '../components/ui';
+import { fmtDateDisplay } from '../lib/utils';
+import { Button, Card, Input, DateInput, Select, Badge, Alert, SectionHeader } from '../components/ui';
 import type { FXRate, Currency } from '../types';
 import toast from 'react-hot-toast';
 
@@ -86,14 +87,14 @@ export function SettingsTab() {
 
               {settings.status === 'Locked' && (
                 <Alert type="warning" title="Year-End Locked">
-                  Locked by {settings.lockedBy} on {settings.lockedAt?.slice(0, 10)}. No further changes can be made without unlocking.
+                  Locked by {settings.lockedBy} on {settings.lockedAt ? fmtDateDisplay(settings.lockedAt.slice(0, 10)) : ''}. No further changes can be made without unlocking.
                 </Alert>
               )}
 
               <div className="grid grid-cols-2 gap-4">
                 <Input label="Client Name" value={engForm.client} onChange={e => setEngForm(p => ({ ...p, client: e.target.value }))} />
                 <Input label="Engagement Name" value={engForm.engagement} onChange={e => setEngForm(p => ({ ...p, engagement: e.target.value }))} />
-                <Input label="Fiscal Year-End Date" type="date" value={engForm.fiscalYearEnd} onChange={e => setEngForm(p => ({ ...p, fiscalYearEnd: e.target.value }))} />
+                <DateInput label="Fiscal Year-End Date" value={engForm.fiscalYearEnd} onChange={e => setEngForm(p => ({ ...p, fiscalYearEnd: e.target.value }))} />
                 <Select label="Base Currency" value={engForm.baseCurrency} onChange={e => setEngForm(p => ({ ...p, baseCurrency: e.target.value as Currency }))}
                   options={[{ value: 'CAD', label: 'CAD' }, { value: 'USD', label: 'USD' }, { value: 'EUR', label: 'EUR' }]} />
                 <Input label="Current Period" value={engForm.currentPeriod} onChange={e => setEngForm(p => ({ ...p, currentPeriod: e.target.value }))} hint="Format: YYYY-MM" />

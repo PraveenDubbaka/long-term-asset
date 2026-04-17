@@ -104,7 +104,7 @@ export function InvWACTab() {
                   <Badge variant={g.totalRealizedGL > 0 ? 'success' : g.totalRealizedGL < 0 ? 'destructive' : 'outline'} className="text-xs tabular-nums">
                     {g.totalRealizedGL !== 0
                       ? `${g.totalRealizedGL > 0 ? '+' : ''}${sym}${fmt(Math.abs(g.totalRealizedGL))} ${g.currency}`
-                      : '—'}
+                      : '00'}
                   </Badge>
                 </div>
               </button>
@@ -138,11 +138,11 @@ export function InvWACTab() {
                               {r.txnType}
                             </Badge>
                           </td>
-                          <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{r.unitsIn > 0 ? fmt(r.unitsIn, 0) : '—'}</td>
-                          <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{r.unitsOut > 0 ? fmt(r.unitsOut, 0) : '—'}</td>
+                          <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{r.unitsIn > 0 ? fmt(r.unitsIn, 0) : '00'}</td>
+                          <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{r.unitsOut > 0 ? fmt(r.unitsOut, 0) : '00'}</td>
                           <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{fmt(r.priceLocal, 2)}</td>
-                          <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{r.costIn > 0 ? sym + fmt(r.costIn) : '—'}</td>
-                          <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{r.costOut > 0 ? sym + fmt(r.costOut) : '—'}</td>
+                          <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{r.costIn > 0 ? sym + fmt(r.costIn) : '00'}</td>
+                          <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{r.costOut > 0 ? sym + fmt(r.costOut) : '00'}</td>
                           <td className="px-3 py-2 text-right tabular-nums font-mono font-semibold text-sm">{fmt(r.cumulUnits, 0)}</td>
                           <td className="px-3 py-2 text-right tabular-nums font-mono font-semibold text-sm">{sym}{fmt(r.cumulCost)}</td>
                           <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{fmt(r.wacPerUnit, 4)}</td>

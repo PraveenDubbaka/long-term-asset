@@ -178,7 +178,7 @@ export function InvTransactionsTab() {
                   <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{fmt(t.price, 2)}</td>
                   <td className="px-2 py-2 text-center text-xs text-foreground font-mono">{t.currency}</td>
                   <td className="px-3 py-2 text-right tabular-nums font-mono text-xs text-foreground">
-                    {t.commission > 0 ? fmt(t.commission) : '—'}
+                    {t.commission > 0 ? fmt(t.commission) : '00'}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{fmt(t.netLocal)}</td>
                   <td className="px-3 py-2 text-right tabular-nums font-mono text-xs text-foreground">

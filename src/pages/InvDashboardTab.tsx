@@ -167,11 +167,11 @@ export function InvDashboardTab() {
                     <Badge variant="outline" className="text-xs">{r.currency}</Badge>
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums font-mono text-xs text-foreground">
-                    {r.openingCAD > 0 ? fmtCAD(r.openingCAD) : '—'}
+                    {r.openingCAD > 0 ? fmtCAD(r.openingCAD) : '00'}
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">{fmtCAD(r.purchasesCAD)}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-red-500">
-                    {r.disposalsAtCostCAD > 0 ? `(${fmtCAD(r.disposalsAtCostCAD)})` : '—'}
+                    {r.disposalsAtCostCAD > 0 ? `(${fmtCAD(r.disposalsAtCostCAD)})` : '00'}
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">
                     {r.realizedGL_CAD !== 0

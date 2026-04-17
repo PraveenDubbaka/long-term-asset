@@ -731,7 +731,14 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
   const [isNavExpanded, setIsNavExpanded] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["co"]));
   const [allSectionsExpanded, setAllSectionsExpanded] = useState(false);
-  const [addedWpChildren, setAddedWpChildren] = useState<Record<string, Array<{ id: string; label: string; route: string }>>>({});
+  const WP_STORAGE_KEY = 'wp_sidebar_added_children';
+  const [addedWpChildren, setAddedWpChildren] = useState<Record<string, Array<{ id: string; label: string; route: string }>>>(() => {
+    try { const s = localStorage.getItem(WP_STORAGE_KEY); return s ? JSON.parse(s) : {}; } catch { return {}; }
+  });
+  // Persist added workpapers so they survive navigation / page reload
+  useEffect(() => {
+    try { localStorage.setItem(WP_STORAGE_KEY, JSON.stringify(addedWpChildren)); } catch {}
+  }, [addedWpChildren]);
   const [renamingWpId, setRenamingWpId] = useState<string | null>(null);
   const [wpRenameValue, setWpRenameValue] = useState('');
   const [deleteConfirmWp, setDeleteConfirmWp] = useState<{ id: string; label: string } | null>(null);
@@ -1030,16 +1037,14 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
                 const addWpAfterNode = (nodeId: string, parentCode: string, wpType: string, route: string) => {
                   const engId = location.pathname.split("/engagements/")[1]?.split("/")[0];
                   const id = `wp-added-${Date.now()}`;
-                  let computedLabel = '';
-                  setAddedWpChildren(prev => {
-                    const existing = prev[nodeId] ?? [];
-                    const nextNum = existing.length + 1;
-                    computedLabel = `${parentCode}${nextNum} ${wpType}`;
-                    return {
-                      ...prev,
-                      [nodeId]: [...existing, { id, label: computedLabel, route }],
-                    };
-                  });
+                  // Compute label synchronously BEFORE setState so navigate() gets the correct value
+                  const existing = addedWpChildren[nodeId] ?? [];
+                  const nextNum = existing.length + 1;
+                  const computedLabel = `${parentCode}${nextNum} ${wpType}`;
+                  setAddedWpChildren(prev => ({
+                    ...prev,
+                    [nodeId]: [...(prev[nodeId] ?? []), { id, label: computedLabel, route }],
+                  }));
                   if (engId) navigate({ pathname: `/engagements/${engId}/${route}`, search: `?new=true&label=${encodeURIComponent(computedLabel)}` });
                 };
 

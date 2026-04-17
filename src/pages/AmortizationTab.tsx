@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Download, ChevronDown } from 'lucide-react';
 import { useTableColumns, useColumnResize, ThResizable, type ColDef } from '@/components/table-utils';
 import { useStore } from '../store/useStore';
+import { useWorkpaperLoans } from '../contexts/WorkpaperContext';
 import { fmtCurrency, fmtNumber, fmtDateDisplay, exportToExcel, buildAmortizationExport } from '../lib/utils';
 
 import { Button } from '@/components/wp-ui/button';
@@ -20,12 +21,15 @@ const AMORT_COLS: ColDef<AmortColId>[] = [
 ];
 
 export function AmortizationTab() {
-  const { loans, amortization, settings, updateAmortRow } = useStore(s => ({
+  const { loans: storeLoans, amortization, settings, updateAmortRow } = useStore(s => ({
     loans: s.loans.filter(l => l.status !== 'Inactive'),
     amortization: s.amortization,
     settings: s.settings,
     updateAmortRow: s.updateAmortRow,
   }));
+
+  const wpCtx = useWorkpaperLoans();
+  const loans = wpCtx ? wpCtx.loans.filter(l => l.status !== 'Inactive') : storeLoans;
 
   const [selectedLoanId, setSelectedLoanId] = useState(loans[0]?.id || '');
 
@@ -103,7 +107,7 @@ export function AmortizationTab() {
             {[
               { label: 'Remaining Balance',        value: fmtCurrency(selectedLoan.currentBalance, selectedLoan.currency), sub: 'Opening balance' },
               { label: 'Total Interest Remaining', value: fmtCurrency(totals.interest, selectedLoan.currency, true),        sub: 'Full schedule' },
-              { label: 'Monthly Payment',          value: loanRows[0] ? fmtCurrency(loanRows[0].payment, selectedLoan.currency) : '—', sub: selectedLoan.paymentType },
+              { label: 'Monthly Payment',          value: loanRows[0] ? fmtCurrency(loanRows[0].payment, selectedLoan.currency) : '00', sub: selectedLoan.paymentType },
               { label: 'Maturity',                 value: fmtDateDisplay(selectedLoan.maturityDate), sub: `${selectedLoan.rate}% ${selectedLoan.dayCountBasis}` },
             ].map(s => (
               <div key={s.label} className="px-5 py-4 bg-card border border-border shadow-sm" style={{ borderRadius: '12px' }}>
@@ -149,10 +153,10 @@ export function AmortizationTab() {
                           <td className="px-4 py-2 text-right tabular-nums text-foreground whitespace-nowrap">{fmtNumber(row.openingBalance)}</td>
                         )}
                         {amortVisible('interest') && (
-                          <td className="px-4 py-2 text-right tabular-nums text-amber-600 whitespace-nowrap">{fmtNumber(row.interest)}</td>
+                          <td className="px-4 py-2 text-right tabular-nums text-foreground whitespace-nowrap">{fmtNumber(row.interest)}</td>
                         )}
                         {amortVisible('principal') && (
-                          <td className="px-4 py-2 text-right tabular-nums text-green-600 whitespace-nowrap">{fmtNumber(row.principal)}</td>
+                          <td className="px-4 py-2 text-right tabular-nums text-foreground whitespace-nowrap">{fmtNumber(row.principal)}</td>
                         )}
                         {amortVisible('payment') && (
                           <td className="px-4 py-2 text-right tabular-nums text-foreground whitespace-nowrap">{fmtNumber(row.payment)}</td>
@@ -167,8 +171,8 @@ export function AmortizationTab() {
                   <tr className="bg-muted/80 border-t-2 border-primary/20 font-semibold">
                     <td className="px-4 py-2.5 text-foreground">Schedule Total</td>
                     {amortVisible('openingBalance') && <td className="px-4 py-2.5" />}
-                    {amortVisible('interest') && <td className="px-4 py-2.5 text-right tabular-nums text-amber-600">{fmtNumber(totals.interest)}</td>}
-                    {amortVisible('principal') && <td className="px-4 py-2.5 text-right tabular-nums text-green-600">{fmtNumber(totals.principal)}</td>}
+                    {amortVisible('interest') && <td className="px-4 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(totals.interest)}</td>}
+                    {amortVisible('principal') && <td className="px-4 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(totals.principal)}</td>}
                     {amortVisible('payment') && <td className="px-4 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(totals.payment)}</td>}
                     {amortVisible('endingBalance') && <td className="px-4 py-2.5 text-right tabular-nums text-foreground">—</td>}
                   </tr>

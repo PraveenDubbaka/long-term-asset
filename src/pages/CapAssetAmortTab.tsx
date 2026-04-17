@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 function fmt(n: number) {
   return n.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-function fmtC(n: number) { return n === 0 ? '—' : '$' + fmt(n); }
+function fmtC(n: number) { return n === 0 ? '00' : '$' + fmt(n); }
 
 function sum(arr: CapitalAsset[], key: keyof CapitalAsset): number {
   return arr.reduce((s, a) => s + ((a[key] as unknown) as number), 0);
@@ -174,7 +174,7 @@ export function CapAssetAmortTab() {
                         <td className="px-3 py-2 text-right tabular-nums font-mono text-sm text-foreground">{fmtC(a.accumAmort2023)}</td>
                         <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{fmtC(a.netBookValue2023)}</td>
                         <td className="px-3 py-2 text-right tabular-nums font-mono text-sm font-medium text-primary">
-                          {a.amortExpense2024 > 0 ? '$' + fmt(a.amortExpense2024) : '—'}
+                          {a.amortExpense2024 > 0 ? '$' + fmt(a.amortExpense2024) : '00'}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums font-mono text-sm text-foreground">{fmtC(a.accumAmort2024)}</td>
                         <td className="px-3 py-2 text-right tabular-nums font-mono font-semibold text-sm text-emerald-700">{fmtC(a.netBookValue2024)}</td>

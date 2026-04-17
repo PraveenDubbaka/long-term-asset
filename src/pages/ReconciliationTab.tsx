@@ -112,7 +112,7 @@ export function ReconciliationTab() {
                         <td className="px-5 py-3 text-right tabular-nums text-slate-700">{fmtCurrency(rec.subledgerBalance, rec.currency)}</td>
                         <td className="px-5 py-3 text-right tabular-nums text-slate-700">{fmtCurrency(rec.tbBalance, rec.currency)}</td>
                         <td className={`px-5 py-3 text-right tabular-nums font-semibold ${rec.variance === 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                          {rec.variance === 0 ? '—' : fmtCurrency(Math.abs(rec.variance), rec.currency)}
+                          {rec.variance === 0 ? '00' : fmtCurrency(Math.abs(rec.variance), rec.currency)}
                         </td>
                         <td className="px-5 py-3 text-right">{statusConfig.badge}</td>
                         <td className="px-5 py-3 text-right max-w-xs">

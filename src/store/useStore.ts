@@ -63,6 +63,7 @@ interface Store {
   addJE: (je: JEProposal) => void;
   deleteJE: (id: string) => void;
   restoreJE: (id: string) => void;
+  purgeJE: (id: string) => void;
 
   addBanDocument: (doc: BanDocument) => void;
   removeBanDocument: (id: string) => void;
@@ -156,6 +157,7 @@ export const useStore = create<Store>((set) => ({
   addJE: (je) => set(s => ({ jes: [...s.jes, je] })),
   deleteJE:  (id) => set(s => ({ jes: s.jes.map(j => j.id === id ? { ...j, deleted: true, deletedAt: new Date().toISOString() } : j) })),
   restoreJE: (id) => set(s => ({ jes: s.jes.map(j => j.id === id ? { ...j, deleted: false, deletedAt: undefined } : j) })),
+  purgeJE:   (id) => set(s => ({ jes: s.jes.filter(j => j.id !== id) })),
 
   addBanDocument: (doc) => set(s => ({ banDocuments: [...s.banDocuments, doc] })),
   removeBanDocument: (id) => set(s => ({ banDocuments: s.banDocuments.filter(d => d.id !== id) })),

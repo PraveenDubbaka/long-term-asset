@@ -217,8 +217,8 @@ export function CapAssetAJEsTab() {
                         <tr key={i} className="border-b border-border hover:bg-muted/30">
                           <td className="py-2.5 px-5 text-foreground">{l.account}</td>
                           <td className="py-2.5 px-5 text-foreground text-xs font-mono">{l.glCode}</td>
-                          <td className="py-2.5 px-5 text-right tabular-nums text-foreground">{l.dr > 0 ? '$' + fmt(l.dr) : '—'}</td>
-                          <td className="py-2.5 px-5 text-right tabular-nums text-foreground">{l.cr > 0 ? '$' + fmt(l.cr) : '—'}</td>
+                          <td className="py-2.5 px-5 text-right tabular-nums text-foreground">{l.dr > 0 ? '$' + fmt(l.dr) : '00'}</td>
+                          <td className="py-2.5 px-5 text-right tabular-nums text-foreground">{l.cr > 0 ? '$' + fmt(l.cr) : '00'}</td>
                           <td className="py-2.5 px-5 text-foreground text-xs">
                             {i === 0 && je.wpRef
                               ? <span className="font-mono">{je.wpRef}</span>

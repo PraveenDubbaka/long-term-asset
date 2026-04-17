@@ -108,7 +108,7 @@ export function CapAssetDisposalsTab() {
                     <td className="px-3 py-3 text-right tabular-nums font-mono text-sm">${fmt(a.proceedsOnDisposal)}</td>
                     <td className="px-3 py-3 text-right tabular-nums font-mono text-sm font-semibold">
                       <span className={gl > 0 ? 'text-emerald-600' : gl < 0 ? 'text-red-600' : 'text-foreground'}>
-                        {gl > 0 ? '+$' + fmt(gl) : gl < 0 ? '($' + fmt(-gl) + ')' : '—'}
+                        {gl > 0 ? '+$' + fmt(gl) : gl < 0 ? '($' + fmt(-gl) + ')' : '00'}
                       </span>
                     </td>
                     <td className="px-3 py-3 text-center">

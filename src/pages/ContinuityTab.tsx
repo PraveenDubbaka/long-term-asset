@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Download, Trash2, ChevronDown, Check, Search, FileText, X, Info, Pencil } from 'lucide-react';
+import { Download, Trash2, ChevronDown, Check, Search, FileText, X, Info, Pencil, Send } from 'lucide-react';
 import { useTableColumns, useColumnResize, ThResizable, type ColDef } from '@/components/table-utils';
 import { exportToExcel } from '../lib/utils';
 import { useStore } from '../store/useStore';
+import { useWorkpaperLoans } from '../contexts/WorkpaperContext';
 import { fmtCurrency, formatPeriod, fmtNumber } from '../lib/utils';
 import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
@@ -115,15 +116,60 @@ const CONT_COLS: ColDef<ContColId>[] = [
 
 const ALL_LOANS_ID = '__all__';
 
+/** Format an FX translation value in accounting bracket notation.
+ *  negative → (30,300) red  |  positive → 30,300 blue  |  zero → — */
+function fmtFX(v: number): { display: string; cls: string } {
+  if (v === 0) return { display: '00', cls: 'text-foreground' };
+  if (v < 0)   return { display: `(${fmtNumber(Math.abs(v))})`, cls: 'text-foreground' };
+  return           { display: fmtNumber(v), cls: 'text-foreground' };
+}
+
 export function ContinuityTab() {
-  const { loans, continuity, addContinuityRow, updateContinuityRow, deleteContinuityRow, settings } = useStore(s => ({
+  const { loans: storeLoans, continuity, addContinuityRow, updateContinuityRow, deleteContinuityRow, settings, addJE, jes } = useStore(s => ({
     loans: s.loans.filter(l => l.status !== 'Inactive'),
     continuity: s.continuity,
     addContinuityRow: s.addContinuityRow,
     updateContinuityRow: s.updateContinuityRow,
     deleteContinuityRow: s.deleteContinuityRow,
     settings: s.settings,
+    addJE: s.addJE,
+    jes: s.jes,
   }));
+
+  const wpCtx = useWorkpaperLoans();
+  const loans = wpCtx ? wpCtx.loans.filter(l => l.status !== 'Inactive') : storeLoans;
+
+  /** Post an accrued-interest AJE for a single loan row to the AJEs tab */
+  const postAccruedInterestAJE = (loan: Loan, accruedInterest: number, period: string) => {
+    if (!accruedInterest || accruedInterest <= 0) {
+      toast.error('No accrued interest to post for this period');
+      return;
+    }
+    const alreadyPosted = jes.some(j => !j.deleted && j.type === 'AccruedInterest' && j.loanId === loan.id && j.date?.startsWith(period));
+    if (alreadyPosted) {
+      toast.error('An accrued interest AJE for this period already exists');
+      return;
+    }
+    const isCad = loan.currency === 'CAD';
+    const expenseAcct = `${loan.glInterestExpenseAccount} – Interest Expense (${loan.currency})`;
+    const liabilityAcct = `${loan.glAccruedInterestAccount} – Accrued Interest Payable – ${loan.currency}`;
+    const jeId = `je-ai-${Date.now()}`;
+    addJE({
+      id: jeId,
+      type: 'AccruedInterest',
+      description: `YE Accrued Interest – ${loan.name} (${loan.refNumber})`,
+      fiscalYear: period.slice(0, 4),
+      date: `${period}-${new Date(period + '-01').toLocaleString('en-CA', { day: '2-digit' })}`.replace('NaN', '01') || `${period}-01`,
+      loanId: loan.id,
+      status: 'Draft',
+      createdAt: new Date().toISOString(),
+      lines: [
+        { id: `${jeId}-dr`, account: expenseAcct, description: `YE accrued interest – ${loan.name}`, debit: accruedInterest, credit: 0, loanId: loan.id },
+        { id: `${jeId}-cr`, account: liabilityAcct, description: `YE accrued interest – ${loan.name}`, debit: 0, credit: accruedInterest, loanId: loan.id },
+      ],
+    } as Parameters<typeof addJE>[0]);
+    toast.success(`AJE posted to AJEs tab — ${loan.name} ${isCad ? 'CAD' : 'USD'} ${accruedInterest.toLocaleString('en-CA', { minimumFractionDigits: 2 })}`);
+  };
 
   const [contView, setContView] = useState<'rollforward' | 'repayment'>('rollforward');
   const [selectedLoanId, setSelectedLoanId] = useState<string>(ALL_LOANS_ID);
@@ -305,8 +351,8 @@ export function ContinuityTab() {
                         <div className="text-[11px] text-muted-foreground">{l.lender} · {l.currency}</div>
                       </td>
                       {ladder.map((v, i) => (
-                        <td key={i} className={`px-4 py-2.5 text-right tabular-nums ${i === 0 ? 'text-primary font-medium' : 'text-foreground'}`}>
-                          {v > 0 ? fmtNumber(v) : '—'}
+                        <td key={i} className="px-4 py-2.5 text-right tabular-nums text-foreground">
+                          {v > 0 ? fmtNumber(v) : '00'}
                         </td>
                       ))}
                       <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-foreground">{fmtNumber(total)}</td>
@@ -317,11 +363,11 @@ export function ContinuityTab() {
                   <tr className="bg-muted/80 border-t-2 border-primary/20 font-semibold">
                     <td className="px-4 py-2.5 text-foreground whitespace-nowrap">Total · {repayRows.length} facilities</td>
                     {colTotals.map((v, i) => (
-                      <td key={i} className={`px-4 py-2.5 text-right tabular-nums ${i === 0 ? 'text-primary' : 'text-foreground'}`}>
-                        {v > 0 ? fmtNumber(v) : '—'}
+                      <td key={i} className="px-4 py-2.5 text-right tabular-nums text-foreground">
+                        {v > 0 ? fmtNumber(v) : '00'}
                       </td>
                     ))}
-                    <td className="px-4 py-2.5 text-right tabular-nums font-bold text-primary">{fmtNumber(grandTotal)}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums font-bold text-foreground">{fmtNumber(grandTotal)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -395,28 +441,43 @@ export function ContinuityTab() {
                             <div className="text-[11px] text-muted-foreground">{row.lender} · {row.currency}</div>
                           </td>
                           {colVisible('openingBalance') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{fmtNumber(row.openingBalance)}</span></td>}
-                          {colVisible('newBorrowings') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{row.newBorrowings > 0 ? fmtNumber(row.newBorrowings) : '—'}</span></td>}
-                          {colVisible('principalRepayments') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-green-600">{row.repayments > 0 ? `(${fmtNumber(row.repayments)})` : '—'}</span></td>}
+                          {colVisible('newBorrowings') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{row.newBorrowings > 0 ? fmtNumber(row.newBorrowings) : '00'}</span></td>}
+                          {colVisible('principalRepayments') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{row.repayments > 0 ? `(${fmtNumber(row.repayments)})` : '00'}</span></td>}
                           {colVisible('interestRepayments') && <td className="px-3 py-2 tabular-nums text-right text-foreground text-xs">—</td>}
-                          {colVisible('fxTranslation') && <td className="px-3 py-2 tabular-nums text-right"><span className={row.fxTranslation < 0 ? 'text-destructive' : row.fxTranslation > 0 ? 'text-blue-600' : 'text-foreground'}>{row.fxTranslation !== 0 ? fmtNumber(row.fxTranslation) : '—'}</span></td>}
+                          {colVisible('fxTranslation') && <td className="px-3 py-2 tabular-nums text-right">{(() => { const fx = fmtFX(row.fxTranslation); return <span className={fx.cls}>{fx.display}</span>; })()}</td>}
                           {colVisible('closingBalance') && <td className="px-3 py-2 tabular-nums text-right font-semibold"><span className="text-foreground">{fmtNumber(row.closingBalance)}</span></td>}
-                          {colVisible('accruedInterest') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-amber-600">{row.accruedInterest > 0 ? fmtNumber(row.accruedInterest) : '—'}</span></td>}
+                          {colVisible('accruedInterest') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{row.accruedInterest > 0 ? fmtNumber(row.accruedInterest) : '00'}</span></td>}
                           <td className="px-3 py-2 text-center">
-                            <div className="flex items-center gap-1 justify-center">
-                              <button
-                                onClick={() => setSelectedLoanId(row.loanId)}
-                                className="p-1.5 hover:bg-muted rounded-lg text-foreground"
-                                title="Edit periods"
-                              ><Pencil className="w-3.5 h-3.5" /></button>
-                              <button
-                                onClick={() => {
-                                  continuity.filter(r => r.loanId === row.loanId).forEach(r => deleteContinuityRow(r.id));
-                                  toast.success('Continuity rows deleted');
-                                }}
-                                className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive"
-                                title="Delete continuity rows"
-                              ><Trash2 className="w-3.5 h-3.5" /></button>
-                            </div>
+                            {(() => {
+                              const loanObj = loans.find(l => l.id === row.loanId);
+                              const totalAccrued = continuity.filter(r => r.loanId === row.loanId).reduce((s, r) => s + r.accruedInterest, 0);
+                              const period = settings.fiscalYearEnd?.slice(0, 7) ?? '2024-12';
+                              const alreadyPosted = jes.some(j => !j.deleted && j.type === 'AccruedInterest' && j.loanId === row.loanId && j.date?.startsWith(period));
+                              const canPost = !!loanObj && totalAccrued > 0 && !alreadyPosted;
+                              return (
+                                <div className="flex items-center gap-1 justify-center">
+                                  <button
+                                    onClick={() => loanObj && postAccruedInterestAJE(loanObj, totalAccrued, period)}
+                                    disabled={!canPost}
+                                    className={`p-1.5 rounded-lg transition-colors ${canPost ? 'hover:bg-primary/10 text-primary cursor-pointer' : 'text-muted-foreground opacity-40 cursor-not-allowed'}`}
+                                    title={alreadyPosted ? 'AJE already posted for this period' : totalAccrued <= 0 ? 'No accrued interest to post' : 'Post accrued interest AJE to AJEs tab'}
+                                  ><Send className="w-3.5 h-3.5" /></button>
+                                  <button
+                                    onClick={() => setSelectedLoanId(row.loanId)}
+                                    className="p-1.5 hover:bg-muted rounded-lg text-foreground"
+                                    title="Edit periods"
+                                  ><Pencil className="w-3.5 h-3.5" /></button>
+                                  <button
+                                    onClick={() => {
+                                      continuity.filter(r => r.loanId === row.loanId).forEach(r => deleteContinuityRow(r.id));
+                                      toast.success('Continuity rows deleted');
+                                    }}
+                                    className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive"
+                                    title="Delete continuity rows"
+                                  ><Trash2 className="w-3.5 h-3.5" /></button>
+                                </div>
+                              );
+                            })()}
                           </td>
                         </tr>
                       ))}
@@ -473,8 +534,8 @@ export function ContinuityTab() {
                                 onChange={e => setCEdit('principalRepayments', parseFloat(e.target.value) || 0)}
                                 className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
                             ) : (
-                              <span className="text-green-600">
-                                {(() => { const v = row.principalRepayments ?? computedPrincipal; return v > 0 ? `(${fmtNumber(v)})` : '—'; })()}
+                              <span className="text-foreground">
+                                {(() => { const v = row.principalRepayments ?? computedPrincipal; return v > 0 ? `(${fmtNumber(v)})` : '00'; })()}
                               </span>
                             )}
                           </td>
@@ -487,8 +548,8 @@ export function ContinuityTab() {
                                 onChange={e => setCEdit('interestRepayments', parseFloat(e.target.value) || 0)}
                                 className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
                             ) : (
-                              <span className="text-amber-600">
-                                {(() => { const v = row.interestRepayments ?? computedInterest; return v > 0 ? `(${fmtNumber(v)})` : '—'; })()}
+                              <span className="text-foreground">
+                                {(() => { const v = row.interestRepayments ?? computedInterest; return v > 0 ? `(${fmtNumber(v)})` : '00'; })()}
                               </span>
                             )}
                           </td>
@@ -501,9 +562,7 @@ export function ContinuityTab() {
                                 onChange={e => setCEdit('fxTranslation', parseFloat(e.target.value) || 0)}
                                 className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
                             ) : (
-                              <span className={row.fxTranslation < 0 ? 'text-destructive' : row.fxTranslation > 0 ? 'text-blue-600' : 'text-foreground'}>
-                                {fmtNumber(row.fxTranslation)}
-                              </span>
+                              (() => { const fx = fmtFX(row.fxTranslation); return <span className={fx.cls}>{fx.display}</span>; })()
                             )}
                           </td>
                         )}
@@ -526,7 +585,7 @@ export function ContinuityTab() {
                                 onChange={e => setCEdit('accruedInterest', parseFloat(e.target.value) || 0)}
                                 className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
                             ) : (
-                              <span className="text-amber-600">{fmtNumber(row.accruedInterest)}</span>
+                              <span className="text-foreground">{fmtNumber(row.accruedInterest)}</span>
                             )}
                           </td>
                         )}
@@ -536,12 +595,24 @@ export function ContinuityTab() {
                               <button onClick={saveEdit} className="p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-600" title="Save"><Check className="w-3.5 h-3.5" /></button>
                               <button onClick={cancelEdit} className="p-1.5 hover:bg-muted rounded-lg text-foreground" title="Cancel"><X className="w-3.5 h-3.5" /></button>
                             </div>
-                          ) : (
-                            <div className="flex items-center gap-1 justify-center">
-                              <button onClick={() => startEdit(row)} className="p-1.5 hover:bg-muted rounded-lg text-foreground" title="Edit"><Pencil className="w-3.5 h-3.5" /></button>
-                              <button onClick={() => deleteContinuityRow(row.id)} className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
-                            </div>
-                          )}
+                          ) : (() => {
+                              const loanObj = loans.find(l => l.id === row.loanId);
+                              const alreadyPosted = jes.some(j => !j.deleted && j.type === 'AccruedInterest' && j.loanId === row.loanId && j.date?.startsWith(row.period));
+                              const canPost = !!loanObj && row.accruedInterest > 0 && !alreadyPosted;
+                              return (
+                                <div className="flex items-center gap-1 justify-center">
+                                  <button
+                                    onClick={() => loanObj && postAccruedInterestAJE(loanObj, row.accruedInterest, row.period)}
+                                    disabled={!canPost}
+                                    className={`p-1.5 rounded-lg transition-colors ${canPost ? 'hover:bg-primary/10 text-primary cursor-pointer' : 'text-muted-foreground opacity-40 cursor-not-allowed'}`}
+                                    title={alreadyPosted ? 'AJE already posted for this period' : row.accruedInterest <= 0 ? 'No accrued interest to post' : 'Post accrued interest AJE to AJEs tab'}
+                                  ><Send className="w-3.5 h-3.5" /></button>
+                                  <button onClick={() => startEdit(row)} className="p-1.5 hover:bg-muted rounded-lg text-foreground" title="Edit"><Pencil className="w-3.5 h-3.5" /></button>
+                                  <button onClick={() => deleteContinuityRow(row.id)} className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                                </div>
+                              );
+                            })()
+                          }
                         </td>
                       </tr>
                     );
@@ -564,12 +635,12 @@ export function ContinuityTab() {
                       <tr className="bg-muted/80 border-t-2 border-primary/20 font-semibold">
                         <td className="px-3 py-2.5 text-foreground whitespace-nowrap">Total · {consolidatedByLoan.length} facilities</td>
                         {colVisible('openingBalance') && <td className="px-3 py-2.5 tabular-nums text-right text-foreground">{fmtNumber(gt.openingBalance)}</td>}
-                        {colVisible('newBorrowings') && <td className="px-3 py-2.5 tabular-nums text-right text-foreground">{gt.newBorrowings > 0 ? fmtNumber(gt.newBorrowings) : '—'}</td>}
-                        {colVisible('principalRepayments') && <td className="px-3 py-2.5 tabular-nums text-right text-green-600">{gt.repayments > 0 ? `(${fmtNumber(gt.repayments)})` : '—'}</td>}
+                        {colVisible('newBorrowings') && <td className="px-3 py-2.5 tabular-nums text-right text-foreground">{gt.newBorrowings > 0 ? fmtNumber(gt.newBorrowings) : '00'}</td>}
+                        {colVisible('principalRepayments') && <td className="px-3 py-2.5 tabular-nums text-right text-foreground">{gt.repayments > 0 ? `(${fmtNumber(gt.repayments)})` : '00'}</td>}
                         {colVisible('interestRepayments') && <td className="px-3 py-2.5" />}
-                        {colVisible('fxTranslation') && <td className="px-3 py-2.5 tabular-nums text-right text-foreground">{gt.fxTranslation !== 0 ? fmtNumber(gt.fxTranslation) : '—'}</td>}
-                        {colVisible('closingBalance') && <td className="px-3 py-2.5 tabular-nums text-right font-bold text-primary">{fmtNumber(gt.closingBalance)}</td>}
-                        {colVisible('accruedInterest') && <td className="px-3 py-2.5 tabular-nums text-right text-amber-600">{fmtNumber(gt.accruedInterest)}</td>}
+                        {colVisible('fxTranslation') && <td className="px-3 py-2.5 tabular-nums text-right">{(() => { const fx = fmtFX(gt.fxTranslation); return <span className={fx.cls}>{fx.display}</span>; })()}</td>}
+                        {colVisible('closingBalance') && <td className="px-3 py-2.5 tabular-nums text-right font-bold text-foreground">{fmtNumber(gt.closingBalance)}</td>}
+                        {colVisible('accruedInterest') && <td className="px-3 py-2.5 tabular-nums text-right text-foreground">{fmtNumber(gt.accruedInterest)}</td>}
                         <td />
                       </tr>
                     </tfoot>
@@ -581,11 +652,11 @@ export function ContinuityTab() {
                       <td className="px-3 py-2.5 text-foreground">FY2024 Total</td>
                       {colVisible('openingBalance') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(opening?.openingBalance || 0)}</td>}
                       {colVisible('newBorrowings') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(totals.newBorrowings)}</td>}
-                      {colVisible('principalRepayments') && <td className="px-3 py-2.5 text-right tabular-nums text-green-600">{totals.principalRepayments > 0 ? `(${fmtNumber(totals.principalRepayments)})` : '—'}</td>}
-                      {colVisible('interestRepayments') && <td className="px-3 py-2.5 text-right tabular-nums text-amber-600">{totals.interestRepayments > 0 ? `(${fmtNumber(totals.interestRepayments)})` : '—'}</td>}
-                      {colVisible('fxTranslation') && <td className="px-3 py-2.5 text-right tabular-nums text-blue-600">{fmtNumber(totals.fxTranslation)}</td>}
-                      {colVisible('closingBalance') && <td className="px-3 py-2.5 text-right tabular-nums font-bold text-primary">{fmtNumber(closing?.closingBalance || 0)}</td>}
-                      {colVisible('accruedInterest') && <td className="px-3 py-2.5 text-right tabular-nums text-amber-600">{fmtNumber(closing?.accruedInterest || 0)}</td>}
+                      {colVisible('principalRepayments') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{totals.principalRepayments > 0 ? `(${fmtNumber(totals.principalRepayments)})` : '00'}</td>}
+                      {colVisible('interestRepayments') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{totals.interestRepayments > 0 ? `(${fmtNumber(totals.interestRepayments)})` : '00'}</td>}
+                      {colVisible('fxTranslation') && <td className="px-3 py-2.5 text-right tabular-nums">{(() => { const fx = fmtFX(totals.fxTranslation); return <span className={fx.cls}>{fx.display}</span>; })()}</td>}
+                      {colVisible('closingBalance') && <td className="px-3 py-2.5 text-right tabular-nums font-bold text-foreground">{fmtNumber(closing?.closingBalance || 0)}</td>}
+                      {colVisible('accruedInterest') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(closing?.accruedInterest || 0)}</td>}
                       <td />
                     </tr>
                   </tfoot>
@@ -599,11 +670,12 @@ export function ContinuityTab() {
             const period = settings?.currentPeriod ?? '2024-12';
             const baseYear = parseInt(period.split('-')[0]);
             const colHeaders = [
-              `Current (${baseYear + 1})`,
-              'Long-Term',
               String(baseYear + 2), String(baseYear + 3),
               String(baseYear + 4), String(baseYear + 5), String(baseYear + 6),
-              'Thereafter', 'Total',
+              'Thereafter',
+              `Current (${baseYear + 1})`,
+              'Long-Term',
+              'Total',
             ];
             const source = selectedLoanId === ALL_LOANS_ID ? consolidatedByLoan : consolidatedByLoan.filter(r => r.loanId === selectedLoanId);
             const ladderRows = source.map(row => {
@@ -630,7 +702,7 @@ export function ContinuityTab() {
                       <tr className="bg-muted border-b border-border">
                         <th className="text-left px-3 py-2.5 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Loan</th>
                         {colHeaders.map((h, i) => (
-                          <th key={i} className={`text-right px-3 py-2.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap ${i === 0 ? 'text-primary' : i === colHeaders.length - 1 ? 'text-foreground' : 'text-foreground'}`}>{h}</th>
+                          <th key={i} className="text-right px-3 py-2.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap text-foreground">{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -644,20 +716,20 @@ export function ContinuityTab() {
                               <div className="font-medium text-foreground leading-tight text-sm">{row.loanName}</div>
                               {selectedLoanId === ALL_LOANS_ID && <div className="text-[11px] text-muted-foreground">{row.lender} · {row.currency}</div>}
                             </td>
+                            {/* Year breakdown (yr+2 … thereafter) */}
+                            {row.ladder.slice(1).map((v, i) => (
+                              <td key={i} className="px-3 py-2 tabular-nums text-right text-muted-foreground text-xs">
+                                {v > 0 ? fmtNumber(v) : '00'}
+                              </td>
+                            ))}
                             {/* Current */}
-                            <td className="px-3 py-2 tabular-nums text-right text-primary font-medium">
-                              {row.ladder[0] > 0 ? fmtNumber(row.ladder[0]) : '—'}
+                            <td className="px-3 py-2 tabular-nums text-right text-foreground font-medium">
+                              {row.ladder[0] > 0 ? fmtNumber(row.ladder[0]) : '00'}
                             </td>
                             {/* Long-Term summary */}
                             <td className="px-3 py-2 tabular-nums text-right text-foreground font-medium">
-                              {longTerm > 0 ? fmtNumber(longTerm) : '—'}
+                              {longTerm > 0 ? fmtNumber(longTerm) : '00'}
                             </td>
-                            {/* Year breakdown (yr1–yr5 + thereafter) */}
-                            {row.ladder.slice(1).map((v, i) => (
-                              <td key={i} className="px-3 py-2 tabular-nums text-right text-muted-foreground text-xs">
-                                {v > 0 ? fmtNumber(v) : '—'}
-                              </td>
-                            ))}
                             <td className="px-3 py-2 tabular-nums text-right font-semibold text-foreground">{fmtNumber(total)}</td>
                           </tr>
                         );
@@ -667,21 +739,21 @@ export function ContinuityTab() {
                       <tfoot className="sticky bottom-0 z-10">
                         <tr className="bg-muted/80 border-t-2 border-primary/20 font-semibold">
                           <td className="px-3 py-2.5 text-foreground whitespace-nowrap">Total · {ladderRows.length} facilities</td>
+                          {/* yr+2 … thereafter */}
+                          {totals.slice(1).map((v, i) => (
+                            <td key={i} className="px-3 py-2.5 tabular-nums text-right text-foreground text-xs">
+                              {v > 0 ? fmtNumber(v) : '00'}
+                            </td>
+                          ))}
                           {/* Current */}
-                          <td className="px-3 py-2.5 tabular-nums text-right text-primary">
-                            {totals[0] > 0 ? fmtNumber(totals[0]) : '—'}
+                          <td className="px-3 py-2.5 tabular-nums text-right text-foreground">
+                            {totals[0] > 0 ? fmtNumber(totals[0]) : '00'}
                           </td>
                           {/* Long-Term */}
                           <td className="px-3 py-2.5 tabular-nums text-right text-foreground">
-                            {totals.slice(1).reduce((s, v) => s + v, 0) > 0 ? fmtNumber(totals.slice(1).reduce((s, v) => s + v, 0)) : '—'}
+                            {totals.slice(1).reduce((s, v) => s + v, 0) > 0 ? fmtNumber(totals.slice(1).reduce((s, v) => s + v, 0)) : '00'}
                           </td>
-                          {/* yr1–thereafter */}
-                          {totals.slice(1).map((v, i) => (
-                            <td key={i} className="px-3 py-2.5 tabular-nums text-right text-foreground text-xs">
-                              {v > 0 ? fmtNumber(v) : '—'}
-                            </td>
-                          ))}
-                          <td className="px-3 py-2.5 tabular-nums text-right font-bold text-primary">{fmtNumber(grandTotal)}</td>
+                          <td className="px-3 py-2.5 tabular-nums text-right font-bold text-foreground">{fmtNumber(grandTotal)}</td>
                         </tr>
                       </tfoot>
                     )}

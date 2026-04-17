@@ -11,10 +11,10 @@ import toast from 'react-hot-toast';
 function fmt(n: number) {
   return n.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-function fmtC(n: number) { return n === 0 ? '—' : '$' + fmt(n); }
-function fmtPos(n: number) { return n > 0 ? '$' + fmt(n) : '—'; }
+function fmtC(n: number) { return n === 0 ? '00' : '$' + fmt(n); }
+function fmtPos(n: number) { return n > 0 ? '$' + fmt(n) : '00'; }
 function fmtGL(n: number) {
-  if (n === 0) return '—';
+  if (n === 0) return '00';
   return n > 0 ? '+$' + fmt(n) : '($' + fmt(-n) + ')';
 }
 
@@ -163,7 +163,7 @@ export function CapAssetScheduleTab() {
       <div className="grid grid-cols-4 gap-3">
         {[
           { label: 'Total Asset Cost', value: '$' + fmt(grand.cost2024) },
-          { label: 'FY Additions',     value: grand.additions2024 > 0 ? '$' + fmt(grand.additions2024) : '—' },
+          { label: 'FY Additions',     value: grand.additions2024 > 0 ? '$' + fmt(grand.additions2024) : '00' },
           { label: 'Net Book Value',   value: '$' + fmt(grand.nbv2024) },
           { label: 'Amort Expense',    value: '$' + fmt(grand.amortExpense) },
         ].map(k => (
@@ -288,17 +288,17 @@ export function CapAssetScheduleTab() {
                       <td className="px-3 py-2 text-xs font-semibold">Subtotal</td>
                       {capVisible('dateAdded') && <td />}
                       {capVisible('cost2023') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs border-l border-border/40">${fmt(t.cost2023)}</td>}
-                      {capVisible('additions') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs">{t.additions2024 > 0 ? '$' + fmt(t.additions2024) : '—'}</td>}
-                      {capVisible('disposals') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs">{t.disposals2024 > 0 ? '$' + fmt(t.disposals2024) : '—'}</td>}
+                      {capVisible('additions') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs">{t.additions2024 > 0 ? '$' + fmt(t.additions2024) : '00'}</td>}
+                      {capVisible('disposals') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs">{t.disposals2024 > 0 ? '$' + fmt(t.disposals2024) : '00'}</td>}
                       {capVisible('cost2024') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs font-bold">${fmt(t.cost2024)}</td>}
-                      {capVisible('proceeds') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs border-l border-border/40">{t.proceeds > 0 ? '$' + fmt(t.proceeds) : '—'}</td>}
-                      {capVisible('gainLoss') && <td className={`px-2 py-2 text-right tabular-nums font-mono text-xs ${t.gainLoss > 0 ? 'text-emerald-600' : ''}`}>{t.gainLoss > 0 ? '+$' + fmt(t.gainLoss) : '—'}</td>}
+                      {capVisible('proceeds') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs border-l border-border/40">{t.proceeds > 0 ? '$' + fmt(t.proceeds) : '00'}</td>}
+                      {capVisible('gainLoss') && <td className={`px-2 py-2 text-right tabular-nums font-mono text-xs ${t.gainLoss > 0 ? 'text-emerald-600' : ''}`}>{t.gainLoss > 0 ? '+$' + fmt(t.gainLoss) : '00'}</td>}
                       {capVisible('aa2023') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs border-l border-border/40">${fmt(t.accumAmort2023)}</td>}
-                      {capVisible('reductions') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs">{t.amortReductions > 0 ? '$' + fmt(t.amortReductions) : '—'}</td>}
+                      {capVisible('reductions') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs">{t.amortReductions > 0 ? '$' + fmt(t.amortReductions) : '00'}</td>}
                       {capVisible('adjOpen') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs">${fmt(t.adjOpeningAmort)}</td>}
                       {capVisible('rate') && <td />}
                       {capVisible('proRate') && <td />}
-                      {capVisible('amortExp') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs">{t.amortExpense > 0 ? '$' + fmt(t.amortExpense) : '—'}</td>}
+                      {capVisible('amortExp') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs">{t.amortExpense > 0 ? '$' + fmt(t.amortExpense) : '00'}</td>}
                       {capVisible('aa2024') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs">${fmt(t.accumAmort2024)}</td>}
                       {capVisible('nbv2024') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs font-bold text-emerald-700 border-l border-border/40">${fmt(t.nbv2024)}</td>}
                       {capVisible('nbv2023') && <td className="px-2 py-2 text-right tabular-nums font-mono text-xs text-foreground">${fmt(t.nbv2023)}</td>}
@@ -315,17 +315,17 @@ export function CapAssetScheduleTab() {
                 <td className="px-3 py-2.5 text-sm font-bold text-foreground">GRAND TOTALS</td>
                 {capVisible('dateAdded') && <td />}
                 {capVisible('cost2023') && <td className="px-2 py-2.5 text-right tabular-nums font-mono text-xs font-bold border-l border-border/40">${fmt(grand.cost2023)}</td>}
-                {capVisible('additions') && <td className="px-2 py-2.5 text-right tabular-nums font-mono text-xs font-bold">{grand.additions2024 > 0 ? '$' + fmt(grand.additions2024) : '—'}</td>}
-                {capVisible('disposals') && <td className="px-2 py-2.5 text-right tabular-nums font-mono text-xs font-bold">{grand.disposals2024 > 0 ? '$' + fmt(grand.disposals2024) : '—'}</td>}
+                {capVisible('additions') && <td className="px-2 py-2.5 text-right tabular-nums font-mono text-xs font-bold">{grand.additions2024 > 0 ? '$' + fmt(grand.additions2024) : '00'}</td>}
+                {capVisible('disposals') && <td className="px-2 py-2.5 text-right tabular-nums font-mono text-xs font-bold">{grand.disposals2024 > 0 ? '$' + fmt(grand.disposals2024) : '00'}</td>}
                 {capVisible('cost2024') && <td className="px-2 py-2.5 text-right tabular-nums font-mono text-xs font-bold">${fmt(grand.cost2024)}</td>}
-                {capVisible('proceeds') && <td className="px-2 py-2.5 text-right tabular-nums font-mono text-xs font-bold border-l border-border/40">{grand.proceeds > 0 ? '$' + fmt(grand.proceeds) : '—'}</td>}
+                {capVisible('proceeds') && <td className="px-2 py-2.5 text-right tabular-nums font-mono text-xs font-bold border-l border-border/40">{grand.proceeds > 0 ? '$' + fmt(grand.proceeds) : '00'}</td>}
                 {capVisible('gainLoss') && (
                   <td className={`px-2 py-2.5 text-right tabular-nums font-mono text-xs font-bold ${grand.gainLoss > 0 ? 'text-emerald-600' : ''}`}>
-                    {grand.gainLoss > 0 ? '+$' + fmt(grand.gainLoss) : '—'}
+                    {grand.gainLoss > 0 ? '+$' + fmt(grand.gainLoss) : '00'}
                   </td>
                 )}
                 {capVisible('aa2023') && <td className="px-2 py-2.5 text-right tabular-nums font-mono text-xs font-bold border-l border-border/40">${fmt(grand.accumAmort2023)}</td>}
-                {capVisible('reductions') && <td className="px-2 py-2.5 text-right tabular-nums font-mono text-xs font-bold">{grand.amortReductions > 0 ? '$' + fmt(grand.amortReductions) : '—'}</td>}
+                {capVisible('reductions') && <td className="px-2 py-2.5 text-right tabular-nums font-mono text-xs font-bold">{grand.amortReductions > 0 ? '$' + fmt(grand.amortReductions) : '00'}</td>}
                 {capVisible('adjOpen') && <td className="px-2 py-2.5 text-right tabular-nums font-mono text-xs font-bold">${fmt(grand.adjOpeningAmort)}</td>}
                 {capVisible('rate') && <td />}
                 {capVisible('proRate') && <td />}

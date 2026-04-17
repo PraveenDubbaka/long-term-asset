@@ -8,6 +8,7 @@ import {
 import { StyledCard } from '@/components/wp-ui/card';
 import { Button } from '@/components/wp-ui/button';
 import { useStore } from '../store/useStore';
+import { useWorkpaperLoans } from '../contexts/WorkpaperContext';
 import { fmtPct, fmtDateDisplay } from '../lib/utils';
 import type { Loan, ContinuityRow, ReconciliationItem } from '../types';
 
@@ -16,19 +17,19 @@ import type { Loan, ContinuityRow, ReconciliationItem } from '../types';
 /** Plain number, no $ — used inside the accounting-style $ | number columns */
 const NUM = (v: number) =>
   v === 0
-    ? '—'
+    ? '00'
     : v.toLocaleString('en-CA', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 /** Same but wrapped in parentheses for deductions */
 const PARENS = (v: number) =>
   v === 0
-    ? '—'
+    ? '00'
     : `(${v.toLocaleString('en-CA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })})`;
 
 /** Full CAD string — kept for repayment schedule */
 const CAD = (v: number) =>
   v === 0
-    ? '—'
+    ? '00'
     : `$${v.toLocaleString('en-CA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
 // ─── Data helpers ─────────────────────────────────────────────────────────────
@@ -347,7 +348,7 @@ function TableBlockEditor({
     );
     return s !== 0
       ? s.toLocaleString('en-CA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-      : '—';
+      : '00';
   };
 
   return (
@@ -519,26 +520,26 @@ function RepaymentScheduleTable({ loans, yearEnd }: { loans: Loan[]; yearEnd: st
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function NotesTab() {
-  const { loans, continuity, recon, settings } = useStore(s => ({
+  const { loans: storeLoans, continuity, recon, settings } = useStore(s => ({
     loans:      s.loans,
     continuity: s.continuity,
     recon:      s.reconciliation,
     settings:   s.settings,
   }));
 
+  const wpCtx = useWorkpaperLoans();
+  const loans = wpCtx ? wpCtx.loans : storeLoans;
+
   const yearEnd = settings.fiscalYearEnd;
   const fyYear  = new Date(yearEnd + 'T00:00:00').getFullYear();
   const active  = useMemo(() => loans.filter(l => l.status === 'Active'), [loans]);
 
-  // Format full date label, e.g. "December 31, 2024"
-  const cyLabel = new Date(yearEnd + 'T00:00:00').toLocaleDateString('en-CA', {
-    month: 'long', day: 'numeric', year: 'numeric',
-  });
+  // Format full date label, e.g. "12-31-2024"
+  const fmtD = (d: Date) => `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}-${d.getFullYear()}`;
+  const cyLabel = fmtD(new Date(yearEnd + 'T00:00:00'));
   const pyDate = new Date(yearEnd + 'T00:00:00');
   pyDate.setFullYear(fyYear - 1);
-  const pyLabel = pyDate.toLocaleDateString('en-CA', {
-    month: 'long', day: 'numeric', year: 'numeric',
-  });
+  const pyLabel = fmtD(pyDate);
 
   // ── Per-loan notes (auto-generated on first render) ───────────────────
   const [loanNotes, setLoanNotes] = useState<Record<string, string>>(() => {
@@ -813,17 +814,6 @@ export default function NotesTab() {
           </div>
 
           {/* Source attribution */}
-          <div className="px-5 py-2 border-t border-border bg-muted/10">
-            <p className="text-[10px] text-foreground flex items-center gap-1.5">
-              <RefreshCw className="w-3 h-3 shrink-0" />
-              {fyYear} balances from trial balance (TB)
-              {hasVariances && (
-                <span className="text-amber-600"> · ⚠ reconciling items exist</span>
-              )}
-              &nbsp;·&nbsp; {fyYear - 1} comparatives from continuity opening balances
-              &nbsp;·&nbsp; current portion per year-end continuity reclassification
-            </p>
-          </div>
 
         </StyledCard>
       </div>

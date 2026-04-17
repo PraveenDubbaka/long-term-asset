@@ -3,6 +3,7 @@ export type LoanType = 'Term' | 'LOC' | 'Revolver' | 'Mortgage' | 'Bridge' | (st
 export type LoanStatus = 'Active' | 'Closed' | 'Replaced' | 'Refinanced' | 'Inactive';
 export type PaymentType = 'P&I' | 'Interest-only' | 'Balloon';
 export type DayCountBasis = 'ACT/365' | 'ACT/360' | '30/360';
+export type FxRateType = 'Closing' | 'Spot' | 'Average' | 'Historical' | 'Custom';
 export type InterestType = 'Fixed' | 'Variable' | 'Floating' | 'Hybrid' | 'Step Rate';
 export type PaymentFrequency = 'Monthly' | 'Quarterly' | 'Semi-annual' | 'Annual';
 export type CompoundingFrequency = 'Monthly' | 'Quarterly' | 'Semi-annual' | 'Annual';
@@ -52,7 +53,8 @@ export interface Loan {
   notes?: string;
   attachments: string[];
   wpRefs?: string[]; // IDs of BAN documents referenced by this loan
-  fxRateToCAD?: number; // for non-CAD loans
+  fxRateToCAD?: number;    // for non-CAD loans
+  fxRateType?: FxRateType; // exchange rate type used for translation
   monthlyPayment?: number; // manual override; if absent, computed from PMT
   closingBalance?: number; // closing balance as at the fiscal year-end date
 }

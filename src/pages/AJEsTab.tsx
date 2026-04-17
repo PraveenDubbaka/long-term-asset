@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Plus, Check, Send, FileDown, Trash2, ChevronDown, ChevronRight, BookOpen, RotateCcw } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { fmtCurrency } from '../lib/utils';
+import { fmtCurrency, fmtDateDisplay } from '../lib/utils';
 import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
 import { StyledCard } from '@/components/wp-ui/card';
-import { Modal, Input, Select, Alert } from '../components/ui';
+import { Modal, Input, DateInput, Select, Alert } from '../components/ui';
 import type { JEProposal, JEStatus, JELine } from '../types';
 import toast from 'react-hot-toast';
 
@@ -101,9 +101,9 @@ function accCodeOnly(account: string): string {
 // ─── Main tab ─────────────────────────────────────────────────────────────────
 
 export function AJEsTab() {
-  const { loans, jes, advanceJEStatus, deleteJE, restoreJE, addJE, updateJE } = useStore(s => ({
+  const { loans, jes, advanceJEStatus, deleteJE, restoreJE, purgeJE, addJE, updateJE } = useStore(s => ({
     loans: s.loans.filter(l => l.status !== 'Inactive'), jes: s.jes,
-    advanceJEStatus: s.advanceJEStatus, deleteJE: s.deleteJE, restoreJE: s.restoreJE,
+    advanceJEStatus: s.advanceJEStatus, deleteJE: s.deleteJE, restoreJE: s.restoreJE, purgeJE: s.purgeJE,
     addJE: s.addJE, updateJE: s.updateJE,
   }));
 
@@ -240,10 +240,10 @@ export function AJEsTab() {
           const CN  = `${BASE} px-3 text-right tabular-nums placeholder:text-foreground`; // number input
 
           return (
-            <StyledCard key={je.id} className={`overflow-hidden ${je.deleted ? 'opacity-60' : ''}`}>
+            <StyledCard key={je.id} className="overflow-hidden">
               {/* JE Header */}
               <div
-                className="flex items-center gap-3 px-5 py-4 hover:bg-muted/30 cursor-pointer"
+                className={`flex items-center gap-3 px-5 py-4 hover:bg-muted/30 cursor-pointer${je.deleted ? ' opacity-60' : ''}`}
                 onClick={() => toggleExpand(je.id)}
               >
                 <div className="flex-1">
@@ -267,6 +267,7 @@ export function AJEsTab() {
               {/* JE Lines (expanded) */}
               {isExpanded && (
                 <div className="border-t border-border">
+                  <div className={je.deleted ? 'opacity-60' : undefined}>
                   <table className="w-full text-sm border-collapse">
                     <thead>
                       <tr className="border-b border-border bg-muted/50">
@@ -407,6 +408,7 @@ export function AJEsTab() {
                       onChange={e => updateJE(je.id, { notes: e.target.value })}
                     />
                   </div>
+                  </div>{/* end opacity wrapper */}
 
                   {/* JE Actions */}
                   <div className="flex items-center justify-between px-5 py-3 bg-muted/50 border-t border-border">
@@ -414,7 +416,7 @@ export function AJEsTab() {
                       /* ── Deleted state ── */
                       <div className="flex items-center gap-3 w-full">
                         <span className="text-xs text-foreground italic flex-1">
-                          Deleted {je.deletedAt ? `on ${je.deletedAt.slice(0, 10)}` : ''}
+                          Deleted {je.deletedAt ? `on ${fmtDateDisplay(je.deletedAt.slice(0, 10))}` : ''}
                         </span>
                         <Button
                           variant="secondary"
@@ -423,46 +425,52 @@ export function AJEsTab() {
                         >
                           <RotateCcw className="w-3.5 h-3.5" /> Restore
                         </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => { purgeJE(je.id); toast('JE permanently deleted', { icon: '🗑️' }); }}
+                          className="text-red-500 hover:text-red-700 border-red-200 hover:border-red-300"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Delete Permanently
+                        </Button>
                       </div>
                     ) : (
                       /* ── Active state ── */
-                      <>
-                        <div className="flex items-center gap-2">
-                          {je.status === 'Draft' && (
-                            <Button
-                              variant="default"
-                              size="sm"
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                              onClick={() => { advanceJEStatus(je.id, 'Approved', 'K. Chen'); toast.success('JE approved'); }}
-                            >
-                              <Check className="w-3.5 h-3.5" /> Approve
-                            </Button>
-                          )}
-                          {je.status === 'Approved' && (
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => { advanceJEStatus(je.id, 'Posted', 'K. Chen'); toast.success('JE posted'); }}
-                            >
-                              <Send className="w-3.5 h-3.5" /> Post
-                            </Button>
-                          )}
-                          {(je.status === 'Draft' || je.status === 'Approved') && (
-                            <Button variant="secondary" size="sm" onClick={() => { advanceJEStatus(je.id, 'Draft', ''); }}>
-                              Revert to Draft
-                            </Button>
-                          )}
-                        </div>
+                      <div className="flex items-center gap-2">
+                        {je.status === 'Draft' && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={() => { advanceJEStatus(je.id, 'Approved', 'K. Chen'); toast.success('JE approved'); }}
+                          >
+                            <Check className="w-3.5 h-3.5" /> Approve
+                          </Button>
+                        )}
+                        {je.status === 'Approved' && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => { advanceJEStatus(je.id, 'Posted', 'K. Chen'); toast.success('JE posted'); }}
+                          >
+                            <Send className="w-3.5 h-3.5" /> Post
+                          </Button>
+                        )}
+                        {(je.status === 'Draft' || je.status === 'Approved') && (
+                          <Button variant="secondary" size="sm" onClick={() => { advanceJEStatus(je.id, 'Draft', ''); }}>
+                            Revert to Draft
+                          </Button>
+                        )}
                         <Button
-                          variant="ghost"
+                          variant="secondary"
                           size="sm"
                           onClick={() => { deleteJE(je.id); toast('JE moved to Deleted — use the Deleted filter to restore', { icon: '🗑️' }); }}
-                          className="text-red-500 hover:text-red-700"
+                          className="text-red-500 hover:text-red-700 border-red-200 hover:border-red-300"
                           title="Move to deleted (restorable)"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-3.5 h-3.5" /> Delete
                         </Button>
-                      </>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -620,7 +628,7 @@ function AddJEModal({ open, onClose, loans, allAccounts, onSave }: {
           {/* Entry Date */}
           <div className="shrink-0">
             {FL('Entry Date')}
-            <input type="date" className={`${SFI} w-[132px]`} value={date} onChange={e => setDate(e.target.value)} />
+            <DateInput className={`${SFI} w-[132px]`} value={date} onChange={e => setDate(e.target.value)} />
           </div>
 
           {/* Entry Type */}

@@ -5,6 +5,7 @@ import {
   BookOpen, Wand2, CheckSquare, Square, ArrowRight, Check, X, Pencil,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { useWorkpaperLoans } from '../contexts/WorkpaperContext';
 import { fmtCurrency, exportToExcel, buildCovenantsExport } from '../lib/utils';
 import {
   COVENANT_TEMPLATES, GL_ACCOUNTS, GL_CATEGORY_ORDER, GL_CATEGORY_LABELS,
@@ -13,7 +14,7 @@ import {
 } from '../lib/covenantTemplates';
 import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
-import { Modal, Input, Select, Textarea } from '../components/ui';
+import { Modal, Input, DateInput, Select, Textarea } from '../components/ui';
 import type { Covenant, CovenantFormulaLine, CovenantStatus } from '../types';
 import toast from 'react-hot-toast';
 
@@ -50,10 +51,13 @@ const getMarginLabel = (c: Covenant): string => {
 
 // ─── Main Tab ─────────────────────────────────────────────────────────────────
 export function CovenantsTab() {
-  const { loans, covenants, updateCovenant, addCovenant, deleteCovenant, updateLoan } = useStore(s => ({
+  const { loans: storeLoans, covenants, updateCovenant, addCovenant, deleteCovenant, updateLoan } = useStore(s => ({
     loans: s.loans.filter(l => l.status !== 'Inactive'), covenants: s.covenants,
     updateCovenant: s.updateCovenant, addCovenant: s.addCovenant, deleteCovenant: s.deleteCovenant, updateLoan: s.updateLoan,
   }));
+
+  const wpCtx = useWorkpaperLoans();
+  const loans = wpCtx ? wpCtx.loans.filter(l => l.status !== 'Inactive') : storeLoans;
 
   const loansWithCovenants = loans.filter(l => l.covenantIds && l.covenantIds.length > 0);
   const [selectedLoanId, setSelectedLoanId] = useState<string>(loansWithCovenants[0]?.id || '');
@@ -386,8 +390,7 @@ export function CovenantsTab() {
                       {/* Last Tested */}
                       <td className="px-3 py-2 text-right hidden xl:table-cell">
                         {isEditing ? (
-                          <input
-                            type="date"
+                          <DateInput
                             value={cov.lastTested || ''}
                             onChange={e => setEdit('lastTested', e.target.value)}
                             className={`${IIC} text-right`}
@@ -441,6 +444,36 @@ export function CovenantsTab() {
                                     const denTotal = updated.reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
                                     const cv = cov.isRatioCovenant ? (denTotal !== 0 ? numTotal / denTotal : 0) : numTotal;
                                     setEdit('currentValue', Math.round(cv * 10000) / 10000);
+                                  }}
+                                  onAddNumeratorLine={() => {
+                                    const newLine: CovenantFormulaLine = { id: mkFormulaId(), sign: '+', description: 'New Item', glAccount: '', amount: 0, projectedAmount: 0, multiplier: 1 };
+                                    setEdit('formulaLines', [...(cov.formulaLines ?? []), newLine]);
+                                  }}
+                                  onDeleteNumeratorLine={(lineId) => {
+                                    const updated = (cov.formulaLines ?? []).filter(l => l.id !== lineId);
+                                    setEdit('formulaLines', updated);
+                                    const numTotal = updated.reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
+                                    const denTotal = (cov.denominatorLines ?? []).reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
+                                    const cv = cov.isRatioCovenant ? (denTotal !== 0 ? numTotal / denTotal : 0) : numTotal;
+                                    setEdit('currentValue', Math.round(cv * 10000) / 10000);
+                                  }}
+                                  onAddDenominatorLine={() => {
+                                    const newLine: CovenantFormulaLine = { id: mkFormulaId(), sign: '+', description: 'New Item', glAccount: '', amount: 0, projectedAmount: 0, multiplier: 1 };
+                                    setEdit('denominatorLines', [...(cov.denominatorLines ?? []), newLine]);
+                                  }}
+                                  onDeleteDenominatorLine={(lineId) => {
+                                    const updated = (cov.denominatorLines ?? []).filter(l => l.id !== lineId);
+                                    setEdit('denominatorLines', updated);
+                                    const numTotal = (cov.formulaLines ?? []).reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
+                                    const denTotal = updated.reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
+                                    const cv = cov.isRatioCovenant ? (denTotal !== 0 ? numTotal / denTotal : 0) : numTotal;
+                                    setEdit('currentValue', Math.round(cv * 10000) / 10000);
+                                  }}
+                                  onUpdateNumeratorDesc={(lineId, glCode, desc) => {
+                                    setEdit('formulaLines', (cov.formulaLines ?? []).map(l => l.id === lineId ? { ...l, glAccount: glCode, description: desc } : l));
+                                  }}
+                                  onUpdateDenominatorDesc={(lineId, glCode, desc) => {
+                                    setEdit('denominatorLines', (cov.denominatorLines ?? []).map(l => l.id === lineId ? { ...l, glAccount: glCode, description: desc } : l));
                                   }}
                                 />
                               ) : isEditing ? (
@@ -602,11 +635,25 @@ export function CovenantsTab() {
 }
 
 // ─── FormulaDisplay (read-only + editable in expanded row) ───────────────────
-function FormulaDisplay({ cov, editMode = false, onUpdateNumeratorLine, onUpdateDenominatorLine }: {
+const mkFormulaId = () => `fl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+function FormulaDisplay({
+  cov, editMode = false,
+  onUpdateNumeratorLine, onUpdateDenominatorLine,
+  onAddNumeratorLine, onDeleteNumeratorLine,
+  onAddDenominatorLine, onDeleteDenominatorLine,
+  onUpdateNumeratorDesc, onUpdateDenominatorDesc,
+}: {
   cov: Covenant;
   editMode?: boolean;
   onUpdateNumeratorLine?: (lineId: string, amount: number) => void;
   onUpdateDenominatorLine?: (lineId: string, amount: number) => void;
+  onAddNumeratorLine?: () => void;
+  onDeleteNumeratorLine?: (lineId: string) => void;
+  onAddDenominatorLine?: () => void;
+  onDeleteDenominatorLine?: (lineId: string) => void;
+  onUpdateNumeratorDesc?: (lineId: string, glCode: string, desc: string) => void;
+  onUpdateDenominatorDesc?: (lineId: string, glCode: string, desc: string) => void;
 }) {
   const numLines = cov.formulaLines ?? [];
   const denLines = cov.denominatorLines ?? [];
@@ -614,18 +661,48 @@ function FormulaDisplay({ cov, editMode = false, onUpdateNumeratorLine, onUpdate
   const numTotal = numLines.reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
   const denTotal = denLines.reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
 
-  const fmtAmt = (v: number) => v === 0 ? '$0' : `$${v.toLocaleString('en-CA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-  const IIC = 'input-double-border h-9 w-28 px-3 text-xs text-right tabular-nums border border-[#dcdfe4] rounded-[10px] bg-white text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] focus:outline-none focus:ring-0 dark:bg-card dark:border-[hsl(220_15%_30%)]';
+  const fmtAmt = (v: number) => v === 0 ? '$0' : `$${v.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const IIC = 'input-double-border h-7 w-28 px-2 text-xs text-right tabular-nums border border-[#dcdfe4] rounded-[8px] bg-white text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] focus:outline-none focus:ring-0 dark:bg-card dark:border-[hsl(220_15%_30%)]';
 
-  const LineRows = ({ lines, onUpdate }: { lines: CovenantFormulaLine[]; onUpdate?: (id: string, amt: number) => void }) => (
+  const LineRows = ({
+    lines, onUpdate, onDelete, onUpdateDesc,
+  }: {
+    lines: CovenantFormulaLine[];
+    onUpdate?: (id: string, amt: number) => void;
+    onDelete?: (id: string) => void;
+    onUpdateDesc?: (id: string, glCode: string, desc: string) => void;
+  }) => (
     <>
       {lines.map(l => {
         const glName = GL_ACCOUNTS.find(a => a.code === l.glAccount)?.name ?? l.glAccount;
         return (
-          <div key={l.id} className="flex items-center gap-2 py-0.5">
-            <span className={`w-4 text-center font-mono font-bold ${l.sign === '+' ? 'text-emerald-600' : 'text-red-500'}`}>{l.sign}</span>
-            <span className="flex-1 text-foreground truncate" title={glName}>{l.description || glName}</span>
-            <span className="tabular-nums font-mono text-foreground text-[11px]">{l.glAccount}</span>
+          <div key={l.id} className="flex items-center gap-2 py-0.5 group/row">
+            <span className={`w-4 text-center font-mono font-bold flex-shrink-0 ${l.sign === '+' ? 'text-emerald-600' : 'text-red-500'}`}>{l.sign}</span>
+            {editMode && onUpdateDesc ? (
+              <select
+                className="flex-1 h-7 px-2 text-xs border border-[#dcdfe4] rounded-[8px] bg-white text-foreground focus:outline-none focus:ring-0 hover:border-[hsl(210_25%_75%)] dark:bg-card dark:border-[hsl(220_15%_30%)] min-w-0 cursor-pointer"
+                value={l.glAccount || ''}
+                onChange={e => {
+                  const acct = GL_ACCOUNTS.find(a => a.code === e.target.value);
+                  onUpdateDesc(l.id, e.target.value, acct?.name ?? e.target.value);
+                }}
+              >
+                {l.glAccount === '' && <option value="">— Select account —</option>}
+                {GL_CATEGORY_ORDER.map(cat => {
+                  const accts = GL_ACCOUNTS.filter(a => a.category === cat);
+                  return accts.length ? (
+                    <optgroup key={cat} label={GL_CATEGORY_LABELS[cat]}>
+                      {accts.map(a => (
+                        <option key={a.code} value={a.code}>{a.name}</option>
+                      ))}
+                    </optgroup>
+                  ) : null;
+                })}
+              </select>
+            ) : (
+              <span className="flex-1 text-foreground truncate" title={glName}>{l.description || glName}</span>
+            )}
+            {!editMode && <span className="tabular-nums font-mono text-foreground text-[11px] flex-shrink-0">{l.glAccount}</span>}
             {editMode && onUpdate ? (
               <input
                 type="number"
@@ -635,7 +712,17 @@ function FormulaDisplay({ cov, editMode = false, onUpdateNumeratorLine, onUpdate
                 onChange={e => onUpdate(l.id, parseFloat(e.target.value) || 0)}
               />
             ) : (
-              <span className="tabular-nums font-semibold text-foreground">{fmtAmt(l.amount * l.multiplier)}</span>
+              <span className="tabular-nums font-semibold text-foreground flex-shrink-0">{fmtAmt(l.amount * l.multiplier)}</span>
+            )}
+            {editMode && onDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(l.id)}
+                className="flex-shrink-0 opacity-0 group-hover/row:opacity-100 p-0.5 rounded hover:bg-destructive/10 text-destructive transition-opacity"
+                title="Remove row"
+              >
+                <X className="w-3 h-3" />
+              </button>
             )}
           </div>
         );
@@ -643,48 +730,65 @@ function FormulaDisplay({ cov, editMode = false, onUpdateNumeratorLine, onUpdate
     </>
   );
 
+  const AddLineBtn = ({ onClick }: { onClick?: () => void }) =>
+    editMode && onClick ? (
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex items-center gap-1 text-[11px] text-foreground hover:text-foreground mt-0.5 px-1 py-0.5 rounded hover:bg-muted transition-colors"
+      >
+        <Plus className="w-3 h-3" /> Add Row
+      </button>
+    ) : null;
+
   return (
     <div className="bg-background border border-border rounded-lg px-3 py-2.5 space-y-2">
       {cov.isRatioCovenant ? (
         <>
           <div className="text-[10px] font-semibold text-foreground uppercase tracking-wider">Numerator</div>
-          <LineRows lines={numLines} onUpdate={onUpdateNumeratorLine} />
+          <LineRows lines={numLines} onUpdate={onUpdateNumeratorLine} onDelete={onDeleteNumeratorLine} onUpdateDesc={onUpdateNumeratorDesc} />
+          <AddLineBtn onClick={onAddNumeratorLine} />
           <div className="border-t border-border pt-1.5 flex justify-between text-[11px]">
             <span className="text-foreground">Numerator Total</span>
             <span className="font-bold text-foreground">{fmtAmt(numTotal)}</span>
           </div>
           <div className="text-[10px] font-semibold text-foreground uppercase tracking-wider pt-1">Denominator</div>
-          <LineRows lines={denLines} onUpdate={onUpdateDenominatorLine} />
+          <LineRows lines={denLines} onUpdate={onUpdateDenominatorLine} onDelete={onDeleteDenominatorLine} onUpdateDesc={onUpdateDenominatorDesc} />
+          <AddLineBtn onClick={onAddDenominatorLine} />
           <div className="border-t border-border pt-1.5 flex justify-between text-[11px]">
             <span className="text-foreground">Denominator Total</span>
             <span className="font-bold text-foreground">{fmtAmt(denTotal)}</span>
           </div>
           <div className="border-t-2 border-primary/20 pt-1.5 text-xs font-bold">
             <span className="text-foreground">{fmtAmt(numTotal)} ÷ {fmtAmt(denTotal)} = </span>
-            <span className="text-primary">{denTotal !== 0 ? (numTotal / denTotal).toFixed(2) : '—'}x</span>
+            <span className="text-foreground">{denTotal !== 0 ? (numTotal / denTotal).toFixed(2) : '—'}x</span>
           </div>
         </>
       ) : (
         <>
           <div className="text-[10px] font-semibold text-foreground uppercase tracking-wider">Numerator</div>
-          <LineRows lines={numLines} onUpdate={onUpdateNumeratorLine} />
+          <LineRows lines={numLines} onUpdate={onUpdateNumeratorLine} onDelete={onDeleteNumeratorLine} onUpdateDesc={onUpdateNumeratorDesc} />
+          <AddLineBtn onClick={onAddNumeratorLine} />
           <div className="border-t border-border pt-1.5 flex justify-between text-[11px]">
             <span className="text-foreground">Numerator Total</span>
             <span className="font-bold text-foreground">{fmtAmt(numTotal)}</span>
           </div>
-          {denLines.length > 0 && (
+          {(denLines.length > 0 || editMode) && (
             <>
               <div className="text-[10px] font-semibold text-foreground uppercase tracking-wider pt-1">Denominator</div>
-              <LineRows lines={denLines} onUpdate={onUpdateDenominatorLine} />
-              <div className="border-t border-border pt-1.5 flex justify-between text-[11px]">
-                <span className="text-foreground">Denominator Total</span>
-                <span className="font-bold text-foreground">{fmtAmt(denTotal)}</span>
-              </div>
+              <LineRows lines={denLines} onUpdate={onUpdateDenominatorLine} onDelete={onDeleteDenominatorLine} onUpdateDesc={onUpdateDenominatorDesc} />
+              <AddLineBtn onClick={onAddDenominatorLine} />
+              {denLines.length > 0 && (
+                <div className="border-t border-border pt-1.5 flex justify-between text-[11px]">
+                  <span className="text-foreground">Denominator Total</span>
+                  <span className="font-bold text-foreground">{fmtAmt(denTotal)}</span>
+                </div>
+              )}
             </>
           )}
           <div className="border-t-2 border-primary/20 pt-1.5 flex justify-between text-xs font-bold">
             <span className="text-foreground">Total</span>
-            <span className="text-primary">{fmtAmt(numTotal)}</span>
+            <span className="text-foreground">{fmtAmt(numTotal)}</span>
           </div>
         </>
       )}

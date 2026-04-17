@@ -17,6 +17,7 @@ import { AmortizationTab } from "./AmortizationTab";
 import { CovenantsTab }    from "./CovenantsTab";
 import { AJEsTab }         from "./AJEsTab";
 import NotesTab             from "./NotesTab";
+import { WorkpaperProvider } from "../contexts/WorkpaperContext";
 
 const engagementsData: Record<string, { client: string; yearEnd: string; status: string }> = {
   "COM-CON-Dec312024": { client: "Shipping Line Inc.", yearEnd: "Dec 31, 2024", status: "In Progress" },
@@ -40,21 +41,15 @@ const tabs = [
   { id: "notes",        label: "Notes"        },
 ];
 
-const LongTermAssetPage = () => {
-  const { engagementId } = useParams<{ engagementId: string }>();
-  const [searchParams] = useSearchParams();
-  const isEmpty = searchParams.get("new") === "true";
-  const wpLabel = searchParams.get("label") ? decodeURIComponent(searchParams.get("label")!) : null;
+// ─── Inner content — fully remounts when workpaper identity changes ──────────
+interface ContentProps {
+  engagementId: string;
+  wpLabel: string;
+  isEmpty: boolean;
+}
+
+function LongTermAssetContent({ engagementId, wpLabel, isEmpty }: ContentProps) {
   const [activeTab, setActiveTab] = useState("loans");
-
-  const eng = engagementsData[engagementId ?? ""] ?? {
-    client: "Shipping Line Inc.",
-    yearEnd: "Dec 31, 2024",
-    status: "In Progress",
-  };
-
-  const statusVariant = eng.status === "Completed" ? "completed" : "inProgress";
-
   const [wpSettingsOpen, setWpSettingsOpen] = useState(false);
   const [wpCurrencySettings, setWpCurrencySettings] = useState({
     baseCurrency: 'CAD',
@@ -65,7 +60,15 @@ const LongTermAssetPage = () => {
     isFetching: false,
   });
 
+  const eng = engagementsData[engagementId] ?? {
+    client: "Shipping Line Inc.",
+    yearEnd: "Dec 31, 2024",
+    status: "In Progress",
+  };
+  const statusVariant = eng.status === "Completed" ? "completed" : "inProgress";
+
   return (
+    <WorkpaperProvider engagementId={engagementId} label={wpLabel} isEmpty={isEmpty}>
     <WpLayout title="Long-term Asset">
       <div className="flex h-full overflow-hidden bg-background">
         <div className="flex-1 overflow-y-auto flex flex-col min-w-0">
@@ -100,7 +103,7 @@ const LongTermAssetPage = () => {
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-1.5 text-sm font-medium hover:bg-muted/60 px-2 py-1 rounded-md transition-colors">
                     <FileText className="h-3.5 w-3.5 text-foreground" />
-                    <span>{engagementId ?? "COM-CON-Dec312024"}</span>
+                    <span>{engagementId}</span>
                     <ChevronDown className="h-3 w-3 text-foreground" />
                   </button>
                 </DropdownMenuTrigger>
@@ -172,7 +175,7 @@ const LongTermAssetPage = () => {
 
           {/* ── Active tab ──────────────────────────────────────────── */}
           <div className="flex-1">
-            {activeTab === "loans"        && <LoansTab isEmpty={isEmpty} />}
+            {activeTab === "loans"        && <LoansTab />}
             {activeTab === "continuity"   && <ContinuityTab />}
             {activeTab === "amortization" && <AmortizationTab />}
             {activeTab === "covenants"    && <CovenantsTab />}
@@ -189,7 +192,7 @@ const LongTermAssetPage = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Settings className="h-4 w-4 text-primary" />
-              {wpLabel ? `${wpLabel} — Settings` : 'Long-term Asset — Settings'}
+              {wpLabel !== 'default' ? `${wpLabel} — Settings` : 'Long-term Asset — Settings'}
             </DialogTitle>
           </DialogHeader>
 
@@ -306,6 +309,30 @@ const LongTermAssetPage = () => {
         </DialogContent>
       </Dialog>
     </WpLayout>
+    </WorkpaperProvider>
+  );
+}
+
+// ─── Outer shell — reads URL params and forces full remount on workpaper change
+const LongTermAssetPage = () => {
+  const { engagementId } = useParams<{ engagementId: string }>();
+  const [searchParams] = useSearchParams();
+  const isEmpty = searchParams.get("new") === "true";
+  const wpLabel = searchParams.get("label")
+    ? decodeURIComponent(searchParams.get("label")!)
+    : "default";
+
+  // Unique key per workpaper — forces LongTermAssetContent (and everything inside it)
+  // to fully unmount + remount whenever we switch between workpapers.
+  const wpKey = `${engagementId ?? 'default'}__${wpLabel}__${String(isEmpty)}`;
+
+  return (
+    <LongTermAssetContent
+      key={wpKey}
+      engagementId={engagementId ?? 'default'}
+      wpLabel={wpLabel}
+      isEmpty={isEmpty}
+    />
   );
 };
 
