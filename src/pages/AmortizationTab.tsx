@@ -120,7 +120,7 @@ export function AmortizationTab() {
 
           {/* Schedule Table */}
           <StyledCard className="overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border" style={{ backgroundColor: '#F8F8FA' }}>
               <h3 className="text-sm font-semibold text-foreground">
                 {selectedLoan.name}
                 <span className="ml-1.5 text-xs font-normal text-muted-foreground">({selectedLoan.currency})</span>

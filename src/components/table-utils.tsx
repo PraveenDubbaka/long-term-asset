@@ -201,7 +201,7 @@ export function ThResizable({ colId: _colId, width, onResizeStart, className = '
     : { position: 'relative', ...style };
 
   return (
-    <th className={`${className} relative`} style={thStyle} title={title}>
+    <th className={`${className} relative group/th`} style={thStyle} title={title}>
       {children}
       <div
         className="absolute right-0 top-0 h-full w-3 flex items-center justify-center cursor-col-resize select-none z-10 group/rh"
@@ -209,7 +209,7 @@ export function ThResizable({ colId: _colId, width, onResizeStart, className = '
         title="Drag to resize"
         onClick={e => e.stopPropagation()}
       >
-        <div className="w-px h-4 bg-border/40 group-hover/rh:bg-primary/60 group-hover/rh:w-0.5 transition-all rounded-full" />
+        <div className="w-px h-4 bg-transparent group-hover/th:bg-border/40 group-hover/rh:bg-primary/60 group-hover/rh:w-0.5 transition-all rounded-full" />
       </div>
     </th>
   );

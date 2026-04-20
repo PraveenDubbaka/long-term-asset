@@ -690,7 +690,7 @@ export function ContinuityTab() {
             const grandTotal = totals.reduce((s, v) => s + v, 0);
             return (
               <StyledCard className="overflow-hidden">
-                <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
+                <div className="px-4 py-3 border-b border-border flex items-center justify-between" style={{ backgroundColor: '#F8F8FA' }}>
                   <div>
                     <h3 className="text-sm font-semibold text-foreground">Balance Sheet Classification</h3>
                     <p className="text-[11px] text-muted-foreground mt-0.5">Current portion + maturity ladder (principal repayments by year)</p>

@@ -172,7 +172,7 @@ export function CovenantsTab() {
       <div className="bg-card border border-border overflow-hidden shadow-[0_2px_8px_hsl(213_40%_20%/0.06)]" style={{ borderRadius: '12px' }}>
 
         {/* Toolbar */}
-        <div className="flex items-center gap-3 px-5 py-3 border-b border-border bg-muted/30 flex-wrap">
+        <div className="flex items-center gap-3 px-5 py-3 border-b border-border flex-wrap" style={{ backgroundColor: '#F8F8FA' }}>
           <span className="text-xs font-semibold text-foreground uppercase tracking-wide whitespace-nowrap">Loan</span>
           <div className="relative">
             <select

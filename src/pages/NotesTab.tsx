@@ -699,7 +699,7 @@ export default function NotesTab() {
         <StyledCard className="overflow-hidden">
 
           {/* Toolbar */}
-          <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-muted/30">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-border" style={{ backgroundColor: '#F8F8FA' }}>
             <div className="flex items-center gap-3">
               <span className="text-xs font-semibold text-foreground uppercase tracking-wide whitespace-nowrap">
                 Long-term Debt
@@ -821,7 +821,7 @@ export default function NotesTab() {
       {/* ── Repayment schedule ───────────────────────────────────────────── */}
       <div className="px-6 pt-5 pb-6">
         <StyledCard className="overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-muted/30">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-border" style={{ backgroundColor: '#F8F8FA' }}>
             <span className="text-xs font-semibold text-foreground uppercase tracking-wide whitespace-nowrap">
               Principal Repayment Schedule — Next Five Fiscal Years
             </span>

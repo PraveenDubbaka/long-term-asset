@@ -387,7 +387,7 @@ export function AJEsTab() {
                           </td>
                         </tr>
                       );})}
-                      <tr className="bg-muted/50 font-semibold text-xs border-t border-border">
+                      <tr className="font-semibold text-xs border-t border-border" style={{ backgroundColor: '#F8F8FA' }}>
                         <td className="py-2.5 px-4 text-foreground" colSpan={2}>Total</td>
                         <td className="py-2.5 px-4 text-right tabular-nums text-foreground">{fmtCurrency(totalDebits(je),  'CAD')}</td>
                         <td className="py-2.5 px-4 text-right tabular-nums text-foreground">
@@ -411,7 +411,7 @@ export function AJEsTab() {
                   </div>{/* end opacity wrapper */}
 
                   {/* JE Actions */}
-                  <div className="flex items-center justify-between px-5 py-3 bg-muted/50 border-t border-border">
+                  <div className="flex items-center justify-between px-5 py-3 border-t border-border" style={{ backgroundColor: '#F8F8FA' }}>
                     {je.deleted ? (
                       /* ── Deleted state ── */
                       <div className="flex items-center gap-3 w-full">
