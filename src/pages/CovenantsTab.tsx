@@ -75,6 +75,7 @@ export function CovenantsTab() {
   const [editingCovId, setEditingCovId]   = useState<string | null>(null);
   const [rowEdits, setRowEdits]           = useState<Partial<Covenant>>({});
   const [draftNewRows, setDraftNewRows]   = useState<(Partial<Covenant> & { _newId: string })[]>([]);
+  const [deleteTarget, setDeleteTarget]   = useState<{ label: string; subLabel?: string; onConfirm: () => void } | null>(null);
 
   const IIC = 'input-double-border h-9 w-full min-w-0 px-3 text-xs border border-[#dcdfe4] rounded-[10px] bg-white text-foreground placeholder:text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] focus:outline-none focus:ring-0 dark:bg-card dark:border-[hsl(220_15%_30%)]';
 
@@ -410,7 +411,15 @@ export function CovenantsTab() {
                         ) : (
                           <div className="flex items-center gap-1 justify-center">
                             <button onClick={() => startEdit(covBase.id)} className="p-1.5 hover:bg-muted rounded-lg text-foreground" title="Edit"><Pencil className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleDeleteCov(covBase.id)} className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                            <button
+                              onClick={() => setDeleteTarget({
+                                label: covBase.name || 'Covenant',
+                                subLabel: selectedLoan?.name,
+                                onConfirm: () => handleDeleteCov(covBase.id),
+                              })}
+                              className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive"
+                              title="Delete"
+                            ><Trash2 className="w-3.5 h-3.5" /></button>
                           </div>
                         )}
                       </td>
@@ -630,6 +639,30 @@ export function CovenantsTab() {
       </div>
 
       {/* CovenantFormModal retained for formula builder access if needed */}
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <Modal open onClose={() => setDeleteTarget(null)} title="Confirm Delete">
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+              <Trash2 className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-700">This action cannot be undone</p>
+              </div>
+            </div>
+            <div className="px-1">
+              <p className="text-sm text-foreground">Are you sure you want to delete <strong>{deleteTarget.label}</strong>?</p>
+              {deleteTarget.subLabel && <p className="text-xs text-muted-foreground mt-1">{deleteTarget.subLabel}</p>}
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+              <Button variant="destructive" onClick={() => { deleteTarget.onConfirm(); setDeleteTarget(null); }}>
+                <Trash2 className="w-3.5 h-3.5" /> Delete
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

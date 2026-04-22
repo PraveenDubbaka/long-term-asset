@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Trash2, Save, Lock, Unlock } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { fmtDateDisplay } from '../lib/utils';
-import { Button, Card, Input, DateInput, Select, Badge, Alert, SectionHeader } from '../components/ui';
+import { Button, Card, Input, DateInput, Select, Badge, Alert, SectionHeader, Modal } from '../components/ui';
 import type { FXRate, Currency } from '../types';
 import toast from 'react-hot-toast';
 
@@ -14,6 +14,7 @@ export function SettingsTab() {
   const [section, setSection] = useState<'engagement' | 'fx' | 'mappings' | 'conventions' | 'lenders'>('engagement');
   const [engForm, setEngForm] = useState({ ...settings });
   const [newFX, setNewFX] = useState<{ currency: Currency; period: string; rate: number }>({ currency: 'USD', period: '2025-01', rate: 1.35 });
+  const [deleteTarget, setDeleteTarget] = useState<{ label: string; subLabel?: string; onConfirm: () => void } | null>(null);
 
   const sections = [
     { id: 'engagement', label: 'Engagement' },
@@ -123,7 +124,7 @@ export function SettingsTab() {
                         <td className="py-2.5 px-4 font-mono text-slate-600">{rate.period}</td>
                         <td className="py-2.5 px-4 font-semibold tabular-nums">{rate.rate.toFixed(4)}</td>
                         <td className="py-2.5 px-4 text-slate-400 text-xs">Manual entry</td>
-                        <td className="py-2.5 px-4"><Button variant="ghost" size="xs" onClick={() => removeFXRate(rate.currency, rate.period)}><Trash2 className="w-3 h-3 text-red-400" /></Button></td>
+                        <td className="py-2.5 px-4"><Button variant="ghost" size="xs" onClick={() => setDeleteTarget({ label: `${rate.currency} ${rate.period}`, subLabel: `Rate: ${rate.rate.toFixed(4)}`, onConfirm: () => removeFXRate(rate.currency, rate.period) })}><Trash2 className="w-3 h-3 text-red-400" /></Button></td>
                       </tr>
                     ))}
                   </tbody>
@@ -245,6 +246,30 @@ export function SettingsTab() {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <Modal open onClose={() => setDeleteTarget(null)} title="Confirm Delete">
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+              <Trash2 className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-700">This action cannot be undone</p>
+              </div>
+            </div>
+            <div className="px-1">
+              <p className="text-sm text-foreground">Are you sure you want to delete <strong>{deleteTarget.label}</strong>?</p>
+              {deleteTarget.subLabel && <p className="text-xs text-muted-foreground mt-1">{deleteTarget.subLabel}</p>}
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+              <Button variant="danger" onClick={() => { deleteTarget.onConfirm(); setDeleteTarget(null); }}>
+                <Trash2 className="w-3.5 h-3.5" /> Delete
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

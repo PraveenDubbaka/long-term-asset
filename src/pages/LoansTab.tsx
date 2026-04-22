@@ -611,6 +611,7 @@ export function LoansTab() {
 
   const [editLoan, setEditLoan] = useState<Loan | null>(null);
   const [viewLoan, setViewLoan] = useState<Loan | null>(null);
+  const [deleteConfirmLoan, setDeleteConfirmLoan] = useState<Loan | null>(null);
   const [editingLoanId, setEditingLoanId] = useState<string | null>(null);
   const [rowEdits, setRowEdits] = useState<Partial<Loan>>({});
   const [ocrPendingIds, setOcrPendingIds] = useState<Set<string>>(new Set());
@@ -1470,7 +1471,7 @@ export function LoansTab() {
                       ) : (
                         <div className="flex items-center gap-1 justify-center">
                           <button onClick={() => startEdit(l.id)} className="p-1.5 hover:bg-muted rounded-lg text-foreground" title="Edit"><Pencil className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => deleteLoan(l.id)} className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setDeleteConfirmLoan(l)} className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       )}
                     </td>
@@ -1711,6 +1712,44 @@ export function LoansTab() {
           </div>
         </>,
         document.body
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmLoan && (
+        <Modal open onClose={() => setDeleteConfirmLoan(null)} title="Delete Loan">
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+              <Trash2 className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-700">This action cannot be undone</p>
+                <p className="text-xs text-red-600 mt-0.5">
+                  All associated continuity rows, amortization schedules, covenants, and journal entries linked to this loan will also be affected.
+                </p>
+              </div>
+            </div>
+            <div className="px-1 space-y-1">
+              <p className="text-sm text-foreground">Are you sure you want to delete this loan?</p>
+              <div className="mt-2 p-3 bg-muted rounded-lg space-y-1">
+                <p className="text-sm font-semibold text-foreground">{deleteConfirmLoan.name}</p>
+                <p className="text-xs text-muted-foreground">{deleteConfirmLoan.lender} · {deleteConfirmLoan.refNumber} · {deleteConfirmLoan.currency}</p>
+                <p className="text-xs text-muted-foreground">{deleteConfirmLoan.type} · {deleteConfirmLoan.rate}% · Balance: {fmtCurrency(deleteConfirmLoan.currentBalance, deleteConfirmLoan.currency)}</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <Button variant="secondary" onClick={() => setDeleteConfirmLoan(null)}>Cancel</Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  deleteLoan(deleteConfirmLoan.id);
+                  toast.success(`${deleteConfirmLoan.name} deleted`);
+                  setDeleteConfirmLoan(null);
+                }}
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete Loan
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* Add Loan Inline Page — tabbed (Upload | Manual) */}

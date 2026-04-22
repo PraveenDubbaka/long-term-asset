@@ -176,6 +176,9 @@ export function ContinuityTab() {
   const [addOpen, setAddOpen] = useState(false);
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [rowEdits, setRowEdits] = useState<Partial<ContinuityRow>>({});
+  const [deleteTarget, setDeleteTarget] = useState<{ label: string; subLabel?: string; onConfirm: () => void } | null>(null);
+  const [editingAllLoansId, setEditingAllLoansId] = useState<string | null>(null);
+  const [allLoansEdits, setAllLoansEdits] = useState<Record<string, number>>({});
 
   // Notes link panel state
   const [notesPanelRowId, setNotesPanelRowId] = useState<string | null>(null);
@@ -434,27 +437,99 @@ export function ContinuityTab() {
                 <tbody>
                   {selectedLoanId === ALL_LOANS_ID ? (
                     <>
-                      {consolidatedByLoan.map(row => (
-                        <tr key={row.loanId} className="border-b border-border hover:bg-muted/30 transition-colors">
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <div className="font-medium text-foreground leading-tight">{row.loanName}</div>
-                            <div className="text-[11px] text-muted-foreground">{row.lender} · {row.currency}</div>
-                          </td>
-                          {colVisible('openingBalance') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{fmtNumber(row.openingBalance)}</span></td>}
-                          {colVisible('newBorrowings') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{row.newBorrowings > 0 ? fmtNumber(row.newBorrowings) : '00'}</span></td>}
-                          {colVisible('principalRepayments') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{row.repayments > 0 ? `(${fmtNumber(row.repayments)})` : '00'}</span></td>}
-                          {colVisible('interestRepayments') && <td className="px-3 py-2 tabular-nums text-right text-foreground text-xs">—</td>}
-                          {colVisible('fxTranslation') && <td className="px-3 py-2 tabular-nums text-right">{(() => { const fx = fmtFX(row.fxTranslation); return <span className={fx.cls}>{fx.display}</span>; })()}</td>}
-                          {colVisible('closingBalance') && <td className="px-3 py-2 tabular-nums text-right font-semibold"><span className="text-foreground">{fmtNumber(row.closingBalance)}</span></td>}
-                          {colVisible('accruedInterest') && <td className="px-3 py-2 tabular-nums text-right"><span className="text-foreground">{row.accruedInterest > 0 ? fmtNumber(row.accruedInterest) : '00'}</span></td>}
-                          <td className="px-3 py-2 text-center">
-                            {(() => {
-                              const loanObj = loans.find(l => l.id === row.loanId);
-                              const totalAccrued = continuity.filter(r => r.loanId === row.loanId).reduce((s, r) => s + r.accruedInterest, 0);
-                              const period = settings.fiscalYearEnd?.slice(0, 7) ?? '2024-12';
-                              const alreadyPosted = jes.some(j => !j.deleted && j.type === 'AccruedInterest' && j.loanId === row.loanId && j.date?.startsWith(period));
-                              const canPost = !!loanObj && totalAccrued > 0 && !alreadyPosted;
-                              return (
+                      {consolidatedByLoan.map(row => {
+                        const isAllEditing = editingAllLoansId === row.loanId;
+                        const ae = (k: string) => allLoansEdits[k] ?? (row as unknown as Record<string, number>)[k] ?? 0;
+                        const setAE = (k: string, v: number) => setAllLoansEdits(p => ({ ...p, [k]: v }));
+                        const IIS = 'input-double-border h-7 w-24 text-xs px-2 tabular-nums border border-[#dcdfe4] rounded-[10px] bg-white dark:bg-card text-foreground text-right focus:outline-none focus:ring-0 transition-all hover:border-[hsl(210_25%_75%)]';
+
+                        const saveAllLoansEdit = () => {
+                          const periodRows = continuity.filter(r => r.loanId === row.loanId).sort((a, b) => a.period.localeCompare(b.period));
+                          const first = periodRows[0];
+                          const last  = periodRows[periodRows.length - 1];
+                          if (last) {
+                            updateContinuityRow(last.id, {
+                              closingBalance:  allLoansEdits['closingBalance']  ?? last.closingBalance,
+                              accruedInterest: allLoansEdits['accruedInterest'] ?? last.accruedInterest,
+                              newBorrowings:   allLoansEdits['newBorrowings']   ?? last.newBorrowings,
+                              repayments:      allLoansEdits['repayments']      ?? last.repayments,
+                              fxTranslation:   allLoansEdits['fxTranslation']   ?? last.fxTranslation,
+                            });
+                          }
+                          if (first && first !== last) {
+                            updateContinuityRow(first.id, { openingBalance: allLoansEdits['openingBalance'] ?? first.openingBalance });
+                          } else if (first) {
+                            updateContinuityRow(first.id, { openingBalance: allLoansEdits['openingBalance'] ?? first.openingBalance });
+                          }
+                          toast.success('Row saved');
+                          setEditingAllLoansId(null);
+                          setAllLoansEdits({});
+                        };
+
+                        const loanObj = loans.find(l => l.id === row.loanId);
+                        const totalAccrued = continuity.filter(r => r.loanId === row.loanId).reduce((s, r) => s + r.accruedInterest, 0);
+                        const period = settings.fiscalYearEnd?.slice(0, 7) ?? '2024-12';
+                        const alreadyPosted = jes.some(j => !j.deleted && j.type === 'AccruedInterest' && j.loanId === row.loanId && j.date?.startsWith(period));
+                        const canPost = !!loanObj && totalAccrued > 0 && !alreadyPosted;
+
+                        return (
+                          <tr key={row.loanId} className={`border-b border-border transition-colors ${isAllEditing ? 'bg-primary/[0.02]' : 'hover:bg-muted/30'}`}>
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              <div className="font-medium text-foreground leading-tight">{row.loanName}</div>
+                              <div className="text-[11px] text-muted-foreground">{row.lender} · {row.currency}</div>
+                            </td>
+                            {colVisible('openingBalance') && (
+                              <td className="px-3 py-2 tabular-nums text-right">
+                                {isAllEditing
+                                  ? <input type="number" value={ae('openingBalance')} onChange={e => setAE('openingBalance', parseFloat(e.target.value) || 0)} className={IIS} />
+                                  : <span className="text-foreground">{fmtNumber(row.openingBalance)}</span>}
+                              </td>
+                            )}
+                            {colVisible('newBorrowings') && (
+                              <td className="px-3 py-2 tabular-nums text-right">
+                                {isAllEditing
+                                  ? <input type="number" value={ae('newBorrowings')} onChange={e => setAE('newBorrowings', parseFloat(e.target.value) || 0)} className={IIS} />
+                                  : <span className="text-foreground">{row.newBorrowings > 0 ? fmtNumber(row.newBorrowings) : '00'}</span>}
+                              </td>
+                            )}
+                            {colVisible('principalRepayments') && (
+                              <td className="px-3 py-2 tabular-nums text-right">
+                                {isAllEditing
+                                  ? <input type="number" value={ae('repayments')} onChange={e => setAE('repayments', parseFloat(e.target.value) || 0)} className={IIS} />
+                                  : <span className="text-foreground">{row.repayments > 0 ? `(${fmtNumber(row.repayments)})` : '00'}</span>}
+                              </td>
+                            )}
+                            {colVisible('interestRepayments') && (
+                              <td className="px-3 py-2 tabular-nums text-right text-foreground text-xs">—</td>
+                            )}
+                            {colVisible('fxTranslation') && (
+                              <td className="px-3 py-2 tabular-nums text-right">
+                                {isAllEditing
+                                  ? <input type="number" value={ae('fxTranslation')} onChange={e => setAE('fxTranslation', parseFloat(e.target.value) || 0)} className={IIS} />
+                                  : (() => { const fx = fmtFX(row.fxTranslation); return <span className={fx.cls}>{fx.display}</span>; })()}
+                              </td>
+                            )}
+                            {colVisible('closingBalance') && (
+                              <td className="px-3 py-2 tabular-nums text-right font-semibold">
+                                {isAllEditing
+                                  ? <input type="number" value={ae('closingBalance')} onChange={e => setAE('closingBalance', parseFloat(e.target.value) || 0)} className={IIS} />
+                                  : <span className="text-foreground">{fmtNumber(row.closingBalance)}</span>}
+                              </td>
+                            )}
+                            {colVisible('accruedInterest') && (
+                              <td className="px-3 py-2 tabular-nums text-right">
+                                {isAllEditing
+                                  ? <input type="number" value={ae('accruedInterest')} onChange={e => setAE('accruedInterest', parseFloat(e.target.value) || 0)} className={IIS} />
+                                  : <span className="text-foreground">{row.accruedInterest > 0 ? fmtNumber(row.accruedInterest) : '00'}</span>}
+                              </td>
+                            )}
+                            <td className="px-3 py-2 text-center">
+                              {isAllEditing ? (
+                                <div className="flex items-center gap-1 justify-center">
+                                  <button onClick={saveAllLoansEdit} className="p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-600" title="Save"><Check className="w-3.5 h-3.5" /></button>
+                                  <button onClick={() => { setEditingAllLoansId(null); setAllLoansEdits({}); }} className="p-1.5 hover:bg-muted rounded-lg text-foreground" title="Cancel"><X className="w-3.5 h-3.5" /></button>
+                                </div>
+                              ) : (
                                 <div className="flex items-center gap-1 justify-center">
                                   <button
                                     onClick={() => loanObj && postAccruedInterestAJE(loanObj, totalAccrued, period)}
@@ -463,24 +538,34 @@ export function ContinuityTab() {
                                     title={alreadyPosted ? 'AJE already posted for this period' : totalAccrued <= 0 ? 'No accrued interest to post' : 'Post accrued interest AJE to AJEs tab'}
                                   ><Send className="w-3.5 h-3.5" /></button>
                                   <button
-                                    onClick={() => setSelectedLoanId(row.loanId)}
+                                    onClick={() => {
+                                      setEditingAllLoansId(row.loanId);
+                                      setAllLoansEdits({});
+                                    }}
                                     className="p-1.5 hover:bg-muted rounded-lg text-foreground"
-                                    title="Edit periods"
+                                    title="Edit row"
                                   ><Pencil className="w-3.5 h-3.5" /></button>
                                   <button
                                     onClick={() => {
-                                      continuity.filter(r => r.loanId === row.loanId).forEach(r => deleteContinuityRow(r.id));
-                                      toast.success('Continuity rows deleted');
+                                      const count = continuity.filter(r => r.loanId === row.loanId).length;
+                                      setDeleteTarget({
+                                        label: row.loanName,
+                                        subLabel: `${count} continuity row${count !== 1 ? 's' : ''} will be permanently removed`,
+                                        onConfirm: () => {
+                                          continuity.filter(r => r.loanId === row.loanId).forEach(r => deleteContinuityRow(r.id));
+                                          toast.success('Continuity rows deleted');
+                                        },
+                                      });
                                     }}
                                     className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive"
                                     title="Delete continuity rows"
                                   ><Trash2 className="w-3.5 h-3.5" /></button>
                                 </div>
-                              );
-                            })()}
-                          </td>
-                        </tr>
-                      ))}
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </>
                   ) : loanRows.map(row => {
                     const isEditing = editingRowId === row.id;
@@ -509,7 +594,7 @@ export function ContinuityTab() {
                             {isEditing ? (
                               <input type="number" value={ed.openingBalance ?? 0}
                                 onChange={e => setCEdit('openingBalance', parseFloat(e.target.value) || 0)}
-                                className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                                className="input-double-border h-7 w-24 text-xs px-2 tabular-nums border border-[#dcdfe4] rounded-[10px] bg-white dark:bg-card text-foreground text-right focus:outline-none focus:ring-0 transition-all hover:border-[hsl(210_25%_75%)]" />
                             ) : (
                               <span className="text-foreground">{fmtNumber(row.openingBalance)}</span>
                             )}
@@ -520,7 +605,7 @@ export function ContinuityTab() {
                             {isEditing ? (
                               <input type="number" value={ed.newBorrowings ?? 0}
                                 onChange={e => setCEdit('newBorrowings', parseFloat(e.target.value) || 0)}
-                                className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                                className="input-double-border h-7 w-24 text-xs px-2 tabular-nums border border-[#dcdfe4] rounded-[10px] bg-white dark:bg-card text-foreground text-right focus:outline-none focus:ring-0 transition-all hover:border-[hsl(210_25%_75%)]" />
                             ) : (
                               <span className="text-foreground">{fmtNumber(row.newBorrowings)}</span>
                             )}
@@ -532,7 +617,7 @@ export function ContinuityTab() {
                             {isEditing ? (
                               <input type="number" value={ed.principalRepayments ?? computedPrincipal}
                                 onChange={e => setCEdit('principalRepayments', parseFloat(e.target.value) || 0)}
-                                className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                                className="input-double-border h-7 w-24 text-xs px-2 tabular-nums border border-[#dcdfe4] rounded-[10px] bg-white dark:bg-card text-foreground text-right focus:outline-none focus:ring-0 transition-all hover:border-[hsl(210_25%_75%)]" />
                             ) : (
                               <span className="text-foreground">
                                 {(() => { const v = row.principalRepayments ?? computedPrincipal; return v > 0 ? `(${fmtNumber(v)})` : '00'; })()}
@@ -546,7 +631,7 @@ export function ContinuityTab() {
                             {isEditing ? (
                               <input type="number" value={ed.interestRepayments ?? computedInterest}
                                 onChange={e => setCEdit('interestRepayments', parseFloat(e.target.value) || 0)}
-                                className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                                className="input-double-border h-7 w-24 text-xs px-2 tabular-nums border border-[#dcdfe4] rounded-[10px] bg-white dark:bg-card text-foreground text-right focus:outline-none focus:ring-0 transition-all hover:border-[hsl(210_25%_75%)]" />
                             ) : (
                               <span className="text-foreground">
                                 {(() => { const v = row.interestRepayments ?? computedInterest; return v > 0 ? `(${fmtNumber(v)})` : '00'; })()}
@@ -560,7 +645,7 @@ export function ContinuityTab() {
                             {isEditing ? (
                               <input type="number" value={ed.fxTranslation ?? 0}
                                 onChange={e => setCEdit('fxTranslation', parseFloat(e.target.value) || 0)}
-                                className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                                className="input-double-border h-7 w-24 text-xs px-2 tabular-nums border border-[#dcdfe4] rounded-[10px] bg-white dark:bg-card text-foreground text-right focus:outline-none focus:ring-0 transition-all hover:border-[hsl(210_25%_75%)]" />
                             ) : (
                               (() => { const fx = fmtFX(row.fxTranslation); return <span className={fx.cls}>{fx.display}</span>; })()
                             )}
@@ -572,7 +657,7 @@ export function ContinuityTab() {
                             {isEditing ? (
                               <input type="number" value={ed.closingBalance ?? 0}
                                 onChange={e => setCEdit('closingBalance', parseFloat(e.target.value) || 0)}
-                                className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                                className="input-double-border h-7 w-24 text-xs px-2 tabular-nums border border-[#dcdfe4] rounded-[10px] bg-white dark:bg-card text-foreground text-right focus:outline-none focus:ring-0 transition-all hover:border-[hsl(210_25%_75%)]" />
                             ) : (
                               <span className="text-foreground">{fmtNumber(row.closingBalance)}</span>
                             )}
@@ -583,7 +668,7 @@ export function ContinuityTab() {
                             {isEditing ? (
                               <input type="number" value={ed.accruedInterest ?? 0}
                                 onChange={e => setCEdit('accruedInterest', parseFloat(e.target.value) || 0)}
-                                className="h-7 w-24 text-xs px-2 border border-primary/40 rounded bg-background text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                                className="input-double-border h-7 w-24 text-xs px-2 tabular-nums border border-[#dcdfe4] rounded-[10px] bg-white dark:bg-card text-foreground text-right focus:outline-none focus:ring-0 transition-all hover:border-[hsl(210_25%_75%)]" />
                             ) : (
                               <span className="text-foreground">{fmtNumber(row.accruedInterest)}</span>
                             )}
@@ -608,7 +693,18 @@ export function ContinuityTab() {
                                     title={alreadyPosted ? 'AJE already posted for this period' : row.accruedInterest <= 0 ? 'No accrued interest to post' : 'Post accrued interest AJE to AJEs tab'}
                                   ><Send className="w-3.5 h-3.5" /></button>
                                   <button onClick={() => startEdit(row)} className="p-1.5 hover:bg-muted rounded-lg text-foreground" title="Edit"><Pencil className="w-3.5 h-3.5" /></button>
-                                  <button onClick={() => deleteContinuityRow(row.id)} className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                                  <button
+                                    onClick={() => {
+                                      const loan = loans.find(l => l.id === row.loanId);
+                                      setDeleteTarget({
+                                        label: `Period ${formatPeriod(row.period)}`,
+                                        subLabel: loan?.name,
+                                        onConfirm: () => deleteContinuityRow(row.id),
+                                      });
+                                    }}
+                                    className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive"
+                                    title="Delete"
+                                  ><Trash2 className="w-3.5 h-3.5" /></button>
                                 </div>
                               );
                             })()
@@ -910,6 +1006,30 @@ export function ContinuityTab() {
         loanId={selectedLoanId}
         onSave={(row) => { addContinuityRow(row); toast.success('Row added'); setAddOpen(false); }}
       />
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <Modal open onClose={() => setDeleteTarget(null)} title="Confirm Delete">
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+              <Trash2 className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-700">This action cannot be undone</p>
+              </div>
+            </div>
+            <div className="px-1">
+              <p className="text-sm text-foreground">Are you sure you want to delete <strong>{deleteTarget.label}</strong>?</p>
+              {deleteTarget.subLabel && <p className="text-xs text-muted-foreground mt-1">{deleteTarget.subLabel}</p>}
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+              <Button variant="destructive" onClick={() => { deleteTarget.onConfirm(); setDeleteTarget(null); }}>
+                <Trash2 className="w-3.5 h-3.5" /> Delete
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
