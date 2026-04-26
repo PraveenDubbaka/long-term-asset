@@ -1,8 +1,8 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   Plus, AlertCircle, AlertTriangle, CheckCircle, XCircle, ChevronDown,
   ChevronRight, FileText, Trash2, Sparkles, TrendingDown, TrendingUp, Minus, Download,
-  BookOpen, Wand2, CheckSquare, Square, ArrowRight, Check, X, Pencil,
+  BookOpen, Wand2, CheckSquare, Square, ArrowRight, Check, X, Pencil, Search,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useWorkpaperLoans } from '../contexts/WorkpaperContext';
@@ -58,6 +58,9 @@ export function CovenantsTab() {
 
   const wpCtx = useWorkpaperLoans();
   const loans = wpCtx ? wpCtx.loans.filter(l => l.status !== 'Inactive') : storeLoans;
+  // When inside a WorkpaperProvider, loan mutations must go through the context so
+  // wpCtx.loans (and selectedLoan.covenantIds) stays in sync with what is displayed.
+  const effectiveUpdateLoan = wpCtx?.updateLoan ?? updateLoan;
 
   const loansWithCovenants = loans.filter(l => l.covenantIds && l.covenantIds.length > 0);
   const [selectedLoanId, setSelectedLoanId] = useState<string>(loansWithCovenants[0]?.id || '');
@@ -72,10 +75,11 @@ export function CovenantsTab() {
   };
 
   // per-row edit state
-  const [editingCovId, setEditingCovId]   = useState<string | null>(null);
-  const [rowEdits, setRowEdits]           = useState<Partial<Covenant>>({});
-  const [draftNewRows, setDraftNewRows]   = useState<(Partial<Covenant> & { _newId: string })[]>([]);
-  const [deleteTarget, setDeleteTarget]   = useState<{ label: string; subLabel?: string; onConfirm: () => void } | null>(null);
+  const [editingCovId, setEditingCovId]       = useState<string | null>(null);
+  const [rowEdits, setRowEdits]               = useState<Partial<Covenant>>({});
+  const [draftNewRows, setDraftNewRows]       = useState<(Partial<Covenant> & { _newId: string })[]>([]);
+  const [expandedDraftId, setExpandedDraftId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget]       = useState<{ label: string; subLabel?: string; onConfirm: () => void } | null>(null);
 
   const IIC = 'input-double-border h-9 w-full min-w-0 px-3 text-xs border border-[#dcdfe4] rounded-[10px] bg-white text-foreground placeholder:text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] focus:outline-none focus:ring-0 dark:bg-card dark:border-[hsl(220_15%_30%)]';
 
@@ -101,6 +105,41 @@ export function CovenantsTab() {
     setDraftNewRows(p => p.map(r => r._newId === _newId ? { ...r, [field]: value } : r));
 
   const mkId = () => `fl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+  // ── Draft formula helpers ──────────────────────────────────────────────────
+  const updateDraftFormula = (_newId: string, section: 'formulaLines' | 'denominatorLines', lineId: string, changes: Partial<CovenantFormulaLine>) =>
+    setDraftNewRows(p => p.map(r => {
+      if (r._newId !== _newId) return r;
+      const lines = (section === 'formulaLines' ? r.formulaLines : r.denominatorLines) ?? [];
+      const updated = lines.map(l => l.id === lineId ? { ...l, ...changes } : l);
+      const numLines = section === 'formulaLines' ? updated : (r.formulaLines ?? []);
+      const denLines = section === 'denominatorLines' ? updated : (r.denominatorLines ?? []);
+      const numTotal = numLines.reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
+      const denTotal = denLines.reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
+      const cv = r.isRatioCovenant ? (denTotal !== 0 ? numTotal / denTotal : 0) : numTotal;
+      return { ...r, [section]: updated, currentValue: Math.round(cv * 10000) / 10000 };
+    }));
+
+  const addDraftFormulaLine = (_newId: string, section: 'formulaLines' | 'denominatorLines') => {
+    const newLine: CovenantFormulaLine = { id: mkId(), sign: '+', description: 'New Item', glAccount: '', amount: 0, projectedAmount: 0, multiplier: 1 };
+    setDraftNewRows(p => p.map(r => r._newId !== _newId ? r : {
+      ...r, useFormulaBuilder: true,
+      [section]: [...((section === 'formulaLines' ? r.formulaLines : r.denominatorLines) ?? []), newLine],
+    }));
+  };
+
+  const deleteDraftFormulaLine = (_newId: string, section: 'formulaLines' | 'denominatorLines', lineId: string) =>
+    setDraftNewRows(p => p.map(r => {
+      if (r._newId !== _newId) return r;
+      const lines = (section === 'formulaLines' ? r.formulaLines : r.denominatorLines) ?? [];
+      const updated = lines.filter(l => l.id !== lineId);
+      const numLines = section === 'formulaLines' ? updated : (r.formulaLines ?? []);
+      const denLines = section === 'denominatorLines' ? updated : (r.denominatorLines ?? []);
+      const numTotal = numLines.reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
+      const denTotal = denLines.reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
+      const cv = r.isRatioCovenant ? (denTotal !== 0 ? numTotal / denTotal : 0) : numTotal;
+      return { ...r, [section]: updated, currentValue: Math.round(cv * 10000) / 10000 };
+    }));
 
   const applyTemplateToEdit = (_id: string, templateId: string) => {
     const tmpl = COVENANT_TEMPLATES.find(t => t.id === templateId);
@@ -132,6 +171,7 @@ export function CovenantsTab() {
       formulaLines:      tmpl.numeratorLines.map(l => ({ ...l, id: mkId() })),
       denominatorLines:  (tmpl.denominatorLines ?? []).map(l => ({ ...l, id: mkId() })),
     }));
+    setExpandedDraftId(_newId); // auto-open formula section
   };
   const addDraftRow = () => {
     const _newId = `new-${Date.now()}`;
@@ -142,7 +182,7 @@ export function CovenantsTab() {
   const handleDeleteCov = (id: string) => {
     deleteCovenant(id);
     if (selectedLoan) {
-      updateLoan(selectedLoanId, { covenantIds: (selectedLoan.covenantIds ?? []).filter(cid => cid !== id) });
+      effectiveUpdateLoan(selectedLoanId, { covenantIds: (selectedLoan.covenantIds ?? []).filter(cid => cid !== id) });
     }
     if (editingCovId === id) { setEditingCovId(null); setRowEdits({}); }
     toast.success('Covenant deleted');
@@ -175,18 +215,14 @@ export function CovenantsTab() {
         {/* Toolbar */}
         <div className="flex items-center gap-3 px-5 py-3 border-b border-border flex-wrap" style={{ backgroundColor: '#F8F8FA' }}>
           <span className="text-xs font-semibold text-foreground uppercase tracking-wide whitespace-nowrap">Loan</span>
-          <div className="relative">
-            <select
-              className="input-double-border h-9 text-sm pl-3 pr-8 rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground appearance-none transition-all duration-200 hover:border-[hsl(210_25%_75%)] cursor-pointer focus:outline-none"
-              value={selectedLoanId}
-              onChange={e => { setSelectedLoanId(e.target.value); setExpandedId(null); }}
-            >
-              {loansWithCovenants.length === 0
-                ? <option value="">No loans with covenants</option>
-                : loansWithCovenants.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground" />
-          </div>
+          <CustomSelect
+            value={selectedLoanId}
+            onChange={v => { setSelectedLoanId(v); setExpandedId(null); }}
+            options={loansWithCovenants.length === 0
+              ? [{ value: '', label: 'No loans with covenants' }]
+              : loansWithCovenants.map(l => ({ value: l.id, label: l.name }))}
+            className="min-w-[180px]"
+          />
           {selectedLoan && (
             <>
               <span className="text-xs text-foreground">·</span>
@@ -267,16 +303,14 @@ export function CovenantsTab() {
                         <div className="flex items-center gap-1.5">
                           <Icon className={`w-3.5 h-3.5 ${cfg.color} flex-shrink-0`} />
                           {isEditing ? (
-                            <select
+                            <CustomSelect
                               value={cov.name ?? ''}
-                              onChange={e => applyTemplateToEdit(covBase.id, e.target.value)}
-                              className={`${IIC} font-medium`}
-                            >
-                              <option value="">— Select covenant —</option>
-                              {COVENANT_TEMPLATES.map(t => (
-                                <option key={t.id} value={t.id}>{t.label}</option>
-                              ))}
-                            </select>
+                              onChange={v => applyTemplateToEdit(covBase.id, v)}
+                              options={COVENANT_TEMPLATES.map(t => ({ value: t.id, label: t.label }))}
+                              placeholder="— Select covenant —"
+                              searchable
+                              className="flex-1 min-w-0"
+                            />
                           ) : (
                             <span className="font-medium text-sm text-foreground truncate">{cov.name || '—'}</span>
                           )}
@@ -286,10 +320,11 @@ export function CovenantsTab() {
                       {/* Type */}
                       <td className="px-3 py-2 text-left">
                         {isEditing ? (
-                          <select value={cov.type} onChange={e => setEdit('type', e.target.value as Covenant['type'])} className={IIC}>
-                            <option value="Quantitative">Quantitative</option>
-                            <option value="Qualitative">Qualitative</option>
-                          </select>
+                          <CustomSelect
+                            value={cov.type}
+                            onChange={v => setEdit('type', v as Covenant['type'])}
+                            options={[{ value: 'Quantitative', label: 'Quantitative' }, { value: 'Qualitative', label: 'Qualitative' }]}
+                          />
                         ) : (
                           <span className="text-xs text-foreground">{cov.type}</span>
                         )}
@@ -350,16 +385,12 @@ export function CovenantsTab() {
                         {cov.type === 'Quantitative' ? (
                           isEditing ? (
                             <div className="flex items-center justify-end gap-1">
-                              <select
+                              <CustomSelect
                                 value={cov.operator ?? '>='}
-                                onChange={e => setEdit('operator', e.target.value as Covenant['operator'])}
-                                className={`${IIC} w-14 text-center`}
-                              >
-                                <option value=">=">≥</option>
-                                <option value="<=">≤</option>
-                                <option value=">">{'>'}</option>
-                                <option value="<">{'<'}</option>
-                              </select>
+                                onChange={v => setEdit('operator', v as Covenant['operator'])}
+                                options={[{ value: '>=', label: '≥' }, { value: '<=', label: '≤' }, { value: '>', label: '>' }, { value: '<', label: '<' }]}
+                                className="w-14"
+                              />
                               <input
                                 type="number"
                                 value={cov.threshold ?? ''}
@@ -378,11 +409,11 @@ export function CovenantsTab() {
                       {/* Frequency */}
                       <td className="px-3 py-2 text-right hidden xl:table-cell">
                         {isEditing ? (
-                          <select value={cov.frequency} onChange={e => setEdit('frequency', e.target.value as Covenant['frequency'])} className={IIC}>
-                            <option value="Monthly">Monthly</option>
-                            <option value="Quarterly">Quarterly</option>
-                            <option value="Annual">Annual</option>
-                          </select>
+                          <CustomSelect
+                            value={cov.frequency}
+                            onChange={v => setEdit('frequency', v as Covenant['frequency'])}
+                            options={[{ value: 'Monthly', label: 'Monthly' }, { value: 'Quarterly', label: 'Quarterly' }, { value: 'Annual', label: 'Annual' }]}
+                          />
                         ) : (
                           <span className="text-xs text-foreground">{cov.frequency}</span>
                         )}
@@ -511,29 +542,36 @@ export function CovenantsTab() {
               {draftNewRows.map(draft => (
                 <React.Fragment key={draft._newId}>
                   <tr className="border-b border-border bg-primary/[0.015] hover:bg-primary/[0.03] transition-colors">
-                    <td className="px-3 py-2 w-8" />
+                    {/* Expand chevron */}
+                    <td
+                      className="px-3 py-2 w-8 cursor-pointer select-none"
+                      onClick={() => setExpandedDraftId(expandedDraftId === draft._newId ? null : draft._newId)}
+                    >
+                      {expandedDraftId === draft._newId
+                        ? <ChevronDown className="w-3.5 h-3.5 text-foreground" />
+                        : <ChevronRight className="w-3.5 h-3.5 text-foreground" />}
+                    </td>
 
                     {/* Name */}
                     <td className="px-3 py-2 text-left">
-                      <select
+                      <CustomSelect
                         value={draft.name ?? ''}
-                        onChange={e => applyTemplateToDraft(draft._newId, e.target.value)}
-                        className={`${IIC} font-medium`}
-                        autoFocus
-                      >
-                        <option value="">— Select covenant —</option>
-                        {COVENANT_TEMPLATES.map(t => (
-                          <option key={t.id} value={t.id}>{t.label}</option>
-                        ))}
-                      </select>
+                        onChange={v => applyTemplateToDraft(draft._newId, v)}
+                        options={COVENANT_TEMPLATES.map(t => ({ value: t.id, label: t.label }))}
+                        placeholder="— Select covenant —"
+                        searchable
+                        autoOpen
+                        className="min-w-0"
+                      />
                     </td>
 
                     {/* Type */}
                     <td className="px-3 py-2 text-left">
-                      <select value={draft.type ?? 'Quantitative'} onChange={e => setDraftEdit(draft._newId, 'type', e.target.value as Covenant['type'])} className={IIC}>
-                        <option value="Quantitative">Quantitative</option>
-                        <option value="Qualitative">Qualitative</option>
-                      </select>
+                      <CustomSelect
+                        value={draft.type ?? 'Quantitative'}
+                        onChange={v => setDraftEdit(draft._newId, 'type', v as Covenant['type'])}
+                        options={[{ value: 'Quantitative', label: 'Quantitative' }, { value: 'Qualitative', label: 'Qualitative' }]}
+                      />
                     </td>
 
                     {/* Status — read-only, computed by system */}
@@ -565,16 +603,12 @@ export function CovenantsTab() {
                     <td className="px-3 py-2 text-right">
                       {(draft.type ?? 'Quantitative') === 'Quantitative' ? (
                         <div className="flex items-center justify-end gap-1">
-                          <select
+                          <CustomSelect
                             value={draft.operator ?? '>='}
-                            onChange={e => setDraftEdit(draft._newId, 'operator', e.target.value as Covenant['operator'])}
-                            className={`${IIC} w-14 text-center`}
-                          >
-                            <option value=">=">≥</option>
-                            <option value="<=">≤</option>
-                            <option value=">">{'>'}</option>
-                            <option value="<">{'<'}</option>
-                          </select>
+                            onChange={v => setDraftEdit(draft._newId, 'operator', v as Covenant['operator'])}
+                            options={[{ value: '>=', label: '≥' }, { value: '<=', label: '≤' }, { value: '>', label: '>' }, { value: '<', label: '<' }]}
+                            className="w-14"
+                          />
                           <input
                             type="number"
                             value={draft.threshold ?? ''}
@@ -589,11 +623,11 @@ export function CovenantsTab() {
 
                     {/* Frequency */}
                     <td className="px-3 py-2 text-right hidden xl:table-cell">
-                      <select value={draft.frequency ?? 'Annual'} onChange={e => setDraftEdit(draft._newId, 'frequency', e.target.value as Covenant['frequency'])} className={IIC}>
-                        <option value="Monthly">Monthly</option>
-                        <option value="Quarterly">Quarterly</option>
-                        <option value="Annual">Annual</option>
-                      </select>
+                      <CustomSelect
+                        value={draft.frequency ?? 'Annual'}
+                        onChange={v => setDraftEdit(draft._newId, 'frequency', v as Covenant['frequency'])}
+                        options={[{ value: 'Monthly', label: 'Monthly' }, { value: 'Quarterly', label: 'Quarterly' }, { value: 'Annual', label: 'Annual' }]}
+                      />
                     </td>
 
                     {/* Last Tested — blank for drafts */}
@@ -611,7 +645,7 @@ export function CovenantsTab() {
                             const newId = `cov-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
                             addCovenant({ ...data, id: newId, loanId: selectedLoanId } as unknown as Covenant);
                             if (selectedLoan) {
-                              updateLoan(selectedLoanId, { covenantIds: [...(selectedLoan.covenantIds ?? []), newId] });
+                              effectiveUpdateLoan(selectedLoanId, { covenantIds: [...(selectedLoan.covenantIds ?? []), newId] });
                             }
                             setDraftNewRows(p => p.filter(r => r._newId !== draft._newId));
                             toast.success('Covenant added');
@@ -631,6 +665,43 @@ export function CovenantsTab() {
                       </div>
                     </td>
                   </tr>
+
+                  {/* Expanded formula builder for draft row */}
+                  {expandedDraftId === draft._newId && (
+                    <tr className="border-b border-border">
+                      <td colSpan={10} className="bg-muted/20 px-6 py-4">
+                        <div className="text-xs font-bold text-foreground uppercase tracking-wider mb-2.5 select-none">Formula / Method</div>
+                        <FormulaDisplay
+                          cov={{ ...draft, formulaLines: draft.formulaLines ?? [], denominatorLines: draft.denominatorLines ?? [] } as unknown as Covenant}
+                          editMode
+                          onUpdateNumeratorLine={(lineId, amt) => updateDraftFormula(draft._newId, 'formulaLines', lineId, { amount: amt })}
+                          onUpdateDenominatorLine={(lineId, amt) => updateDraftFormula(draft._newId, 'denominatorLines', lineId, { amount: amt })}
+                          onAddNumeratorLine={() => addDraftFormulaLine(draft._newId, 'formulaLines')}
+                          onDeleteNumeratorLine={(lineId) => deleteDraftFormulaLine(draft._newId, 'formulaLines', lineId)}
+                          onAddDenominatorLine={() => addDraftFormulaLine(draft._newId, 'denominatorLines')}
+                          onDeleteDenominatorLine={(lineId) => deleteDraftFormulaLine(draft._newId, 'denominatorLines', lineId)}
+                          onUpdateNumeratorDesc={(lineId, glCode, name) => updateDraftFormula(draft._newId, 'formulaLines', lineId, { glAccount: glCode, description: name })}
+                          onUpdateDenominatorDesc={(lineId, glCode, name) => updateDraftFormula(draft._newId, 'denominatorLines', lineId, { glAccount: glCode, description: name })}
+                        />
+                        {/* Computed current value preview */}
+                        {(draft.formulaLines?.length ?? 0) > 0 && (
+                          <div className="mt-3 flex items-center gap-2 text-xs text-foreground">
+                            <span className="font-semibold">Computed Current Value:</span>
+                            <span className="tabular-nums font-bold text-primary">
+                              {draft.isRatioCovenant
+                                ? `${(draft.currentValue ?? 0).toFixed(2)}x`
+                                : `$${(draft.currentValue ?? 0).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            </span>
+                            {draft.threshold !== undefined && draft.operator && (
+                              <span className="text-foreground">
+                                (threshold: {draft.operator} {draft.isRatioCovenant ? `${draft.threshold}x` : `$${draft.threshold.toLocaleString()}`})
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )}
                 </React.Fragment>
               ))}
             </tbody>
@@ -667,6 +738,304 @@ export function CovenantsTab() {
   );
 }
 
+// ─── CustomSelect — fully custom dropdown for enum / short option lists ──────
+function CustomSelect({
+  value, onChange, options, placeholder = '— Select —',
+  className, searchable = false, autoOpen = false,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+  className?: string;
+  searchable?: boolean;
+  autoOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const btnRef  = useRef<HTMLButtonElement>(null);
+
+  const openDropdown = () => {
+    if (!btnRef.current) return;
+    const r = btnRef.current.getBoundingClientRect();
+    setDropPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    setOpen(true);
+  };
+
+  const closeDropdown = () => { setOpen(false); setSearch(''); setDropPos(null); };
+
+  // autoOpen: calculate position after mount when ref is ready
+  useEffect(() => {
+    if (autoOpen) openDropdown();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        closeDropdown();
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const selected = options.find(o => o.value === value);
+  const filtered = searchable && search
+    ? options.filter(o => o.label.toLowerCase().includes(search.toLowerCase()))
+    : options;
+
+  return (
+    <div ref={wrapRef} className={`relative ${className ?? ''}`}>
+      {/* Trigger button */}
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={() => open ? closeDropdown() : openDropdown()}
+        className="input-double-border w-full h-9 pl-3 pr-7 text-left border border-[#dcdfe4] rounded-[10px] bg-white dark:bg-card text-foreground hover:border-[hsl(210_25%_75%)] focus:outline-none transition-colors flex items-center overflow-hidden"
+        style={{ fontSize: '15px', fontWeight: 400 }}
+      >
+        <span className={`truncate flex-1 ${!selected ? 'text-muted-foreground' : ''}`}>
+          {selected?.label ?? placeholder}
+        </span>
+        <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {/* Dropdown panel — fixed to escape overflow:auto/hidden ancestors */}
+      {open && dropPos && (
+        <div
+          className="cov-select-pop fixed z-[300] bg-popover border border-border rounded-xl shadow-2xl overflow-hidden"
+          style={{
+            top:      dropPos.top,
+            left:     dropPos.left,
+            minWidth: dropPos.width,
+            width:    searchable ? '18rem' : 'max-content',
+          }}
+        >
+          {searchable && (
+            <div className="px-2 pt-2 pb-1.5 border-b border-border">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="Search…"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="cov-search w-full h-7 pl-6 pr-2 border border-[#dcdfe4] rounded-[6px] bg-background text-foreground placeholder:text-muted-foreground focus:outline-none"
+                  style={{ fontSize: '15px', fontWeight: 400 }}
+                />
+              </div>
+            </div>
+          )}
+          <div className={`overflow-y-auto py-0.5 ${searchable ? 'max-h-56' : ''}`}>
+            {filtered.map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => { onChange(opt.value); closeDropdown(); }}
+                className={`cov-opt w-full text-left px-3 py-1.5 flex items-center gap-2 transition-colors ${
+                  opt.value === value
+                    ? 'bg-primary/[0.06] text-primary font-medium'
+                    : 'text-foreground hover:bg-muted/60'
+                }`}
+                style={{ fontSize: '15px', fontWeight: 400 }}
+              >
+                <span className="cov-lbl flex-1 truncate">{opt.label}</span>
+                {opt.value === value && <Check className="w-3 h-3 shrink-0 text-primary" />}
+              </button>
+            ))}
+            {filtered.length === 0 && (
+              <p className="cov-empty px-3 py-3 text-muted-foreground text-center" style={{ fontSize: '15px', fontWeight: 400 }}>No options found</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── AccountSelect — custom styled dropdown replacing native <select> ─────────
+function AccountSelect({ value, onChange }: {
+  value: string;
+  onChange: (code: string, name: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [dropPos, setDropPos] = useState<{ top: number; left: number } | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const btnRef  = useRef<HTMLButtonElement>(null);
+
+  const openDropdown = () => {
+    if (!btnRef.current) return;
+    const r = btnRef.current.getBoundingClientRect();
+    setDropPos({ top: r.bottom + 4, left: r.left });
+    setOpen(true);
+  };
+
+  const closeDropdown = () => { setOpen(false); setSearch(''); setDropPos(null); };
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) closeDropdown();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const selected = GL_ACCOUNTS.find(a => a.code === value);
+  const displayLabel = selected?.name ?? '— Select account —';
+
+  const filteredGroups = GL_CATEGORY_ORDER.map(cat => ({
+    cat,
+    catLabel: GL_CATEGORY_LABELS[cat],
+    accounts: GL_ACCOUNTS.filter(a => a.category === cat && (
+      !search ||
+      a.name.toLowerCase().includes(search.toLowerCase()) ||
+      a.code.toLowerCase().includes(search.toLowerCase())
+    )),
+  })).filter(g => g.accounts.length > 0);
+
+  return (
+    <div ref={wrapRef} className="relative flex-1 min-w-0">
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={() => open ? closeDropdown() : openDropdown()}
+        className="w-full h-8 pl-2 pr-6 text-left border border-[#dcdfe4] rounded-[8px] bg-white dark:bg-card hover:border-[hsl(210_25%_75%)] focus:outline-none transition-colors flex items-center min-w-0"
+        style={{ fontSize: '15px', fontWeight: 400 }}
+      >
+        <span className={`truncate ${!selected ? 'text-muted-foreground' : 'text-foreground'}`}>{displayLabel}</span>
+        <ChevronDown className={`w-3 h-3 text-muted-foreground absolute right-1.5 top-1/2 -translate-y-1/2 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {/* Dropdown panel — fixed to escape overflow:auto/hidden ancestors */}
+      {open && dropPos && (
+        <div className="acct-select-pop fixed z-[300] w-80 bg-popover border border-border rounded-xl shadow-2xl overflow-hidden"
+          style={{ top: dropPos.top, left: dropPos.left }}
+        >
+          {/* Search */}
+          <div className="px-2 pt-2 pb-1.5 border-b border-border">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+              <input
+                autoFocus
+                type="text"
+                placeholder="Search accounts…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="acct-search w-full h-7 pl-6 pr-2 border border-[#dcdfe4] rounded-[6px] bg-background text-foreground placeholder:text-muted-foreground focus:outline-none"
+              />
+            </div>
+          </div>
+          {/* Options list */}
+          <div className="max-h-56 overflow-y-auto py-0.5">
+            {filteredGroups.map(({ cat, catLabel, accounts }) => (
+              <div key={cat}>
+                <div className="acct-cat px-3 py-1 text-muted-foreground uppercase tracking-wider bg-muted/40 sticky top-0 select-none">
+                  {catLabel}
+                </div>
+                {accounts.map(a => (
+                  <button
+                    key={a.code}
+                    type="button"
+                    onClick={() => { onChange(a.code, a.name); closeDropdown(); }}
+                    className={`acct-opt w-full text-left px-3 py-1.5 flex items-center gap-2 transition-colors ${
+                      a.code === value
+                        ? 'bg-primary/[0.06] text-primary font-medium'
+                        : 'text-foreground hover:bg-muted/60'
+                    }`}
+                  >
+                    <span className="acct-code font-mono text-muted-foreground shrink-0">{a.code}</span>
+                    <span className="acct-name truncate flex-1">{a.name}</span>
+                    {a.code === value && <Check className="w-3 h-3 shrink-0 text-primary" />}
+                  </button>
+                ))}
+              </div>
+            ))}
+            {filteredGroups.length === 0 && (
+              <p className="acct-empty px-3 py-3 text-muted-foreground text-center">No accounts found</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── FormulaLineRow — stable component so hooks (local input state) work ─────
+// Defined OUTSIDE FormulaDisplay to avoid being re-created on every render.
+function FormulaLineRow({
+  l, editMode, onUpdate, onDelete, onUpdateDesc,
+}: {
+  l: CovenantFormulaLine;
+  editMode: boolean;
+  onUpdate?: (id: string, amt: number) => void;
+  onDelete?: (id: string) => void;
+  onUpdateDesc?: (id: string, glCode: string, desc: string) => void;
+}) {
+  const IIC = 'input-double-border h-7 w-32 px-2 text-xs text-right tabular-nums border border-[#dcdfe4] rounded-[8px] bg-white text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] focus:outline-none focus:ring-0 dark:bg-card dark:border-[hsl(220_15%_30%)]';
+  const fmtAmt = (v: number) => v === 0 ? '$0' : `$${v.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const glName = GL_ACCOUNTS.find(a => a.code === l.glAccount)?.name ?? l.glAccount;
+
+  // Local string state — user can type freely; only commits to parent on blur / Enter
+  const [localVal, setLocalVal] = useState(() => l.amount === 0 ? '' : String(l.amount));
+
+  // Sync from parent only when the stored amount changes externally (template applied,
+  // line replaced, etc.) but NOT while the user is mid-type.
+  useEffect(() => {
+    setLocalVal(l.amount === 0 ? '' : String(l.amount));
+  }, [l.id, l.amount]); // l.id handles full line replacement; l.amount handles external updates
+
+  const commit = () => {
+    // Strip commas so "2,450,000" → 2450000
+    const cleaned = localVal.replace(/,/g, '').trim();
+    const v = parseFloat(cleaned);
+    onUpdate?.(l.id, isNaN(v) ? 0 : v);
+  };
+
+  return (
+    <div className="flex items-center gap-2 py-0.5 group/row">
+      <span className={`w-4 text-center font-mono font-bold flex-shrink-0 ${l.sign === '+' ? 'text-emerald-600' : 'text-red-500'}`}>{l.sign}</span>
+      {editMode && onUpdateDesc ? (
+        <AccountSelect value={l.glAccount || ''} onChange={(code, name) => onUpdateDesc(l.id, code, name)} />
+      ) : (
+        <span className="flex-1 text-foreground truncate" title={glName}>{l.description || glName}</span>
+      )}
+      {!editMode && <span className="tabular-nums font-mono text-foreground text-[11px] flex-shrink-0">{l.glAccount}</span>}
+      {editMode && onUpdate ? (
+        <input
+          type="text"
+          inputMode="decimal"
+          className={IIC}
+          value={localVal}
+          placeholder="0"
+          onChange={e => setLocalVal(e.target.value)}
+          onBlur={commit}
+          onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+        />
+      ) : (
+        <span className="tabular-nums font-semibold text-foreground flex-shrink-0">{fmtAmt(l.amount * l.multiplier)}</span>
+      )}
+      {editMode && onDelete && (
+        <button
+          type="button"
+          onClick={() => onDelete(l.id)}
+          className="flex-shrink-0 opacity-0 group-hover/row:opacity-100 p-0.5 rounded hover:bg-destructive/10 text-destructive transition-opacity"
+          title="Remove row"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── FormulaDisplay (read-only + editable in expanded row) ───────────────────
 const mkFormulaId = () => `fl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
@@ -695,8 +1064,8 @@ function FormulaDisplay({
   const denTotal = denLines.reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
 
   const fmtAmt = (v: number) => v === 0 ? '$0' : `$${v.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  const IIC = 'input-double-border h-7 w-28 px-2 text-xs text-right tabular-nums border border-[#dcdfe4] rounded-[8px] bg-white text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] focus:outline-none focus:ring-0 dark:bg-card dark:border-[hsl(220_15%_30%)]';
 
+  // Thin wrapper — actual rendering & local state lives in FormulaLineRow (stable component)
   const LineRows = ({
     lines, onUpdate, onDelete, onUpdateDesc,
   }: {
@@ -706,60 +1075,16 @@ function FormulaDisplay({
     onUpdateDesc?: (id: string, glCode: string, desc: string) => void;
   }) => (
     <>
-      {lines.map(l => {
-        const glName = GL_ACCOUNTS.find(a => a.code === l.glAccount)?.name ?? l.glAccount;
-        return (
-          <div key={l.id} className="flex items-center gap-2 py-0.5 group/row">
-            <span className={`w-4 text-center font-mono font-bold flex-shrink-0 ${l.sign === '+' ? 'text-emerald-600' : 'text-red-500'}`}>{l.sign}</span>
-            {editMode && onUpdateDesc ? (
-              <select
-                className="flex-1 h-7 px-2 text-xs border border-[#dcdfe4] rounded-[8px] bg-white text-foreground focus:outline-none focus:ring-0 hover:border-[hsl(210_25%_75%)] dark:bg-card dark:border-[hsl(220_15%_30%)] min-w-0 cursor-pointer"
-                value={l.glAccount || ''}
-                onChange={e => {
-                  const acct = GL_ACCOUNTS.find(a => a.code === e.target.value);
-                  onUpdateDesc(l.id, e.target.value, acct?.name ?? e.target.value);
-                }}
-              >
-                {l.glAccount === '' && <option value="">— Select account —</option>}
-                {GL_CATEGORY_ORDER.map(cat => {
-                  const accts = GL_ACCOUNTS.filter(a => a.category === cat);
-                  return accts.length ? (
-                    <optgroup key={cat} label={GL_CATEGORY_LABELS[cat]}>
-                      {accts.map(a => (
-                        <option key={a.code} value={a.code}>{a.name}</option>
-                      ))}
-                    </optgroup>
-                  ) : null;
-                })}
-              </select>
-            ) : (
-              <span className="flex-1 text-foreground truncate" title={glName}>{l.description || glName}</span>
-            )}
-            {!editMode && <span className="tabular-nums font-mono text-foreground text-[11px] flex-shrink-0">{l.glAccount}</span>}
-            {editMode && onUpdate ? (
-              <input
-                type="number"
-                className={IIC}
-                value={l.amount === 0 ? '' : l.amount}
-                placeholder="0"
-                onChange={e => onUpdate(l.id, parseFloat(e.target.value) || 0)}
-              />
-            ) : (
-              <span className="tabular-nums font-semibold text-foreground flex-shrink-0">{fmtAmt(l.amount * l.multiplier)}</span>
-            )}
-            {editMode && onDelete && (
-              <button
-                type="button"
-                onClick={() => onDelete(l.id)}
-                className="flex-shrink-0 opacity-0 group-hover/row:opacity-100 p-0.5 rounded hover:bg-destructive/10 text-destructive transition-opacity"
-                title="Remove row"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            )}
-          </div>
-        );
-      })}
+      {lines.map(l => (
+        <FormulaLineRow
+          key={l.id}
+          l={l}
+          editMode={editMode}
+          onUpdate={onUpdate}
+          onDelete={onDelete}
+          onUpdateDesc={onUpdateDesc}
+        />
+      ))}
     </>
   );
 
@@ -768,7 +1093,7 @@ function FormulaDisplay({
       <button
         type="button"
         onClick={onClick}
-        className="flex items-center gap-1 text-[11px] text-foreground hover:text-foreground mt-0.5 px-1 py-0.5 rounded hover:bg-muted transition-colors"
+        className="flex items-center gap-1.5 text-xs text-foreground mt-1.5 px-3 py-1.5 rounded-[8px] border border-[#dcdfe4] bg-white dark:bg-card dark:border-[hsl(220_15%_30%)] hover:border-[hsl(210_25%_75%)] hover:bg-muted/30 transition-colors"
       >
         <Plus className="w-3 h-3" /> Add Row
       </button>
@@ -778,16 +1103,20 @@ function FormulaDisplay({
     <div className="bg-background border border-border rounded-lg px-3 py-2.5 space-y-2">
       {cov.isRatioCovenant ? (
         <>
-          <div className="text-[10px] font-semibold text-foreground uppercase tracking-wider">Numerator</div>
-          <LineRows lines={numLines} onUpdate={onUpdateNumeratorLine} onDelete={onDeleteNumeratorLine} onUpdateDesc={onUpdateNumeratorDesc} />
-          <AddLineBtn onClick={onAddNumeratorLine} />
+          <div className="text-[10px] font-bold text-foreground uppercase tracking-wider select-none">Numerator</div>
+          <div className="pl-3">
+            <LineRows lines={numLines} onUpdate={onUpdateNumeratorLine} onDelete={onDeleteNumeratorLine} onUpdateDesc={onUpdateNumeratorDesc} />
+            <AddLineBtn onClick={onAddNumeratorLine} />
+          </div>
           <div className="border-t border-border pt-1.5 flex justify-between text-[11px]">
             <span className="text-foreground">Numerator Total</span>
             <span className="font-bold text-foreground">{fmtAmt(numTotal)}</span>
           </div>
-          <div className="text-[10px] font-semibold text-foreground uppercase tracking-wider pt-1">Denominator</div>
-          <LineRows lines={denLines} onUpdate={onUpdateDenominatorLine} onDelete={onDeleteDenominatorLine} onUpdateDesc={onUpdateDenominatorDesc} />
-          <AddLineBtn onClick={onAddDenominatorLine} />
+          <div className="text-[10px] font-bold text-foreground uppercase tracking-wider pt-1 select-none">Denominator</div>
+          <div className="pl-3">
+            <LineRows lines={denLines} onUpdate={onUpdateDenominatorLine} onDelete={onDeleteDenominatorLine} onUpdateDesc={onUpdateDenominatorDesc} />
+            <AddLineBtn onClick={onAddDenominatorLine} />
+          </div>
           <div className="border-t border-border pt-1.5 flex justify-between text-[11px]">
             <span className="text-foreground">Denominator Total</span>
             <span className="font-bold text-foreground">{fmtAmt(denTotal)}</span>
@@ -799,18 +1128,22 @@ function FormulaDisplay({
         </>
       ) : (
         <>
-          <div className="text-[10px] font-semibold text-foreground uppercase tracking-wider">Numerator</div>
-          <LineRows lines={numLines} onUpdate={onUpdateNumeratorLine} onDelete={onDeleteNumeratorLine} onUpdateDesc={onUpdateNumeratorDesc} />
-          <AddLineBtn onClick={onAddNumeratorLine} />
+          <div className="text-[10px] font-bold text-foreground uppercase tracking-wider select-none">Numerator</div>
+          <div className="pl-3">
+            <LineRows lines={numLines} onUpdate={onUpdateNumeratorLine} onDelete={onDeleteNumeratorLine} onUpdateDesc={onUpdateNumeratorDesc} />
+            <AddLineBtn onClick={onAddNumeratorLine} />
+          </div>
           <div className="border-t border-border pt-1.5 flex justify-between text-[11px]">
             <span className="text-foreground">Numerator Total</span>
             <span className="font-bold text-foreground">{fmtAmt(numTotal)}</span>
           </div>
           {(denLines.length > 0 || editMode) && (
             <>
-              <div className="text-[10px] font-semibold text-foreground uppercase tracking-wider pt-1">Denominator</div>
-              <LineRows lines={denLines} onUpdate={onUpdateDenominatorLine} onDelete={onDeleteDenominatorLine} onUpdateDesc={onUpdateDenominatorDesc} />
-              <AddLineBtn onClick={onAddDenominatorLine} />
+              <div className="text-[10px] font-bold text-foreground uppercase tracking-wider pt-1 select-none">Denominator</div>
+              <div className="pl-3">
+                <LineRows lines={denLines} onUpdate={onUpdateDenominatorLine} onDelete={onDeleteDenominatorLine} onUpdateDesc={onUpdateDenominatorDesc} />
+                <AddLineBtn onClick={onAddDenominatorLine} />
+              </div>
               {denLines.length > 0 && (
                 <div className="border-t border-border pt-1.5 flex justify-between text-[11px]">
                   <span className="text-foreground">Denominator Total</span>

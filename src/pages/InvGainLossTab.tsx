@@ -14,9 +14,10 @@ function glColor(n: number) { return n > 0 ? 'text-green-600' : n < 0 ? 'text-re
 export function InvGainLossTab() {
   const [section, setSection] = useState<'realized' | 'dividends' | 'unrealized'>('realized');
 
-  const totalRealizedCAD  = realizedRows.reduce((s, r) => s + r.realizedGL_CAD, 0);
-  const totalDividendCAD  = dividendRows.reduce((s, r) => s + r.totalDivCAD, 0);
+  const totalRealizedCAD   = realizedRows.reduce((s, r) => s + r.realizedGL_CAD, 0);
+  const totalDividendCAD   = dividendRows.reduce((s, r) => s + r.totalDivCAD, 0);
   const totalUnrealizedCAD = unrealizedRows.reduce((s, r) => s + r.unrealizedGL_CAD, 0);
+  const totalWHTDiv        = dividendRows.reduce((s, r) => s + (r.whtCAD ?? 0), 0);
 
   const handleExport = async () => {
     try {
@@ -31,7 +32,8 @@ export function InvGainLossTab() {
         'Dividends': objsToAOA(dividendRows.map(r => ({
           Security: r.security, Ticker: r.ticker, Broker: r.broker, Currency: r.currency,
           'Total Div (Local)': r.totalDivLocal, 'Avg FX Rate': r.avgFxRate,
-          'Total Div (CAD)': r.totalDivCAD, Notes: r.notes ?? '',
+          'Total Div (CAD)': r.totalDivCAD, 'WHT (CAD)': r.whtCAD ?? 0,
+          'Net Div After WHT (CAD)': r.totalDivCAD - (r.whtCAD ?? 0), Notes: r.notes ?? '',
         }))),
         'Unrealized G-L': objsToAOA(unrealizedRows.map(r => ({
           Security: r.security, Ticker: r.ticker, Broker: r.broker, Currency: r.currency,
@@ -168,6 +170,8 @@ export function InvGainLossTab() {
                   <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Total Div (Local)</th>
                   <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Avg FX Rate</th>
                   <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Total Div (CAD)</th>
+                  <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase text-foreground whitespace-nowrap">WHT (CAD)</th>
+                  <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Net After WHT</th>
                   <th className="text-left px-3 py-2.5 text-xs font-semibold uppercase text-foreground">Notes</th>
                 </tr>
               </thead>
@@ -187,6 +191,12 @@ export function InvGainLossTab() {
                     <td className="px-3 py-2.5 text-right tabular-nums font-mono font-semibold text-sm text-green-600">
                       +${fmt(r.totalDivCAD)}
                     </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-red-600">
+                      {r.whtCAD ? `(${fmt(r.whtCAD)})` : <span className="text-foreground text-xs">—</span>}
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums font-mono font-semibold text-sm text-green-600">
+                      +${fmt(r.totalDivCAD - (r.whtCAD ?? 0))}
+                    </td>
                     <td className="px-3 py-2.5 text-xs text-foreground">{r.notes ?? ''}</td>
                   </tr>
                 ))}
@@ -196,6 +206,12 @@ export function InvGainLossTab() {
                   <td colSpan={5} className="px-4 py-2.5 text-xs font-semibold">Total Dividend Income (CAD)</td>
                   <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm text-green-600">
                     +${fmt(totalDividendCAD)}
+                  </td>
+                  <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm text-red-600">
+                    {totalWHTDiv > 0 ? `(${fmt(totalWHTDiv)})` : '—'}
+                  </td>
+                  <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm text-green-600">
+                    +${fmt(totalDividendCAD - totalWHTDiv)}
                   </td>
                   <td />
                 </tr>

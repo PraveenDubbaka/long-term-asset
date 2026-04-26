@@ -424,9 +424,13 @@ export function ContinuityTab() {
                         <span className="flex items-center gap-1">
                           Accrued Int.
                           <Info
-                            className="w-3 h-3 text-primary cursor-help flex-shrink-0"
-                            onMouseEnter={e => { const r = (e.currentTarget as unknown as HTMLElement).getBoundingClientRect(); setAiTooltipPos({ x: r.left + r.width / 2, y: r.top }); }}
-                            onMouseLeave={() => setAiTooltipPos(null)}
+                            className="w-3 h-3 text-primary cursor-pointer flex-shrink-0"
+                            onClick={e => {
+                              e.stopPropagation();
+                              if (aiTooltipPos) { setAiTooltipPos(null); return; }
+                              const r = (e.currentTarget as unknown as HTMLElement).getBoundingClientRect();
+                              setAiTooltipPos({ x: r.left + r.width / 2, y: r.top });
+                            }}
                           />
                         </span>
                       </ThResizable>
@@ -872,12 +876,14 @@ export function ContinuityTab() {
       )}
       </>}
 
-      {/* Accrued Interest formula tooltip — fixed position */}
+      {/* Accrued Interest formula tooltip — fixed position, click-triggered */}
       {aiTooltipPos && (
-        <div
-          className="fixed z-[200] pointer-events-none"
-          style={{ left: Math.max(8, aiTooltipPos.x - 144), top: Math.max(8, aiTooltipPos.y - 220) }}
-        >
+        <>
+          <div className="fixed inset-0 z-[199]" onClick={() => setAiTooltipPos(null)} />
+          <div
+            className="fixed z-[200] pointer-events-auto"
+            style={{ left: Math.max(8, aiTooltipPos.x - 144), top: Math.max(8, aiTooltipPos.y - 220) }}
+          >
           <div className="bg-popover border border-border rounded-xl shadow-2xl p-3.5 w-72 text-left">
             <p className="text-xs font-semibold text-foreground mb-2.5 flex items-center gap-1.5">
               <Info className="w-3 h-3 text-primary flex-shrink-0" />
@@ -898,7 +904,8 @@ export function ContinuityTab() {
               </div>
             </div>
           </div>
-        </div>
+          </div>
+        </>
       )}
 
       {/* Note hover popover — fixed to escape overflow containers */}

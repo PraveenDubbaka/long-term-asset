@@ -635,3 +635,17 @@ table tfoot td {
 .border-border {
   border-color: #E2E5EB !important;
 }
+
+/* ── AccountSelect popup — override tbody td * font rules (0-2-0 > 0-0-2) ── */
+.acct-select-pop .acct-opt    { font-size: 15px !important; line-height: 1.4 !important; font-weight: 400 !important; }
+.acct-select-pop .acct-code   { font-size: 15px !important; line-height: 1.4 !important; font-weight: 400 !important; min-width: 3.5rem; }
+.acct-select-pop .acct-name   { font-size: 15px !important; line-height: 1.4 !important; font-weight: 400 !important; }
+.acct-select-pop .acct-cat    { font-size: 15px !important; line-height: 1.6 !important; font-weight: 400 !important; }
+.acct-select-pop .acct-search { font-size: 15px !important; line-height: 1.4 !important; font-weight: 400 !important; }
+.acct-select-pop .acct-empty  { font-size: 15px !important; font-weight: 400 !important; }
+
+/* ── CustomSelect popup — override tbody td * font rules (0-2-0 > 0-0-2) ── */
+.cov-select-pop .cov-opt    { font-size: 15px !important; line-height: 1.4 !important; font-weight: 400 !important; }
+.cov-select-pop .cov-lbl    { font-size: 15px !important; line-height: 1.4 !important; font-weight: 400 !important; }
+.cov-select-pop .cov-search { font-size: 15px !important; line-height: 1.4 !important; font-weight: 400 !important; }
+.cov-select-pop .cov-empty  { font-size: 15px !important; font-weight: 400 !important; }

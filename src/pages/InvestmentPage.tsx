@@ -17,6 +17,9 @@ import { InvGainLossTab }     from "./InvGainLossTab";
 import { InvFXTab }           from "./InvFXTab";
 import { InvAJEsTab }         from "./InvAJEsTab";
 import { InvDashboardTab }    from "./InvDashboardTab";
+import { InvIncomeTab }       from "./InvIncomeTab";
+import { InvBrokerReconTab }  from "./InvBrokerReconTab";
+import { InvFlagsTab }        from "./InvFlagsTab";
 
 const engagementsData: Record<string, { client: string; yearEnd: string; status: string }> = {
   "COM-CON-Dec312024": { client: "Shipping Line Inc.", yearEnd: "Dec 31, 2024", status: "In Progress" },
@@ -32,13 +35,16 @@ const headerActions = [
 ];
 
 const tabs = [
-  { id: "holdings",     label: "Holdings"     },
-  { id: "transactions", label: "Transactions" },
-  { id: "wac",          label: "WAC Schedule" },
-  { id: "gainloss",     label: "Gain / Loss"  },
-  { id: "fx",           label: "FX Schedule"  },
-  { id: "ajes",         label: "AJEs"         },
-  { id: "dashboard",    label: "Dashboard"    },
+  { id: "holdings",     label: "Holdings"          },
+  { id: "transactions", label: "Transactions"       },
+  { id: "wac",          label: "WAC Schedule"       },
+  { id: "gainloss",     label: "Gain / Loss"        },
+  { id: "fx",           label: "FX Schedule"        },
+  { id: "income",       label: "Income & Expenses"  },
+  { id: "brokerrecon",  label: "Broker Recon"       },
+  { id: "ajes",         label: "Notes & AJEs"       },
+  { id: "flags",        label: "Flags"              },
+  { id: "dashboard",    label: "Dashboard"          },
 ];
 
 const InvestmentPage = () => {
@@ -154,7 +160,10 @@ const InvestmentPage = () => {
             {activeTab === "wac"          && <InvWACTab />}
             {activeTab === "gainloss"     && <InvGainLossTab />}
             {activeTab === "fx"           && <InvFXTab />}
+            {activeTab === "income"       && <InvIncomeTab />}
+            {activeTab === "brokerrecon"  && <InvBrokerReconTab />}
             {activeTab === "ajes"         && <InvAJEsTab />}
+            {activeTab === "flags"        && <InvFlagsTab />}
             {activeTab === "dashboard"    && <InvDashboardTab />}
           </div>
 

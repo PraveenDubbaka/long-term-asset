@@ -1,9 +1,9 @@
 import React from 'react';
-import { Download, TrendingUp, DollarSign, BarChart3, Briefcase } from 'lucide-react';
+import { Download, TrendingUp, DollarSign, BarChart3, Briefcase, Percent } from 'lucide-react';
 import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
 import { StyledCard } from '@/components/wp-ui/card';
-import { glSummaryRows, realizedRows, dividendRows, unrealizedRows, holdings } from '../data/investmentData';
+import { glSummaryRows, realizedRows, dividendRows, unrealizedRows, holdings, incomeExpenseRows } from '../data/investmentData';
 import { fmtDateDisplay } from '../lib/utils';
 import toast from 'react-hot-toast';
 
@@ -21,6 +21,12 @@ export function InvDashboardTab() {
   const totalClose    = glSummaryRows.reduce((s, r) => s + r.closingCAD, 0);
   const totalFmvCAD   = holdings.reduce((s, h) => s + h.fmvCAD, 0);
   const totalUnreal   = unrealizedRows.reduce((s, r) => s + r.unrealizedGL_CAD, 0);
+  const totalFees     = incomeExpenseRows
+    .filter(r => r.txnType === 'Account Fees' || r.txnType === 'Management Fees')
+    .reduce((s, r) => s + Math.abs(r.cadAmount), 0);
+  const totalWHT      = incomeExpenseRows
+    .filter(r => r.txnType === 'Withholding Tax')
+    .reduce((s, r) => s + Math.abs(r.cadAmount), 0);
 
   const handleExport = async () => {
     try {
@@ -50,18 +56,23 @@ export function InvDashboardTab() {
       </div>
 
       {/* KPI strip */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-5 gap-3">
         {[
           { label: 'Holdings (Closing Book)',  value: fmtCAD(totalClose),    icon: Briefcase,   color: 'text-foreground' },
           { label: 'Total Purchases (FY)',     value: fmtCAD(totalPurch),    icon: DollarSign,  color: 'text-primary' },
           { label: 'Realized G/L',             value: (totalRealGL >= 0 ? '+' : '') + fmtCAD(totalRealGL), icon: TrendingUp, color: glColor(totalRealGL) },
           { label: 'Unrealized G/L (Discl.)', value: '+' + fmtCAD(totalUnreal), icon: BarChart3, color: 'text-green-600' },
+          { label: 'Fees & WHT (FY)',          value: `(${fmtCAD(totalFees + totalWHT)})`, icon: Percent, color: 'text-amber-600',
+            sub: `Fees $${fmt(totalFees)} · WHT $${fmt(totalWHT)}` },
         ].map(k => (
           <StyledCard key={k.label} className="p-3 flex items-center gap-3">
-            <k.icon className={`w-8 h-8 ${k.color} opacity-70`} />
+            <k.icon className={`w-8 h-8 ${k.color} opacity-70 flex-shrink-0`} />
             <div>
               <div className={`text-sm font-bold tabular-nums ${k.color}`}>{k.value}</div>
               <div className="text-xs text-foreground">{k.label}</div>
+              {(k as { sub?: string }).sub && (
+                <div className="text-xs text-foreground opacity-70 mt-0.5">{(k as { sub?: string }).sub}</div>
+              )}
             </div>
           </StyledCard>
         ))}
