@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle, X, Pencil, Trash2, Plus, Check } from 'lucide-react';
 import { Badge } from '@/components/wp-ui/badge';
 import { Button } from '@/components/wp-ui/button';
 import { Checkbox } from '@/components/wp-ui/checkbox';
@@ -22,6 +22,8 @@ interface Props {
   updateTx: (id: string, patch: Partial<Transaction>) => void;
   onPlaidConnected: (sources: Source[], txns: Transaction[]) => void;
   entityName: string;
+  onDeleteTx?: (id: string) => void;
+  onAddTx?: (tx: Transaction) => void;
 }
 
 const TxStatusBadge = ({ status }: { status: TxStatus }) => {
@@ -43,9 +45,19 @@ export function InvTransactionsTab({
   updateTx,
   onPlaidConnected,
   entityName,
+  onDeleteTx,
+  onAddTx,
 }: Props) {
   const [txStatusFilter, setTxStatusFilter] = useState<"all" | TxStatus>("all");
   const [selectedTx, setSelectedTx] = useState<Set<string>>(new Set());
+
+  // Inline edit state
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editData, setEditData] = useState<Partial<Transaction>>({});
+
+  // New row state
+  const [addingNew, setAddingNew] = useState(false);
+  const [newTx, setNewTx] = useState<Partial<Transaction>>({});
 
   // Column-level filters
   const [filterSource,   setFilterSource]   = useState("");
@@ -135,15 +147,23 @@ export function InvTransactionsTab({
             Intake from Plaid or uploaded statements → Approve → Publish to schedules
           </p>
         </div>
-        <InvPlaidConnectDialog
-          defaultPeriodStart="2024-01-01"
-          defaultPeriodEnd="2024-12-31"
-          entityName={entityName}
-          onImport={(newSources, newTxns) => {
-            onPlaidConnected(newSources, newTxns);
-            toast.success(`${newTxns.length} transaction(s) imported as Pending`);
-          }}
-        />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setAddingNew(true); setNewTx({ date: '2024-01-01', security: '', ticker: '', type: 'Purchase', units: 0, price: 0, fees: 0, currency: 'CAD', status: 'pending' }); setTxStatusFilter('all'); }}
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-primary bg-primary/5 text-primary text-xs font-medium hover:bg-primary/10 transition-colors"
+          >
+            <Plus className="h-3.5 w-3.5" /> Add Transaction
+          </button>
+          <InvPlaidConnectDialog
+            defaultPeriodStart="2024-01-01"
+            defaultPeriodEnd="2024-12-31"
+            entityName={entityName}
+            onImport={(newSources, newTxns) => {
+              onPlaidConnected(newSources, newTxns);
+              toast.success(`${newTxns.length} transaction(s) imported as Pending`);
+            }}
+          />
+        </div>
       </div>
 
       {/* Status filter pills + bulk actions */}
@@ -232,14 +252,52 @@ export function InvTransactionsTab({
               <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">TB Account</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
               <th className="px-4 py-3 w-8"></th>
+              <th className="px-3 py-3 w-20"></th>
             </tr>
           </thead>
           <tbody>
+            {addingNew && (
+              <tr className="border-b border-border/50 bg-primary/5">
+                <td className="px-4 py-2"><span /></td>
+                <td className="px-4 py-2"><input type="date" value={newTx.date ?? ''} onChange={e => setNewTx(d => ({...d, date: e.target.value}))} className="h-7 w-28 text-xs px-2 border border-border rounded-md bg-background" /></td>
+                <td className="px-4 py-2"><select value={newTx.sourceId ?? ''} onChange={e => setNewTx(d => ({...d, sourceId: e.target.value}))} className="h-7 text-xs px-2 border border-border rounded-md bg-background w-20"><option value="">—</option>{allSources.map(s => <option key={s.id} value={s.id}>{s.institution.split(' ')[0]}</option>)}</select></td>
+                <td className="px-4 py-2">
+                  <input placeholder="Security" value={newTx.security ?? ''} onChange={e => setNewTx(d => ({...d, security: e.target.value}))} className="h-7 text-xs px-2 border border-border rounded-md bg-background w-32" />
+                  <input placeholder="Ticker" value={newTx.ticker ?? ''} onChange={e => setNewTx(d => ({...d, ticker: e.target.value}))} className="h-7 text-xs px-2 border border-border rounded-md bg-background w-16 mt-0.5" />
+                </td>
+                <td className="px-4 py-2">
+                  <select value={newTx.type ?? 'Purchase'} onChange={e => setNewTx(d => ({...d, type: e.target.value as Transaction['type']}))} className="h-7 text-xs px-2 border border-border rounded-md bg-background">
+                    {(['Purchase','Sale','Dividend','Interest','Fee/Commission','Withholding Tax','Return of Capital','Reinvested Dividend','Transfer In','Transfer Out'] as Transaction['type'][]).map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </td>
+                <td className="px-4 py-2 text-right"><input type="number" value={newTx.units ?? 0} onChange={e => setNewTx(d => ({...d, units: parseFloat(e.target.value)||0}))} className="h-7 w-20 text-xs px-2 border border-border rounded-md bg-background text-right" /></td>
+                <td className="px-4 py-2 text-right"><input type="number" value={newTx.price ?? 0} onChange={e => setNewTx(d => ({...d, price: parseFloat(e.target.value)||0}))} className="h-7 w-20 text-xs px-2 border border-border rounded-md bg-background text-right" /></td>
+                <td className="px-4 py-2 text-right"><input type="number" value={newTx.fxRate ?? ''} onChange={e => setNewTx(d => ({...d, fxRate: parseFloat(e.target.value)||undefined}))} className="h-7 w-20 text-xs px-2 border border-border rounded-md bg-background text-right" /></td>
+                <td className="px-4 py-2 text-right text-muted-foreground text-xs">—</td>
+                <td className="px-4 py-2"><select value={newTx.tbAccount ?? ''} onChange={e => setNewTx(d => ({...d, tbAccount: e.target.value}))} className="h-7 rounded-md border border-border bg-background px-2 text-xs w-[180px]">{CHART_OF_ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.code} · {a.name}</option>)}</select></td>
+                <td className="px-4 py-2"><select value={newTx.status ?? 'pending'} onChange={e => setNewTx(d => ({...d, status: e.target.value as Transaction['status']}))} className="h-7 text-xs px-2 border border-border rounded-md bg-background"><option value="pending">Pending</option><option value="approved">Approved</option><option value="published">Published</option></select></td>
+                <td className="px-4 py-2"></td>
+                <td className="px-3 py-2">
+                  <div className="flex gap-0.5">
+                    <button onClick={() => {
+                      const gross = Math.abs((newTx.units ?? 0) * (newTx.price ?? 0));
+                      const fees = newTx.fees ?? 0;
+                      const net = newTx.type === 'Sale' ? gross - fees : gross + fees;
+                      const tx: Transaction = { id: `M${Date.now()}`, sourceId: newTx.sourceId ?? 'A', date: newTx.date ?? '2024-01-01', security: newTx.security ?? 'New Security', ticker: newTx.ticker ?? 'NEW', type: newTx.type ?? 'Purchase', units: newTx.units ?? 0, price: newTx.price ?? 0, gross, fees, net, currency: newTx.currency ?? 'CAD', fxRate: newTx.fxRate, notes: newTx.notes, status: newTx.status ?? 'pending', tbAccount: newTx.tbAccount ?? defaultTbAccount(newTx.type ?? 'Purchase') };
+                      onAddTx?.(tx);
+                      setAddingNew(false);
+                      toast.success('Transaction added');
+                    }} className="p-1.5 rounded-md hover:bg-green-50 text-muted-foreground hover:text-green-600 transition-colors"><Check className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => setAddingNew(false)} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><X className="h-3.5 w-3.5" /></button>
+                  </div>
+                </td>
+              </tr>
+            )}
             {visibleTxns.map((t) => {
               const issues = validateTx(t);
               const status = (t.status ?? "published") as TxStatus;
               return (
-                <tr key={t.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                <tr key={t.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors group">
                   <td className="px-4 py-3">
                     <Checkbox
                       checked={selectedTx.has(t.id)}
@@ -252,7 +310,11 @@ export function InvTransactionsTab({
                       }}
                     />
                   </td>
-                  <td className="px-4 py-3 text-xs whitespace-nowrap">{t.date}</td>
+                  <td className="px-4 py-3 text-xs whitespace-nowrap">
+                    {editId === t.id
+                      ? <input type="date" value={editData.date ?? t.date} onChange={e => setEditData(d => ({...d, date: e.target.value}))} className="h-7 w-28 text-xs px-2 border border-border rounded-md bg-background" />
+                      : t.date}
+                  </td>
                   <td className="px-4 py-3">
                     <Badge variant="outline" className="text-xs">
                       {allSources.find((s) => s.id === t.sourceId)?.institution.split(" ")[0] ?? t.sourceId}
@@ -270,9 +332,21 @@ export function InvTransactionsTab({
                       {t.type}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-xs">{t.units !== 0 ? fmtNum(t.units, 2) : "—"}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-xs">{t.price ? fmtNum(t.price) : "—"}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-xs">{t.fxRate ? fmtNum(t.fxRate, 4) : "—"}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-xs">
+                    {editId === t.id
+                      ? <input type="number" value={editData.units ?? t.units} onChange={e => setEditData(d => ({...d, units: parseFloat(e.target.value)||0}))} className="h-7 w-20 text-xs px-2 border border-border rounded-md bg-background text-right" />
+                      : t.units !== 0 ? fmtNum(t.units, 2) : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums text-xs">
+                    {editId === t.id
+                      ? <input type="number" value={editData.price ?? t.price} onChange={e => setEditData(d => ({...d, price: parseFloat(e.target.value)||0}))} className="h-7 w-20 text-xs px-2 border border-border rounded-md bg-background text-right" />
+                      : t.price ? fmtNum(t.price) : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums text-xs">
+                    {editId === t.id
+                      ? <input type="number" value={editData.fxRate ?? t.fxRate ?? ''} onChange={e => setEditData(d => ({...d, fxRate: parseFloat(e.target.value)||undefined}))} className="h-7 w-20 text-xs px-2 border border-border rounded-md bg-background text-right" />
+                      : t.fxRate ? fmtNum(t.fxRate, 4) : '—'}
+                  </td>
                   <td className="px-4 py-3 text-right tabular-nums text-xs">{t.net ? fmtNum(t.net) : "—"}</td>
                   <td className="px-4 py-3">
                     <select
@@ -302,12 +376,25 @@ export function InvTransactionsTab({
                       </TooltipProvider>
                     )}
                   </td>
+                  <td className="px-3 py-3">
+                    {editId === t.id ? (
+                      <div className="flex gap-0.5">
+                        <button onClick={() => { updateTx(t.id, editData); setEditId(null); toast.success('Saved'); }} className="p-1.5 rounded-md hover:bg-green-50 text-muted-foreground hover:text-green-600 transition-colors"><Check className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => setEditId(null)} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><X className="h-3.5 w-3.5" /></button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => { setEditId(t.id); setEditData({}); }} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => { onDeleteTx?.(t.id); toast.success('Transaction removed'); }} className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
+                    )}
+                  </td>
                 </tr>
               );
             })}
             {visibleTxns.length === 0 && (
               <tr>
-                <td colSpan={12} className="text-center text-sm text-muted-foreground py-8">
+                <td colSpan={13} className="text-center text-sm text-muted-foreground py-8">
                   {anyColFilter
                     ? "No transactions match the active filters."
                     : "No transactions in this status."}

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Wallet, TrendingUp, Banknote, RefreshCw, Plus, FileSearch } from 'lucide-react';
+import { Wallet, TrendingUp, Banknote, RefreshCw, Plus, FileSearch, Pencil, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { Badge } from '@/components/wp-ui/badge';
 import type { SecuritySchedule } from '@/lib/luka/compute';
 import type { Source } from '@/lib/luka/types';
@@ -92,6 +93,7 @@ export function InvHoldingsTab({ schedules, totals, allSources, onUpload, isEmpt
   const [filterSecurity, setFilterSecurity] = useState("");
   const [filterBroker,   setFilterBroker]   = useState("");
   const [filterCcy,      setFilterCcy]      = useState("");
+  const [hiddenKeys,     setHiddenKeys]     = useState<Set<string>>(new Set());
 
   const anyFilter = filterSecurity || filterBroker || filterCcy;
 
@@ -108,7 +110,7 @@ export function InvHoldingsTab({ schedules, totals, allSources, onUpload, isEmpt
   );
 
   const visible = useMemo(() => {
-    let rows = schedules;
+    let rows = schedules.filter(s => !hiddenKeys.has(s.key));
     if (filterSecurity) rows = rows.filter((s) =>
       s.security.toLowerCase().includes(filterSecurity.toLowerCase()) ||
       s.ticker.toLowerCase().includes(filterSecurity.toLowerCase())
@@ -120,7 +122,7 @@ export function InvHoldingsTab({ schedules, totals, allSources, onUpload, isEmpt
     );
     if (filterCcy) rows = rows.filter((s) => s.currency === filterCcy);
     return rows;
-  }, [schedules, filterSecurity, filterBroker, filterCcy, allSources]);
+  }, [schedules, filterSecurity, filterBroker, filterCcy, allSources, hiddenKeys]);
 
   if (isEmpty) {
     return <EmptyInvestmentState onScan={() => onUpload?.()} onAddManually={() => onFirstData?.()} />;
@@ -135,6 +137,7 @@ export function InvHoldingsTab({ schedules, totals, allSources, onUpload, isEmpt
         </div>
         <div className="flex items-center gap-2">
           {anyFilter && <ClearFiltersBtn onClick={() => { setFilterSecurity(""); setFilterBroker(""); setFilterCcy(""); }} />}
+          {hiddenKeys.size > 0 && <span className="text-xs text-muted-foreground">{hiddenKeys.size} hidden</span>}
           <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border border-green-500/30 bg-green-500/10 text-green-700">
             {visible.length} / {schedules.length} positions
           </span>
@@ -200,11 +203,12 @@ export function InvHoldingsTab({ schedules, totals, allSources, onUpload, isEmpt
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Cost (CAD)</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">FMV (CAD)</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Unrealized G/L</th>
+              <th className="px-3 py-3 w-16"></th>
             </tr>
           </thead>
           <tbody>
             {visible.map((s) => (
-              <tr key={s.key} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+              <tr key={s.key} className="border-b border-border/50 hover:bg-muted/30 transition-colors group">
                 <td className="px-4 py-3 text-sm">
                   <div className="font-medium">{s.security}</div>
                   <div className="text-xs text-muted-foreground font-mono">{s.ticker}</div>
@@ -222,11 +226,17 @@ export function InvHoldingsTab({ schedules, totals, allSources, onUpload, isEmpt
                 <td className={`px-4 py-3 text-sm text-right tabular-nums ${s.unrealizedGL >= 0 ? "text-green-600" : "text-destructive"}`}>
                   {fmtSigned(s.unrealizedGL)}
                 </td>
+                <td className="px-3 py-3">
+                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => toast('Holdings are computed from source transactions')} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => setHiddenKeys(prev => { const n = new Set(prev); n.add(s.key); return n; })} className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
+                </td>
               </tr>
             ))}
             {visible.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                <td colSpan={9} className="px-4 py-8 text-center text-sm text-muted-foreground">
                   {anyFilter ? "No positions match the active filters." : "No positions — connect a source or enable prior-year file in Settings."}
                 </td>
               </tr>

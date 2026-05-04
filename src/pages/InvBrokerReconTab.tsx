@@ -1,5 +1,5 @@
 import { Fragment, useState, useMemo } from 'react';
-import { CheckCircle2, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, ChevronDown, ChevronRight, Pencil, Check, X } from 'lucide-react';
 import { Badge } from '@/components/wp-ui/badge';
 import { Button } from '@/components/wp-ui/button';
 import type { InvestmentReconGroup, CashReconRow } from '@/lib/luka/compute';
@@ -22,6 +22,11 @@ const StatusPill = ({ ok, label }: { ok: boolean; label: string }) => (
 export function InvBrokerReconTab({ invRecon, cashRecon }: Props) {
   const [openReconBroker, setOpenReconBroker] = useState<string | null>(null);
   const [openReconCash,   setOpenReconCash]   = useState<string | null>(null);
+
+  // Cash account inline edits
+  const [cashEdits, setCashEdits] = useState<Record<string, {glBalance?: number; stmtBalance?: number}>>({});
+  const [editCashId, setEditCashId] = useState<string | null>(null);
+  const [editCashData, setEditCashData] = useState<{glBalance?: number; stmtBalance?: number}>({});
 
   // Investment statements filters
   const [invFilterCcy,    setInvFilterCcy]    = useState("");
@@ -213,16 +218,20 @@ export function InvBrokerReconTab({ invRecon, cashRecon }: Props) {
               <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 <ColFilter label="Status" options={["Pass", "Variance"]} value={cashFilterStatus} onChange={setCashFilterStatus} />
               </th>
+              <th className="px-3 py-3 w-16"></th>
             </tr>
           </thead>
           <tbody>
             {visibleCash.map((c) => {
               const open = openReconCash === c.sourceId;
+              const gl = cashEdits[c.sourceId]?.glBalance ?? c.glBalance;
+              const stmt = cashEdits[c.sourceId]?.stmtBalance ?? c.stmtBalance;
+              const variance = stmt - gl;
               return (
                 <Fragment key={c.sourceId}>
                   <tr
-                    className="border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer"
-                    onClick={() => setOpenReconCash(open ? null : c.sourceId)}
+                    className="border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer group"
+                    onClick={(e) => { if ((e.target as HTMLElement).closest('button,input')) return; setOpenReconCash(open ? null : c.sourceId); }}
                   >
                     <td className="px-4 py-3">
                       {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -231,20 +240,40 @@ export function InvBrokerReconTab({ invRecon, cashRecon }: Props) {
                       {c.institution} <span className="font-mono text-xs text-muted-foreground">····{c.last4}</span>
                     </td>
                     <td className="px-4 py-3"><Badge variant="outline" className="text-xs font-mono">{c.currency}</Badge></td>
-                    <td className="px-4 py-3 text-right tabular-nums">{fmtCcy(c.glBalance, c.currency)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{fmtCcy(c.stmtBalance, c.currency)}</td>
-                    <td className={`px-4 py-3 text-right tabular-nums ${Math.abs(c.variance) > 1 ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                      {fmtCcy(c.variance, c.currency)}
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {editCashId === c.sourceId
+                        ? <input type="number" value={editCashData.glBalance ?? 0} onChange={e => setEditCashData(d => ({...d, glBalance: parseFloat(e.target.value)||0}))} className="h-7 w-28 text-xs px-2 border border-border rounded-md bg-background text-right" />
+                        : fmtCcy(gl, c.currency)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {editCashId === c.sourceId
+                        ? <input type="number" value={editCashData.stmtBalance ?? 0} onChange={e => setEditCashData(d => ({...d, stmtBalance: parseFloat(e.target.value)||0}))} className="h-7 w-28 text-xs px-2 border border-border rounded-md bg-background text-right" />
+                        : fmtCcy(stmt, c.currency)}
+                    </td>
+                    <td className={`px-4 py-3 text-right tabular-nums ${Math.abs(variance) > 1 ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                      {fmtCcy(variance, c.currency)}
                     </td>
                     <td className="px-4 py-3 text-center"><StatusPill ok={c.pass} label={c.pass ? "Pass" : "Variance"} /></td>
+                    <td className="px-3 py-3">
+                      {editCashId === c.sourceId ? (
+                        <div className="flex gap-0.5">
+                          <button onClick={() => { setCashEdits(prev => ({...prev, [c.sourceId]: editCashData})); setEditCashId(null); toast('Balance updated'); }} className="p-1.5 rounded-md hover:bg-green-50 text-muted-foreground hover:text-green-600 transition-colors"><Check className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => setEditCashId(null)} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><X className="h-3.5 w-3.5" /></button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => { setEditCashId(c.sourceId); setEditCashData({ glBalance: cashEdits[c.sourceId]?.glBalance ?? c.glBalance, stmtBalance: cashEdits[c.sourceId]?.stmtBalance ?? c.stmtBalance }); }} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
+                        </div>
+                      )}
+                    </td>
                   </tr>
                   {open && (
                     <tr className="bg-muted/20 hover:bg-muted/20">
-                      <td colSpan={7} className="px-4 py-4 text-sm">
+                      <td colSpan={8} className="px-4 py-4 text-sm">
                         <div className="flex items-center justify-between gap-4 flex-wrap">
                           <div className="text-xs text-muted-foreground">
                             Drill-in: review cleared vs uncleared transactions for this account.
-                            Variance of {fmtCcy(c.variance, c.currency)} likely outstanding deposit/withdrawal.
+                            Variance of {fmtCcy(variance, c.currency)} likely outstanding deposit/withdrawal.
                           </div>
                           {!c.pass && (
                             <Button size="sm" variant="outline" onClick={() => toast("AJE drafted from variance")}>
@@ -260,7 +289,7 @@ export function InvBrokerReconTab({ invRecon, cashRecon }: Props) {
             })}
             {visibleCash.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-sm text-muted-foreground">
+                <td colSpan={8} className="px-4 py-6 text-center text-sm text-muted-foreground">
                   {anyCashFilter ? "No accounts match the active filters." : "No cash accounts."}
                 </td>
               </tr>

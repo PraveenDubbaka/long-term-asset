@@ -64,6 +64,7 @@ interface Store {
 
   addActivity: (item: ActivityItem) => void;
   updateActivity: (id: string, updates: Partial<ActivityItem>) => void;
+  deleteActivity: (id: string) => void;
   classifyActivity: (id: string, principal: number, interest: number, fees: number) => void;
 
   updateCovenant: (id: string, updates: Partial<Covenant>) => void;
@@ -148,6 +149,7 @@ export const useStore = create<Store>((set) => ({
   updateActivity: (id, updates) => set(s => ({
     activities: s.activities.map(a => a.id === id ? { ...a, ...updates } : a)
   })),
+  deleteActivity: (id) => set(s => ({ activities: s.activities.filter(a => a.id !== id) })),
   classifyActivity: (id, principal, interest, fees) => set(s => ({
     activities: s.activities.map(a => a.id === id ? {
       ...a, principalAmount: principal, interestAmount: interest, feesAmount: fees,

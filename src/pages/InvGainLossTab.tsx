@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Eye, TrendingUp, Wallet } from 'lucide-react';
+import { Eye, TrendingUp, Wallet, Pencil, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import type { SecuritySchedule } from '@/lib/luka/compute';
 import { fmtCAD, fmtNum, fmtSigned } from './InvHoldingsTab';
 import { SearchFilter, ClearFiltersBtn } from './InvTableFilters';
@@ -23,6 +24,7 @@ interface DisposalRow {
 
 export function InvGainLossTab({ schedules, totals }: Props) {
   const [filterSecurity, setFilterSecurity] = useState("");
+  const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
 
   const allRows = useMemo<DisposalRow[]>(
     () =>
@@ -44,13 +46,14 @@ export function InvGainLossTab({ schedules, totals }: Props) {
   );
 
   const visible = useMemo(() => {
-    if (!filterSecurity) return allRows;
-    return allRows.filter(
+    let rows = allRows.filter(r => !hiddenKeys.has(r.key));
+    if (!filterSecurity) return rows;
+    return rows.filter(
       (r) =>
         r.security.toLowerCase().includes(filterSecurity.toLowerCase()) ||
         r.ticker.toLowerCase().includes(filterSecurity.toLowerCase()),
     );
-  }, [allRows, filterSecurity]);
+  }, [allRows, filterSecurity, hiddenKeys]);
 
   return (
     <div className="px-6 py-6 space-y-6">
@@ -110,11 +113,12 @@ export function InvGainLossTab({ schedules, totals }: Props) {
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">ACB Released</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Realized G/L</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">TB Account</th>
+              <th className="px-3 py-3 w-16"></th>
             </tr>
           </thead>
           <tbody>
             {visible.map((r) => (
-              <tr key={r.key} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+              <tr key={r.key} className="border-b border-border/50 hover:bg-muted/30 transition-colors group">
                 <td className="px-4 py-3 text-xs">{r.date}</td>
                 <td className="px-4 py-3 text-sm">
                   <div className="font-medium">{r.security}</div>
@@ -129,17 +133,23 @@ export function InvGainLossTab({ schedules, totals }: Props) {
                 <td className="px-4 py-3 text-xs text-muted-foreground">
                   {r.gl >= 0 ? "4800 · Realized Gain" : "4900 · Realized Loss"}
                 </td>
+                <td className="px-3 py-3">
+                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => toast('Edit source transactions to modify realized gains')} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => setHiddenKeys(prev => { const n = new Set(prev); n.add(r.key); return n; })} className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
+                </td>
               </tr>
             ))}
             {visible.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-sm text-muted-foreground">
+                <td colSpan={8} className="px-4 py-6 text-center text-sm text-muted-foreground">
                   {filterSecurity ? "No disposals match the security filter." : "No disposals in period."}
                 </td>
               </tr>
             )}
             <tr className="bg-muted/40 font-semibold">
-              <td colSpan={5} className="px-4 py-3 text-sm">Total Realized G/L</td>
+              <td colSpan={6} className="px-4 py-3 text-sm">Total Realized G/L</td>
               <td className={`px-4 py-3 text-right tabular-nums ${totals.realized >= 0 ? "text-green-600" : "text-destructive"}`}>
                 {fmtSigned(totals.realized)}
               </td>

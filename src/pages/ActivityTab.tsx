@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Plus, CheckCircle, AlertTriangle, Zap, AlertCircle, Download } from 'lucide-react';
+import { Upload, Plus, CheckCircle, AlertTriangle, Zap, AlertCircle, Download, Pencil, Trash2 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { fmtCurrency, fmtDateDisplay, exportToExcel, buildActivityExport } from '../lib/utils';
 import { Button } from '@/components/wp-ui/button';
@@ -16,9 +16,9 @@ function StatusBadge({ s }: { s: ActivityStatus }) {
 }
 
 export function ActivityTab() {
-  const { loans, activities, addActivity, updateActivity, classifyActivity, ui, setImportWizardOpen } = useStore(s => ({
+  const { loans, activities, addActivity, updateActivity, deleteActivity, classifyActivity, ui, setImportWizardOpen } = useStore(s => ({
     loans: s.loans.filter(l => l.status !== 'Inactive'), activities: s.activities,
-    addActivity: s.addActivity, updateActivity: s.updateActivity, classifyActivity: s.classifyActivity,
+    addActivity: s.addActivity, updateActivity: s.updateActivity, deleteActivity: s.deleteActivity, classifyActivity: s.classifyActivity,
     ui: s.ui, setImportWizardOpen: s.setImportWizardOpen,
   }));
 
@@ -27,6 +27,8 @@ export function ActivityTab() {
   const [splitItem, setSplitItem] = useState<ActivityItem | null>(null);
   const [splitValues, setSplitValues] = useState({ principal: 0, interest: 0, fees: 0 });
   const [addOpen, setAddOpen] = useState(false);
+  const [editItem, setEditItem] = useState<ActivityItem | null>(null);
+  const [editValues, setEditValues] = useState<Partial<ActivityItem>>({});
 
   const filtered = activities.filter(a =>
     (filterStatus === 'All' || a.status === filterStatus) &&
@@ -199,6 +201,20 @@ export function ActivityTab() {
                         >
                           Split
                         </button>
+                        <button
+                          className="p-1.5 hover:bg-muted rounded-lg transition-colors"
+                          onClick={() => { setEditItem(item); setEditValues({ date: item.date, description: item.description, totalAmount: item.totalAmount, type: item.type, loanId: item.loanId }); }}
+                          title="Edit"
+                        >
+                          <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                        </button>
+                        <button
+                          className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors"
+                          onClick={() => { deleteActivity(item.id); toast.success('Activity deleted'); }}
+                          title="Delete"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -268,6 +284,21 @@ export function ActivityTab() {
                 </span>
               </div>
             </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Edit Activity Modal */}
+      <Modal open={!!editItem} onClose={() => setEditItem(null)} title="Edit Activity" size="md"
+        footer={<><Button variant="secondary" onClick={() => setEditItem(null)}>Cancel</Button><Button variant="default" onClick={() => { if (!editItem) return; updateActivity(editItem.id, editValues); setEditItem(null); toast.success('Activity updated'); }}>Save</Button></>}
+      >
+        {editItem && (
+          <div className="space-y-3">
+            <DateInput label="Date" value={editValues.date ?? ''} onChange={e => setEditValues(p => ({...p, date: e.target.value}))} />
+            <Input label="Description" value={editValues.description ?? ''} onChange={e => setEditValues(p => ({...p, description: e.target.value}))} />
+            <Input label="Total Amount" type="number" value={editValues.totalAmount ?? 0} onChange={e => setEditValues(p => ({...p, totalAmount: parseFloat(e.target.value)||0}))} />
+            <Select label="Loan" value={editValues.loanId ?? ''} onChange={e => setEditValues(p => ({...p, loanId: e.target.value}))}
+              options={loans.map(l => ({ value: l.id, label: l.name }))} />
           </div>
         )}
       </Modal>

@@ -152,17 +152,19 @@ const InvestmentPage = () => {
   const [importedTxnsBySource, setImportedTxnsBySource] = useState<Record<string, Transaction[]>>({});
   const [plaidSources, setPlaidSources] = useState<Source[]>([]);
   const [plaidTxns, setPlaidTxns] = useState<Transaction[]>([]);
+  const [hiddenTxIds, setHiddenTxIds] = useState<Set<string>>(new Set());
+  const [manualTxns, setManualTxns] = useState<Transaction[]>([]);
   const allInvSources = useMemo(() => [...baseSources, ...plaidSources], [plaidSources]);
   const baseTxns = useMemo(() => {
     const overriddenIds = new Set(Object.keys(importedTxnsBySource));
-    const kept = currentYearTransactions.filter((t) => !overriddenIds.has(t.sourceId));
+    const kept = currentYearTransactions.filter((t) => !overriddenIds.has(t.sourceId) && !hiddenTxIds.has(t.id));
     const imported = Object.values(importedTxnsBySource).flat().map((t) => ({
       ...t,
       status: t.status ?? "pending" as const,
       tbAccount: t.tbAccount ?? defaultTbAccount(t.type),
     }));
-    return [...kept, ...imported, ...plaidTxns];
-  }, [importedTxnsBySource, plaidTxns]);
+    return [...kept, ...imported.filter(t => !hiddenTxIds.has(t.id)), ...plaidTxns.filter(t => !hiddenTxIds.has(t.id)), ...manualTxns];
+  }, [importedTxnsBySource, plaidTxns, hiddenTxIds, manualTxns]);
   const [txEdits, setTxEdits] = useState<Record<string, Partial<Transaction>>>({});
   const effectiveTxns = useMemo(
     () => baseTxns.map((t) => ({ ...t, ...txEdits[t.id] })),
@@ -400,6 +402,8 @@ const InvestmentPage = () => {
                 });
               }}
               entityName={eng.client}
+              onDeleteTx={(id) => setHiddenTxIds(prev => { const next = new Set(prev); next.add(id); return next; })}
+              onAddTx={(tx) => setManualTxns(prev => [...prev, tx])}
             />
           </div>
           <div className={`flex-1 ${activeTab === "wac" ? "" : "hidden"}`}>
