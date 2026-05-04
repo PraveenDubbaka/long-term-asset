@@ -107,7 +107,7 @@ export default function InvPlaidConnectDialog({
     <Dialog open={open} onOpenChange={close}>
       <DialogTrigger asChild>
         <Button variant="default" size="sm" className="gap-2">
-          <Plug className="h-4 w-4" /> Connect via Plaid
+          <Plug className="h-4 w-4" /> Connect
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-3xl">

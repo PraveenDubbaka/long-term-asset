@@ -280,6 +280,30 @@ const InvestmentPage = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
 
+            </div>
+          </div>
+
+          {/* ── Tab bar + action buttons on one row ───────────────── */}
+          <div className="px-6 pt-3 pb-2 flex-shrink-0 flex items-center justify-between gap-3 flex-wrap">
+            {/* Tabs */}
+            <div className="flex items-center gap-1 bg-card rounded-lg border border-border p-1 flex-wrap">
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                    activeTab === tab.id
+                      ? "bg-primary text-primary-foreground"
+                      : "text-foreground hover:bg-muted"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Action buttons — right-aligned */}
+            <div className="flex items-center gap-2 flex-shrink-0">
               {/* Settings popover */}
               <Popover>
                 <PopoverTrigger asChild>
@@ -341,27 +365,8 @@ const InvestmentPage = () => {
                 onClick={() => { exportWorkbook(opts); toast.success("Excel workbook exported"); }}
               >
                 <Download className="h-3.5 w-3.5 mr-1.5" />
-                Export Excel
+                Export
               </Button>
-            </div>
-          </div>
-
-          {/* ── Tab bar ───────────────────────────────────────────── */}
-          <div className="px-6 pt-5 pb-2 flex-shrink-0">
-            <div className="flex items-center gap-1 bg-card rounded-lg border border-border p-1 w-fit flex-wrap">
-              {tabs.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                    activeTab === tab.id
-                      ? "bg-primary text-primary-foreground"
-                      : "text-foreground hover:bg-muted"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
             </div>
           </div>
 
