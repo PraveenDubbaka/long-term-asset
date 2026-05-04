@@ -1,238 +1,273 @@
-import React, { useState } from 'react';
-import { Download, ChevronDown, ChevronRight, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { Button } from '@/components/wp-ui/button';
+import { Fragment, useState, useMemo } from 'react';
+import { CheckCircle2, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/wp-ui/badge';
-import { StyledCard } from '@/components/wp-ui/card';
-import { brokerReconPositions, brokerCashAccounts } from '../data/investmentData';
-import type { BrokerReconPosition, BrokerCashAccount } from '../types/investmentTypes';
+import { Button } from '@/components/wp-ui/button';
+import type { InvestmentReconGroup, CashReconRow } from '@/lib/luka/compute';
+import { fmtNum, fmtCcy } from './InvHoldingsTab';
+import { ColFilter, ClearFiltersBtn } from './InvTableFilters';
 import toast from 'react-hot-toast';
 
-function fmt(n: number, d = 2) { return n.toLocaleString('en-CA', { minimumFractionDigits: d, maximumFractionDigits: d }); }
-
-const BROKERS = ['TD Waterhouse', 'RBC Direct Investing', 'Fidelity Investments', 'BMO InvestorLine'];
-const CCY_SYMBOL: Record<string, string> = { CAD: '$', USD: 'US$', EUR: '€', GBP: '£' };
-
-function VarCell({ value, d = 2 }: { value: number; d?: number }) {
-  const sym = value === 0 ? 'text-green-600' : 'text-red-600 font-semibold';
-  return (
-    <td className={`px-3 py-2.5 text-right tabular-nums font-mono text-sm ${sym}`}>
-      {value === 0 ? <CheckCircle2 className="w-4 h-4 inline text-green-600" /> : fmt(value, d)}
-    </td>
-  );
+interface Props {
+  invRecon: InvestmentReconGroup[];
+  cashRecon: CashReconRow[];
 }
 
-export function InvBrokerReconTab() {
-  const [expandedBrokers, setExpandedBrokers] = useState<Set<string>>(new Set(BROKERS));
-  const [section, setSection] = useState<'positions' | 'cash'>('positions');
+const StatusPill = ({ ok, label }: { ok: boolean; label: string }) => (
+  <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border ${ok ? "border-green-500/30 bg-green-500/10 text-green-700" : "border-destructive/30 bg-destructive/10 text-destructive"}`}>
+    {ok ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+    {label}
+  </span>
+);
 
-  const toggle = (b: string) => setExpandedBrokers(prev => {
-    const next = new Set(prev);
-    next.has(b) ? next.delete(b) : next.add(b);
-    return next;
-  });
+export function InvBrokerReconTab({ invRecon, cashRecon }: Props) {
+  const [openReconBroker, setOpenReconBroker] = useState<string | null>(null);
+  const [openReconCash,   setOpenReconCash]   = useState<string | null>(null);
 
-  const totalVarianceUnits = brokerReconPositions.reduce((s, r) => s + Math.abs(r.unitVariance), 0);
-  const totalVarianceCost  = brokerReconPositions.reduce((s, r) => s + Math.abs(r.costVariance), 0);
-  const totalVarianceCash  = brokerCashAccounts.reduce((s, r) => s + Math.abs(r.variance), 0);
-  const allClean = totalVarianceUnits === 0 && totalVarianceCost === 0 && totalVarianceCash === 0;
+  // Investment statements filters
+  const [invFilterCcy,    setInvFilterCcy]    = useState("");
+  const [invFilterStatus, setInvFilterStatus] = useState("");
 
-  const handleExport = async () => {
-    try {
-      const posRows = brokerReconPositions.map(r => ({
-        Security: r.security, Ticker: r.ticker, Broker: r.broker, Account: `…${r.acctLast4}`, CCY: r.currency,
-        'Units per WAC': r.unitsPerWAC, 'Units per Statement': r.unitsPerStatement, 'Unit Variance': r.unitVariance,
-        'Cost per WAC': r.costPerWAC, 'Cost per Statement': r.costPerStatement, 'Cost Variance': r.costVariance,
-        'FMV per WAC': r.fmvPerWAC, 'FMV per Statement': r.fmvPerStatement, 'FMV Variance': r.fmvVariance,
-      }));
-      const cashRows = brokerCashAccounts.map(r => ({
-        Broker: r.broker, Account: `…${r.acctLast4}`, CCY: r.currency,
-        'Opening Balance': r.openingBalance, 'Closing per Books': r.closingPerBooks,
-        'Closing per Statement': r.closingPerStatement, Variance: r.variance,
-      }));
-      const { exportToExcel, objsToAOA } = await import('../lib/utils');
-      exportToExcel({ 'Position Recon': objsToAOA(posRows), 'Cash Recon': objsToAOA(cashRows) }, 'INV_BrokerRecon_FY2025.xlsx');
-      toast.success('Broker Recon exported');
-    } catch { toast.error('Export failed'); }
-  };
+  // Cash accounts filters
+  const [cashFilterCcy,    setCashFilterCcy]    = useState("");
+  const [cashFilterStatus, setCashFilterStatus] = useState("");
+
+  const anyInvFilter  = invFilterCcy  || invFilterStatus;
+  const anyCashFilter = cashFilterCcy || cashFilterStatus;
+
+  const invCcys  = useMemo(() => Array.from(new Set(invRecon.map((g)  => g.currency))).sort(), [invRecon]);
+  const cashCcys = useMemo(() => Array.from(new Set(cashRecon.map((c) => c.currency))).sort(), [cashRecon]);
+
+  const visibleInv = useMemo(() => {
+    let rows = invRecon;
+    if (invFilterCcy)    rows = rows.filter((g) => g.currency === invFilterCcy);
+    if (invFilterStatus) rows = rows.filter((g) => (g.pass ? "Pass" : "Variance") === invFilterStatus);
+    return rows;
+  }, [invRecon, invFilterCcy, invFilterStatus]);
+
+  const visibleCash = useMemo(() => {
+    let rows = cashRecon;
+    if (cashFilterCcy)    rows = rows.filter((c) => c.currency === cashFilterCcy);
+    if (cashFilterStatus) rows = rows.filter((c) => (c.pass ? "Pass" : "Variance") === cashFilterStatus);
+    return rows;
+  }, [cashRecon, cashFilterCcy, cashFilterStatus]);
+
+  const allInv  = invRecon.length;
+  const passInv = invRecon.filter((g) => g.pass).length;
+  const allCash = cashRecon.length;
+  const passCash = cashRecon.filter((c) => c.pass).length;
 
   return (
-    <div className="p-6 space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="px-6 py-6 space-y-6">
+      <div className="flex items-end justify-between flex-wrap gap-3 mb-4">
         <div>
-          <h2 className="text-base font-semibold text-foreground">Broker Reconciliation</h2>
-          <p className="text-xs text-foreground mt-0.5">
-            WAC schedule vs. broker statement — positions and cash accounts · Dec 31, 2025 · $1 variance threshold
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">Reconciliation</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            {allInv + allCash} accounts · {passInv + passCash} Pass · {(allInv + allCash) - (passInv + passCash)} with variance · $1 threshold
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {allClean
-            ? <Badge variant="success" className="text-xs flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> All reconciled</Badge>
-            : <Badge variant="destructive" className="text-xs flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Variances found</Badge>}
-          <Button variant="secondary" size="sm" onClick={handleExport}>
-            <Download className="w-3.5 h-3.5" /> Export
-          </Button>
-        </div>
       </div>
 
-      {/* Section toggle */}
-      <div className="flex items-center gap-1 bg-card rounded-lg border border-border p-1 w-fit">
-        {(['positions', 'cash'] as const).map(s => (
-          <button key={s} onClick={() => setSection(s)}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-              section === s ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted'
-            }`}>
-            {s === 'positions' ? 'Position Check' : 'Cash Accounts'}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Section A: Position Check ──────────────────────────────────────────── */}
-      {section === 'positions' && (
-        <div className="space-y-3">
-          {BROKERS.map(broker => {
-            const rows = brokerReconPositions.filter((r: BrokerReconPosition) => r.broker === broker);
-            if (!rows.length) return null;
-            const isOpen = expandedBrokers.has(broker);
-            const brokerVariance = rows.reduce((s, r) => s + Math.abs(r.unitVariance) + Math.abs(r.costVariance), 0);
-            const acctLast4 = rows[0].acctLast4;
-
-            return (
-              <StyledCard key={broker} className="overflow-hidden p-0">
-                <button
-                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors text-left"
-                  onClick={() => toggle(broker)}>
-                  <div className="flex items-center gap-3">
-                    {isOpen ? <ChevronDown className="w-4 h-4 text-foreground" /> : <ChevronRight className="w-4 h-4 text-foreground" />}
-                    <span className="font-semibold text-sm text-foreground">{broker}</span>
-                    <span className="text-xs text-foreground">…{acctLast4}</span>
-                    <Badge variant="outline" className="text-xs">{rows.length} positions</Badge>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {brokerVariance === 0
-                      ? <Badge variant="success" className="text-xs"><CheckCircle2 className="w-3 h-3 mr-1 inline" />Pass</Badge>
-                      : <Badge variant="destructive" className="text-xs"><AlertTriangle className="w-3 h-3 mr-1 inline" />Variance</Badge>}
-                  </div>
-                </button>
-
-                {isOpen && (
-                  <div className="border-t border-border overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-muted/40 border-b border-border">
-                          <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-foreground">Security</th>
-                          <th className="text-center px-3 py-2 text-xs font-semibold uppercase text-foreground">CCY</th>
-                          <th className="text-right px-3 py-2 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Units / WAC</th>
-                          <th className="text-right px-3 py-2 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Units / Stmt</th>
-                          <th className="text-right px-3 py-2 text-xs font-semibold uppercase text-foreground">Variance</th>
-                          <th className="text-right px-3 py-2 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Cost / WAC</th>
-                          <th className="text-right px-3 py-2 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Cost / Stmt</th>
-                          <th className="text-right px-3 py-2 text-xs font-semibold uppercase text-foreground">Variance</th>
-                          <th className="text-right px-3 py-2 text-xs font-semibold uppercase text-foreground whitespace-nowrap">FMV / WAC</th>
-                          <th className="text-right px-3 py-2 text-xs font-semibold uppercase text-foreground whitespace-nowrap">FMV / Stmt</th>
-                          <th className="text-right px-3 py-2 text-xs font-semibold uppercase text-foreground">Variance</th>
-                          <th className="text-center px-3 py-2 text-xs font-semibold uppercase text-foreground">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {rows.map((r: BrokerReconPosition) => {
-                          const sym = CCY_SYMBOL[r.currency] ?? '';
-                          const hasVariance = r.unitVariance !== 0 || r.costVariance !== 0 || r.fmvVariance !== 0;
-                          return (
-                            <tr key={r.id} className={`hover:bg-muted/20 ${hasVariance ? 'bg-red-50/30' : ''}`}>
-                              <td className="px-4 py-2.5">
-                                <div className="font-medium text-sm text-foreground">{r.security}</div>
-                                <div className="text-xs text-foreground font-mono">{r.ticker}</div>
-                              </td>
-                              <td className="px-3 py-2.5 text-center">
-                                <Badge variant="outline" className="text-xs">{r.currency}</Badge>
-                              </td>
-                              <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">{fmt(r.unitsPerWAC, 0)}</td>
-                              <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">{fmt(r.unitsPerStatement, 0)}</td>
-                              <VarCell value={r.unitVariance} d={0} />
-                              <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">{sym}{fmt(r.costPerWAC)}</td>
-                              <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">{sym}{fmt(r.costPerStatement)}</td>
-                              <VarCell value={r.costVariance} />
-                              <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">{sym}{fmt(r.fmvPerWAC)}</td>
-                              <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">{sym}{fmt(r.fmvPerStatement)}</td>
-                              <VarCell value={r.fmvVariance} />
-                              <td className="px-3 py-2.5 text-center">
-                                {hasVariance
-                                  ? <Badge variant="destructive" className="text-xs">Review</Badge>
-                                  : <Badge variant="success" className="text-xs">✓</Badge>}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </StyledCard>
-            );
-          })}
+      {/* ── Investment statements ───────────────────────────────────────── */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="p-4 border-b border-border font-semibold text-sm flex items-center justify-between flex-wrap gap-2">
+          <span>Investment statements</span>
+          {anyInvFilter && (
+            <ClearFiltersBtn onClick={() => { setInvFilterCcy(""); setInvFilterStatus(""); }} />
+          )}
         </div>
-      )}
-
-      {/* ── Section B: Cash Accounts ───────────────────────────────────────────── */}
-      {section === 'cash' && (
-        <StyledCard className="overflow-hidden p-0">
-          <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground">Settlement Account Balances — Dec 31, 2025</h3>
-            {totalVarianceCash === 0
-              ? <Badge variant="success" className="text-xs"><CheckCircle2 className="w-3 h-3 mr-1 inline" />All accounts reconciled</Badge>
-              : <Badge variant="destructive" className="text-xs"><AlertTriangle className="w-3 h-3 mr-1 inline" />Variances found</Badge>}
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/40">
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold uppercase text-foreground">Broker</th>
-                  <th className="text-left px-3 py-2.5 text-xs font-semibold uppercase text-foreground">Account</th>
-                  <th className="text-center px-3 py-2.5 text-xs font-semibold uppercase text-foreground">CCY</th>
-                  <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Opening Balance</th>
-                  <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Closing per Books</th>
-                  <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Closing per Statement</th>
-                  <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase text-foreground">Variance</th>
-                  <th className="text-center px-3 py-2.5 text-xs font-semibold uppercase text-foreground">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {brokerCashAccounts.map((r: BrokerCashAccount) => {
-                  const sym = CCY_SYMBOL[r.currency] ?? '';
-                  return (
-                    <tr key={r.id} className={`hover:bg-muted/20 ${r.variance !== 0 ? 'bg-red-50/30' : ''}`}>
-                      <td className="px-4 py-2.5 text-sm font-medium text-foreground">{r.broker.replace(' Investing', '').replace(' Investments', '')}</td>
-                      <td className="px-3 py-2.5 text-xs font-mono text-foreground">…{r.acctLast4}</td>
-                      <td className="px-3 py-2.5 text-center"><Badge variant="outline" className="text-xs">{r.currency}</Badge></td>
-                      <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-foreground">{sym}{fmt(r.openingBalance)}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm font-semibold">{sym}{fmt(r.closingPerBooks)}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">{sym}{fmt(r.closingPerStatement)}</td>
-                      <VarCell value={r.variance} />
-                      <td className="px-3 py-2.5 text-center">
-                        {r.variance !== 0
-                          ? <Badge variant="destructive" className="text-xs">Review</Badge>
-                          : <Badge variant="success" className="text-xs">✓</Badge>}
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border bg-muted/30">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide w-8"></th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Source</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Institution</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Acct</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <ColFilter label="CCY" options={invCcys} value={invFilterCcy} onChange={setInvFilterCcy} />
+              </th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Units</th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Cost</th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">FMV</th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <ColFilter label="Status" options={["Pass", "Variance"]} value={invFilterStatus} onChange={setInvFilterStatus} />
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleInv.map((g) => {
+              const open = openReconBroker === g.sourceId;
+              const unitsOk = g.positions.every((r) => Math.abs(r.varianceUnits) < 0.001);
+              const costOk  = g.positions.every((r) => Math.abs(r.varianceCost)  < 1);
+              const fmvOk   = g.positions.every((r) => Math.abs(r.varianceFmv)   < 1);
+              return (
+                <Fragment key={g.sourceId}>
+                  <tr
+                    className="border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer"
+                    onClick={() => setOpenReconBroker(open ? null : g.sourceId)}
+                  >
+                    <td className="px-4 py-3">
+                      {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </td>
+                    <td className="px-4 py-3"><Badge variant="outline" className="text-xs">{g.sourceId}</Badge></td>
+                    <td className="px-4 py-3 font-medium text-sm">{g.institution}</td>
+                    <td className="px-4 py-3 font-mono text-xs">····{g.last4}</td>
+                    <td className="px-4 py-3"><Badge variant="outline" className="text-xs font-mono">{g.currency}</Badge></td>
+                    <td className="px-4 py-3 text-center">
+                      {unitsOk ? <CheckCircle2 className="h-4 w-4 text-green-600 inline" /> : <AlertTriangle className="h-4 w-4 text-destructive inline" />}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {costOk ? <CheckCircle2 className="h-4 w-4 text-green-600 inline" /> : <AlertTriangle className="h-4 w-4 text-destructive inline" />}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {fmvOk ? <CheckCircle2 className="h-4 w-4 text-green-600 inline" /> : <AlertTriangle className="h-4 w-4 text-destructive inline" />}
+                    </td>
+                    <td className="px-4 py-3 text-center"><StatusPill ok={g.pass} label={g.pass ? "Pass" : "Variance"} /></td>
+                  </tr>
+                  {open && (
+                    <tr className="bg-muted/20 hover:bg-muted/20">
+                      <td colSpan={9} className="p-0">
+                        <div className="p-4 overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-border bg-muted/30">
+                                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Security</th>
+                                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Units (Schedule / Stmt / Δ)</th>
+                                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Cost (Schedule / Stmt / Δ)</th>
+                                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">FMV (Schedule / Stmt / Δ)</th>
+                                <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {g.positions.map((r) => (
+                                <tr key={r.ticker} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                                  <td className="px-4 py-3 text-sm">
+                                    <div className="font-medium">{r.security}</div>
+                                    <div className="text-xs text-muted-foreground font-mono">{r.ticker}</div>
+                                  </td>
+                                  <td className="px-4 py-3 text-right tabular-nums text-xs">
+                                    {fmtNum(r.perScheduleUnits, 0)} / {fmtNum(r.perStmtUnits, 0)} /{" "}
+                                    <span className={Math.abs(r.varianceUnits) > 0.001 ? "text-destructive font-medium" : "text-muted-foreground"}>
+                                      {r.varianceUnits >= 0 ? "+" : ""}{fmtNum(r.varianceUnits, 0)}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-right tabular-nums text-xs">
+                                    {fmtCcy(r.perScheduleCost, r.ccy)} / {fmtCcy(r.perStmtCost, r.ccy)} /{" "}
+                                    <span className={Math.abs(r.varianceCost) > 1 ? "text-destructive font-medium" : "text-muted-foreground"}>
+                                      {fmtCcy(r.varianceCost, r.ccy)}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-right tabular-nums text-xs">
+                                    {fmtCcy(r.perScheduleFmv, r.ccy)} / {fmtCcy(r.perStmtFmv, r.ccy)} /{" "}
+                                    <span className={Math.abs(r.varianceFmv) > 1 ? "text-destructive font-medium" : "text-muted-foreground"}>
+                                      {fmtCcy(r.varianceFmv, r.ccy)}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    {r.pass ? <CheckCircle2 className="h-4 w-4 text-green-600 inline" /> : (
+                                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => toast("AJE drafted from variance")}>
+                                        Create AJE
+                                      </Button>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-border bg-muted/60">
-                  <td colSpan={6} className="px-4 py-2.5 text-xs font-semibold text-foreground">Total variance across all accounts</td>
-                  <td className={`px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm ${totalVarianceCash === 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {totalVarianceCash === 0 ? <span className="flex items-center justify-end gap-1"><CheckCircle2 className="w-4 h-4" /> $0.00</span> : `$${fmt(totalVarianceCash)}`}
-                  </td>
-                  <td className="px-3 py-2.5 text-center">
-                    {totalVarianceCash === 0 ? <Badge variant="success" className="text-xs">Pass</Badge> : <Badge variant="destructive" className="text-xs">Fail</Badge>}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </StyledCard>
-      )}
+                  )}
+                </Fragment>
+              );
+            })}
+            {visibleInv.length === 0 && (
+              <tr>
+                <td colSpan={9} className="px-4 py-6 text-center text-sm text-muted-foreground">
+                  {anyInvFilter ? "No accounts match the active filters." : "No investment accounts."}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── Cash accounts ──────────────────────────────────────────────── */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="p-4 border-b border-border font-semibold text-sm flex items-center justify-between flex-wrap gap-2">
+          <span>Cash accounts</span>
+          {anyCashFilter && (
+            <ClearFiltersBtn onClick={() => { setCashFilterCcy(""); setCashFilterStatus(""); }} />
+          )}
+        </div>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border bg-muted/30">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide w-8"></th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Account</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <ColFilter label="CCY" options={cashCcys} value={cashFilterCcy} onChange={setCashFilterCcy} />
+              </th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">GL Balance</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Stmt Balance</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Variance</th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <ColFilter label="Status" options={["Pass", "Variance"]} value={cashFilterStatus} onChange={setCashFilterStatus} />
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleCash.map((c) => {
+              const open = openReconCash === c.sourceId;
+              return (
+                <Fragment key={c.sourceId}>
+                  <tr
+                    className="border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer"
+                    onClick={() => setOpenReconCash(open ? null : c.sourceId)}
+                  >
+                    <td className="px-4 py-3">
+                      {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </td>
+                    <td className="px-4 py-3 font-medium text-sm">
+                      {c.institution} <span className="font-mono text-xs text-muted-foreground">····{c.last4}</span>
+                    </td>
+                    <td className="px-4 py-3"><Badge variant="outline" className="text-xs font-mono">{c.currency}</Badge></td>
+                    <td className="px-4 py-3 text-right tabular-nums">{fmtCcy(c.glBalance, c.currency)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{fmtCcy(c.stmtBalance, c.currency)}</td>
+                    <td className={`px-4 py-3 text-right tabular-nums ${Math.abs(c.variance) > 1 ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                      {fmtCcy(c.variance, c.currency)}
+                    </td>
+                    <td className="px-4 py-3 text-center"><StatusPill ok={c.pass} label={c.pass ? "Pass" : "Variance"} /></td>
+                  </tr>
+                  {open && (
+                    <tr className="bg-muted/20 hover:bg-muted/20">
+                      <td colSpan={7} className="px-4 py-4 text-sm">
+                        <div className="flex items-center justify-between gap-4 flex-wrap">
+                          <div className="text-xs text-muted-foreground">
+                            Drill-in: review cleared vs uncleared transactions for this account.
+                            Variance of {fmtCcy(c.variance, c.currency)} likely outstanding deposit/withdrawal.
+                          </div>
+                          {!c.pass && (
+                            <Button size="sm" variant="outline" onClick={() => toast("AJE drafted from variance")}>
+                              Create AJE
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+            {visibleCash.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-4 py-6 text-center text-sm text-muted-foreground">
+                  {anyCashFilter ? "No accounts match the active filters." : "No cash accounts."}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -1,184 +1,138 @@
-import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Download } from 'lucide-react';
-import { Button } from '@/components/wp-ui/button';
+import { useState, useMemo } from 'react';
 import { Badge } from '@/components/wp-ui/badge';
-import { StyledCard } from '@/components/wp-ui/card';
-import { wacGroups } from '../data/investmentData';
-import { fmtDateDisplay } from '../lib/utils';
-import type { WACGroup } from '../types/investmentTypes';
-import toast from 'react-hot-toast';
+import type { SecuritySchedule, ComputeOptions } from '@/lib/luka/compute';
+import { fmtCAD, fmtNum } from './InvHoldingsTab';
+import { ColFilter, SearchFilter, ClearFiltersBtn } from './InvTableFilters';
 
-function fmt(n: number, d = 2) { return n.toLocaleString('en-CA', { minimumFractionDigits: d, maximumFractionDigits: d }); }
-function fmtLocal(n: number, ccy: string) { return `${ccy === 'CAD' ? '$' : ''}${fmt(n)} ${ccy !== 'CAD' ? ccy : ''}`; }
-const CCY_SYMBOL: Record<string, string> = { CAD: '$', USD: 'US$', EUR: '€', GBP: '£' };
+interface Props {
+  schedules: SecuritySchedule[];
+  opts: ComputeOptions;
+}
 
-const TXN_COLORS: Record<string, string> = {
-  Purchase:       'inProgress',
-  Sale:           'review',
-  'Transfer In':  'info',
-  'Transfer Out': 'outline',
-  Closing:        'secondary',
-  Opening:        'secondary',
-};
+export function InvWACTab({ schedules, opts }: Props) {
+  // Card-level filter: narrow which securities are shown
+  const [filterSecurity, setFilterSecurity] = useState("");
+  // Per-card row-level filter: narrow by type within each security card
+  const [filterType, setFilterType] = useState("");
 
-export function InvWACTab() {
-  const [expandedId, setExpandedId] = useState<string | null>(wacGroups[0]?.id ?? null);
-  const [filterTicker, setFilterTicker] = useState('All');
+  const anyFilter = filterSecurity || filterType;
 
-  const tickers = ['All', ...Array.from(new Set(wacGroups.map(g => g.ticker))).sort()];
-  const filtered = wacGroups.filter(g => filterTicker === 'All' || g.ticker === filterTicker);
+  const uniqueTypes = useMemo(
+    () => Array.from(new Set(schedules.flatMap((s) => s.rows.map((r) => r.type)))).sort(),
+    [schedules],
+  );
 
-  const totalRealizedGL = filtered.reduce((s, g) => s + g.totalRealizedGL, 0);
-
-  const handleExport = async () => {
-    try {
-      const rows = wacGroups.flatMap(g => [
-        { Security: g.security, Ticker: g.ticker, Broker: g.broker, Account: `…${g.acctLast4}`, Currency: g.currency, Date: '', Type: '', UnitsIn: '', UnitsOut: '', Price: '', CostIn: '', CostOut: '', CumulUnits: '', CumulCost: '', WAC: '', RealizedGL: '' },
-        ...g.rows.map(r => ({ Security: '', Ticker: '', Broker: '', Account: '', Currency: '', Date: r.date, Type: r.txnType, UnitsIn: r.unitsIn || '', UnitsOut: r.unitsOut || '', Price: r.priceLocal, CostIn: r.costIn || '', CostOut: r.costOut || '', CumulUnits: r.cumulUnits, CumulCost: r.cumulCost, WAC: r.wacPerUnit, RealizedGL: r.realizedGL || '' })),
-        { Security: 'TOTAL REALIZED G/L', Ticker: '', Broker: '', Account: '', Currency: g.currency, Date: '', Type: '', UnitsIn: '', UnitsOut: '', Price: '', CostIn: '', CostOut: '', CumulUnits: '', CumulCost: '', WAC: '', RealizedGL: g.totalRealizedGL },
-      ]);
-      const { exportToExcel, objsToAOA } = await import('../lib/utils');
-      exportToExcel({ 'WAC Schedule': objsToAOA(rows) }, 'INV_WAC_Schedule_FY2025.xlsx');
-      toast.success('WAC Schedule exported');
-    } catch { toast.error('Export failed'); }
-  };
+  const visibleSchedules = useMemo(() => {
+    if (!filterSecurity) return schedules;
+    return schedules.filter(
+      (s) =>
+        s.security.toLowerCase().includes(filterSecurity.toLowerCase()) ||
+        s.ticker.toLowerCase().includes(filterSecurity.toLowerCase()),
+    );
+  }, [schedules, filterSecurity]);
 
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
+    <div className="px-6 py-6 space-y-6">
+      <div className="flex items-end justify-between flex-wrap gap-3 mb-4">
         <div>
-          <h2 className="text-base font-semibold text-foreground">Weighted Average Cost Schedule</h2>
-          <p className="text-xs text-foreground mt-0.5">Running WAC per security / broker account · Realized G/L on each disposition</p>
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">WAC Schedule (Cost &amp; FMV)</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Weighted-average cost roll-forward · Pool: {opts.trackByBroker ? "Per broker" : "Blended"}
+          </p>
         </div>
-        <Button variant="secondary" size="sm" onClick={handleExport}>
-          <Download className="w-3.5 h-3.5" /> Export
-        </Button>
-      </div>
-
-      {/* Summary strip */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-foreground">Security:</span>
-          {tickers.map(t => (
-            <button key={t} onClick={() => setFilterTicker(t)}
-              className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
-                filterTicker === t ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'
-              }`}>{t}</button>
-          ))}
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs text-foreground">Total Realized G/L:</span>
-          <Badge variant={totalRealizedGL >= 0 ? 'success' : 'destructive'} className="tabular-nums text-xs">
-            {totalRealizedGL >= 0 ? '+' : ''}${fmt(Math.abs(totalRealizedGL))} Local
-          </Badge>
+        <div className="flex items-center gap-2">
+          {anyFilter && (
+            <ClearFiltersBtn onClick={() => { setFilterSecurity(""); setFilterType(""); }} />
+          )}
+          {/* Top-level security search */}
+          <div className="relative">
+            <SearchFilter
+              label="Filter security"
+              value={filterSecurity}
+              onChange={setFilterSecurity}
+              placeholder="Ticker or name…"
+            />
+          </div>
         </div>
       </div>
 
-      {/* One card per WAC group */}
-      <div className="space-y-3">
-        {filtered.map((g: WACGroup) => {
-          const isOpen = expandedId === g.id;
-          const sym = CCY_SYMBOL[g.currency] ?? '';
-          return (
-            <StyledCard key={g.id} className="overflow-hidden p-0">
-              {/* Group header */}
-              <button
-                className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors text-left"
-                onClick={() => setExpandedId(isOpen ? null : g.id)}
-              >
-                <div className="flex items-center gap-3">
-                  {isOpen ? <ChevronDown className="w-4 h-4 text-foreground" /> : <ChevronRight className="w-4 h-4 text-foreground" />}
-                  <div>
-                    <span className="font-semibold text-foreground text-sm">{g.security}</span>
-                    <span className="text-foreground text-xs ml-2">({g.ticker})</span>
-                  </div>
-                  <span className="text-xs text-foreground">{g.broker} …{g.acctLast4}</span>
-                  <Badge variant="outline" className="text-xs">{g.currency}</Badge>
+      {visibleSchedules.map((s) => {
+        const rows = filterType ? s.rows.filter((r) => r.type === filterType) : s.rows;
+        return (
+          <div key={s.key} className="rounded-xl border border-border bg-card">
+            <div className="p-4 flex items-center justify-between flex-wrap gap-3 border-b border-border">
+              <div>
+                <div className="font-semibold">
+                  {s.security}{" "}
+                  <span className="text-muted-foreground font-normal font-mono text-sm">{s.ticker}</span>
                 </div>
-                <div className="flex items-center gap-3 text-sm">
-                  <span className="text-xs text-foreground">Closing units:</span>
-                  <span className="font-mono tabular-nums text-sm font-semibold">
-                    {fmt(g.rows[g.rows.length - 1]?.cumulUnits ?? 0, 0)}
-                  </span>
-                  <span className="text-xs text-foreground ml-2">Realized G/L:</span>
-                  <Badge variant={g.totalRealizedGL > 0 ? 'success' : g.totalRealizedGL < 0 ? 'destructive' : 'outline'} className="text-xs tabular-nums">
-                    {g.totalRealizedGL !== 0
-                      ? `${g.totalRealizedGL > 0 ? '+' : ''}${sym}${fmt(Math.abs(g.totalRealizedGL))} ${g.currency}`
-                      : '00'}
-                  </Badge>
+                <div className="text-xs text-muted-foreground">
+                  Source(s): {s.sourceIds.join(", ")} · CCY {s.currency}
                 </div>
-              </button>
+              </div>
+              <div className="flex gap-4 text-xs">
+                <div><span className="text-muted-foreground">Closing units </span><span className="font-mono font-medium">{fmtNum(s.closingUnits, 4)}</span></div>
+                <div><span className="text-muted-foreground">WAC </span><span className="font-mono font-medium">{fmtCAD(s.closingWac)}</span></div>
+                <div><span className="text-muted-foreground">FMV </span><span className="font-mono font-medium">{fmtCAD(s.fmvCAD)}</span></div>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Date</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      <ColFilter
+                        label="Type"
+                        options={uniqueTypes}
+                        value={filterType}
+                        onChange={setFilterType}
+                      />
+                    </th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Units In</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Units Out</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Cost In</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Cost Out</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Cum Units</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Cum Cost</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">WAC</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r, i) => (
+                    <tr key={i} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-3 text-xs whitespace-nowrap">{r.date}</td>
+                      <td className="px-4 py-3"><Badge variant="outline" className="text-xs">{r.type}</Badge></td>
+                      <td className="px-4 py-3 text-right tabular-nums text-xs">{r.unitsIn ? fmtNum(r.unitsIn, 4) : "—"}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-xs">{r.unitsOut ? fmtNum(r.unitsOut, 4) : "—"}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-xs">{r.costIn ? fmtCAD(r.costIn) : "—"}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-xs">{r.costOut ? fmtCAD(r.costOut) : "—"}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-xs font-medium">{fmtNum(r.cumUnits, 4)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-xs font-medium">{fmtCAD(r.cumCost)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-xs">{fmtCAD(r.wac)}</td>
+                    </tr>
+                  ))}
+                  {rows.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="px-4 py-4 text-center text-xs text-muted-foreground">
+                        No rows match the active type filter.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })}
 
-              {/* Rows */}
-              {isOpen && (
-                <div className="border-t border-border overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-muted/40 border-b border-border">
-                        <th className="text-left px-4 py-2 text-xs font-semibold uppercase text-foreground">Date</th>
-                        <th className="text-left px-3 py-2 text-xs font-semibold uppercase text-foreground">Type</th>
-                        <th className="text-right px-3 py-2 text-xs font-semibold uppercase text-foreground">Units In</th>
-                        <th className="text-right px-3 py-2 text-xs font-semibold uppercase text-foreground">Units Out</th>
-                        <th className="text-right px-3 py-2 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Price ({g.currency})</th>
-                        <th className="text-right px-3 py-2 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Cost In</th>
-                        <th className="text-right px-3 py-2 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Cost Out</th>
-                        <th className="text-right px-3 py-2 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Cumul. Units</th>
-                        <th className="text-right px-3 py-2 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Cumul. Cost</th>
-                        <th className="text-right px-3 py-2 text-xs font-semibold uppercase text-foreground whitespace-nowrap">WAC / Unit</th>
-                        <th className="text-right px-3 py-2 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Realized G/L</th>
-                        <th className="text-left px-3 py-2 text-xs font-semibold uppercase text-foreground">Notes</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {g.rows.map(r => (
-                        <tr key={r.id} className={`hover:bg-muted/20 ${r.txnType === 'Closing' ? 'bg-muted/30 font-medium' : ''}`}>
-                          <td className="px-4 py-2 text-xs text-foreground whitespace-nowrap">{fmtDateDisplay(r.date)}</td>
-                          <td className="px-3 py-2">
-                            <Badge variant={(TXN_COLORS[r.txnType] ?? 'outline') as Parameters<typeof Badge>[0]['variant']} className="text-xs whitespace-nowrap">
-                              {r.txnType}
-                            </Badge>
-                          </td>
-                          <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{r.unitsIn > 0 ? fmt(r.unitsIn, 0) : '00'}</td>
-                          <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{r.unitsOut > 0 ? fmt(r.unitsOut, 0) : '00'}</td>
-                          <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{fmt(r.priceLocal, 2)}</td>
-                          <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{r.costIn > 0 ? sym + fmt(r.costIn) : '00'}</td>
-                          <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{r.costOut > 0 ? sym + fmt(r.costOut) : '00'}</td>
-                          <td className="px-3 py-2 text-right tabular-nums font-mono font-semibold text-sm">{fmt(r.cumulUnits, 0)}</td>
-                          <td className="px-3 py-2 text-right tabular-nums font-mono font-semibold text-sm">{sym}{fmt(r.cumulCost)}</td>
-                          <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">{fmt(r.wacPerUnit, 4)}</td>
-                          <td className="px-3 py-2 text-right tabular-nums font-mono text-sm">
-                            {r.realizedGL !== 0
-                              ? <span className={r.realizedGL > 0 ? 'text-green-600' : 'text-red-600'}>
-                                  {r.realizedGL > 0 ? '+' : ''}{sym}{fmt(Math.abs(r.realizedGL))}
-                                </span>
-                              : <span className="text-foreground text-xs">—</span>}
-                          </td>
-                          <td className="px-3 py-2 text-xs text-foreground">{r.notes ?? ''}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="border-t border-border bg-muted/50">
-                        <td colSpan={10} className="px-4 py-2 text-xs font-semibold text-foreground">
-                          Total Realized G/L — {g.ticker} ({g.broker.split(' ')[0]} …{g.acctLast4})
-                        </td>
-                        <td className="px-3 py-2 text-right tabular-nums font-mono font-bold text-sm">
-                          {g.totalRealizedGL !== 0
-                            ? <span className={g.totalRealizedGL > 0 ? 'text-green-600' : 'text-red-600'}>
-                                {g.totalRealizedGL > 0 ? '+' : ''}{sym}{fmt(Math.abs(g.totalRealizedGL))}
-                              </span>
-                            : <span className="text-foreground">—</span>}
-                        </td>
-                        <td />
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              )}
-            </StyledCard>
-          );
-        })}
-      </div>
+      {visibleSchedules.length === 0 && (
+        <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+          {filterSecurity
+            ? "No securities match the search."
+            : "No schedules — enable prior-year file or add transactions."}
+        </div>
+      )}
     </div>
   );
 }
