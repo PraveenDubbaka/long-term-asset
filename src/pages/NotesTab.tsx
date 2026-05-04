@@ -3,8 +3,9 @@ import {
   RefreshCw, AlertTriangle, RotateCcw, CheckCircle2, Send, Undo2,
   Bold, Italic, Underline, List, ListOrdered,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  Trash2, Plus, ChevronDown, ArrowUp,
+  Trash2, Plus, ChevronDown, ArrowUp, Eye,
 } from 'lucide-react';
+import { LTDNotesPreviewModal } from './LTDNotesPreviewModal';
 import { StyledCard } from '@/components/wp-ui/card';
 import { Button } from '@/components/wp-ui/button';
 import { Modal } from '../components/ui';
@@ -12,6 +13,17 @@ import { useStore } from '../store/useStore';
 import { useWorkpaperLoans } from '../contexts/WorkpaperContext';
 import { fmtPct, fmtDateDisplay } from '../lib/utils';
 import type { Loan, ContinuityRow, ReconciliationItem } from '../types';
+
+// ─── Note snapshot (for staleness detection) ─────────────────────────────────
+
+interface NoteSnapshot {
+  ts:                  number;
+  loanIds:             string[];
+  totalCY:             number;
+  totalCur:            number;
+  loanFingerprints:    Record<string, string>; // id → "name|balance|rate|maturity"
+  covenantIssueCount:  number;
+}
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 
@@ -521,11 +533,14 @@ function RepaymentScheduleTable({ loans, yearEnd }: { loans: Loan[]; yearEnd: st
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function NotesTab() {
-  const { loans: storeLoans, continuity, recon, settings } = useStore(s => ({
+  const { loans: storeLoans, continuity, recon, covenants, settings, notePost, setNotePost } = useStore(s => ({
     loans:      s.loans,
     continuity: s.continuity,
     recon:      s.reconciliation,
+    covenants:  s.covenants,
     settings:   s.settings,
+    notePost:   s.notePost,
+    setNotePost: s.setNotePost,
   }));
 
   const wpCtx = useWorkpaperLoans();
@@ -534,6 +549,12 @@ export default function NotesTab() {
   const yearEnd = settings.fiscalYearEnd;
   const fyYear  = new Date(yearEnd + 'T00:00:00').getFullYear();
   const active  = useMemo(() => loans.filter(l => l.status === 'Active'), [loans]);
+
+  // ── Staleness fingerprint ────────────────────────────────────────────
+  const covenantIssueCount = useMemo(
+    () => covenants.filter(c => c.status === 'Breached' || c.status === 'At Risk').length,
+    [covenants],
+  );
 
   // Format full date label, e.g. "12-31-2024"
   const fmtD = (d: Date) => `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}-${d.getFullYear()}`;
@@ -556,23 +577,26 @@ export default function NotesTab() {
   const [pyOverrides, setPyOverrides] = useState<Record<string, string>>({});
 
   // ── Post-to-notes flow ────────────────────────────────────────────────
-  const [isPosted, setIsPosted]   = useState(false);
-  const [postedAt, setPostedAt]   = useState<Date | null>(null);
-  const [isPosting, setIsPosting] = useState(false);
+  // isPosted / snapshot live in the store so they survive tab navigation
+  const isPosted       = notePost.isPosted;
+  const postedAt       = notePost.postedAt ? new Date(notePost.postedAt) : null;
+  const postedSnapshot = notePost.snapshot as NoteSnapshot | null;
+
+  const [isPosting,       setIsPosting]       = useState(false);
+  const [showNotePreview, setShowNotePreview] = useState(false);
 
   const handlePost = () => {
     setIsPosting(true);
-    // Simulate brief async (e.g. save to backend)
+    const snap: NoteSnapshot = { ...currentSnapshot, ts: Date.now() };
     setTimeout(() => {
-      setIsPosted(true);
-      setPostedAt(new Date());
+      setNotePost({ isPosted: true, postedAt: new Date().toISOString(), snapshot: snap });
       setIsPosting(false);
+      setShowNotePreview(true);
     }, 600);
   };
 
   const handleUnpost = () => {
-    setIsPosted(false);
-    setPostedAt(null);
+    setNotePost({ isPosted: false, postedAt: null, snapshot: null });
   };
 
   // ── Additional content blocks ─────────────────────────────────────────
@@ -639,6 +663,59 @@ export default function NotesTab() {
     l => getTBBalance(l.id, recon, l.currentBalance).hasVariance,
   );
 
+  // ── Current data fingerprint (rebuilt on every relevant change) ──────
+  const currentSnapshot = useMemo((): NoteSnapshot => {
+    const fp: Record<string, string> = {};
+    active.forEach(l => {
+      const bal = getTBBalance(l.id, recon, l.currentBalance).value;
+      fp[l.id] = `${l.name}|${bal}|${l.rate}|${l.maturityDate ?? ''}|${l.type}`;
+    });
+    return {
+      ts:                 0,
+      loanIds:            active.map(l => l.id).sort(),
+      totalCY,
+      totalCur:           totalCurrent,
+      loanFingerprints:   fp,
+      covenantIssueCount,
+    };
+  }, [active, recon, totalCY, totalCurrent, covenantIssueCount]);
+
+  // A note is stale when posted fingerprint no longer matches current data
+  const isStale = isPosted && postedSnapshot !== null &&
+    JSON.stringify({ ...currentSnapshot, ts: 0 }) !==
+    JSON.stringify({ ...postedSnapshot,  ts: 0 });
+
+  // Human-readable list of what changed since posting
+  const staleDiff = useMemo((): string[] => {
+    if (!postedSnapshot || !isStale) return [];
+    const msgs: string[] = [];
+
+    const removed = postedSnapshot.loanIds.filter(id => !currentSnapshot.loanIds.includes(id));
+    if (removed.length) {
+      const names = removed.map(id => postedSnapshot.loanFingerprints[id]?.split('|')[0] ?? id);
+      msgs.push(removed.length === 1 ? `"${names[0]}" was removed` : `${removed.length} loans removed`);
+    }
+
+    const added = currentSnapshot.loanIds.filter(id => !postedSnapshot.loanIds.includes(id));
+    if (added.length) msgs.push(`${added.length} loan${added.length > 1 ? 's' : ''} added`);
+
+    const common  = currentSnapshot.loanIds.filter(id => postedSnapshot.loanIds.includes(id));
+    const changed = common.filter(id =>
+      currentSnapshot.loanFingerprints[id] !== postedSnapshot.loanFingerprints[id],
+    );
+    if (changed.length) {
+      const names = changed.map(id => currentSnapshot.loanFingerprints[id]?.split('|')[0] ?? id);
+      msgs.push(
+        changed.length === 1 ? `"${names[0]}" terms or balance updated` : `${changed.length} loans updated`,
+      );
+    }
+
+    if (currentSnapshot.covenantIssueCount !== postedSnapshot.covenantIssueCount)
+      msgs.push('covenant statuses changed');
+
+    return msgs.length ? msgs : ['underlying data changed'];
+  }, [currentSnapshot, postedSnapshot, isStale]);
+
   // ── Amount column width ───────────────────────────────────────────────
   const amtColClass = 'px-3 py-2 align-top w-[13%]';
 
@@ -657,16 +734,54 @@ export default function NotesTab() {
         <div className="flex items-center gap-2 pt-1 shrink-0">
           {isPosted ? (
             <>
-              {/* Posted badge */}
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Posted to Notes</span>
-                {postedAt && (
+              {/* Posted / Stale badge */}
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${
+                isStale
+                  ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700'
+                  : 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800'
+              }`}>
+                {isStale
+                  ? <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                  : <CheckCircle2  className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
+                <span className={`text-xs font-semibold ${
+                  isStale ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'
+                }`}>
+                  {isStale ? 'Note Outdated' : 'Posted to Notes'}
+                </span>
+                {postedAt && !isStale && (
                   <span className="text-[10px] text-emerald-600/70 dark:text-emerald-500/70 ml-0.5">
                     · {postedAt.toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 )}
               </div>
+
+              {/* Re-post (only when stale) */}
+              {isStale && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handlePost}
+                  disabled={isPosting}
+                  className="gap-1.5 h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  {isPosting
+                    ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    : <Send className="w-3.5 h-3.5" />}
+                  {isPosting ? 'Updating…' : 'Re-post Note'}
+                </Button>
+              )}
+
+              {/* View Note */}
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowNotePreview(true)}
+                className="text-xs gap-1.5 h-8"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                View Note
+              </Button>
+
               {/* Unpost */}
               <Button
                 variant="ghost"
@@ -696,6 +811,36 @@ export default function NotesTab() {
           )}
         </div>
       </div>
+
+      {/* ── Stale banner ────────────────────────────────────────────────── */}
+      {isStale && (
+        <div className="mx-6 mb-1 flex items-start gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+              Posted note is out of date
+            </p>
+            <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5 leading-relaxed">
+              The following changes were made after this note was posted:{' '}
+              <span className="font-medium">{staleDiff.join('; ')}</span>.
+              {' '}These changes affect the totals, loan descriptions, or disclosures in the note.
+              Re-post to sync.
+            </p>
+          </div>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handlePost}
+            disabled={isPosting}
+            className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white gap-1.5 text-xs h-8"
+          >
+            {isPosting
+              ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              : <Send className="w-3.5 h-3.5" />}
+            {isPosting ? 'Updating…' : 'Re-post Note'}
+          </Button>
+        </div>
+      )}
 
       {/* ── Notes table ─────────────────────────────────────────────────── */}
       <div className="px-6">
@@ -863,6 +1008,19 @@ export default function NotesTab() {
         )}
 
       </div>
+
+      {/* Notes to Financial Information preview */}
+      {showNotePreview && (
+        <LTDNotesPreviewModal
+          onClose={() => setShowNotePreview(false)}
+          loanNotes={loanNotes}
+          cyOverrides={cyOverrides}
+          pyOverrides={pyOverrides}
+          isStale={isStale}
+          staleDiff={staleDiff}
+          postedAt={postedAt}
+        />
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteTarget && (

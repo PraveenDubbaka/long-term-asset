@@ -82,6 +82,8 @@ export interface ContinuityRow {
   principalRepayments?: number; // principal portion
   interestRepayments?: number;  // interest portion
   fxTranslation: number;
+  adjustment?: number;            // ± inter-account balance transfer / reclassification
+  adjustmentNote?: string;        // reason / counter-loan for the adjustment
   closingBalance: number;
   currentPortion: number;
   longTermPortion: number;

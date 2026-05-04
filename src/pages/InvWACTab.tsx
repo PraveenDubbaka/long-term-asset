@@ -112,6 +112,25 @@ export function InvWACTab({ schedules, opts }: Props) {
                       <td className="px-4 py-3 text-right tabular-nums text-xs">{fmtCAD(r.wac)}</td>
                     </tr>
                   ))}
+                  {/* Closing Balance row — always shown, unaffected by type filter */}
+                  <tr className="border-t-2 border-border bg-muted/20 font-semibold">
+                    <td className="px-4 py-3 text-xs whitespace-nowrap">
+                      {s.rows[s.rows.length - 1]?.date ?? "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge className="text-xs bg-primary/10 text-primary border border-primary/30 hover:bg-primary/10">
+                        Closing Balance
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-xs text-muted-foreground">—</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-xs text-muted-foreground">—</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-xs text-muted-foreground">—</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-xs text-muted-foreground">—</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-xs">{fmtNum(s.closingUnits, 4)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-xs">{fmtCAD(s.closingCostCAD)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-xs">{fmtCAD(s.closingWac)}</td>
+                  </tr>
+
                   {rows.length === 0 && (
                     <tr>
                       <td colSpan={9} className="px-4 py-4 text-center text-xs text-muted-foreground">

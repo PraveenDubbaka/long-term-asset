@@ -113,6 +113,7 @@ export const transactions: InvTransaction[] = [
 export const wacGroups: WACGroup[] = [
   {
     id: 'wac1', security: 'Apple Inc.', ticker: 'AAPL', broker: 'TD Waterhouse', acctLast4: '4521', currency: 'USD',
+    openingUnits: 0, openingCost: 0,
     totalRealizedGL: 1708.89,
     rows: [
       { id: 'w1a', date: '2025-01-15', txnType: 'Purchase',       unitsIn: 200, unitsOut:  0, priceLocal: 185.00, costIn: 37000.00, costOut:     0, cumulUnits: 200, cumulCost: 37000.00, wacPerUnit: 185.00, realizedGL: 0,       notes: 'New position' },
@@ -123,6 +124,7 @@ export const wacGroups: WACGroup[] = [
   },
   {
     id: 'wac2', security: 'Apple Inc.', ticker: 'AAPL', broker: 'RBC Direct Investing', acctLast4: '8834', currency: 'USD',
+    openingUnits: 0, openingCost: 0,
     totalRealizedGL: 0,
     rows: [
       { id: 'w2a', date: '2025-01-20', txnType: 'Purchase',       unitsIn:  50, unitsOut:  0, priceLocal: 205.20, costIn: 10260.00, costOut: 0, cumulUnits: 50, cumulCost: 10260.00, wacPerUnit: 205.20, realizedGL: 0 },
@@ -130,16 +132,19 @@ export const wacGroups: WACGroup[] = [
     ],
   },
   {
+    // Opening: 100 units @ $132.50 = $13,250 carried in from Dec 31, 2024
     id: 'wac3', security: 'Royal Bank of Canada', ticker: 'RY.TO', broker: 'TD Waterhouse', acctLast4: '4521', currency: 'CAD',
-    totalRealizedGL: 1254.25,
+    openingUnits: 100, openingCost: 13250.00,
+    totalRealizedGL: 1250.00,
     rows: [
-      { id: 'w3a', date: '2025-01-15', txnType: 'Purchase',       unitsIn: 300, unitsOut:   0, priceLocal: 132.50, costIn: 39750.00, costOut:     0, cumulUnits: 300, cumulCost: 39750.00, wacPerUnit: 132.50, realizedGL: 0 },
-      { id: 'w3b', date: '2025-08-20', txnType: 'Sale',           unitsIn:   0, unitsOut: 100, priceLocal: 145.00, costIn:     0,    costOut: 13250.00, cumulUnits: 200, cumulCost: 26500.00, wacPerUnit: 132.50, realizedGL: 1250.01, notes: 'Gain: (145−132.50)×100' },
-      { id: 'w3c', date: '2025-12-31', txnType: 'Closing',        unitsIn:   0, unitsOut:   0, priceLocal: 145.00, costIn:     0,    costOut:     0,   cumulUnits: 200, cumulCost: 26500.00, wacPerUnit: 132.50, realizedGL: 0,       notes: 'Dec 31' },
+      { id: 'w3a', date: '2025-01-15', txnType: 'Purchase',  unitsIn: 300, unitsOut:   0, priceLocal: 132.50, costIn: 39750.00, costOut:      0, cumulUnits: 400, cumulCost: 53000.00, wacPerUnit: 132.50, realizedGL: 0 },
+      { id: 'w3b', date: '2025-08-20', txnType: 'Sale',      unitsIn:   0, unitsOut: 100, priceLocal: 145.00, costIn:      0,   costOut: 13250.00, cumulUnits: 300, cumulCost: 39750.00, wacPerUnit: 132.50, realizedGL: 1250.00, notes: 'Gain: (145−132.50)×100' },
+      { id: 'w3c', date: '2025-12-31', txnType: 'Closing',   unitsIn:   0, unitsOut:   0, priceLocal: 145.00, costIn:      0,   costOut:      0,  cumulUnits: 300, cumulCost: 39750.00, wacPerUnit: 132.50, realizedGL: 0,       notes: 'Dec 31' },
     ],
   },
   {
     id: 'wac4', security: 'Royal Bank of Canada', ticker: 'RY.TO', broker: 'BMO InvestorLine', acctLast4: '6690', currency: 'CAD',
+    openingUnits: 0, openingCost: 0,
     totalRealizedGL: 0,
     rows: [
       { id: 'w4a', date: '2025-01-25', txnType: 'Purchase',       unitsIn: 150, unitsOut: 0, priceLocal: 130.00, costIn: 19500.00, costOut: 0, cumulUnits: 150, cumulCost: 19500.00, wacPerUnit: 130.00, realizedGL: 0 },
@@ -148,6 +153,7 @@ export const wacGroups: WACGroup[] = [
   },
   {
     id: 'wac5', security: 'Amazon.com Inc.', ticker: 'AMZN', broker: 'TD Waterhouse', acctLast4: '4521', currency: 'USD',
+    openingUnits: 0, openingCost: 0,
     totalRealizedGL: 0,
     rows: [
       { id: 'w5a', date: '2025-05-18', txnType: 'Purchase',       unitsIn:  30, unitsOut: 0, priceLocal: 185.40, costIn: 5562.00, costOut: 0, cumulUnits: 30, cumulCost: 5562.00, wacPerUnit: 185.40, realizedGL: 0 },
@@ -156,6 +162,7 @@ export const wacGroups: WACGroup[] = [
   },
   {
     id: 'wac6', security: 'Shopify Inc.', ticker: 'SHOP.TO', broker: 'BMO InvestorLine', acctLast4: '6690', currency: 'CAD',
+    openingUnits: 0, openingCost: 0,
     totalRealizedGL: 1833.87,
     rows: [
       { id: 'w6a', date: '2025-06-30', txnType: 'Transfer In',    unitsIn: 200, unitsOut:   0, priceLocal:  95.02, costIn: 19004.00, costOut:     0, cumulUnits: 200, cumulCost: 19004.00, wacPerUnit:  95.02, realizedGL: 0, notes: 'Cost basis from RBC' },
@@ -165,6 +172,7 @@ export const wacGroups: WACGroup[] = [
   },
   {
     id: 'wac7', security: 'Airbus SE', ticker: 'AIR.PA', broker: 'RBC Direct Investing', acctLast4: '8834', currency: 'EUR',
+    openingUnits: 0, openingCost: 0,
     totalRealizedGL: 208.53,
     rows: [
       { id: 'w7a', date: '2025-03-22', txnType: 'Purchase',       unitsIn:  75, unitsOut:   0, priceLocal: 146.93, costIn: 11019.98, costOut:     0, cumulUnits:  75, cumulCost: 11019.98, wacPerUnit: 146.93, realizedGL: 0 },
@@ -174,6 +182,7 @@ export const wacGroups: WACGroup[] = [
   },
   {
     id: 'wac8', security: 'Microsoft Corp.', ticker: 'MSFT', broker: 'Fidelity Investments', acctLast4: '2267', currency: 'USD',
+    openingUnits: 0, openingCost: 0,
     totalRealizedGL: 4481.49,
     rows: [
       { id: 'w8a', date: '2025-01-10', txnType: 'Purchase',       unitsIn:  60, unitsOut:   0, priceLocal: 375.00, costIn: 22500.00, costOut:     0, cumulUnits:  60, cumulCost: 22500.00, wacPerUnit: 375.00, realizedGL: 0 },
@@ -184,6 +193,7 @@ export const wacGroups: WACGroup[] = [
   },
   {
     id: 'wac9', security: 'Unilever PLC', ticker: 'ULVR', broker: 'Fidelity Investments', acctLast4: '2267', currency: 'GBP',
+    openingUnits: 0, openingCost: 0,
     totalRealizedGL: 0,
     rows: [
       { id: 'w9a', date: '2025-04-15', txnType: 'Purchase',       unitsIn: 150, unitsOut: 0, priceLocal: 43.10, costIn: 6464.98, costOut: 0, cumulUnits: 150, cumulCost: 6464.98, wacPerUnit: 43.10, realizedGL: 0 },
@@ -192,6 +202,7 @@ export const wacGroups: WACGroup[] = [
   },
   {
     id: 'wac10', security: 'Enbridge Inc.', ticker: 'ENB.TO', broker: 'BMO InvestorLine', acctLast4: '6690', currency: 'CAD',
+    openingUnits: 0, openingCost: 0,
     totalRealizedGL: 0,
     rows: [
       { id: 'w10a', date: '2025-03-15', txnType: 'Purchase',      unitsIn: 400, unitsOut: 0, priceLocal: 54.50, costIn: 21800.00, costOut: 0, cumulUnits: 400, cumulCost: 21800.00, wacPerUnit: 54.50, realizedGL: 0 },

@@ -22,6 +22,20 @@ interface UIState {
   importWizardType: 'loans' | 'activity' | 'continuity' | null;
 }
 
+// Persisted across tab navigation — snapshot of data at the moment the note was posted
+export interface NotePostState {
+  isPosted:  boolean;
+  postedAt:  string | null;   // ISO string
+  snapshot:  {
+    ts:                 number;
+    loanIds:            string[];
+    totalCY:            number;
+    totalCur:           number;
+    loanFingerprints:   Record<string, string>;
+    covenantIssueCount: number;
+  } | null;
+}
+
 interface Store {
   loans: Loan[];
   amortization: AmortizationRow[];
@@ -34,6 +48,7 @@ interface Store {
   settings: EngagementSettings;
   accountMappings: AccountMapping[];
   banDocuments: BanDocument[];
+  notePost: NotePostState;
   ui: UIState;
 
   addLoan: (loan: Loan) => void;
@@ -71,6 +86,8 @@ interface Store {
   resolveReviewItem: (id: string) => void;
   updateSettings: (updates: Partial<EngagementSettings>) => void;
 
+  setNotePost: (state: NotePostState) => void;
+
   setActiveTab: (tab: TabId) => void;
   setSelectedLoan: (id: string | null) => void;
   setReviewQueueOpen: (open: boolean) => void;
@@ -91,6 +108,7 @@ export const useStore = create<Store>((set) => ({
   settings: initialSettings,
   accountMappings,
   banDocuments: initialBanDocuments,
+  notePost: { isPosted: false, postedAt: null, snapshot: null },
   ui: {
     activeTab: 'dashboard',
     selectedLoanId: null,
@@ -105,7 +123,15 @@ export const useStore = create<Store>((set) => ({
   updateLoan: (id, updates) => set(s => ({
     loans: s.loans.map(l => l.id === id ? { ...l, ...updates } : l)
   })),
-  deleteLoan: (id) => set(s => ({ loans: s.loans.filter(l => l.id !== id) })),
+  deleteLoan: (id) => set(s => ({
+    loans:          s.loans.filter(l => l.id !== id),
+    continuity:     s.continuity.filter(r => r.loanId !== id),
+    amortization:   s.amortization.filter(r => r.loanId !== id),
+    covenants:      s.covenants.filter(c => c.loanId !== id),
+    reconciliation: s.reconciliation.filter(r => r.loanId !== id),
+    activities:     s.activities.filter(a => a.loanId !== id),
+    jes:            s.jes.map(j => j.loanId === id ? { ...j, loanId: undefined } : j),
+  })),
 
   updateAmortRow: (id, updates) => set(s => ({
     amortization: s.amortization.map(r => r.id === id ? { ...r, ...updates } : r)
@@ -164,6 +190,8 @@ export const useStore = create<Store>((set) => ({
 
   resolveReviewItem: (id) => set(s => ({ reviewQueue: s.reviewQueue.filter(r => r.id !== id) })),
   updateSettings: (updates) => set(s => ({ settings: { ...s.settings, ...updates } })),
+
+  setNotePost: (state) => set(() => ({ notePost: state })),
 
   setActiveTab: (tab) => set(s => ({ ui: { ...s.ui, activeTab: tab } })),
   setSelectedLoan: (id) => set(s => ({ ui: { ...s.ui, selectedLoanId: id } })),

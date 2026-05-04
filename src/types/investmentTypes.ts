@@ -2,6 +2,9 @@
 
 export type InvCurrency = 'CAD' | 'USD' | 'EUR' | 'GBP';
 
+/** Recording method for investment schedule — controls which basis is reported */
+export type RecordingMethod = 'Cost' | 'Fair Market Value';
+
 export type TxnType =
   | 'Purchase'
   | 'Sale'
@@ -37,12 +40,14 @@ export interface InvTransaction {
   id: string;
   source: string;         // A/B/C/D
   broker: string;
-  date: string;
+  date: string;           // Process / trade date
+  settleDate?: string;    // Settlement date (T+1 / T+2 depending on security type)
   security: string;
   ticker: string;
+  description?: string;   // Activity description (separate from security name)
   txnType: TxnType;
   qty: number;
-  price: number;
+  price: number;          // Unit price
   currency: InvCurrency;
   commission: number;
   grossLocal: number;
@@ -78,6 +83,8 @@ export interface WACGroup {
   broker: string;
   acctLast4: string;
   currency: InvCurrency;
+  openingUnits: number;   // units held at start of period (0 = new position)
+  openingCost: number;    // cost basis carried from prior year
   rows: WACRow[];
   totalRealizedGL: number;
 }
@@ -149,7 +156,8 @@ export interface FXScheduleRow {
   currency: InvCurrency;
   yeUnits: number;
   foreignCost: number;
-  acqRate: number;
+  acqRate: number;         // Blended acquisition rate — editable, auto-populated from FX rates table
+  settleRate?: number;     // Settlement rate — editable, auto-populated from FX rates table
   cadCost: number;
   yeFxRate: number;
   fmvForeign: number;

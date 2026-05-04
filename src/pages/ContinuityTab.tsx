@@ -99,7 +99,7 @@ function calcMaturityLadder(
 
 type ContColId =
   | 'period' | 'openingBalance' | 'newBorrowings' | 'principalRepayments'
-  | 'interestRepayments' | 'fxTranslation' | 'closingBalance'
+  | 'interestRepayments' | 'fxTranslation' | 'adjustment' | 'closingBalance'
   | 'accruedInterest' | 'actions';
 
 const CONT_COLS: ColDef<ContColId>[] = [
@@ -109,6 +109,7 @@ const CONT_COLS: ColDef<ContColId>[] = [
   { id: 'principalRepayments',  label: '− Principal' },
   { id: 'interestRepayments',   label: '− Interest' },
   { id: 'fxTranslation',        label: '± FX' },
+  { id: 'adjustment',           label: '± Adj.' },
   { id: 'closingBalance',       label: 'Closing Balance' },
   { id: 'accruedInterest',      label: 'Accrued Int.' },
   { id: 'actions',              label: '',                 pinned: true },
@@ -122,6 +123,16 @@ function fmtFX(v: number): { display: string; cls: string } {
   if (v === 0) return { display: '00', cls: 'text-foreground' };
   if (v < 0)   return { display: `(${fmtNumber(Math.abs(v))})`, cls: 'text-foreground' };
   return           { display: fmtNumber(v), cls: 'text-foreground' };
+}
+
+/** Format a balance adjustment (transfer in/out).
+ *  positive → green + prefix (balance received)
+ *  negative → red bracketed  (balance transferred out)
+ *  zero     → — */
+function fmtAdj(v: number): { display: string; cls: string } {
+  if (!v || v === 0) return { display: '—', cls: 'text-muted-foreground' };
+  if (v > 0) return { display: `+${fmtNumber(v)}`, cls: 'text-emerald-600 dark:text-emerald-400 font-medium' };
+  return { display: `(${fmtNumber(Math.abs(v))})`, cls: 'text-red-600 dark:text-red-400 font-medium' };
 }
 
 export function ContinuityTab() {
@@ -178,7 +189,7 @@ export function ContinuityTab() {
   const [rowEdits, setRowEdits] = useState<Partial<ContinuityRow>>({});
   const [deleteTarget, setDeleteTarget] = useState<{ label: string; subLabel?: string; onConfirm: () => void } | null>(null);
   const [editingAllLoansId, setEditingAllLoansId] = useState<string | null>(null);
-  const [allLoansEdits, setAllLoansEdits] = useState<Record<string, number>>({});
+  const [allLoansEdits, setAllLoansEdits] = useState<Record<string, number | string>>({});
 
   // Notes link panel state
   const [notesPanelRowId, setNotesPanelRowId] = useState<string | null>(null);
@@ -229,6 +240,7 @@ export function ContinuityTab() {
       newBorrowings:    rows.reduce((s, r) => s + r.newBorrowings, 0),
       repayments:       rows.reduce((s, r) => s + r.repayments, 0),
       fxTranslation:    rows.reduce((s, r) => s + r.fxTranslation, 0),
+      adjustment:       rows.reduce((s, r) => s + (r.adjustment ?? 0), 0),
       closingBalance:   last?.closingBalance ?? (loan.closingBalance ?? loan.currentBalance ?? 0),
       currentPortion:   last?.currentPortion ?? loan.currentPortion ?? 0,
       longTermPortion:  last?.longTermPortion ?? loan.longTermPortion ?? 0,
@@ -274,6 +286,7 @@ export function ContinuityTab() {
     newBorrowings: loanRows.reduce((s, r) => s + r.newBorrowings, 0),
     repayments: loanRows.reduce((s, r) => s + r.repayments, 0),
     fxTranslation: loanRows.reduce((s, r) => s + r.fxTranslation, 0),
+    adjustment: loanRows.reduce((s, r) => s + (r.adjustment ?? 0), 0),
     principalRepayments: loanRows.reduce((s, r) => {
       const loan = loans.find(l => l.id === r.loanId);
       const interest = (loan && r.repayments > 0) ? Math.round(r.openingBalance * (loan.rate / 100 / 12)) : 0;
@@ -418,6 +431,16 @@ export function ContinuityTab() {
                     {colVisible('principalRepayments') && <ThResizable colId="principalRepayments" width={colGetWidth('principalRepayments')} onResizeStart={crh('principalRepayments')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">− Principal</ThResizable>}
                     {colVisible('interestRepayments') && <ThResizable colId="interestRepayments" width={colGetWidth('interestRepayments')} onResizeStart={crh('interestRepayments')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">− Interest</ThResizable>}
                     {colVisible('fxTranslation') && <ThResizable colId="fxTranslation" width={colGetWidth('fxTranslation')} onResizeStart={crh('fxTranslation')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">± FX</ThResizable>}
+                    {colVisible('adjustment') && (
+                      <ThResizable colId="adjustment" width={colGetWidth('adjustment')} onResizeStart={crh('adjustment')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
+                        <span className="flex items-center gap-1">
+                          ± Adj.
+                          <span title="Balance transfer / reclassification between accounts. Positive = received, negative = transferred out. Net across all loans should be zero." className="cursor-help text-primary/70">
+                            <Info className="w-3 h-3" />
+                          </span>
+                        </span>
+                      </ThResizable>
+                    )}
                     {colVisible('closingBalance') && <ThResizable colId="closingBalance" width={colGetWidth('closingBalance')} onResizeStart={crh('closingBalance')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">Closing Balance</ThResizable>}
                     {colVisible('accruedInterest') && (
                       <ThResizable colId="accruedInterest" width={colGetWidth('accruedInterest')} onResizeStart={crh('accruedInterest')} className="text-left px-3 py-3 text-xs font-semibold text-foreground uppercase tracking-wider whitespace-nowrap">
@@ -443,27 +466,31 @@ export function ContinuityTab() {
                     <>
                       {consolidatedByLoan.map(row => {
                         const isAllEditing = editingAllLoansId === row.loanId;
-                        const ae = (k: string) => allLoansEdits[k] ?? (row as unknown as Record<string, number>)[k] ?? 0;
-                        const setAE = (k: string, v: number) => setAllLoansEdits(p => ({ ...p, [k]: v }));
+                        const ae = (k: string): number => (allLoansEdits[k] as number | undefined) ?? (row as unknown as Record<string, number>)[k] ?? 0;
+                        const setAE = (k: string, v: number | string) => setAllLoansEdits(p => ({ ...p, [k]: v }));
                         const IIS = 'input-double-border h-7 w-24 text-xs px-2 tabular-nums border border-[#dcdfe4] rounded-[10px] bg-white dark:bg-card text-foreground text-right focus:outline-none focus:ring-0 transition-all hover:border-[hsl(210_25%_75%)]';
 
                         const saveAllLoansEdit = () => {
                           const periodRows = continuity.filter(r => r.loanId === row.loanId).sort((a, b) => a.period.localeCompare(b.period));
                           const first = periodRows[0];
                           const last  = periodRows[periodRows.length - 1];
+                          const n = (k: string, fallback: number) => (allLoansEdits[k] as number | undefined) ?? fallback;
+                          const s = (k: string, fallback?: string) => (allLoansEdits[k] as string | undefined) ?? fallback;
                           if (last) {
                             updateContinuityRow(last.id, {
-                              closingBalance:  allLoansEdits['closingBalance']  ?? last.closingBalance,
-                              accruedInterest: allLoansEdits['accruedInterest'] ?? last.accruedInterest,
-                              newBorrowings:   allLoansEdits['newBorrowings']   ?? last.newBorrowings,
-                              repayments:      allLoansEdits['repayments']      ?? last.repayments,
-                              fxTranslation:   allLoansEdits['fxTranslation']   ?? last.fxTranslation,
+                              closingBalance:  n('closingBalance',  last.closingBalance),
+                              accruedInterest: n('accruedInterest', last.accruedInterest),
+                              newBorrowings:   n('newBorrowings',   last.newBorrowings),
+                              repayments:      n('repayments',      last.repayments),
+                              fxTranslation:   n('fxTranslation',   last.fxTranslation),
+                              adjustment:      n('adjustment',      last.adjustment ?? 0) || undefined,
+                              adjustmentNote:  s('adjustmentNote',  last.adjustmentNote),
                             });
                           }
                           if (first && first !== last) {
-                            updateContinuityRow(first.id, { openingBalance: allLoansEdits['openingBalance'] ?? first.openingBalance });
+                            updateContinuityRow(first.id, { openingBalance: n('openingBalance', first.openingBalance) });
                           } else if (first) {
-                            updateContinuityRow(first.id, { openingBalance: allLoansEdits['openingBalance'] ?? first.openingBalance });
+                            updateContinuityRow(first.id, { openingBalance: n('openingBalance', first.openingBalance) });
                           }
                           toast.success('Row saved');
                           setEditingAllLoansId(null);
@@ -511,6 +538,25 @@ export function ContinuityTab() {
                                 {isAllEditing
                                   ? <input type="number" value={ae('fxTranslation')} onChange={e => setAE('fxTranslation', parseFloat(e.target.value) || 0)} className={IIS} />
                                   : (() => { const fx = fmtFX(row.fxTranslation); return <span className={fx.cls}>{fx.display}</span>; })()}
+                              </td>
+                            )}
+                            {colVisible('adjustment') && (
+                              <td className="px-3 py-2 tabular-nums text-right">
+                                {isAllEditing ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    <input type="number" placeholder="Amount" value={ae('adjustment')} onChange={e => setAE('adjustment', parseFloat(e.target.value) || 0)} className={IIS} />
+                                    <input type="text" placeholder="Note…" value={allLoansEdits['adjustmentNote'] ?? ''} onChange={e => setAllLoansEdits(p => ({ ...p, adjustmentNote: e.target.value }))} className="input-double-border h-6 w-24 text-[10px] px-2 border border-[#dcdfe4] rounded-[8px] bg-white dark:bg-card text-foreground focus:outline-none transition-all hover:border-[hsl(210_25%_75%)]" />
+                                  </div>
+                                ) : (() => {
+                                  const adj = fmtAdj(row.adjustment ?? 0);
+                                  const note = continuity.filter(r => r.loanId === row.loanId).find(r => r.adjustmentNote)?.adjustmentNote;
+                                  return (
+                                    <span className={`${adj.cls} tabular-nums`} title={note ?? ''}>
+                                      {adj.display}
+                                      {note && <span className="ml-1 text-[10px] text-muted-foreground not-italic">[{note}]</span>}
+                                    </span>
+                                  );
+                                })()}
                               </td>
                             )}
                             {colVisible('closingBalance') && (
@@ -655,6 +701,35 @@ export function ContinuityTab() {
                             )}
                           </td>
                         )}
+                        {/* ± Adj. — balance transfer / reclassification */}
+                        {colVisible('adjustment') && (
+                          <td className="px-3 py-2 tabular-nums text-right">
+                            {isEditing ? (
+                              <div className="flex flex-col gap-0.5 items-end">
+                                <input type="number" value={ed.adjustment ?? 0}
+                                  onChange={e => setCEdit('adjustment', parseFloat(e.target.value) || 0)}
+                                  className="input-double-border h-7 w-24 text-xs px-2 tabular-nums border border-[#dcdfe4] rounded-[10px] bg-white dark:bg-card text-foreground text-right focus:outline-none focus:ring-0 transition-all hover:border-[hsl(210_25%_75%)]"
+                                  placeholder="0" />
+                                <input type="text" value={ed.adjustmentNote ?? ''}
+                                  onChange={e => setCEdit('adjustmentNote', e.target.value)}
+                                  placeholder="Note / counterpart…"
+                                  className="input-double-border h-6 w-28 text-[10px] px-2 border border-[#dcdfe4] rounded-[8px] bg-white dark:bg-card text-foreground focus:outline-none transition-all hover:border-[hsl(210_25%_75%)]" />
+                              </div>
+                            ) : (() => {
+                              const adj = fmtAdj(row.adjustment ?? 0);
+                              return (
+                                <span className={`${adj.cls} tabular-nums`} title={row.adjustmentNote ?? ''}>
+                                  {adj.display}
+                                  {row.adjustmentNote && (
+                                    <span className="block text-[10px] text-muted-foreground font-normal leading-tight max-w-[7rem] truncate" title={row.adjustmentNote}>
+                                      {row.adjustmentNote}
+                                    </span>
+                                  )}
+                                </span>
+                              );
+                            })()}
+                          </td>
+                        )}
                         {/* Closing Balance */}
                         {colVisible('closingBalance') && (
                           <td className="px-3 py-2 tabular-nums text-right">
@@ -725,11 +800,12 @@ export function ContinuityTab() {
                     newBorrowings:   s.newBorrowings   + r.newBorrowings,
                     repayments:      s.repayments      + r.repayments,
                     fxTranslation:   s.fxTranslation   + r.fxTranslation,
+                    adjustment:      s.adjustment      + r.adjustment,
                     closingBalance:  s.closingBalance   + r.closingBalance,
                     currentPortion:  s.currentPortion  + r.currentPortion,
                     longTermPortion: s.longTermPortion  + r.longTermPortion,
                     accruedInterest: s.accruedInterest  + r.accruedInterest,
-                  }), { openingBalance:0, newBorrowings:0, repayments:0, fxTranslation:0, closingBalance:0, currentPortion:0, longTermPortion:0, accruedInterest:0 });
+                  }), { openingBalance:0, newBorrowings:0, repayments:0, fxTranslation:0, adjustment:0, closingBalance:0, currentPortion:0, longTermPortion:0, accruedInterest:0 });
                   return (
                     <tfoot className="sticky bottom-0 z-10">
                       <tr className="bg-muted/80 border-t-2 border-primary/20 font-semibold">
@@ -739,6 +815,7 @@ export function ContinuityTab() {
                         {colVisible('principalRepayments') && <td className="px-3 py-2.5 tabular-nums text-right text-foreground">{gt.repayments > 0 ? `(${fmtNumber(gt.repayments)})` : '00'}</td>}
                         {colVisible('interestRepayments') && <td className="px-3 py-2.5" />}
                         {colVisible('fxTranslation') && <td className="px-3 py-2.5 tabular-nums text-right">{(() => { const fx = fmtFX(gt.fxTranslation); return <span className={fx.cls}>{fx.display}</span>; })()}</td>}
+                        {colVisible('adjustment') && <td className="px-3 py-2.5 tabular-nums text-right">{(() => { const adj = fmtAdj(gt.adjustment); return <span className={adj.cls + (gt.adjustment !== 0 ? ' font-semibold' : '')}>{adj.display}{gt.adjustment !== 0 && <span className="ml-1 text-[10px] font-normal text-muted-foreground" title="Net adjustment across all loans — should be zero if transfers are balanced">{gt.adjustment === 0 ? '✓' : '⚠ net ≠ 0'}</span>}</span>; })()}</td>}
                         {colVisible('closingBalance') && <td className="px-3 py-2.5 tabular-nums text-right font-bold text-foreground">{fmtNumber(gt.closingBalance)}</td>}
                         {colVisible('accruedInterest') && <td className="px-3 py-2.5 tabular-nums text-right text-foreground">{fmtNumber(gt.accruedInterest)}</td>}
                         <td />
@@ -755,6 +832,7 @@ export function ContinuityTab() {
                       {colVisible('principalRepayments') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{totals.principalRepayments > 0 ? `(${fmtNumber(totals.principalRepayments)})` : '00'}</td>}
                       {colVisible('interestRepayments') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{totals.interestRepayments > 0 ? `(${fmtNumber(totals.interestRepayments)})` : '00'}</td>}
                       {colVisible('fxTranslation') && <td className="px-3 py-2.5 text-right tabular-nums">{(() => { const fx = fmtFX(totals.fxTranslation); return <span className={fx.cls}>{fx.display}</span>; })()}</td>}
+                      {colVisible('adjustment') && <td className="px-3 py-2.5 text-right tabular-nums">{(() => { const adj = fmtAdj(totals.adjustment); return <span className={adj.cls}>{adj.display}</span>; })()}</td>}
                       {colVisible('closingBalance') && <td className="px-3 py-2.5 text-right tabular-nums font-bold text-foreground">{fmtNumber(closing?.closingBalance || 0)}</td>}
                       {colVisible('accruedInterest') && <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmtNumber(closing?.accruedInterest || 0)}</td>}
                       <td />
@@ -1045,11 +1123,12 @@ function AddContinuityRowModal({ open, onClose, loanId, onSave }: {
   open: boolean; onClose: () => void; loanId: string;
   onSave: (row: ContinuityRow) => void;
 }) {
-  const [form, setForm] = useState({ period: '2025-01', openingBalance: 0, newBorrowings: 0, repayments: 0, fxTranslation: 0, notes: '', isManualAdjustment: false });
+  const [form, setForm] = useState({ period: '2025-01', openingBalance: 0, newBorrowings: 0, repayments: 0, fxTranslation: 0, adjustment: 0, adjustmentNote: '', notes: '', isManualAdjustment: false });
   const f = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(p => ({ ...p, [k]: e.type === 'checkbox' ? e.target.checked : parseFloat(e.target.value) || e.target.value }));
 
+  const closing = form.openingBalance + form.newBorrowings - form.repayments + form.fxTranslation + form.adjustment;
+
   const handleSave = () => {
-    const closing = form.openingBalance + form.newBorrowings - form.repayments + form.fxTranslation;
     onSave({
       id: `cont-${Date.now()}`, loanId,
       period: form.period,
@@ -1057,6 +1136,8 @@ function AddContinuityRowModal({ open, onClose, loanId, onSave }: {
       newBorrowings: form.newBorrowings,
       repayments: form.repayments,
       fxTranslation: form.fxTranslation,
+      adjustment: form.adjustment || undefined,
+      adjustmentNote: form.adjustmentNote || undefined,
       closingBalance: closing,
       currentPortion: closing,
       longTermPortion: 0,
@@ -1076,6 +1157,23 @@ function AddContinuityRowModal({ open, onClose, loanId, onSave }: {
         <Input label="New Borrowings / Draws" type="number" value={form.newBorrowings} onChange={f('newBorrowings')} prefix="$" />
         <Input label="Principal Repayments" type="number" value={form.repayments} onChange={f('repayments')} prefix="$" />
         <Input label="FX Translation" type="number" value={form.fxTranslation} onChange={f('fxTranslation')} prefix="$" hint="Enter negative for FX loss" />
+        {/* ± Adjustment row */}
+        <div className="p-3 rounded-xl border border-border bg-muted/40 space-y-2">
+          <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+            ± Balance Adjustment / Transfer
+            <span className="font-normal text-muted-foreground">(optional)</span>
+          </p>
+          <Input label="Amount" type="number" value={form.adjustment} onChange={f('adjustment')} prefix="$"
+            hint="Positive = received from another account · Negative = transferred out" />
+          <Input label="Note / Counterpart account" value={form.adjustmentNote}
+            onChange={(e) => setForm(p => ({ ...p, adjustmentNote: e.target.value }))}
+            placeholder="e.g. Transferred to Term Loan B" />
+        </div>
+        {/* Computed closing preview */}
+        <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-primary/5 border border-primary/10">
+          <span className="text-xs text-muted-foreground">Computed Closing Balance</span>
+          <span className="text-sm font-semibold text-foreground tabular-nums">${closing.toLocaleString('en-CA', { minimumFractionDigits: 2 })}</span>
+        </div>
         <Input label="Notes" value={form.notes} onChange={(e) => setForm(p => ({ ...p, notes: e.target.value }))} />
         <label className="flex items-center gap-2 text-sm cursor-pointer">
           <input type="checkbox" checked={form.isManualAdjustment} onChange={(e) => setForm(p => ({ ...p, isManualAdjustment: e.target.checked }))} className="rounded border-border accent-primary" />
