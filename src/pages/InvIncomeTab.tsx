@@ -6,7 +6,7 @@ import {
 import { formatTbAccount } from '@/lib/luka/coa';
 import type { IncomeMatrixRow } from '@/lib/luka/compute';
 import type { IncomeType } from '@/lib/luka/types';
-import { fmtCcy, fmtSigned } from './InvHoldingsTab';
+import { fmtNum, fmtCcy, fmtSigned } from './InvHoldingsTab';
 import { ColFilter, SearchFilter, ClearFiltersBtn } from './InvTableFilters';
 
 interface Props {
@@ -17,8 +17,17 @@ interface Props {
   };
 }
 
-const INCOME_TYPES: IncomeType[] = ["Dividend", "Interest", "Withholding Tax", "Fees", "Other"];
+const INCOME_COLS:  IncomeType[] = ["Dividend", "Interest", "Other"];
+const EXPENSE_COLS: IncomeType[] = ["Withholding Tax", "Fees"];
+const INCOME_TYPES: IncomeType[] = [...INCOME_COLS, ...EXPENSE_COLS];
 const CCY_OPTIONS = ["CAD", "USD", "EUR", "GBP"];
+
+/** Returns border classes that bracket the expense group with dividers on both sides */
+function groupBorder(k: IncomeType) {
+  if (k === EXPENSE_COLS[0])                          return 'border-l-2 border-border';
+  if (k === EXPENSE_COLS[EXPENSE_COLS.length - 1])    return 'border-r-2 border-border';
+  return '';
+}
 
 export function InvIncomeTab({ incomeMatrix }: Props) {
   const [filterSecurity, setFilterSecurity] = useState("");
@@ -68,7 +77,7 @@ export function InvIncomeTab({ incomeMatrix }: Props) {
                 <ColFilter label="CCY" options={uniqueCcys.length ? uniqueCcys : CCY_OPTIONS} value={filterCcy} onChange={setFilterCcy} />
               </th>
               {INCOME_TYPES.map((k) => (
-                <th key={k} className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{k}</th>
+                <th key={k} className={`text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${groupBorder(k)}`}>{k}</th>
               ))}
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Total (CAD)</th>
             </tr>
@@ -85,13 +94,13 @@ export function InvIncomeTab({ incomeMatrix }: Props) {
                 </td>
                 {INCOME_TYPES.map((k) => {
                   const c = r.cells[k];
-                  if (!c) return <td key={k} className="px-4 py-3 text-right text-muted-foreground">—</td>;
+                  if (!c) return <td key={k} className={`px-4 py-3 text-right tabular-nums text-xs ${groupBorder(k)}`}>{fmtNum(0)}</td>;
                   return (
-                    <td key={k} className="px-4 py-3 text-right tabular-nums text-xs">
+                    <td key={k} className={`px-4 py-3 text-right tabular-nums text-xs ${groupBorder(k)}`}>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className={`cursor-help ${c.cad < 0 ? "text-destructive" : "text-green-600"}`}>
+                            <span className="cursor-help text-foreground">
                               {fmtCcy(c.cad, "CAD")}
                             </span>
                           </TooltipTrigger>
@@ -103,7 +112,7 @@ export function InvIncomeTab({ incomeMatrix }: Props) {
                     </td>
                   );
                 })}
-                <td className={`px-4 py-3 text-right tabular-nums font-medium ${r.totalCAD >= 0 ? "text-green-600" : "text-destructive"}`}>
+                <td className={`px-4 py-3 text-right tabular-nums font-medium ${r.totalCAD >= 0 ? "text-foreground" : "text-foreground"}`}>
                   {fmtSigned(r.totalCAD)}
                 </td>
               </tr>
@@ -120,7 +129,7 @@ export function InvIncomeTab({ incomeMatrix }: Props) {
               <td className="px-4 py-3 text-sm">Totals</td>
               <td />
               {INCOME_TYPES.map((k) => (
-                <td key={k} className={`px-4 py-3 text-right tabular-nums ${incomeMatrix.totals[k] >= 0 ? "text-green-600" : "text-destructive"}`}>
+                <td key={k} className={`px-4 py-3 text-right tabular-nums text-foreground ${groupBorder(k)}`}>
                   {fmtSigned(incomeMatrix.totals[k])}
                 </td>
               ))}
@@ -133,7 +142,7 @@ export function InvIncomeTab({ incomeMatrix }: Props) {
               <td className="px-4 py-3 text-muted-foreground">TB Account →</td>
               <td />
               {INCOME_TYPES.map((k) => (
-                <td key={k} className="px-4 py-3 text-right text-muted-foreground">
+                <td key={k} className={`px-4 py-3 text-right text-muted-foreground ${groupBorder(k)}`}>
                   {formatTbAccount(incomeMatrix.tbMap[k])}
                 </td>
               ))}

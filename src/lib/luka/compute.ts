@@ -22,6 +22,7 @@ export type WacRow = {
   cumCost: number; // CAD
   wac: number; // CAD per unit
   realizedGL?: number;
+  feesCAD?: number;   // transaction costs deducted from gross proceeds (Sale rows only)
   notes?: string;
 };
 
@@ -116,12 +117,14 @@ export function compute(
       });
     } else if (tx.type === "Sale") {
       const proceedsCAD = (tx.gross - tx.fees) * fx;
+      const feesCAD     = tx.fees * fx;
       b.rows.push({
         date: tx.date, type: "Sale",
         unitsIn: 0, unitsOut: Math.abs(tx.units),
         price: tx.price, costIn: 0, costOut: 0, // costOut filled below
         cumUnits: 0, cumCost: 0, wac: 0,
         realizedGL: proceedsCAD, // will subtract WAC cost below
+        feesCAD: feesCAD > 0 ? feesCAD : undefined,
         notes: tx.notes,
       });
     } else if (tx.type === "Reinvested Dividend") {

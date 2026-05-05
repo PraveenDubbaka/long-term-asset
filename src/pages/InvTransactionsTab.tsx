@@ -63,6 +63,7 @@ export function InvTransactionsTab({
   const [filterSource,   setFilterSource]   = useState("");
   const [filterType,     setFilterType]     = useState("");
   const [filterSecurity, setFilterSecurity] = useState("");
+  const IIC = 'input-double-border h-9 text-sm px-3 border border-[#dcdfe4] rounded-[10px] bg-white dark:bg-card text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] focus:outline-none focus:ring-0';
 
   const anyColFilter = filterSource || filterType || filterSecurity;
 
@@ -150,7 +151,7 @@ export function InvTransactionsTab({
         <div className="flex items-center gap-2">
           <button
             onClick={() => { setAddingNew(true); setNewTx({ date: '2024-01-01', security: '', ticker: '', type: 'Purchase', units: 0, price: 0, fees: 0, currency: 'CAD', status: 'pending' }); setTxStatusFilter('all'); }}
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-primary bg-primary/5 text-primary text-xs font-medium hover:bg-primary/10 transition-colors"
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-primary bg-primary/5 text-primary text-xs font-medium hover:bg-primary/10 transition-colors"
           >
             <Plus className="h-3.5 w-3.5" /> Add Transaction
           </button>
@@ -221,7 +222,8 @@ export function InvTransactionsTab({
                   }}
                 />
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Date</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Trade Date</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Settlement</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 <ColFilter
                   label="Source"
@@ -259,23 +261,24 @@ export function InvTransactionsTab({
             {addingNew && (
               <tr className="border-b border-border/50 bg-primary/5">
                 <td className="px-4 py-2"><span /></td>
-                <td className="px-4 py-2"><input type="date" value={newTx.date ?? ''} onChange={e => setNewTx(d => ({...d, date: e.target.value}))} className="h-7 w-28 text-xs px-2 border border-border rounded-md bg-background" /></td>
-                <td className="px-4 py-2"><select value={newTx.sourceId ?? ''} onChange={e => setNewTx(d => ({...d, sourceId: e.target.value}))} className="h-7 text-xs px-2 border border-border rounded-md bg-background w-20"><option value="">—</option>{allSources.map(s => <option key={s.id} value={s.id}>{s.institution.split(' ')[0]}</option>)}</select></td>
+                <td className="px-4 py-2"><input type="date" value={newTx.tradeDate ?? newTx.date ?? ''} onChange={e => setNewTx(d => ({...d, date: e.target.value, tradeDate: e.target.value}))} className={`${IIC} w-28`} title="Trade date (also sets booking date)" /></td>
+                <td className="px-4 py-2"><input type="date" value={newTx.settlementDate ?? ''} onChange={e => setNewTx(d => ({...d, settlementDate: e.target.value || undefined}))} className={`${IIC} w-28`} title="Settlement date" /></td>
+                <td className="px-4 py-2"><select value={newTx.sourceId ?? ''} onChange={e => setNewTx(d => ({...d, sourceId: e.target.value}))} className={`${IIC} w-20 cursor-pointer`}><option value="">—</option>{allSources.map(s => <option key={s.id} value={s.id}>{s.institution.split(' ')[0]}</option>)}</select></td>
                 <td className="px-4 py-2">
-                  <input placeholder="Security" value={newTx.security ?? ''} onChange={e => setNewTx(d => ({...d, security: e.target.value}))} className="h-7 text-xs px-2 border border-border rounded-md bg-background w-32" />
-                  <input placeholder="Ticker" value={newTx.ticker ?? ''} onChange={e => setNewTx(d => ({...d, ticker: e.target.value}))} className="h-7 text-xs px-2 border border-border rounded-md bg-background w-16 mt-0.5" />
+                  <input placeholder="Security" value={newTx.security ?? ''} onChange={e => setNewTx(d => ({...d, security: e.target.value}))} className={`${IIC} w-32`} />
+                  <input placeholder="Ticker" value={newTx.ticker ?? ''} onChange={e => setNewTx(d => ({...d, ticker: e.target.value}))} className={`${IIC} w-16 mt-0.5`} />
                 </td>
                 <td className="px-4 py-2">
-                  <select value={newTx.type ?? 'Purchase'} onChange={e => setNewTx(d => ({...d, type: e.target.value as Transaction['type']}))} className="h-7 text-xs px-2 border border-border rounded-md bg-background">
+                  <select value={newTx.type ?? 'Purchase'} onChange={e => setNewTx(d => ({...d, type: e.target.value as Transaction['type']}))} className={`${IIC} cursor-pointer`}>
                     {(['Purchase','Sale','Dividend','Interest','Fee/Commission','Withholding Tax','Return of Capital','Reinvested Dividend','Transfer In','Transfer Out'] as Transaction['type'][]).map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </td>
-                <td className="px-4 py-2 text-right"><input type="number" value={newTx.units ?? 0} onChange={e => setNewTx(d => ({...d, units: parseFloat(e.target.value)||0}))} className="h-7 w-20 text-xs px-2 border border-border rounded-md bg-background text-right" /></td>
-                <td className="px-4 py-2 text-right"><input type="number" value={newTx.price ?? 0} onChange={e => setNewTx(d => ({...d, price: parseFloat(e.target.value)||0}))} className="h-7 w-20 text-xs px-2 border border-border rounded-md bg-background text-right" /></td>
-                <td className="px-4 py-2 text-right"><input type="number" value={newTx.fxRate ?? ''} onChange={e => setNewTx(d => ({...d, fxRate: parseFloat(e.target.value)||undefined}))} className="h-7 w-20 text-xs px-2 border border-border rounded-md bg-background text-right" /></td>
-                <td className="px-4 py-2 text-right text-muted-foreground text-xs">—</td>
-                <td className="px-4 py-2"><select value={newTx.tbAccount ?? ''} onChange={e => setNewTx(d => ({...d, tbAccount: e.target.value}))} className="h-7 rounded-md border border-border bg-background px-2 text-xs w-[180px]">{CHART_OF_ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.code} · {a.name}</option>)}</select></td>
-                <td className="px-4 py-2"><select value={newTx.status ?? 'pending'} onChange={e => setNewTx(d => ({...d, status: e.target.value as Transaction['status']}))} className="h-7 text-xs px-2 border border-border rounded-md bg-background"><option value="pending">Pending</option><option value="approved">Approved</option><option value="published">Published</option></select></td>
+                <td className="px-4 py-2 text-right"><input type="number" value={newTx.units ?? 0} onChange={e => setNewTx(d => ({...d, units: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} /></td>
+                <td className="px-4 py-2 text-right"><input type="number" value={newTx.price ?? 0} onChange={e => setNewTx(d => ({...d, price: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} /></td>
+                <td className="px-4 py-2 text-right"><input type="number" value={newTx.fxRate ?? ''} onChange={e => setNewTx(d => ({...d, fxRate: parseFloat(e.target.value)||undefined}))} className={`${IIC} w-20 text-right`} /></td>
+                <td className="px-4 py-2 text-right tabular-nums text-xs">0.00</td>
+                <td className="px-4 py-2"><select value={newTx.tbAccount ?? ''} onChange={e => setNewTx(d => ({...d, tbAccount: e.target.value}))} className={`${IIC} w-[180px] cursor-pointer`}>{CHART_OF_ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.code} · {a.name}</option>)}</select></td>
+                <td className="px-4 py-2"><select value={newTx.status ?? 'pending'} onChange={e => setNewTx(d => ({...d, status: e.target.value as Transaction['status']}))} className={`${IIC} cursor-pointer`}><option value="pending">Pending</option><option value="approved">Approved</option><option value="published">Published</option></select></td>
                 <td className="px-4 py-2"></td>
                 <td className="px-3 py-2">
                   <div className="flex gap-0.5">
@@ -297,7 +300,7 @@ export function InvTransactionsTab({
               const issues = validateTx(t);
               const status = (t.status ?? "published") as TxStatus;
               return (
-                <tr key={t.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                <tr key={t.id} className={`border-b border-border/50 hover:bg-muted/30 transition-colors${selectedTx.has(t.id) ? ' bg-primary/5' : ''}`}>
                   <td className="px-4 py-3">
                     <Checkbox
                       checked={selectedTx.has(t.id)}
@@ -312,8 +315,33 @@ export function InvTransactionsTab({
                   </td>
                   <td className="px-4 py-3 text-xs whitespace-nowrap">
                     {editId === t.id
-                      ? <input type="date" value={editData.date ?? t.date} onChange={e => setEditData(d => ({...d, date: e.target.value}))} className="h-7 w-28 text-xs px-2 border border-border rounded-md bg-background" />
-                      : t.date}
+                      ? (
+                        <input
+                          type="date"
+                          title="Trade date (also updates booking date)"
+                          value={editData.tradeDate ?? editData.date ?? t.tradeDate ?? t.date}
+                          onChange={e => setEditData(d => ({...d, date: e.target.value, tradeDate: e.target.value}))}
+                          className={`${IIC} w-28`}
+                        />
+                      )
+                      : (t.tradeDate ?? t.date)
+                    }
+                  </td>
+                  <td className="px-4 py-3 text-xs whitespace-nowrap">
+                    {editId === t.id
+                      ? (
+                        <input
+                          type="date"
+                          title="Settlement date"
+                          value={editData.settlementDate ?? t.settlementDate ?? ''}
+                          onChange={e => setEditData(d => ({...d, settlementDate: e.target.value || undefined}))}
+                          className={`${IIC} w-28`}
+                        />
+                      )
+                      : (t.settlementDate
+                          ? t.settlementDate
+                          : <span className="text-muted-foreground text-[11px]">—</span>)
+                    }
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant="outline" className="text-xs">
@@ -334,30 +362,34 @@ export function InvTransactionsTab({
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums text-xs">
                     {editId === t.id
-                      ? <input type="number" value={editData.units ?? t.units} onChange={e => setEditData(d => ({...d, units: parseFloat(e.target.value)||0}))} className="h-7 w-20 text-xs px-2 border border-border rounded-md bg-background text-right" />
-                      : t.units !== 0 ? fmtNum(t.units, 2) : '—'}
+                      ? <input type="number" value={editData.units ?? t.units} onChange={e => setEditData(d => ({...d, units: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} />
+                      : fmtNum(t.units, 2)}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums text-xs">
                     {editId === t.id
-                      ? <input type="number" value={editData.price ?? t.price} onChange={e => setEditData(d => ({...d, price: parseFloat(e.target.value)||0}))} className="h-7 w-20 text-xs px-2 border border-border rounded-md bg-background text-right" />
-                      : t.price ? fmtNum(t.price) : '—'}
+                      ? <input type="number" value={editData.price ?? t.price} onChange={e => setEditData(d => ({...d, price: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} />
+                      : fmtNum(t.price ?? 0)}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums text-xs">
                     {editId === t.id
-                      ? <input type="number" value={editData.fxRate ?? t.fxRate ?? ''} onChange={e => setEditData(d => ({...d, fxRate: parseFloat(e.target.value)||undefined}))} className="h-7 w-20 text-xs px-2 border border-border rounded-md bg-background text-right" />
-                      : t.fxRate ? fmtNum(t.fxRate, 4) : '—'}
+                      ? <input type="number" value={editData.fxRate ?? t.fxRate ?? ''} onChange={e => setEditData(d => ({...d, fxRate: parseFloat(e.target.value)||undefined}))} className={`${IIC} w-20 text-right`} />
+                      : fmtNum(t.fxRate ?? 0, 4)}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-xs">{t.net ? fmtNum(t.net) : "—"}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-xs">{fmtNum(t.net ?? 0)}</td>
                   <td className="px-4 py-3">
-                    <select
-                      value={t.tbAccount ?? defaultTbAccount(t.type)}
-                      onChange={(e) => updateTx(t.id, { tbAccount: e.target.value })}
-                      className="h-8 rounded-md border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring w-[210px]"
-                    >
-                      {CHART_OF_ACCOUNTS.map((a) => (
-                        <option key={a.code} value={a.code}>{a.code} · {a.name}</option>
-                      ))}
-                    </select>
+                    {editId === t.id ? (
+                      <select
+                        value={editData.tbAccount ?? t.tbAccount ?? defaultTbAccount(t.type)}
+                        onChange={e => setEditData(d => ({...d, tbAccount: e.target.value}))}
+                        className={`${IIC} w-[180px] cursor-pointer`}
+                      >
+                        {CHART_OF_ACCOUNTS.map((a) => (
+                          <option key={a.code} value={a.code}>{a.code} · {a.name}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-xs text-muted-foreground font-mono">{t.tbAccount ?? defaultTbAccount(t.type)}</span>
+                    )}
                   </td>
                   <td className="px-4 py-3"><TxStatusBadge status={status} /></td>
                   <td className="px-4 py-3">
@@ -394,7 +426,7 @@ export function InvTransactionsTab({
             })}
             {visibleTxns.length === 0 && (
               <tr>
-                <td colSpan={13} className="text-center text-sm text-muted-foreground py-8">
+                <td colSpan={14} className="text-center text-sm text-muted-foreground py-8">
                   {anyColFilter
                     ? "No transactions match the active filters."
                     : "No transactions in this status."}

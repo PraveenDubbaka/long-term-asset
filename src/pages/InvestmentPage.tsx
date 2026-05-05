@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import {
   Building2, ChevronDown, ChevronRight, FileText, Settings2,
@@ -25,9 +25,11 @@ import { InvWACTab }          from "./InvWACTab";
 import { InvGainLossTab }     from "./InvGainLossTab";
 import { InvFXTab }           from "./InvFXTab";
 import { InvAJEsTab }         from "./InvAJEsTab";
+import type { LocalInvJE }    from "./InvAJEsTab";
 import { InvIncomeTab }       from "./InvIncomeTab";
 import { InvBrokerReconTab }  from "./InvBrokerReconTab";
 import { InvFlagsTab }        from "./InvFlagsTab";
+import { InvUnrealizedTab }   from "./InvUnrealizedTab";
 import { usePlaidStore } from "../store/usePlaidStore";
 import type { PlaidInstitution } from "../store/usePlaidStore";
 import {
@@ -75,6 +77,7 @@ const tabs = [
   { id: "transactions", label: "Transactions"       },
   { id: "wac",          label: "WAC Schedule"       },
   { id: "gainloss",     label: "Gain / Loss"        },
+  { id: "unrealized",   label: "Unrealized G/L"     },
   { id: "fx",           label: "FX Schedule"        },
   { id: "income",       label: "Income & Expenses"  },
   { id: "brokerrecon",  label: "Broker Recon"       },
@@ -166,6 +169,24 @@ const InvestmentPage = () => {
     return [...kept, ...imported.filter(t => !hiddenTxIds.has(t.id)), ...plaidTxns.filter(t => !hiddenTxIds.has(t.id)), ...manualTxns];
   }, [importedTxnsBySource, plaidTxns, hiddenTxIds, manualTxns]);
   const [txEdits, setTxEdits] = useState<Record<string, Partial<Transaction>>>({});
+
+  // ── AJE push queue — collects entries from Gain/Loss, WAC, Unrealized, Recon tabs ──
+  const [ajeQueue, setAjeQueue] = useState<LocalInvJE[]>([]);
+  const pushToAJEs = useCallback(
+    (je: Omit<LocalInvJE, '_id' | 'status' | 'deleted' | 'deletedAt'>) => {
+      const full: LocalInvJE = {
+        ...je,
+        _id:     `pushed-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        status:  'Draft',
+        deleted: false,
+      };
+      setAjeQueue((prev) => [...prev, full]);
+      setActiveTab('ajes');
+    },
+    [],
+  );
+  const clearAjeQueue = useCallback(() => setAjeQueue([]), []);
+
   const effectiveTxns = useMemo(
     () => baseTxns.map((t) => ({ ...t, ...txEdits[t.id] })),
     [baseTxns, txEdits],
@@ -349,11 +370,16 @@ const InvestmentPage = () => {
                       <select
                         value={opts.measurementBasis}
                         onChange={(e) => setOpts((o) => ({ ...o, measurementBasis: e.target.value as "Cost" | "FVTPL" }))}
-                        className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                        className="input-double-border h-9 w-full pl-3 pr-8 text-sm rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground appearance-none transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] focus:outline-none focus:ring-0 focus:border-primary/40"
                       >
                         <option value="Cost">Cost method (no MTM)</option>
                         <option value="FVTPL">Fair value through P&amp;L</option>
                       </select>
+                      <p className="text-xs text-muted-foreground">
+                        {opts.measurementBasis === 'FVTPL'
+                          ? 'Fair value AJEs will be suggested in the Unrealized G/L tab.'
+                          : 'Unrealized G/L shown for disclosure only — no AJEs generated.'}
+                      </p>
                     </div>
                   </div>
                 </PopoverContent>
@@ -407,10 +433,17 @@ const InvestmentPage = () => {
             />
           </div>
           <div className={`flex-1 ${activeTab === "wac" ? "" : "hidden"}`}>
-            <InvWACTab schedules={schedules} opts={opts} />
+            <InvWACTab schedules={schedules} opts={opts} onAddToAJEs={pushToAJEs} />
           </div>
           <div className={`flex-1 ${activeTab === "gainloss" ? "" : "hidden"}`}>
-            <InvGainLossTab schedules={schedules} totals={invTotals} />
+            <InvGainLossTab schedules={schedules} totals={invTotals} onAddToAJEs={pushToAJEs} />
+          </div>
+          <div className={`flex-1 ${activeTab === "unrealized" ? "" : "hidden"}`}>
+            <InvUnrealizedTab
+              schedules={schedules}
+              measurementBasis={opts.measurementBasis}
+              onAddToAJEs={pushToAJEs}
+            />
           </div>
           <div className={`flex-1 ${activeTab === "fx" ? "" : "hidden"}`}>
             <InvFXTab fxSchedule={fxSchedule} />
@@ -419,10 +452,10 @@ const InvestmentPage = () => {
             <InvIncomeTab incomeMatrix={incomeMatrix} />
           </div>
           <div className={`flex-1 ${activeTab === "brokerrecon" ? "" : "hidden"}`}>
-            <InvBrokerReconTab invRecon={invRecon} cashRecon={cashRecon} />
+            <InvBrokerReconTab invRecon={invRecon} cashRecon={cashRecon} onAddToAJEs={pushToAJEs} />
           </div>
           <div className={`flex-1 ${activeTab === "ajes" ? "" : "hidden"}`}>
-            <InvAJEsTab ajes={ajes} />
+            <InvAJEsTab ajes={ajes} pendingQueue={ajeQueue} onQueueConsumed={clearAjeQueue} />
           </div>
           <div className={`flex-1 ${activeTab === "sources" ? "" : "hidden"}`}>
             <InvFlagsTab
@@ -590,7 +623,7 @@ const InvestmentPage = () => {
                       <div className="space-y-3">
                         <div className="relative">
                           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                          <input className="w-full h-9 pl-8 pr-3 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                          <input className="input-double-border w-full h-9 pl-8 pr-3 text-sm rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground placeholder:text-muted-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] focus:outline-none focus:ring-0 focus:border-primary/40"
                             placeholder="Search 12,000+ institutions…" value={plaidSearch}
                             onChange={e => setPlaidSearch(e.target.value)} autoFocus />
                         </div>
@@ -623,14 +656,14 @@ const InvestmentPage = () => {
                         <div className="space-y-3">
                           <div>
                             <label className="block text-xs font-medium text-foreground mb-1.5">Username / Card Number</label>
-                            <input className="w-full h-9 px-3 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                            <input className="input-double-border w-full h-9 px-3 text-sm rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground placeholder:text-muted-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] focus:outline-none focus:ring-0 focus:border-primary/40"
                               placeholder="Enter username" value={plaidUsername}
                               onChange={e => setPlaidUsername(e.target.value)} autoFocus />
                           </div>
                           <div>
                             <label className="block text-xs font-medium text-foreground mb-1.5">Password</label>
                             <div className="relative">
-                              <input className="w-full h-9 px-3 pr-9 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                              <input className="input-double-border w-full h-9 px-3 pr-9 text-sm rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground placeholder:text-muted-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] focus:outline-none focus:ring-0 focus:border-primary/40"
                                 type={plaidShowPwd ? 'text' : 'password'} placeholder="Enter password"
                                 value={plaidPassword} onChange={e => setPlaidPassword(e.target.value)}
                                 onKeyDown={e => { if (e.key === 'Enter') handlePlaidVerify(); }} />

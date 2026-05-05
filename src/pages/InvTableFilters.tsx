@@ -7,7 +7,7 @@ import ReactDOM from 'react-dom';
 import { ListFilter, X } from 'lucide-react';
 
 const INPUT_CLS =
-  "w-full text-xs px-2.5 py-1.5 rounded-md border border-border bg-background text-foreground placeholder:text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50";
+  "w-full text-xs px-2.5 py-1.5 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
 
 // ─── Dropdown filter for categorical columns ──────────────────────────────────
 export function ColFilter({
@@ -26,7 +26,9 @@ export function ColFilter({
   useEffect(() => {
     if (open && btnRef.current) {
       const r = btnRef.current.getBoundingClientRect();
-      setPos({ top: r.bottom + 6, left: r.left });
+      const dropW = 180;
+      const left = r.left + dropW > window.innerWidth - 8 ? r.right - dropW : r.left;
+      setPos({ top: r.bottom + 6, left: Math.max(8, left) });
     }
   }, [open]);
 
@@ -107,7 +109,9 @@ export function SearchFilter({
   useEffect(() => {
     if (open && btnRef.current) {
       const r = btnRef.current.getBoundingClientRect();
-      setPos({ top: r.bottom + 6, left: r.left });
+      const dropW = 200;
+      const left = r.left + dropW > window.innerWidth - 8 ? r.right - dropW : r.left;
+      setPos({ top: r.bottom + 6, left: Math.max(8, left) });
     }
   }, [open]);
 

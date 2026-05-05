@@ -108,7 +108,7 @@ export default function InvPriorYearImport({ onApply, onReset, applied, appliedC
   return (
     <div className="rounded-xl border border-border bg-card">
       <div className="p-4 border-b border-border">
-        <div className="flex items-center gap-2 text-base font-semibold">
+        <div className="flex items-center gap-2 text-sm font-semibold">
           <FileSpreadsheet className="h-4 w-4 text-primary" /> Prior-Year Schedule Import
         </div>
         <p className="text-sm text-muted-foreground mt-1">

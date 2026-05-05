@@ -126,12 +126,12 @@ function typeBadgeClass(t: string): string {
   if (t === 'Fee')               return 'bg-slate-100 text-slate-600';
   if (t === 'Switch In')         return 'bg-violet-50 text-violet-700';
   if (t === 'Switch Out')        return 'bg-violet-50 text-violet-700';
-  return 'bg-muted text-foreground/70';
+  return 'bg-muted text-muted-foreground';
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmt2(n: number) { return n.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-function fmtCAD(n: number) { return (n < 0 ? '(' : '') + '$' + fmt2(Math.abs(n)) + (n < 0 ? ')' : ''); }
+function fmtCAD(n: number) { return (n < 0 ? '(' : '') + fmt2(Math.abs(n)) + (n < 0 ? ')' : ''); }
 
 const COLS = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N'].map(c => ({ value: `Column ${c}`, label: `Column ${c}` }));
 
@@ -263,11 +263,11 @@ function OcrStepBar({ current }: { current: OcrPhase }) {
             <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
               i < currentIdx  ? 'bg-primary text-primary-foreground' :
               i === currentIdx ? 'bg-primary text-primary-foreground ring-2 ring-primary/30' :
-              'bg-muted text-foreground/50'
+              'bg-muted text-muted-foreground'
             }`}>
               {i < currentIdx ? '✓' : i + 1}
             </div>
-            <span className={`text-xs font-medium ${i === currentIdx ? 'text-foreground' : 'text-foreground/50'}`}>{s.label}</span>
+            <span className={`text-xs font-medium ${i === currentIdx ? 'text-foreground' : 'text-muted-foreground'}`}>{s.label}</span>
           </div>
           {i < steps.length - 1 && (
             <div className={`flex-1 h-px mx-2 ${i < currentIdx ? 'bg-primary' : 'bg-border'}`} style={{ minWidth: 12 }} />
@@ -412,19 +412,19 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
               <FileSearch className="w-7 h-7 text-primary" />
             </div>
             <p className="text-sm font-semibold text-foreground mb-1">Drop your account statements here or click to browse</p>
-            <p className="text-xs text-foreground/70 mb-1">PDF · DOCX · PNG · JPG — consolidated statements, trade confirmations, T3/T5 slips</p>
-            <p className="text-[11px] text-foreground/50 mt-2">You can drop multiple monthly statements at once — AI will scan them all together</p>
+            <p className="text-xs text-muted-foreground mb-1">PDF · DOCX · PNG · JPG — consolidated statements, trade confirmations, T3/T5 slips</p>
+            <p className="text-[11px] text-muted-foreground mt-2">You can drop multiple monthly statements at once — AI will scan them all together</p>
             <div className="flex items-center justify-center gap-2 mt-5">
               <Button variant="default" size="sm" onClick={e => { e.stopPropagation(); fileRef.current?.click(); }}>
                 <Upload className="w-3.5 h-3.5 mr-1.5" /> Browse Files
               </Button>
-              <span className="text-xs text-foreground/40">or drag &amp; drop</span>
+              <span className="text-xs text-muted-foreground">or drag &amp; drop</span>
             </div>
           </div>
           {/* Supported brokers */}
           <div className="flex flex-wrap gap-1.5 justify-center pt-1">
             {['Richardson Wealth', 'TD Waterhouse', 'RBC Direct', 'BMO InvestorLine', 'Questrade', 'CI Direct', 'National Bank'].map(b => (
-              <span key={b} className="text-[10px] px-2 py-0.5 rounded-full bg-muted border border-border text-foreground/60">{b}</span>
+              <span key={b} className="text-[10px] px-2 py-0.5 rounded-full bg-muted border border-border text-muted-foreground">{b}</span>
             ))}
           </div>
           <div className="flex justify-end pt-1 border-t border-border">
@@ -440,7 +440,7 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
             <FileSearch className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-xs font-semibold text-foreground">{fileQueue.length} statement{fileQueue.length !== 1 ? 's' : ''} ready to scan</p>
-              <p className="text-xs text-foreground/60 mt-0.5">AI will extract transactions from each file, merge duplicates, and flag any missing fields for your review.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">AI will extract transactions from each file, merge duplicates, and flag any missing fields for your review.</p>
             </div>
           </div>
 
@@ -490,26 +490,26 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
           </div>
           <div className="text-center space-y-1">
             {totalFiles > 1 && (
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-foreground/50">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                 Statement {fileIdx + 1} of {totalFiles}
               </p>
             )}
             <p className="text-sm font-semibold text-foreground truncate max-w-xs">{currentFile}</p>
-            <p className="text-xs text-foreground/70">{processingLabel}</p>
+            <p className="text-xs text-muted-foreground">{processingLabel}</p>
           </div>
           {/* Per-file progress bar */}
           <div className="w-full max-w-xs space-y-1.5">
             <div className="bg-muted rounded-full h-1.5 overflow-hidden">
               <div className="h-full bg-primary rounded-full transition-all duration-75" style={{ width: `${progress}%` }} />
             </div>
-            <p className="text-xs text-foreground/50 text-center tabular-nums">
+            <p className="text-xs text-muted-foreground text-center tabular-nums">
               {progress < 100 ? `${progress}%` : 'Complete — loading transactions…'}
             </p>
           </div>
           {/* Overall batch progress — shown only when scanning multiple files */}
           {totalFiles > 1 && (
             <div className="w-full max-w-xs space-y-1.5 pt-1 border-t border-border/50">
-              <div className="flex justify-between text-[10px] text-foreground/50">
+              <div className="flex justify-between text-[10px] text-muted-foreground">
                 <span>Overall progress</span>
                 <span>{fileIdx} / {totalFiles} complete</span>
               </div>
@@ -621,8 +621,8 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
                         </td>
 
                         <td className="px-3 py-2 text-foreground whitespace-nowrap">{r.broker.replace(' Investing','').replace(' Waterhouse','')}</td>
-                        <td className="px-3 py-2 text-right tabular-nums font-mono text-foreground">{r.qty > 0 ? r.qty : '—'}</td>
-                        <td className="px-3 py-2 text-right tabular-nums font-mono text-foreground">{r.price > 0 ? fmt2(r.price) : '—'}</td>
+                        <td className="px-3 py-2 text-right tabular-nums font-mono text-foreground">{r.qty > 0 ? r.qty : 0}</td>
+                        <td className="px-3 py-2 text-right tabular-nums font-mono text-foreground">{fmt2(r.price)}</td>
                         <td className="px-2 py-2 text-center font-mono text-foreground">{r.ccy}</td>
 
                         {/* FX Rate */}
@@ -636,7 +636,7 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
                               }}
                               className="h-6 px-1.5 text-xs font-mono rounded border border-amber-400 bg-amber-50 text-amber-900 w-20 text-right focus:outline-none focus:ring-1 focus:ring-amber-500" />
                           ) : (
-                            <span className="tabular-nums font-mono text-foreground">{r.fxRate && r.fxRate !== 1 ? fmt2(r.fxRate) : '—'}</span>
+                            <span className="tabular-nums font-mono text-foreground">{fmt2(r.fxRate ?? 0)}</span>
                           )}
                         </td>
 
@@ -705,15 +705,15 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${typeBadgeClass(txnType)}`}>{txnType}</span>
-                        <span className="text-xs text-foreground/50">{count} row{count !== 1 ? 's' : ''}</span>
+                        <span className="text-xs text-muted-foreground">{count} row{count !== 1 ? 's' : ''}</span>
                       </div>
-                      <p className="text-[10px] text-foreground/50 mt-0.5">{cfg.label}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{cfg.label}</p>
                     </div>
                     <div className="w-72">
                       <select
                         value={glMap[txnType] ?? cfg.options[0]}
                         onChange={e => setGlMap(prev => ({ ...prev, [txnType]: e.target.value }))}
-                        className="w-full h-7 px-2 text-xs rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full h-7 px-2 text-xs rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                       >
                         {cfg.options.map(o => <option key={o} value={o}>{o}</option>)}
                         <option value="9999 – Suspense / Unclassified">9999 – Suspense / Unclassified</option>
@@ -727,8 +727,8 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
 
           {/* Per-security override note */}
           <div className="flex items-start gap-2 rounded-lg bg-muted/50 border border-border px-3 py-2.5">
-            <Info className="w-3.5 h-3.5 text-foreground/50 flex-shrink-0 mt-0.5" />
-            <p className="text-[11px] text-foreground/60">
+            <Info className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
+            <p className="text-[11px] text-muted-foreground">
               GL codes applied here default across all transactions of the same type. You can override individual rows after import from the Transactions tab.
             </p>
           </div>
@@ -754,7 +754,7 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
 
           {/* Broker accounts found */}
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-foreground/50">Broker Accounts Detected</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Broker Accounts Detected</p>
             {brokerAccts.map(a => (
               <div key={a.key} className="rounded-lg border border-border bg-muted/20 overflow-hidden">
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-border/60 bg-muted/40">
@@ -763,7 +763,7 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
                   </div>
                   <div className="flex-1">
                     <p className="text-xs font-semibold text-foreground">{a.broker}</p>
-                    <p className="text-[10px] font-mono text-foreground/50">Account ···{a.acct}</p>
+                    <p className="text-[10px] font-mono text-muted-foreground">Account ···{a.acct}</p>
                   </div>
                   <Badge variant="success" className="text-[10px]">
                     {OCR_EXTRACTED.filter(r => r.acct === a.acct).length} transactions
@@ -771,11 +771,11 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
                 </div>
                 <div className="px-4 py-3 space-y-2">
                   <div className="flex items-center gap-3">
-                    <label className="text-xs text-foreground/70 w-32 flex-shrink-0">Investment GL</label>
+                    <label className="text-xs text-muted-foreground w-32 flex-shrink-0">Investment GL</label>
                     <select
                       value={acctMap[a.key] ?? '1310 – Investments (Cost)'}
                       onChange={e => setAcctMap(prev => ({ ...prev, [a.key]: e.target.value }))}
-                      className="flex-1 h-7 px-2 text-xs rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="flex-1 h-7 px-2 text-xs rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                     >
                       <option>1310 – Investments (Cost)</option>
                       <option>1320 – Quoted Investments</option>
@@ -790,7 +790,7 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
 
           {/* Securities found */}
           <div className="space-y-1.5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-foreground/50">Securities Found</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Securities Found</p>
             <div className="rounded-lg border border-border overflow-hidden">
               <table className="w-full text-xs">
                 <thead>
@@ -848,7 +848,7 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
                 <thead className="sticky top-0">
                   <tr className="border-b border-border bg-muted/70">
                     {['Date','Type','Security','Ticker','Broker','Qty','Price','CCY','Net (CAD)','GL Account'].map(h => (
-                      <th key={h} className="text-left px-3 py-2 font-semibold uppercase tracking-wide text-foreground/70 whitespace-nowrap">{h}</th>
+                      <th key={h} className="text-left px-3 py-2 font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -862,8 +862,8 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
                       <td className="px-3 py-2 font-medium text-foreground">{r.security}</td>
                       <td className="px-3 py-2 font-mono text-foreground">{r.ticker || '—'}</td>
                       <td className="px-3 py-2 text-foreground whitespace-nowrap">{r.broker.replace(' Investing','').replace(' Waterhouse','')}</td>
-                      <td className="px-3 py-2 text-right tabular-nums font-mono text-foreground">{r.qty > 0 ? r.qty : '—'}</td>
-                      <td className="px-3 py-2 text-right tabular-nums font-mono text-foreground">{r.price > 0 ? fmt2(r.price) : '—'}</td>
+                      <td className="px-3 py-2 text-right tabular-nums font-mono text-foreground">{r.qty > 0 ? r.qty : 0}</td>
+                      <td className="px-3 py-2 text-right tabular-nums font-mono text-foreground">{fmt2(r.price)}</td>
                       <td className="px-2 py-2 text-center font-mono text-foreground">{r.ccy}</td>
                       <td className={`px-3 py-2 text-right tabular-nums font-mono font-semibold ${r.netCAD < 0 ? 'text-red-600' : 'text-foreground'}`}>{fmtCAD(r.netCAD)}</td>
                       <td className="px-3 py-2 font-mono text-foreground text-[10px]">{glMap[r.type] ?? '1310'}</td>
@@ -891,7 +891,7 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
               <tbody>
                 {Array.from(new Set(rows.map(r => r.type))).map(t => (
                   <tr key={t} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-2.5 text-foreground/70">{t}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{t}</td>
                     <td className="px-4 py-2.5 font-mono font-medium text-foreground">{glMap[t] ?? '—'}</td>
                   </tr>
                 ))}
@@ -946,12 +946,12 @@ function ExcelWizard({ onBack, onComplete }: { onBack: () => void; onComplete: (
       className={`flex items-start gap-3 w-full p-4 rounded-xl border-2 text-left transition-all ${
         dataType === id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40 hover:bg-muted/30'
       }`}>
-      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${dataType === id ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground/70'}`}>
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${dataType === id ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
         <Icon className="w-4.5 h-4.5" />
       </div>
       <div>
         <p className={`text-sm font-semibold ${dataType === id ? 'text-primary' : 'text-foreground'}`}>{title}</p>
-        <p className="text-xs text-foreground/60 mt-0.5">{desc}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
       </div>
       {dataType === id && <Check className="w-4 h-4 text-primary ml-auto flex-shrink-0 mt-0.5" />}
     </button>
@@ -967,9 +967,9 @@ function ExcelWizard({ onBack, onComplete }: { onBack: () => void; onComplete: (
               <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
                 i < stepIdx  ? 'bg-primary text-primary-foreground' :
                 i === stepIdx ? 'bg-primary text-primary-foreground ring-2 ring-primary/30' :
-                'bg-muted text-foreground/50'
+                'bg-muted text-muted-foreground'
               }`}>{i < stepIdx ? '✓' : i + 1}</div>
-              <span className={`text-xs font-medium ${i === stepIdx ? 'text-foreground' : 'text-foreground/50'}`}>{s.label}</span>
+              <span className={`text-xs font-medium ${i === stepIdx ? 'text-foreground' : 'text-muted-foreground'}`}>{s.label}</span>
             </div>
             {i < WIZARD_STEPS.length - 1 && (
               <div className={`flex-1 h-px mx-2 ${i < stepIdx ? 'bg-primary' : 'bg-border'}`} style={{ minWidth: 12 }} />
@@ -980,7 +980,7 @@ function ExcelWizard({ onBack, onComplete }: { onBack: () => void; onComplete: (
 
       {step === 'choose' && (
         <div className="space-y-3">
-          <p className="text-xs text-foreground/70">Select the type of investment data you want to import:</p>
+          <p className="text-xs text-muted-foreground">Select the type of investment data you want to import:</p>
           <DataTypeCard id="transactions" title="Transactions"        desc="Purchases, sales, dividends, transfers — full transaction register" icon={FileSpreadsheet} />
           <DataTypeCard id="holdings"     title="Holdings / Positions" desc="Opening or closing position balances per security and broker"       icon={FileSpreadsheet} />
           <DataTypeCard id="income"       title="Income & Expenses"   desc="Interest income, fees, withholding tax, DRIP, ROC entries"          icon={FileSpreadsheet} />
@@ -1002,15 +1002,15 @@ function ExcelWizard({ onBack, onComplete }: { onBack: () => void; onComplete: (
           >
             <input ref={fileRef} type="file" accept=".xlsx,.csv" className="hidden"
               onChange={e => { setFileName(e.target.files?.[0]?.name ?? ''); setStep('map'); }} />
-            <Upload className="w-8 h-8 text-foreground/40 mx-auto mb-3" />
+            <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
             <p className="text-sm font-medium text-foreground">Drop <span className="text-primary font-semibold capitalize">{dataType}</span> file here or click to browse</p>
-            <p className="text-xs text-foreground/60 mt-1">.xlsx or .csv accepted</p>
+            <p className="text-xs text-muted-foreground mt-1">.xlsx or .csv accepted</p>
           </div>
           <div className="flex items-center justify-between text-xs">
             <button className="flex items-center gap-1.5 text-primary hover:underline font-medium" onClick={() => toast.success(`Downloading ${dataType} template…`)}>
               <Download className="w-3.5 h-3.5" /> Download {dataType} template
             </button>
-            <span className="text-foreground/50">or <button className="underline underline-offset-2" onClick={() => { setFileName('sample_data.csv'); setStep('map'); }}>use sample data</button></span>
+            <span className="text-muted-foreground">or <button className="underline underline-offset-2" onClick={() => { setFileName('sample_data.csv'); setStep('map'); }}>use sample data</button></span>
           </div>
           <div className="flex justify-end gap-2 pt-2 border-t border-border">
             <Button variant="secondary" onClick={() => setStep('choose')}>Back</Button>
@@ -1063,7 +1063,7 @@ function ExcelWizard({ onBack, onComplete }: { onBack: () => void; onComplete: (
               <div key={key}>
                 <Select label={label} value={glTags[key] ?? options[0]?.value ?? ''}
                   onChange={e => setGlTags(prev => ({ ...prev, [key]: e.target.value }))} options={options} />
-                <p className="text-[11px] text-foreground/60 mt-1">{hint}</p>
+                <p className="text-[11px] text-muted-foreground mt-1">{hint}</p>
               </div>
             ))}
           </div>
@@ -1088,7 +1088,7 @@ function ExcelWizard({ onBack, onComplete }: { onBack: () => void; onComplete: (
                   <thead className="sticky top-0">
                     <tr className="border-b border-border bg-muted/70">
                       {['Date','Settle','Type','Security','Broker','Qty','Price','CCY','Net (CAD)'].map(h => (
-                        <th key={h} className="text-left px-3 py-2 text-xs font-semibold uppercase tracking-wider text-foreground/70 whitespace-nowrap">{h}</th>
+                        <th key={h} className="text-left px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -1096,9 +1096,9 @@ function ExcelWizard({ onBack, onComplete }: { onBack: () => void; onComplete: (
                     {MOCK_TXN_PREVIEW.map((r, i) => (
                       <tr key={i} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                         <td className="px-3 py-2 text-xs text-foreground whitespace-nowrap">{r.date}</td>
-                        <td className="px-3 py-2 text-xs text-foreground/60 whitespace-nowrap">{r.settleDate}</td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">{r.settleDate}</td>
                         <td className="px-3 py-2"><span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${r.type==='Purchase'?'bg-blue-50 text-blue-700':r.type==='Sale'?'bg-orange-50 text-orange-700':r.type==='Dividend'?'bg-green-50 text-green-700':'bg-muted text-foreground'}`}>{r.type}</span></td>
-                        <td className="px-3 py-2"><div className="text-xs font-medium text-foreground">{r.security}</div><div className="text-[10px] font-mono text-foreground/60">{r.ticker}</div></td>
+                        <td className="px-3 py-2"><div className="text-xs font-medium text-foreground">{r.security}</div><div className="text-[10px] font-mono text-muted-foreground">{r.ticker}</div></td>
                         <td className="px-3 py-2 text-xs text-foreground">{r.broker}</td>
                         <td className="px-3 py-2 text-right tabular-nums font-mono text-xs">{r.qty>0?r.qty:'—'}</td>
                         <td className="px-3 py-2 text-right tabular-nums font-mono text-xs">{r.price>0?fmt2(r.price):'—'}</td>
@@ -1122,7 +1122,7 @@ function ExcelWizard({ onBack, onComplete }: { onBack: () => void; onComplete: (
             <div className="rounded-xl border border-border bg-card overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead><tr className="border-b border-border bg-muted/70">{['Security','Ticker','Broker','CCY','Units','WAC / Unit','Cost (CAD)','GL Acct'].map(h=><th key={h} className="text-left px-3 py-2 text-xs font-semibold uppercase tracking-wider text-foreground/70 whitespace-nowrap">{h}</th>)}</tr></thead>
+                  <thead><tr className="border-b border-border bg-muted/70">{['Security','Ticker','Broker','CCY','Units','WAC / Unit','Cost (CAD)','GL Acct'].map(h=><th key={h} className="text-left px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">{h}</th>)}</tr></thead>
                   <tbody>{MOCK_HOLDINGS_PREVIEW.map((r,i)=><tr key={i} className="border-b border-border/50 hover:bg-muted/30 transition-colors"><td className="px-3 py-2 text-xs font-medium text-foreground">{r.security}</td><td className="px-3 py-2 text-xs font-mono text-foreground">{r.ticker}</td><td className="px-3 py-2 text-xs text-foreground">{r.broker}</td><td className="px-3 py-2 text-center text-xs font-mono">{r.ccy}</td><td className="px-3 py-2 text-right tabular-nums font-mono text-xs">{r.units.toLocaleString()}</td><td className="px-3 py-2 text-right tabular-nums font-mono text-xs">{fmt2(r.wac)}</td><td className="px-3 py-2 text-right tabular-nums font-mono font-semibold text-xs">{fmtCAD(r.costCAD)}</td><td className="px-3 py-2 text-xs font-mono text-foreground">{r.gl}</td></tr>)}</tbody>
                   <tfoot><tr className="border-t-2 border-border bg-muted/60"><td colSpan={6} className="px-3 py-2 text-xs font-semibold">{previewCount} positions</td><td className="px-3 py-2 text-right tabular-nums font-mono font-bold text-xs">{fmtCAD(MOCK_HOLDINGS_PREVIEW.reduce((s,r)=>s+r.costCAD,0))}</td><td/></tr></tfoot>
                 </table>
@@ -1134,8 +1134,8 @@ function ExcelWizard({ onBack, onComplete }: { onBack: () => void; onComplete: (
             <div className="rounded-xl border border-border bg-card overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead><tr className="border-b border-border bg-muted/70">{['Date','Broker','Type','Description','CCY','Local Amt','CAD Amt','GL Acct','Tax Slip'].map(h=><th key={h} className="text-left px-3 py-2 text-xs font-semibold uppercase tracking-wider text-foreground/70 whitespace-nowrap">{h}</th>)}</tr></thead>
-                  <tbody>{MOCK_INCOME_PREVIEW.map((r,i)=><tr key={i} className="border-b border-border/50 hover:bg-muted/30 transition-colors"><td className="px-3 py-2 text-xs text-foreground whitespace-nowrap">{r.date}</td><td className="px-3 py-2 text-xs text-foreground">{r.broker}</td><td className="px-3 py-2"><span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-foreground/70 font-medium">{r.type}</span></td><td className="px-3 py-2 text-xs text-foreground max-w-[150px] truncate">{r.description}</td><td className="px-3 py-2 text-center text-xs font-mono">{r.ccy}</td><td className={`px-3 py-2 text-right tabular-nums font-mono text-xs ${r.localAmt<0?'text-red-600':''}`}>{r.localAmt<0?`(${fmt2(Math.abs(r.localAmt))})`:fmt2(r.localAmt)}</td><td className={`px-3 py-2 text-right tabular-nums font-mono font-semibold text-xs ${r.cadAmt<0?'text-red-600':r.type==='Interest Income'?'text-green-600':''}`}>{fmtCAD(r.cadAmt)}</td><td className="px-3 py-2 text-xs font-mono text-foreground">{r.gl}</td><td className="px-3 py-2">{r.taxSlip?<span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold font-mono">{r.taxSlip}</span>:<span className="text-foreground/30 text-xs">—</span>}</td></tr>)}</tbody>
+                  <thead><tr className="border-b border-border bg-muted/70">{['Date','Broker','Type','Description','CCY','Local Amt','CAD Amt','GL Acct','Tax Slip'].map(h=><th key={h} className="text-left px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">{h}</th>)}</tr></thead>
+                  <tbody>{MOCK_INCOME_PREVIEW.map((r,i)=><tr key={i} className="border-b border-border/50 hover:bg-muted/30 transition-colors"><td className="px-3 py-2 text-xs text-foreground whitespace-nowrap">{r.date}</td><td className="px-3 py-2 text-xs text-foreground">{r.broker}</td><td className="px-3 py-2"><span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">{r.type}</span></td><td className="px-3 py-2 text-xs text-foreground max-w-[150px] truncate">{r.description}</td><td className="px-3 py-2 text-center text-xs font-mono">{r.ccy}</td><td className={`px-3 py-2 text-right tabular-nums font-mono text-xs ${r.localAmt<0?'text-red-600':''}`}>{r.localAmt<0?`(${fmt2(Math.abs(r.localAmt))})`:fmt2(r.localAmt)}</td><td className={`px-3 py-2 text-right tabular-nums font-mono font-semibold text-xs ${r.cadAmt<0?'text-red-600':r.type==='Interest Income'?'text-green-600':''}`}>{fmtCAD(r.cadAmt)}</td><td className="px-3 py-2 text-xs font-mono text-foreground">{r.gl}</td><td className="px-3 py-2">{r.taxSlip?<span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold font-mono">{r.taxSlip}</span>:<span className="text-foreground/30 text-xs">—</span>}</td></tr>)}</tbody>
                   <tfoot><tr className="border-t-2 border-border bg-muted/60"><td colSpan={6} className="px-3 py-2 text-xs font-semibold">{previewCount} entries</td><td className="px-3 py-2 text-right tabular-nums font-mono font-bold text-xs">{fmtCAD(MOCK_INCOME_PREVIEW.reduce((s,r)=>s+r.cadAmt,0))}</td><td colSpan={2}/></tr></tfoot>
                 </table>
               </div>
@@ -1148,7 +1148,7 @@ function ExcelWizard({ onBack, onComplete }: { onBack: () => void; onComplete: (
             </div>
             <table className="w-full text-xs">
               <thead><tr className="border-b border-border bg-muted/30"><th className="text-left px-4 py-2 font-semibold text-muted-foreground uppercase tracking-wide">Field</th><th className="text-left px-4 py-2 font-semibold text-muted-foreground uppercase tracking-wide">GL Account</th></tr></thead>
-              <tbody>{GL_CFG[dataType].map(({key,label})=><tr key={key} className="border-b border-border/50 hover:bg-muted/30 transition-colors"><td className="px-4 py-2.5 text-foreground/70">{label}</td><td className="px-4 py-2.5 font-mono font-medium text-foreground">{glTags[key]||'—'}</td></tr>)}</tbody>
+              <tbody>{GL_CFG[dataType].map(({key,label})=><tr key={key} className="border-b border-border/50 hover:bg-muted/30 transition-colors"><td className="px-4 py-2.5 text-muted-foreground">{label}</td><td className="px-4 py-2.5 font-mono font-medium text-foreground">{glTags[key]||'—'}</td></tr>)}</tbody>
               <tfoot><tr className="bg-primary/5 border-t-2 border-primary/25"><td className="px-4 py-2.5 font-semibold text-foreground">{previewCount} records</td><td className="px-4 py-2.5"><span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">✓ Ready to import</span></td></tr></tfoot>
             </table>
           </div>
@@ -1205,11 +1205,11 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
       {!isModal && (
         <div className="flex items-center gap-2 px-6 pt-5 pb-4 border-b border-border flex-shrink-0">
           <button onClick={path ? () => setPath(null) : onBack}
-            className="flex items-center gap-1.5 text-sm text-foreground hover:text-foreground/70 transition-colors">
+            className="flex items-center gap-1.5 text-sm text-foreground hover:text-muted-foreground transition-colors">
             <ArrowLeft className="w-4 h-4" />
             {path ? 'Back' : 'Back to Investments'}
           </button>
-          <span className="text-foreground/40 mx-1">/</span>
+          <span className="text-muted-foreground mx-1">/</span>
           <span className="text-sm font-semibold text-foreground">{subTitle}</span>
         </div>
       )}
@@ -1218,11 +1218,11 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
       {isModal && path && (
         <div className="flex items-center gap-2 px-4 pt-3 pb-3 border-b border-border flex-shrink-0">
           <button onClick={() => setPath(null)}
-            className="flex items-center gap-1.5 text-sm text-foreground hover:text-foreground/70 transition-colors">
+            className="flex items-center gap-1.5 text-sm text-foreground hover:text-muted-foreground transition-colors">
             <ArrowLeft className="w-4 h-4" />
             Back
           </button>
-          <span className="text-foreground/40 mx-1">/</span>
+          <span className="text-muted-foreground mx-1">/</span>
           <span className="text-sm font-semibold text-foreground">{subTitle}</span>
         </div>
       )}
@@ -1239,7 +1239,7 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
               <div className="space-y-5">
                 <div>
                   <h3 className="text-sm font-semibold text-foreground">Set Up Investment Workpaper</h3>
-                  <p className="text-xs text-foreground/60 mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     Start from scratch or import existing data from a broker statement or spreadsheet.
                   </p>
                 </div>
@@ -1251,13 +1251,13 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
                   <button onClick={() => setPath('blank')}
                     className="flex items-start gap-4 p-4 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted/30 text-left transition-all group">
                     <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 group-hover:bg-primary/10 transition-colors">
-                      <Plus className="w-5 h-5 text-foreground/60 group-hover:text-primary" />
+                      <Plus className="w-5 h-5 text-muted-foreground group-hover:text-primary" />
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-foreground">Start Blank</p>
-                      <p className="text-xs text-foreground/60 mt-0.5">Create an empty investment workpaper and add holdings, transactions, and income entries manually.</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Create an empty investment workpaper and add holdings, transactions, and income entries manually.</p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-foreground/30 ml-auto flex-shrink-0 mt-1 group-hover:text-foreground/60" />
+                    <ChevronRight className="w-4 h-4 text-foreground/30 ml-auto flex-shrink-0 mt-1 group-hover:text-muted-foreground" />
                   </button>
 
                   {/* OCR / Statement scan */}
@@ -1268,12 +1268,12 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-foreground">Scan Investment Statement</p>
-                      <p className="text-xs text-foreground/60 mt-0.5">Upload a PDF or image broker statement — AI extracts transactions, flags missing fields, and guides GL mapping.</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Upload a PDF or image broker statement — AI extracts transactions, flags missing fields, and guides GL mapping.</p>
                       <div className="flex gap-1.5 mt-2 flex-wrap">
                         {['PDF', 'DOCX', 'PNG', 'JPG'].map(f => <span key={f} className="text-[10px] font-mono px-1.5 py-0.5 bg-muted rounded border border-border">{f}</span>)}
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-foreground/30 ml-auto flex-shrink-0 mt-1 group-hover:text-foreground/60" />
+                    <ChevronRight className="w-4 h-4 text-foreground/30 ml-auto flex-shrink-0 mt-1 group-hover:text-muted-foreground" />
                   </button>
 
                   {/* Excel / CSV */}
@@ -1284,12 +1284,12 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-foreground">Import from Excel / CSV</p>
-                      <p className="text-xs text-foreground/60 mt-0.5">Upload a spreadsheet export — map columns, assign GL accounts, preview before importing.</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Upload a spreadsheet export — map columns, assign GL accounts, preview before importing.</p>
                       <div className="flex gap-1.5 mt-2 flex-wrap">
                         {['.xlsx', '.csv'].map(f => <span key={f} className="text-[10px] font-mono px-1.5 py-0.5 bg-muted rounded border border-border">{f}</span>)}
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-foreground/30 ml-auto flex-shrink-0 mt-1 group-hover:text-foreground/60" />
+                    <ChevronRight className="w-4 h-4 text-foreground/30 ml-auto flex-shrink-0 mt-1 group-hover:text-muted-foreground" />
                   </button>
 
                   {/* Drop zone as additional shortcut */}
@@ -1303,7 +1303,7 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
                   >
                     <input ref={fileRef} type="file" accept=".pdf,.docx,.png,.jpg,.jpeg,.xlsx,.csv" className="hidden"
                       onChange={e => { const n = e.target.files?.[0]?.name ?? ''; if (n) handleFile(n); }} />
-                    <p className="text-xs text-foreground/60">Or drop any file here to auto-detect type</p>
+                    <p className="text-xs text-muted-foreground">Or drop any file here to auto-detect type</p>
                   </div>
                 </div>
 
@@ -1318,7 +1318,7 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
               <div className="space-y-5">
                 <div>
                   <h3 className="text-sm font-semibold text-foreground">Blank Investment Workpaper</h3>
-                  <p className="text-xs text-foreground/60 mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     {blankStep === 'setup'
                       ? 'Set up the workpaper details — title, entity, fiscal year, and broker accounts.'
                       : 'Review the sections that will be created. Add data manually or import at any time.'}
@@ -1336,9 +1336,9 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
                           <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
                             done   ? 'bg-primary text-primary-foreground' :
                             active ? 'bg-primary text-primary-foreground ring-2 ring-primary/30' :
-                                     'bg-muted text-foreground/50'
+                                     'bg-muted text-muted-foreground'
                           }`}>{done ? '✓' : i + 1}</div>
-                          <span className={`text-xs font-medium ${active ? 'text-foreground' : 'text-foreground/50'}`}>{label}</span>
+                          <span className={`text-xs font-medium ${active ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</span>
                         </div>
                         {i === 0 && <div className={`flex-1 h-px mx-2 ${done ? 'bg-primary' : 'bg-border'}`} style={{ minWidth: 16 }} />}
                       </React.Fragment>
@@ -1359,7 +1359,7 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
                           value={blankTitle}
                           onChange={e => setBlankTitle(e.target.value)}
                           placeholder="e.g. SPM Holdings Ltd – Investment Workpaper"
-                          className="w-full h-8 px-3 text-sm rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                          className="w-full h-8 px-3 text-sm rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-primary"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
@@ -1371,7 +1371,7 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
                             value={blankEntity}
                             onChange={e => setBlankEntity(e.target.value)}
                             placeholder="Legal entity name"
-                            className="w-full h-8 px-3 text-sm rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                            className="w-full h-8 px-3 text-sm rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-primary"
                           />
                         </div>
                         <div>
@@ -1382,7 +1382,7 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
                             type="date"
                             value={blankFYE}
                             onChange={e => setBlankFYE(e.target.value)}
-                            className="w-full h-8 px-3 text-sm rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                            className="w-full h-8 px-3 text-sm rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-primary"
                           />
                         </div>
                       </div>
@@ -1403,15 +1403,15 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
                       </div>
                       <div className="rounded-lg border border-border overflow-hidden">
                         {blankAccts.length === 0 ? (
-                          <div className="px-4 py-5 text-center text-xs text-foreground/40">
+                          <div className="px-4 py-5 text-center text-xs text-muted-foreground">
                             No accounts added — click "Add account" to add one, or skip and add later.
                           </div>
                         ) : (
                           <>
                             <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b border-border">
-                              <span className="text-[10px] font-semibold text-foreground/50 uppercase tracking-wide flex-1">Broker</span>
-                              <span className="text-[10px] font-semibold text-foreground/50 uppercase tracking-wide w-28">Account #</span>
-                              <span className="text-[10px] font-semibold text-foreground/50 uppercase tracking-wide w-20">Type</span>
+                              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide flex-1">Broker</span>
+                              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-28">Account #</span>
+                              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-20">Type</span>
                               <span className="w-3.5" />
                             </div>
                             <div className="divide-y divide-border">
@@ -1422,18 +1422,18 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
                                     value={acct.broker}
                                     onChange={e => setBlankAccts(prev => prev.map((a, idx) => idx === i ? { ...a, broker: e.target.value } : a))}
                                     placeholder="Broker name"
-                                    className="flex-1 h-6 px-1.5 text-xs rounded border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary min-w-0"
+                                    className="flex-1 h-6 px-1.5 text-xs rounded border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring min-w-0"
                                   />
                                   <input
                                     value={acct.acctNo}
                                     onChange={e => setBlankAccts(prev => prev.map((a, idx) => idx === i ? { ...a, acctNo: e.target.value } : a))}
                                     placeholder="H11-YLF0-E"
-                                    className="w-28 h-6 px-1.5 text-xs font-mono rounded border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                    className="w-28 h-6 px-1.5 text-xs font-mono rounded border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                                   />
                                   <select
                                     value={acct.type}
                                     onChange={e => setBlankAccts(prev => prev.map((a, idx) => idx === i ? { ...a, type: e.target.value } : a))}
-                                    className="w-20 h-6 px-1 text-xs rounded border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                    className="w-20 h-6 px-1 text-xs rounded border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                                   >
                                     {['IAA','PMA','RRSP','TFSA','RESP','Cash','Other'].map(t => <option key={t}>{t}</option>)}
                                   </select>
@@ -1449,7 +1449,7 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
                           </>
                         )}
                       </div>
-                      <p className="text-[10px] text-foreground/50">
+                      <p className="text-[10px] text-muted-foreground">
                         You can add or edit accounts at any time from workpaper settings.
                       </p>
                     </div>
@@ -1475,7 +1475,7 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
                       <Info className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
                       <div className="text-xs text-foreground/80 min-w-0 flex-1">
                         <p className="font-semibold truncate">{blankTitle}</p>
-                        <p className="text-foreground/60 mt-0.5">
+                        <p className="text-muted-foreground mt-0.5">
                           {blankEntity}
                           {blankFYE && ` · FYE ${blankFYE}`}
                           {blankAccts.length > 0 && ` · ${blankAccts.length} account${blankAccts.length !== 1 ? 's' : ''}`}
@@ -1505,7 +1505,7 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
                           <div className="w-2 h-2 rounded-full bg-foreground/20 flex-shrink-0 mt-1.5" />
                           <div>
                             <p className="text-xs font-semibold text-foreground">{s.label}</p>
-                            <p className="text-[10px] text-foreground/50 mt-0.5">{s.desc}</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">{s.desc}</p>
                             <span className="text-[10px] text-foreground/30 italic mt-1 block">Empty — ready to add data</span>
                           </div>
                         </div>
@@ -1528,7 +1528,7 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
               <>
                 <div>
                   <h3 className="text-sm font-semibold text-foreground">Scan Investment Statement</h3>
-                  <p className="text-xs text-foreground/60 mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     Upload a PDF, DOCX or image — AI will extract all transactions, flag missing fields, and guide you through GL and account mapping.
                   </p>
                 </div>
@@ -1541,7 +1541,7 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
               <>
                 <div>
                   <h3 className="text-sm font-semibold text-foreground">Import from Excel / CSV</h3>
-                  <p className="text-xs text-foreground/60 mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     Upload a spreadsheet with investment data — map columns, tag GL accounts, then preview before importing.
                   </p>
                 </div>

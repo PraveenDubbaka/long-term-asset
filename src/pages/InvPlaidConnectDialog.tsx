@@ -10,7 +10,6 @@ import { Button } from "@/components/wp-ui/button";
 import { Input } from "@/components/wp-ui/input";
 import { Checkbox } from "@/components/wp-ui/checkbox";
 import { Badge } from "@/components/wp-ui/badge";
-import { ScrollArea } from "@/components/wp-ui/scroll-area";
 import {
   MOCK_INSTITUTIONS, PlaidInstitution, PlaidAccount, PlaidInvestmentTxn,
   fetchMockInvestmentTransactions, plaidAccountToSource, plaidToSourceTransaction,
@@ -33,6 +32,8 @@ const TX_TYPES: TxType[] = [
   "Purchase", "Sale", "Dividend", "Interest", "Fee/Commission",
   "Withholding Tax", "Return of Capital", "Reinvested Dividend",
 ];
+
+const IIC = 'input-double-border h-9 text-sm px-3 border border-[#dcdfe4] rounded-[10px] bg-white dark:bg-card text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] focus:outline-none focus:ring-0';
 
 export default function InvPlaidConnectDialog({
   defaultPeriodStart, defaultPeriodEnd, entityName, onImport,
@@ -110,7 +111,7 @@ export default function InvPlaidConnectDialog({
           <Plug className="h-4 w-4" /> Connect
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Plug className="h-4 w-4 text-primary" /> Plaid Link
@@ -230,20 +231,19 @@ export default function InvPlaidConnectDialog({
 
         {/* Step 5: review */}
         {step === 5 && (
-          <ScrollArea className="max-h-[420px] pr-3">
+          <div className="max-h-[420px] overflow-y-auto overflow-x-hidden">
             <div className="space-y-4 py-1">
               {selectedAccounts.map((acc) => {
                 const txns = preview[acc.id] ?? [];
                 return (
-                  <div key={acc.id} className="rounded-xl border border-border">
+                  <div key={acc.id} className="rounded-xl border border-border bg-card overflow-x-auto">
                     <div className="px-3 py-2 border-b border-border bg-muted/30 flex items-center justify-between">
                       <div className="text-sm font-medium">
                         {inst?.name} — {acc.name} <span className="font-mono text-xs text-muted-foreground">····{acc.mask}</span>
                       </div>
                       <Badge variant="outline" className="text-xs">{txns.length} txns</Badge>
                     </div>
-                    <div className="rounded-xl border border-border bg-card overflow-x-auto">
-                      <table className="w-full text-sm">
+                    <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-border bg-muted/30">
                             <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide w-8"></th>
@@ -279,7 +279,7 @@ export default function InvPlaidConnectDialog({
                                   <select
                                     value={eff.type}
                                     onChange={(ev) => setEdits((m) => ({ ...m, [t.id]: { ...m[t.id], type: ev.target.value as TxType } }))}
-                                    className="h-8 rounded-md border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                                    className={`${IIC} cursor-pointer`}
                                   >
                                     {TX_TYPES.map((tt) => <option key={tt} value={tt}>{tt}</option>)}
                                   </select>
@@ -288,26 +288,26 @@ export default function InvPlaidConnectDialog({
                                   <div className="font-medium">{eff.ticker}</div>
                                   <div className="text-muted-foreground">{eff.security}</div>
                                 </td>
-                                <td className="px-4 py-3 text-right font-mono text-xs">
+                                <td className="px-4 py-3 text-right">
                                   <Input
-                                    className="h-7 text-right text-xs w-20 ml-auto"
+                                    className="w-20 text-right ml-auto"
                                     type="number"
                                     value={eff.units}
                                     onChange={(ev) => setEdits((m) => ({ ...m, [t.id]: { ...m[t.id], units: Number(ev.target.value) } }))}
                                   />
                                 </td>
-                                <td className="px-4 py-3 text-right font-mono text-xs">
+                                <td className="px-4 py-3 text-right">
                                   <Input
-                                    className="h-7 text-right text-xs w-24 ml-auto"
+                                    className="w-24 text-right ml-auto"
                                     type="number"
                                     step="0.01"
                                     value={eff.price}
                                     onChange={(ev) => setEdits((m) => ({ ...m, [t.id]: { ...m[t.id], price: Number(ev.target.value) } }))}
                                   />
                                 </td>
-                                <td className="px-4 py-3 text-right font-mono text-xs">
+                                <td className="px-4 py-3 text-right">
                                   <Input
-                                    className="h-7 text-right text-xs w-20 ml-auto"
+                                    className="w-20 text-right ml-auto"
                                     type="number"
                                     step="0.01"
                                     value={eff.fees}
@@ -319,7 +319,6 @@ export default function InvPlaidConnectDialog({
                           })}
                         </tbody>
                       </table>
-                    </div>
                   </div>
                 );
               })}
@@ -327,7 +326,7 @@ export default function InvPlaidConnectDialog({
                 {totalKept} of {totalPreview} transactions will be imported as <strong>Pending</strong>.
               </div>
             </div>
-          </ScrollArea>
+          </div>
         )}
 
         <DialogFooter className="flex items-center justify-between sm:justify-between gap-2">

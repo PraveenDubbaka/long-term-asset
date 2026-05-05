@@ -44,6 +44,8 @@ export interface Transaction {
   net: number;
   currency: Currency;
   fxRate?: number;
+  tradeDate?: string;       // ISO date of trade execution (defaults to date if absent)
+  settlementDate?: string;  // ISO date of settlement (typically T+2)
   notes?: string;
   status?: TxStatus;
   tbAccount?: string;

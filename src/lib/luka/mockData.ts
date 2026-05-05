@@ -82,6 +82,26 @@ export const fmvQuotes: FmvQuote[] = [
 // Period-end FX rate (CAD per USD)
 export const closingFxRate = 1.4389;
 
+// ── Settlement date helpers ───────────────────────────────────────────────────
+/** Add N business days to an ISO date string (skips Sat/Sun). */
+function addBusinessDays(iso: string, n: number): string {
+  const d = new Date(iso + "T12:00:00Z");
+  let added = 0;
+  while (added < n) {
+    d.setUTCDate(d.getUTCDate() + 1);
+    const dow = d.getUTCDay();          // 0=Sun, 6=Sat
+    if (dow !== 0 && dow !== 6) added++;
+  }
+  return d.toISOString().slice(0, 10);
+}
+
+/** Settlement cycle by transaction type. */
+function settleDays(type: Transaction["type"]): number {
+  if (type === "Purchase" || type === "Sale" || type === "Transfer In" || type === "Transfer Out") return 2;
+  if (type === "Reinvested Dividend") return 1;
+  return 0;   // Dividend, Interest, Fee, WHT, ROC settle same day
+}
+
 // ── Transaction builder helper ────────────────────────────────────────────────
 let _id = 0;
 const t = (
@@ -105,12 +125,15 @@ const t = (
       : type === "Withholding Tax"
         ? -(gross + fees)
         : gross + fees;
+  const sd = settleDays(type);
   return {
     id: `T${(++_id).toString().padStart(4, "0")}`,
     sourceId, date, security, ticker, type,
     units, price, gross, fees, net,
     currency, fxRate, notes, status,
-    tbAccount: defaultTbAccount(type),
+    tbAccount:      defaultTbAccount(type),
+    tradeDate:      date,                                         // trade date = booking date
+    settlementDate: sd > 0 ? addBusinessDays(date, sd) : date,   // T+2 for equities, T+0 otherwise
   };
 };
 

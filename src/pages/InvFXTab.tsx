@@ -182,7 +182,7 @@ export function InvFXTab({ fxSchedule }: Props) {
                 <td className="px-4 py-3 text-right tabular-nums">{fmtCcy(e.foreignAmount, e.ccy)}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{fmtNum(e.rateAtAcq, 4)}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{fmtNum(e.rateAtTxn, 4)}</td>
-                <td className={`px-4 py-3 text-right tabular-nums ${e.realizedFxCAD >= 0 ? "text-green-600" : "text-destructive"}`}>
+                <td className={`px-4 py-3 text-right tabular-nums ${e.realizedFxCAD >= 0 ? "text-foreground" : "text-foreground"}`}>
                   {fmtSigned(e.realizedFxCAD)}
                 </td>
                 <td className="px-3 py-3">
@@ -202,7 +202,7 @@ export function InvFXTab({ fxSchedule }: Props) {
             )}
             <tr className="bg-muted/40 font-semibold">
               <td colSpan={6} className="px-4 py-3 text-sm">Total Realized FX</td>
-              <td className={`px-4 py-3 text-right tabular-nums ${fxSchedule.totalRealizedFxCAD >= 0 ? "text-green-600" : "text-destructive"}`}>
+              <td className={`px-4 py-3 text-right tabular-nums ${fxSchedule.totalRealizedFxCAD >= 0 ? "text-foreground" : "text-foreground"}`}>
                 {fmtSigned(fxSchedule.totalRealizedFxCAD)}
               </td>
               <td />

@@ -10,12 +10,12 @@ import { ColFilter, SearchFilter, ClearFiltersBtn } from './InvTableFilters';
 const CCY_SYMBOL: Record<string, string> = { CAD: "$", USD: "US$", EUR: "€", GBP: "£" };
 
 export const fmtCAD = (n: number) =>
-  new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 2 }).format(n);
+  new Intl.NumberFormat("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const fmtCcy = (n: number, ccy: string) => {
-  const sym = CCY_SYMBOL[ccy] ?? "$";
   const abs = new Intl.NumberFormat("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(n));
-  return n < 0 ? `(${sym}${abs})` : `${sym}${abs}`;
+  return n < 0 ? `(${abs})` : abs;
 };
 
 export const fmtNum = (n: number, d = 2) =>
@@ -159,7 +159,7 @@ export function InvHoldingsTab({ schedules, totals, allSources, onUpload, isEmpt
             <p className="text-xs text-muted-foreground">FMV (period-end)</p>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </div>
-          <p className="mt-2 text-2xl font-semibold tabular-nums text-blue-600">{fmtCAD(totals.fmv)}</p>
+          <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">{fmtCAD(totals.fmv)}</p>
           <p className="text-xs text-muted-foreground mt-1">CAD</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
@@ -167,7 +167,7 @@ export function InvHoldingsTab({ schedules, totals, allSources, onUpload, isEmpt
             <p className="text-xs text-muted-foreground">Realized G/L</p>
             <Banknote className="h-4 w-4 text-muted-foreground" />
           </div>
-          <p className={`mt-2 text-2xl font-semibold tabular-nums ${totals.realized >= 0 ? "text-green-600" : "text-destructive"}`}>
+          <p className={`mt-2 text-2xl font-semibold tabular-nums ${totals.realized >= 0 ? "text-foreground" : "text-foreground"}`}>
             {fmtSigned(totals.realized)}
           </p>
           <p className="text-xs text-muted-foreground mt-1">CAD</p>
@@ -177,7 +177,7 @@ export function InvHoldingsTab({ schedules, totals, allSources, onUpload, isEmpt
             <p className="text-xs text-muted-foreground">Unrealized G/L</p>
             <RefreshCw className="h-4 w-4 text-muted-foreground" />
           </div>
-          <p className={`mt-2 text-2xl font-semibold tabular-nums ${totals.unrealized >= 0 ? "text-green-600" : "text-destructive"}`}>
+          <p className={`mt-2 text-2xl font-semibold tabular-nums ${totals.unrealized >= 0 ? "text-foreground" : "text-foreground"}`}>
             {fmtSigned(totals.unrealized)}
           </p>
           <p className="text-xs text-muted-foreground mt-1">CAD</p>
@@ -223,7 +223,7 @@ export function InvHoldingsTab({ schedules, totals, allSources, onUpload, isEmpt
                 <td className="px-4 py-3 text-sm text-right tabular-nums">{fmtCAD(s.closingWac)}</td>
                 <td className="px-4 py-3 text-sm text-right tabular-nums">{fmtCAD(s.closingCostCAD)}</td>
                 <td className="px-4 py-3 text-sm text-right tabular-nums">{fmtCAD(s.fmvCAD)}</td>
-                <td className={`px-4 py-3 text-sm text-right tabular-nums ${s.unrealizedGL >= 0 ? "text-green-600" : "text-destructive"}`}>
+                <td className={`px-4 py-3 text-sm text-right tabular-nums ${s.unrealizedGL >= 0 ? "text-foreground" : "text-foreground"}`}>
                   {fmtSigned(s.unrealizedGL)}
                 </td>
                 <td className="px-3 py-3">
