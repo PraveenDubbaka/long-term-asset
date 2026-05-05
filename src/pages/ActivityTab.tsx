@@ -4,7 +4,7 @@ import { useStore } from '../store/useStore';
 import { fmtCurrency, fmtDateDisplay, exportToExcel, buildActivityExport } from '../lib/utils';
 import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
-import { StyledCard } from '@/components/wp-ui/card';
+
 import { Modal, Input, DateInput, Select } from '../components/ui';
 import type { ActivityItem, ActivityStatus } from '../types';
 import toast from 'react-hot-toast';
@@ -72,12 +72,12 @@ export function ActivityTab() {
   };
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="px-6 py-6 space-y-6">
       {/* Section Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-end justify-between flex-wrap gap-3 mb-4">
         <div>
-          <h2 className="text-base font-semibold text-foreground">Loan Activity</h2>
-          <p className="text-xs text-foreground mt-0.5">Payments, draws, and classifications</p>
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">Loan Activity</h2>
+          <p className="text-sm text-muted-foreground mt-1">Payments, draws, and classifications</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" size="sm" onClick={handleExport}>
@@ -101,8 +101,7 @@ export function ActivityTab() {
         ].map(s => (
           <div
             key={s.label}
-            className="flex items-center gap-3 px-5 py-3 bg-card border border-border shadow-sm cursor-default hover:shadow-md transition-shadow"
-            style={{ borderRadius: '12px' }}
+            className="flex items-center gap-3 px-5 py-3 bg-card border border-border shadow-sm rounded-xl cursor-default hover:shadow-md transition-shadow"
           >
             <div className={`w-9 h-9 rounded-lg ${s.iconBg} flex items-center justify-center shrink-0`}>
               <s.icon className={`w-4 h-4 ${s.iconColor}`} />
@@ -143,13 +142,13 @@ export function ActivityTab() {
       </div>
 
       {/* Activity Table */}
-      <StyledCard className="overflow-hidden">
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 'calc(100vh - 360px)', minHeight: '220px' }}>
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10">
-              <tr className="bg-muted border-b border-border">
+              <tr className="border-b border-border bg-muted/30">
                 {['Date','Loan','Description','Total Amount','Type','Principal','Interest','Fees','Status',''].map(h => (
-                  <th key={h} className="px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider text-right first:text-left last:text-center whitespace-nowrap">{h}</th>
+                  <th key={h} className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide text-right first:text-left last:text-center whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -226,7 +225,7 @@ export function ActivityTab() {
             <div className="text-center py-12 text-foreground text-sm">No activity records match the current filter</div>
           )}
         </div>
-      </StyledCard>
+      </div>
 
       {/* AI Suggestions Banner */}
       {activities.some(a => a.aiSuggestion && a.status !== 'Classified') && (

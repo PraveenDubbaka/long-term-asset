@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
-import { StyledCard } from '@/components/wp-ui/card';
 import { Select } from '../components/ui';
 
 import toast from 'react-hot-toast';
@@ -448,7 +447,7 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
           {/* File list */}
           <div className="rounded-lg border border-border overflow-hidden">
             <div className="flex items-center justify-between px-4 py-2 bg-muted/50 border-b border-border">
-              <span className="text-xs font-semibold text-foreground/70 uppercase tracking-wide">Files Queued</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Files Queued</span>
               <button onClick={() => fileRef.current?.click()}
                 className="text-xs text-primary hover:underline flex items-center gap-1">
                 <Plus className="w-3 h-3" /> Add more
@@ -558,24 +557,24 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
               <table className="w-full text-xs">
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-muted/80 border-b border-border">
-                    <th className="text-left px-3 py-2.5 font-semibold text-foreground/70 uppercase tracking-wide whitespace-nowrap">Date</th>
-                    <th className="text-left px-3 py-2.5 font-semibold text-foreground/70 uppercase tracking-wide">Type</th>
-                    <th className="text-left px-3 py-2.5 font-semibold text-foreground/70 uppercase tracking-wide">Security</th>
-                    <th className="text-left px-3 py-2.5 font-semibold text-foreground/70 uppercase tracking-wide">Ticker</th>
-                    <th className="text-left px-3 py-2.5 font-semibold text-foreground/70 uppercase tracking-wide">Broker</th>
-                    <th className="text-right px-3 py-2.5 font-semibold text-foreground/70 uppercase tracking-wide">Qty</th>
-                    <th className="text-right px-3 py-2.5 font-semibold text-foreground/70 uppercase tracking-wide">Price</th>
-                    <th className="text-center px-2 py-2.5 font-semibold text-foreground/70 uppercase tracking-wide">CCY</th>
-                    <th className="text-right px-3 py-2.5 font-semibold text-foreground/70 uppercase tracking-wide whitespace-nowrap">FX Rate</th>
-                    <th className="text-right px-3 py-2.5 font-semibold text-foreground/70 uppercase tracking-wide whitespace-nowrap">Net (CAD)</th>
+                    <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Date</th>
+                    <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground uppercase tracking-wide">Type</th>
+                    <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground uppercase tracking-wide">Security</th>
+                    <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground uppercase tracking-wide">Ticker</th>
+                    <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground uppercase tracking-wide">Broker</th>
+                    <th className="text-right px-3 py-2.5 font-semibold text-muted-foreground uppercase tracking-wide">Qty</th>
+                    <th className="text-right px-3 py-2.5 font-semibold text-muted-foreground uppercase tracking-wide">Price</th>
+                    <th className="text-center px-2 py-2.5 font-semibold text-muted-foreground uppercase tracking-wide">CCY</th>
+                    <th className="text-right px-3 py-2.5 font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">FX Rate</th>
+                    <th className="text-right px-3 py-2.5 font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Net (CAD)</th>
                     <th className="px-2 py-2.5 w-6" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody>
                   {rows.map(r => {
                     const hasMissing = r.missing.length > 0;
                     return (
-                      <tr key={r.id} className={hasMissing ? 'bg-amber-50/60 dark:bg-amber-900/10' : 'hover:bg-muted/20'}>
+                      <tr key={r.id} className={`border-b border-border/50 transition-colors ${hasMissing ? 'bg-amber-50/60 dark:bg-amber-900/10' : 'hover:bg-muted/30'}`}>
                         <td className="px-3 py-2 text-foreground whitespace-nowrap">{r.date}</td>
 
                         {/* Activity Type */}
@@ -695,7 +694,7 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
 
           <div className="rounded-lg border border-border overflow-hidden">
             <div className="px-4 py-2.5 bg-muted/50 border-b border-border">
-              <p className="text-xs font-semibold text-foreground/70 uppercase tracking-wide">Transaction Type → GL Account</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Transaction Type → GL Account</p>
             </div>
             <div className="divide-y divide-border">
               {Array.from(new Set(rows.map(r => r.type))).map(txnType => {
@@ -796,16 +795,16 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="bg-muted/60 border-b border-border">
-                    <th className="text-left px-3 py-2 font-semibold text-foreground/70 uppercase tracking-wide">Security</th>
-                    <th className="text-left px-3 py-2 font-semibold text-foreground/70 uppercase tracking-wide">Ticker</th>
-                    <th className="text-center px-3 py-2 font-semibold text-foreground/70 uppercase tracking-wide">CCY</th>
-                    <th className="text-center px-3 py-2 font-semibold text-foreground/70 uppercase tracking-wide">Txns</th>
-                    <th className="text-center px-3 py-2 font-semibold text-foreground/70 uppercase tracking-wide">Status</th>
+                    <th className="text-left px-3 py-2 font-semibold text-muted-foreground uppercase tracking-wide">Security</th>
+                    <th className="text-left px-3 py-2 font-semibold text-muted-foreground uppercase tracking-wide">Ticker</th>
+                    <th className="text-center px-3 py-2 font-semibold text-muted-foreground uppercase tracking-wide">CCY</th>
+                    <th className="text-center px-3 py-2 font-semibold text-muted-foreground uppercase tracking-wide">Txns</th>
+                    <th className="text-center px-3 py-2 font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody>
                   {Array.from(new Map(rows.filter(r => r.security).map(r => [r.ticker || r.security, r])).values()).map(r => (
-                    <tr key={r.id} className="hover:bg-muted/20">
+                    <tr key={r.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                       <td className="px-3 py-2 font-medium text-foreground">{r.security}</td>
                       <td className="px-3 py-2 font-mono text-foreground">{r.ticker || <span className="text-foreground/30">—</span>}</td>
                       <td className="px-3 py-2 text-center font-mono text-foreground">{r.ccy}</td>
@@ -843,7 +842,7 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
           </div>
 
           {/* Final summary table */}
-          <StyledCard className="overflow-hidden p-0">
+          <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className="overflow-x-auto max-h-56">
               <table className="w-full text-xs">
                 <thead className="sticky top-0">
@@ -853,9 +852,9 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody>
                   {rows.map(r => (
-                    <tr key={r.id} className="hover:bg-muted/20">
+                    <tr key={r.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                       <td className="px-3 py-2 text-foreground whitespace-nowrap">{r.date}</td>
                       <td className="px-3 py-2">
                         <span className={`px-1.5 py-0.5 rounded font-medium text-[10px] ${typeBadgeClass(r.type)}`}>{r.type}</span>
@@ -880,7 +879,7 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
                 </tfoot>
               </table>
             </div>
-          </StyledCard>
+          </div>
 
           {/* GL summary */}
           <div className="rounded-xl border border-border overflow-hidden">
@@ -891,7 +890,7 @@ function OcrUploadStep({ onBack, onComplete, onImport }: {
             <table className="w-full text-xs">
               <tbody>
                 {Array.from(new Set(rows.map(r => r.type))).map(t => (
-                  <tr key={t} className="border-b border-border hover:bg-muted/20">
+                  <tr key={t} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-2.5 text-foreground/70">{t}</td>
                     <td className="px-4 py-2.5 font-mono font-medium text-foreground">{glMap[t] ?? '—'}</td>
                   </tr>
@@ -1036,7 +1035,7 @@ function ExcelWizard({ onBack, onComplete }: { onBack: () => void; onComplete: (
           </div>
           <div className="max-h-72 overflow-y-auto rounded-lg border border-border">
             {COL_MAP_CFG[dataType].map(({ field, required, defaultCol }) => (
-              <div key={field} className="flex items-center justify-between px-3 py-2 border-b border-border last:border-b-0 hover:bg-muted/20">
+              <div key={field} className="flex items-center justify-between px-3 py-2 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors">
                 <span className="text-sm text-foreground">{field}{required && <span className="text-red-500 ml-0.5">*</span>}</span>
                 <Select value={colMaps[field] ?? defaultCol}
                   onChange={e => setColMaps(prev => ({ ...prev, [field]: e.target.value }))}
@@ -1083,7 +1082,7 @@ function ExcelWizard({ onBack, onComplete }: { onBack: () => void; onComplete: (
           </div>
 
           {dataType === 'transactions' && (
-            <StyledCard className="overflow-hidden p-0">
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
               <div className="overflow-x-auto max-h-64">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0">
@@ -1093,9 +1092,9 @@ function ExcelWizard({ onBack, onComplete }: { onBack: () => void; onComplete: (
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">
+                  <tbody>
                     {MOCK_TXN_PREVIEW.map((r, i) => (
-                      <tr key={i} className="hover:bg-muted/20">
+                      <tr key={i} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                         <td className="px-3 py-2 text-xs text-foreground whitespace-nowrap">{r.date}</td>
                         <td className="px-3 py-2 text-xs text-foreground/60 whitespace-nowrap">{r.settleDate}</td>
                         <td className="px-3 py-2"><span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${r.type==='Purchase'?'bg-blue-50 text-blue-700':r.type==='Sale'?'bg-orange-50 text-orange-700':r.type==='Dividend'?'bg-green-50 text-green-700':'bg-muted text-foreground'}`}>{r.type}</span></td>
@@ -1116,31 +1115,31 @@ function ExcelWizard({ onBack, onComplete }: { onBack: () => void; onComplete: (
                   </tfoot>
                 </table>
               </div>
-            </StyledCard>
+            </div>
           )}
 
           {dataType === 'holdings' && (
-            <StyledCard className="overflow-hidden p-0">
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-border bg-muted/70">{['Security','Ticker','Broker','CCY','Units','WAC / Unit','Cost (CAD)','GL Acct'].map(h=><th key={h} className="text-left px-3 py-2 text-xs font-semibold uppercase tracking-wider text-foreground/70 whitespace-nowrap">{h}</th>)}</tr></thead>
-                  <tbody className="divide-y divide-border">{MOCK_HOLDINGS_PREVIEW.map((r,i)=><tr key={i} className="hover:bg-muted/20"><td className="px-3 py-2 text-xs font-medium text-foreground">{r.security}</td><td className="px-3 py-2 text-xs font-mono text-foreground">{r.ticker}</td><td className="px-3 py-2 text-xs text-foreground">{r.broker}</td><td className="px-3 py-2 text-center text-xs font-mono">{r.ccy}</td><td className="px-3 py-2 text-right tabular-nums font-mono text-xs">{r.units.toLocaleString()}</td><td className="px-3 py-2 text-right tabular-nums font-mono text-xs">{fmt2(r.wac)}</td><td className="px-3 py-2 text-right tabular-nums font-mono font-semibold text-xs">{fmtCAD(r.costCAD)}</td><td className="px-3 py-2 text-xs font-mono text-foreground">{r.gl}</td></tr>)}</tbody>
+                  <tbody>{MOCK_HOLDINGS_PREVIEW.map((r,i)=><tr key={i} className="border-b border-border/50 hover:bg-muted/30 transition-colors"><td className="px-3 py-2 text-xs font-medium text-foreground">{r.security}</td><td className="px-3 py-2 text-xs font-mono text-foreground">{r.ticker}</td><td className="px-3 py-2 text-xs text-foreground">{r.broker}</td><td className="px-3 py-2 text-center text-xs font-mono">{r.ccy}</td><td className="px-3 py-2 text-right tabular-nums font-mono text-xs">{r.units.toLocaleString()}</td><td className="px-3 py-2 text-right tabular-nums font-mono text-xs">{fmt2(r.wac)}</td><td className="px-3 py-2 text-right tabular-nums font-mono font-semibold text-xs">{fmtCAD(r.costCAD)}</td><td className="px-3 py-2 text-xs font-mono text-foreground">{r.gl}</td></tr>)}</tbody>
                   <tfoot><tr className="border-t-2 border-border bg-muted/60"><td colSpan={6} className="px-3 py-2 text-xs font-semibold">{previewCount} positions</td><td className="px-3 py-2 text-right tabular-nums font-mono font-bold text-xs">{fmtCAD(MOCK_HOLDINGS_PREVIEW.reduce((s,r)=>s+r.costCAD,0))}</td><td/></tr></tfoot>
                 </table>
               </div>
-            </StyledCard>
+            </div>
           )}
 
           {dataType === 'income' && (
-            <StyledCard className="overflow-hidden p-0">
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-border bg-muted/70">{['Date','Broker','Type','Description','CCY','Local Amt','CAD Amt','GL Acct','Tax Slip'].map(h=><th key={h} className="text-left px-3 py-2 text-xs font-semibold uppercase tracking-wider text-foreground/70 whitespace-nowrap">{h}</th>)}</tr></thead>
-                  <tbody className="divide-y divide-border">{MOCK_INCOME_PREVIEW.map((r,i)=><tr key={i} className="hover:bg-muted/20"><td className="px-3 py-2 text-xs text-foreground whitespace-nowrap">{r.date}</td><td className="px-3 py-2 text-xs text-foreground">{r.broker}</td><td className="px-3 py-2"><span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-foreground/70 font-medium">{r.type}</span></td><td className="px-3 py-2 text-xs text-foreground max-w-[150px] truncate">{r.description}</td><td className="px-3 py-2 text-center text-xs font-mono">{r.ccy}</td><td className={`px-3 py-2 text-right tabular-nums font-mono text-xs ${r.localAmt<0?'text-red-600':''}`}>{r.localAmt<0?`(${fmt2(Math.abs(r.localAmt))})`:fmt2(r.localAmt)}</td><td className={`px-3 py-2 text-right tabular-nums font-mono font-semibold text-xs ${r.cadAmt<0?'text-red-600':r.type==='Interest Income'?'text-green-600':''}`}>{fmtCAD(r.cadAmt)}</td><td className="px-3 py-2 text-xs font-mono text-foreground">{r.gl}</td><td className="px-3 py-2">{r.taxSlip?<span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold font-mono">{r.taxSlip}</span>:<span className="text-foreground/30 text-xs">—</span>}</td></tr>)}</tbody>
+                  <tbody>{MOCK_INCOME_PREVIEW.map((r,i)=><tr key={i} className="border-b border-border/50 hover:bg-muted/30 transition-colors"><td className="px-3 py-2 text-xs text-foreground whitespace-nowrap">{r.date}</td><td className="px-3 py-2 text-xs text-foreground">{r.broker}</td><td className="px-3 py-2"><span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-foreground/70 font-medium">{r.type}</span></td><td className="px-3 py-2 text-xs text-foreground max-w-[150px] truncate">{r.description}</td><td className="px-3 py-2 text-center text-xs font-mono">{r.ccy}</td><td className={`px-3 py-2 text-right tabular-nums font-mono text-xs ${r.localAmt<0?'text-red-600':''}`}>{r.localAmt<0?`(${fmt2(Math.abs(r.localAmt))})`:fmt2(r.localAmt)}</td><td className={`px-3 py-2 text-right tabular-nums font-mono font-semibold text-xs ${r.cadAmt<0?'text-red-600':r.type==='Interest Income'?'text-green-600':''}`}>{fmtCAD(r.cadAmt)}</td><td className="px-3 py-2 text-xs font-mono text-foreground">{r.gl}</td><td className="px-3 py-2">{r.taxSlip?<span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold font-mono">{r.taxSlip}</span>:<span className="text-foreground/30 text-xs">—</span>}</td></tr>)}</tbody>
                   <tfoot><tr className="border-t-2 border-border bg-muted/60"><td colSpan={6} className="px-3 py-2 text-xs font-semibold">{previewCount} entries</td><td className="px-3 py-2 text-right tabular-nums font-mono font-bold text-xs">{fmtCAD(MOCK_INCOME_PREVIEW.reduce((s,r)=>s+r.cadAmt,0))}</td><td colSpan={2}/></tr></tfoot>
                 </table>
               </div>
-            </StyledCard>
+            </div>
           )}
 
           <div className="rounded-xl border border-border overflow-hidden">
@@ -1148,8 +1147,8 @@ function ExcelWizard({ onBack, onComplete }: { onBack: () => void; onComplete: (
               <Tag className="w-3 h-3 text-primary" /><span className="text-xs font-semibold text-foreground">GL Account Mapping</span>
             </div>
             <table className="w-full text-xs">
-              <thead><tr className="border-b border-border bg-muted/30"><th className="text-left px-4 py-2 font-semibold text-foreground/70 uppercase tracking-wide">Field</th><th className="text-left px-4 py-2 font-semibold text-foreground/70 uppercase tracking-wide">GL Account</th></tr></thead>
-              <tbody>{GL_CFG[dataType].map(({key,label})=><tr key={key} className="border-b border-border hover:bg-muted/20"><td className="px-4 py-2.5 text-foreground/70">{label}</td><td className="px-4 py-2.5 font-mono font-medium text-foreground">{glTags[key]||'—'}</td></tr>)}</tbody>
+              <thead><tr className="border-b border-border bg-muted/30"><th className="text-left px-4 py-2 font-semibold text-muted-foreground uppercase tracking-wide">Field</th><th className="text-left px-4 py-2 font-semibold text-muted-foreground uppercase tracking-wide">GL Account</th></tr></thead>
+              <tbody>{GL_CFG[dataType].map(({key,label})=><tr key={key} className="border-b border-border/50 hover:bg-muted/30 transition-colors"><td className="px-4 py-2.5 text-foreground/70">{label}</td><td className="px-4 py-2.5 font-mono font-medium text-foreground">{glTags[key]||'—'}</td></tr>)}</tbody>
               <tfoot><tr className="bg-primary/5 border-t-2 border-primary/25"><td className="px-4 py-2.5 font-semibold text-foreground">{previewCount} records</td><td className="px-4 py-2.5"><span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">✓ Ready to import</span></td></tr></tfoot>
             </table>
           </div>
@@ -1232,7 +1231,7 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
         className={isModal ? "flex-1 min-h-0 overflow-y-auto px-4 py-4" : "px-[20%] py-6 overflow-y-auto"}
         style={isModal ? undefined : { maxHeight: 'calc(100vh - 120px)' }}
       >
-        <StyledCard>
+        <div className="rounded-xl border border-border bg-card">
           <div className="px-6 py-5 space-y-5">
 
             {/* ── Landing — no path chosen ── */}
@@ -1300,7 +1299,7 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
                     onDragLeave={() => setDragging(false)}
                     onClick={() => fileRef.current?.click()}
                     className={`border-2 border-dashed rounded-xl p-5 text-center transition-all cursor-pointer select-none
-                      ${dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40 hover:bg-muted/20'}`}
+                      ${dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40 hover:bg-muted/30 transition-colors'}`}
                   >
                     <input ref={fileRef} type="file" accept=".pdf,.docx,.png,.jpg,.jpeg,.xlsx,.csv" className="hidden"
                       onChange={e => { const n = e.target.files?.[0]?.name ?? ''; if (n) handleFile(n); }} />
@@ -1551,7 +1550,7 @@ export function InvUploadWizard({ onBack, onImport, isModal }: {
             )}
 
           </div>
-        </StyledCard>
+        </div>
       </div>
     </div>
   );

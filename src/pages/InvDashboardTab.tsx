@@ -2,14 +2,13 @@ import React from 'react';
 import { Download, TrendingUp, DollarSign, BarChart3, Briefcase, Percent } from 'lucide-react';
 import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
-import { StyledCard } from '@/components/wp-ui/card';
 import { glSummaryRows, realizedRows, dividendRows, unrealizedRows, holdings, incomeExpenseRows } from '../data/investmentData';
 import { fmtDateDisplay } from '../lib/utils';
 import toast from 'react-hot-toast';
 
 function fmt(n: number, d = 2) { return n.toLocaleString('en-CA', { minimumFractionDigits: d, maximumFractionDigits: d }); }
 function fmtCAD(n: number) { return '$' + fmt(Math.abs(n)); }
-function glColor(n: number) { return n > 0 ? 'text-green-600' : n < 0 ? 'text-red-600' : 'text-foreground'; }
+function glColor(n: number) { return n > 0 ? 'text-green-600' : n < 0 ? 'text-destructive' : 'text-foreground'; }
 
 export function InvDashboardTab() {
   const totalOpen     = glSummaryRows.reduce((s, r) => s + r.openingCAD, 0);
@@ -44,108 +43,117 @@ export function InvDashboardTab() {
   };
 
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
+    <div className="px-6 py-6 space-y-6">
+
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <div className="flex items-end justify-between flex-wrap gap-3 mb-4">
         <div>
-          <h2 className="text-base font-semibold text-foreground">Investment Dashboard</h2>
-          <p className="text-xs text-foreground mt-0.5">GL roll-forward summary · FY January 1 – December 31, 2025 · ASPE cost method</p>
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">Investment Dashboard</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            GL roll-forward summary · FY January 1 – December 31, 2025 · ASPE cost method
+          </p>
         </div>
         <Button variant="secondary" size="sm" onClick={handleExport}>
-          <Download className="w-3.5 h-3.5" /> Export GL Summary
+          <Download className="w-3.5 h-3.5 mr-1.5" /> Export GL Summary
         </Button>
       </div>
 
-      {/* KPI strip */}
-      <div className="grid grid-cols-5 gap-3">
+      {/* ── KPI strip ───────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
-          { label: 'Holdings (Closing Book)',  value: fmtCAD(totalClose),    icon: Briefcase,   color: 'text-foreground' },
-          { label: 'Total Purchases (FY)',     value: fmtCAD(totalPurch),    icon: DollarSign,  color: 'text-primary' },
-          { label: 'Realized G/L',             value: (totalRealGL >= 0 ? '+' : '') + fmtCAD(totalRealGL), icon: TrendingUp, color: glColor(totalRealGL) },
-          { label: 'Unrealized G/L (Discl.)', value: '+' + fmtCAD(totalUnreal), icon: BarChart3, color: 'text-green-600' },
-          { label: 'Fees & WHT (FY)',          value: `(${fmtCAD(totalFees + totalWHT)})`, icon: Percent, color: 'text-amber-600',
+          { label: 'Holdings (Closing Book)',   value: fmtCAD(totalClose),    icon: Briefcase,  color: 'text-foreground',    sub: 'Book value CAD' },
+          { label: 'Total Purchases (FY)',      value: fmtCAD(totalPurch),    icon: DollarSign, color: 'text-primary',       sub: 'Acquisitions' },
+          { label: 'Realized G/L',             value: (totalRealGL >= 0 ? '+' : '-') + fmtCAD(totalRealGL), icon: TrendingUp, color: glColor(totalRealGL), sub: 'On disposals' },
+          { label: 'Unrealized G/L (Discl.)',  value: '+' + fmtCAD(totalUnreal), icon: BarChart3, color: 'text-green-600',  sub: 'FMV vs cost' },
+          { label: 'Fees & WHT (FY)',           value: `(${fmtCAD(totalFees + totalWHT)})`, icon: Percent, color: 'text-amber-600',
             sub: `Fees $${fmt(totalFees)} · WHT $${fmt(totalWHT)}` },
         ].map(k => (
-          <StyledCard key={k.label} className="p-3 flex items-center gap-3">
-            <k.icon className={`w-8 h-8 ${k.color} opacity-70 flex-shrink-0`} />
-            <div>
-              <div className={`text-sm font-bold tabular-nums ${k.color}`}>{k.value}</div>
-              <div className="text-xs text-foreground">{k.label}</div>
-              {(k as { sub?: string }).sub && (
-                <div className="text-xs text-foreground opacity-70 mt-0.5">{(k as { sub?: string }).sub}</div>
-              )}
+          <div key={k.label} className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <div className="flex items-start justify-between">
+              <p className="text-xs text-muted-foreground leading-snug">{k.label}</p>
+              <k.icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
             </div>
-          </StyledCard>
+            <p className={`mt-2 text-2xl font-semibold tabular-nums ${k.color}`}>{k.value}</p>
+            <p className="text-xs text-muted-foreground mt-1">{k.sub}</p>
+          </div>
         ))}
       </div>
 
-      {/* GL Roll-forward equation */}
-      <StyledCard className="p-4">
-        <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-3">Investment Account Roll-Forward (CAD)</h3>
+      {/* ── Roll-forward equation ────────────────────────────────────────── */}
+      <div className="rounded-xl border border-border bg-card p-4">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+          Investment Account Roll-Forward (CAD)
+        </h3>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {[
-            { label: 'Opening Balance', value: fmtCAD(totalOpen), color: 'text-foreground' },
-            { label: '+ Purchases',     value: fmtCAD(totalPurch), color: 'text-primary' },
-            { label: '− Disposals (Cost)', value: fmtCAD(totalDisp), color: 'text-red-500' },
-            { label: '= Closing Balance', value: fmtCAD(totalClose), color: 'text-foreground font-bold' },
+            { label: 'Opening Balance',    value: fmtCAD(totalOpen),  color: 'text-foreground' },
+            { label: '+ Purchases',        value: fmtCAD(totalPurch), color: 'text-primary' },
+            { label: '− Disposals (Cost)', value: fmtCAD(totalDisp),  color: 'text-destructive' },
+            { label: '= Closing Balance',  value: fmtCAD(totalClose), color: 'text-foreground font-bold' },
           ].map((item, i) => (
             <React.Fragment key={item.label}>
-              {i > 0 && <span className="text-foreground">→</span>}
-              <div className="flex flex-col items-center bg-muted rounded-lg px-4 py-2">
-                <span className="text-xs text-foreground whitespace-nowrap">{item.label}</span>
+              {i > 0 && <span className="text-muted-foreground">→</span>}
+              <div className="flex flex-col items-center bg-muted/40 rounded-xl px-4 py-2">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">{item.label}</span>
                 <span className={`tabular-nums font-mono text-sm ${item.color}`}>{item.value}</span>
               </div>
             </React.Fragment>
           ))}
         </div>
-      </StyledCard>
+      </div>
 
-      {/* Income summary */}
-      <div className="grid grid-cols-3 gap-3">
-        <StyledCard className="p-4">
-          <div className="text-xs text-foreground uppercase tracking-wider mb-2">Realized Gain / Loss</div>
-          <div className={`text-xl font-bold tabular-nums ${glColor(totalRealGL)}`}>
+      {/* ── Income summary (3-up) ────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* Realized G/L */}
+        <div className="rounded-xl border border-border bg-card p-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Realized Gain / Loss</p>
+          <p className={`text-2xl font-semibold tabular-nums ${glColor(totalRealGL)}`}>
             {totalRealGL >= 0 ? '+' : ''}{fmtCAD(totalRealGL)}
-          </div>
-          <div className="mt-2 space-y-1">
+          </p>
+          <div className="mt-3 space-y-1">
             {realizedRows.map(r => (
               <div key={r.id} className="flex items-center justify-between text-xs">
-                <span className="text-foreground">{r.ticker} ({fmtDateDisplay(r.date)})</span>
+                <span className="text-muted-foreground">{r.ticker} ({fmtDateDisplay(r.date)})</span>
                 <span className={`tabular-nums ${glColor(r.realizedGL_CAD)}`}>
                   {r.realizedGL_CAD >= 0 ? '+$' : '($'}{fmt(Math.abs(r.realizedGL_CAD))}{r.realizedGL_CAD < 0 ? ')' : ''}
                 </span>
               </div>
             ))}
           </div>
-        </StyledCard>
-        <StyledCard className="p-4">
-          <div className="text-xs text-foreground uppercase tracking-wider mb-2">Dividend Income</div>
-          <div className="text-xl font-bold tabular-nums text-green-600">+{fmtCAD(totalDiv)}</div>
-          <div className="mt-2 space-y-1">
+        </div>
+
+        {/* Dividend Income */}
+        <div className="rounded-xl border border-border bg-card p-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Dividend Income</p>
+          <p className="text-2xl font-semibold tabular-nums text-green-600">+{fmtCAD(totalDiv)}</p>
+          <div className="mt-3 space-y-1">
             {dividendRows.map(r => (
               <div key={r.id} className="flex items-center justify-between text-xs">
-                <span className="text-foreground">{r.ticker} ({r.broker.split(' ')[0]})</span>
+                <span className="text-muted-foreground">{r.ticker} ({r.broker.split(' ')[0]})</span>
                 <span className="tabular-nums text-green-600">+${fmt(r.totalDivCAD)}</span>
               </div>
             ))}
           </div>
-        </StyledCard>
-        <StyledCard className="p-4">
-          <div className="text-xs text-foreground uppercase tracking-wider mb-2">FMV vs Book (Dec 31)</div>
-          <div className="text-xl font-bold tabular-nums text-green-600">+{fmtCAD(totalUnreal)}</div>
-          <div className="text-xs text-foreground mt-1">Disclosure only — ASPE cost method</div>
+        </div>
+
+        {/* FMV vs Book */}
+        <div className="rounded-xl border border-border bg-card p-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">FMV vs Book (Dec 31)</p>
+          <p className="text-2xl font-semibold tabular-nums text-green-600">+{fmtCAD(totalUnreal)}</p>
+          <p className="text-xs text-muted-foreground mt-1">Disclosure only — ASPE cost method</p>
           <div className="mt-2 grid grid-cols-2 gap-1">
-            <div className="text-xs text-foreground">Book Value:</div>
+            <div className="text-xs text-muted-foreground">Book Value:</div>
             <div className="text-xs tabular-nums font-mono text-right">{fmtCAD(totalClose)}</div>
-            <div className="text-xs text-foreground">Fair Value:</div>
+            <div className="text-xs text-muted-foreground">Fair Value:</div>
             <div className="text-xs tabular-nums font-mono text-right text-green-600">{fmtCAD(totalFmvCAD)}</div>
-            <div className="text-xs text-foreground">Difference:</div>
+            <div className="text-xs text-muted-foreground">Difference:</div>
             <div className="text-xs tabular-nums font-mono text-right text-green-600">+{fmtCAD(totalFmvCAD - totalClose)}</div>
           </div>
-        </StyledCard>
+        </div>
       </div>
 
-      {/* GL Summary Roll-forward Table */}
-      <StyledCard className="overflow-hidden p-0">
+      {/* ── GL Summary Roll-forward Table ────────────────────────────────── */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-foreground">GL Summary — Investment Account Roll-Forward</h3>
           <Badge variant="info" className="text-xs">Account 1310</Badge>
@@ -153,71 +161,76 @@ export function InvDashboardTab() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-muted/40">
-                <th className="text-left px-4 py-2.5 text-xs font-semibold uppercase text-foreground">Security</th>
-                <th className="text-left px-3 py-2.5 text-xs font-semibold uppercase text-foreground">Broker / Acct</th>
-                <th className="text-center px-3 py-2.5 text-xs font-semibold uppercase text-foreground">CCY</th>
-                <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Opening</th>
-                <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Purchases</th>
-                <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Disposals</th>
-                <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Realized G/L</th>
-                <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase text-foreground">Dividends</th>
-                <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase text-foreground">ROC</th>
-                <th className="text-right px-3 py-2.5 text-xs font-semibold uppercase text-foreground whitespace-nowrap">Closing</th>
+              <tr className="border-b border-border bg-muted/30">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Security</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Broker / Acct</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">CCY</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Opening</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Purchases</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Disposals</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Realized G/L</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Dividends</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">ROC</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Closing</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody>
               {glSummaryRows.map(r => (
-                <tr key={r.id} className="hover:bg-muted/20">
-                  <td className="px-4 py-2.5 text-sm font-medium text-foreground">{r.security}</td>
-                  <td className="px-3 py-2.5">
+                <tr key={r.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                  <td className="px-4 py-3 text-sm font-medium text-foreground">{r.security}</td>
+                  <td className="px-4 py-3">
                     <div className="text-xs text-foreground">{r.broker}</div>
-                    <div className="text-xs text-foreground">…{r.acctLast4}</div>
+                    <div className="text-xs text-muted-foreground font-mono">…{r.acctLast4}</div>
                   </td>
-                  <td className="px-3 py-2.5 text-center">
-                    <Badge variant="outline" className="text-xs">{r.currency}</Badge>
+                  <td className="px-4 py-3 text-center">
+                    <Badge variant="outline" className="text-xs font-mono">{r.currency}</Badge>
                   </td>
-                  <td className="px-3 py-2.5 text-right tabular-nums font-mono text-xs text-foreground">
-                    {r.openingCAD > 0 ? fmtCAD(r.openingCAD) : '00'}
+                  <td className="px-4 py-3 text-right tabular-nums text-xs">
+                    {r.openingCAD > 0 ? fmtCAD(r.openingCAD) : <span className="text-muted-foreground">—</span>}
                   </td>
-                  <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">{fmtCAD(r.purchasesCAD)}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm text-red-500">
-                    {r.disposalsAtCostCAD > 0 ? `(${fmtCAD(r.disposalsAtCostCAD)})` : '00'}
+                  <td className="px-4 py-3 text-right tabular-nums text-xs">{fmtCAD(r.purchasesCAD)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-xs text-destructive">
+                    {r.disposalsAtCostCAD > 0 ? `(${fmtCAD(r.disposalsAtCostCAD)})` : <span className="text-muted-foreground">—</span>}
                   </td>
-                  <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">
+                  <td className="px-4 py-3 text-right tabular-nums text-xs">
                     {r.realizedGL_CAD !== 0
                       ? <span className={glColor(r.realizedGL_CAD)}>
                           {r.realizedGL_CAD > 0 ? '+' : ''}{fmtCAD(r.realizedGL_CAD)}
                         </span>
-                      : <span className="text-foreground text-xs">—</span>}
+                      : <span className="text-muted-foreground">—</span>}
                   </td>
-                  <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">
-                    {r.dividendsCAD > 0 ? <span className="text-green-600">+{fmtCAD(r.dividendsCAD)}</span> : <span className="text-foreground text-xs">—</span>}
+                  <td className="px-4 py-3 text-right tabular-nums text-xs">
+                    {r.dividendsCAD > 0
+                      ? <span className="text-green-600">+{fmtCAD(r.dividendsCAD)}</span>
+                      : <span className="text-muted-foreground">—</span>}
                   </td>
-                  <td className="px-3 py-2.5 text-right tabular-nums font-mono text-sm">
-                    {r.rocCAD !== 0 ? <span className="text-amber-600">{fmtCAD(r.rocCAD)}</span> : <span className="text-foreground text-xs">—</span>}
+                  <td className="px-4 py-3 text-right tabular-nums text-xs">
+                    {r.rocCAD !== 0
+                      ? <span className="text-amber-600">{fmtCAD(r.rocCAD)}</span>
+                      : <span className="text-muted-foreground">—</span>}
                   </td>
-                  <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm">{fmtCAD(r.closingCAD)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-sm font-semibold">{fmtCAD(r.closingCAD)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr className="border-t-2 border-border bg-muted/60">
-                <td colSpan={3} className="px-4 py-2.5 text-xs font-semibold">TOTALS</td>
-                <td className="px-3 py-2.5 text-right tabular-nums font-mono text-xs text-foreground">—</td>
-                <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm">{fmtCAD(totalPurch)}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm text-red-500">({fmtCAD(totalDisp)})</td>
-                <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm">
+              <tr className="border-t-2 border-border bg-muted/40 font-semibold">
+                <td colSpan={3} className="px-4 py-3 text-xs font-semibold">TOTALS</td>
+                <td className="px-4 py-3 text-right tabular-nums text-xs text-muted-foreground">—</td>
+                <td className="px-4 py-3 text-right tabular-nums text-sm font-semibold">{fmtCAD(totalPurch)}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-sm font-semibold text-destructive">({fmtCAD(totalDisp)})</td>
+                <td className="px-4 py-3 text-right tabular-nums text-sm font-semibold">
                   <span className={glColor(totalRealGL)}>{totalRealGL >= 0 ? '+' : ''}{fmtCAD(totalRealGL)}</span>
                 </td>
-                <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm text-green-600">+{fmtCAD(totalDiv)}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm text-amber-600">{fmtCAD(totalROC)}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums font-mono font-bold text-sm">{fmtCAD(totalClose)}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-sm font-semibold text-green-600">+{fmtCAD(totalDiv)}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-sm font-semibold text-amber-600">{fmtCAD(totalROC)}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-sm font-semibold">{fmtCAD(totalClose)}</td>
               </tr>
             </tfoot>
           </table>
         </div>
-      </StyledCard>
+      </div>
+
     </div>
   );
 }
