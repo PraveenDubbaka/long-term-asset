@@ -286,7 +286,7 @@ const InvestmentPage = () => {
           </div>
 
           {/* ── Tab bar + action buttons on one row ───────────────── */}
-          <div className="px-6 pt-3 pb-2 flex-shrink-0 flex items-center justify-between gap-3 flex-wrap">
+          <div className="px-6 pt-5 pb-2 flex-shrink-0 flex items-center justify-between gap-3 flex-wrap">
             {/* Tabs */}
             <div className="flex items-center gap-1 bg-card rounded-lg border border-border p-1 flex-wrap">
               {tabs.map(tab => (
@@ -514,19 +514,19 @@ const InvestmentPage = () => {
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-foreground/40">Linked Accounts</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Linked Accounts</p>
                       {[
                         { broker: 'TD Direct Investing',  acct: '···8832', ccy: 'CAD', color: '#00883A' },
                         { broker: 'RBC Direct Investing', acct: '···4451', ccy: 'CAD', color: '#0051A5' },
                         { broker: 'HSBC InvestDirect',    acct: '···2291', ccy: 'USD', color: '#DB0011' },
                         { broker: 'Fidelity Investments', acct: '···7105', ccy: 'USD', color: '#538025' },
                       ].map(a => (
-                        <div key={a.acct} className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5 bg-muted/20">
+                        <div key={a.acct} className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5 bg-muted/30">
                           <div className="flex items-center gap-2.5">
                             <div className="w-6 h-6 rounded flex-shrink-0" style={{ backgroundColor: a.color }} />
                             <div>
                               <div className="text-xs font-medium text-foreground">{a.broker}</div>
-                              <div className="text-xs text-foreground/50 font-mono">{a.acct} · {a.ccy}</div>
+                              <div className="text-xs text-muted-foreground font-mono">{a.acct} · {a.ccy}</div>
                             </div>
                           </div>
                           <span className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5">Active</span>
@@ -534,7 +534,7 @@ const InvestmentPage = () => {
                       ))}
                     </div>
                     <div className="rounded-lg bg-muted/40 border border-border px-3 py-2.5 flex items-center justify-between">
-                      <span className="text-xs text-foreground/60">Auto-sync: daily at midnight</span>
+                      <span className="text-xs text-muted-foreground">Auto-sync: daily at midnight</span>
                       <button onClick={() => { plaidDisconnect(); toast('Plaid disconnected'); }}
                         className="text-xs text-red-500 hover:text-red-600 hover:underline underline-offset-2">
                         Disconnect
@@ -555,7 +555,7 @@ const InvestmentPage = () => {
                   {/* Header */}
                   <div className="px-6 pt-5 pb-4 border-b border-border flex items-center gap-3">
                     {plaidStep === 'login' && (
-                      <button onClick={() => setPlaidStep('select')} className="text-foreground/50 hover:text-foreground mr-1">
+                      <button onClick={() => setPlaidStep('select')} className="text-muted-foreground hover:text-foreground mr-1">
                         <ChevronLeft className="w-4 h-4" />
                       </button>
                     )}
@@ -589,8 +589,8 @@ const InvestmentPage = () => {
                     {plaidStep === 'select' && (
                       <div className="space-y-3">
                         <div className="relative">
-                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground/40 pointer-events-none" />
-                          <input className="w-full h-9 pl-8 pr-3 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                          <input className="w-full h-9 pl-8 pr-3 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-ring"
                             placeholder="Search 12,000+ institutions…" value={plaidSearch}
                             onChange={e => setPlaidSearch(e.target.value)} autoFocus />
                         </div>
@@ -610,8 +610,8 @@ const InvestmentPage = () => {
                             ))}
                         </div>
                         <div className="flex items-center gap-1.5 justify-center pt-1">
-                          <ShieldCheck className="w-3 h-3 text-foreground/30" />
-                          <span className="text-xs text-foreground/40">256-bit encryption · read-only access</span>
+                          <ShieldCheck className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">256-bit encryption · read-only access</span>
                         </div>
                       </div>
                     )}
@@ -623,25 +623,25 @@ const InvestmentPage = () => {
                         <div className="space-y-3">
                           <div>
                             <label className="block text-xs font-medium text-foreground mb-1.5">Username / Card Number</label>
-                            <input className="w-full h-9 px-3 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                            <input className="w-full h-9 px-3 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-ring"
                               placeholder="Enter username" value={plaidUsername}
                               onChange={e => setPlaidUsername(e.target.value)} autoFocus />
                           </div>
                           <div>
                             <label className="block text-xs font-medium text-foreground mb-1.5">Password</label>
                             <div className="relative">
-                              <input className="w-full h-9 px-3 pr-9 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                              <input className="w-full h-9 px-3 pr-9 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-ring"
                                 type={plaidShowPwd ? 'text' : 'password'} placeholder="Enter password"
                                 value={plaidPassword} onChange={e => setPlaidPassword(e.target.value)}
                                 onKeyDown={e => { if (e.key === 'Enter') handlePlaidVerify(); }} />
                               <button type="button" onClick={() => setPlaidShowPwd(p => !p)}
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground">
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                                 {plaidShowPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                               </button>
                             </div>
                           </div>
                         </div>
-                        <p className="text-xs text-foreground/40 leading-relaxed flex items-start gap-1.5">
+                        <p className="text-xs text-muted-foreground leading-relaxed flex items-start gap-1.5">
                           <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
                           Your credentials are encrypted end-to-end and never stored. Plaid requests read-only access to transaction history only.
                         </p>
@@ -654,7 +654,7 @@ const InvestmentPage = () => {
                         <div className="w-14 h-14 rounded-full border-[3px] border-primary/20 border-t-primary animate-spin" />
                         <div className="text-center">
                           <p className="text-sm font-semibold text-foreground">Verifying credentials…</p>
-                          <p className="text-xs text-foreground/50 mt-1">Connecting to {dialogInstitution?.name}</p>
+                          <p className="text-xs text-muted-foreground mt-1">Connecting to {dialogInstitution?.name}</p>
                         </div>
                       </div>
                     )}
@@ -670,7 +670,7 @@ const InvestmentPage = () => {
                           <p className="text-xs text-green-700 mt-0.5">2 accounts found · ready to link</p>
                         </div>
                         <div className="space-y-2">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-foreground/40">Select accounts to link</p>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Select accounts to link</p>
                           {[
                             { name: 'Investment Account',     acct: '···' + dialogInstitution.id.slice(0, 2).toUpperCase() + '01', ccy: 'CAD' },
                             { name: 'USD Investment Account', acct: '···' + dialogInstitution.id.slice(0, 2).toUpperCase() + '02', ccy: 'USD' },
@@ -679,7 +679,7 @@ const InvestmentPage = () => {
                               <input type="checkbox" defaultChecked className="rounded h-3.5 w-3.5 accent-primary" />
                               <div>
                                 <div className="text-xs font-medium text-foreground">{a.name}</div>
-                                <div className="text-xs text-foreground/50 font-mono">{a.acct} · {a.ccy}</div>
+                                <div className="text-xs text-muted-foreground font-mono">{a.acct} · {a.ccy}</div>
                               </div>
                             </label>
                           ))}
