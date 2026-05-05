@@ -230,7 +230,7 @@ export function InvBrokerReconTab({ invRecon, cashRecon }: Props) {
               return (
                 <Fragment key={c.sourceId}>
                   <tr
-                    className="border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer group"
+                    className="border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer"
                     onClick={(e) => { if ((e.target as HTMLElement).closest('button,input')) return; setOpenReconCash(open ? null : c.sourceId); }}
                   >
                     <td className="px-4 py-3">
@@ -257,12 +257,12 @@ export function InvBrokerReconTab({ invRecon, cashRecon }: Props) {
                     <td className="px-3 py-3">
                       {editCashId === c.sourceId ? (
                         <div className="flex gap-0.5">
-                          <button onClick={() => { setCashEdits(prev => ({...prev, [c.sourceId]: editCashData})); setEditCashId(null); toast('Balance updated'); }} className="p-1.5 rounded-md hover:bg-green-50 text-muted-foreground hover:text-green-600 transition-colors"><Check className="h-3.5 w-3.5" /></button>
-                          <button onClick={() => setEditCashId(null)} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><X className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => { setCashEdits(prev => ({...prev, [c.sourceId]: editCashData})); setEditCashId(null); toast('Balance updated'); }} className="p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-600"><Check className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => setEditCashId(null)} className="p-1.5 hover:bg-muted rounded-lg text-foreground"><X className="h-3.5 w-3.5" /></button>
                         </div>
                       ) : (
-                        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => { setEditCashId(c.sourceId); setEditCashData({ glBalance: cashEdits[c.sourceId]?.glBalance ?? c.glBalance, stmtBalance: cashEdits[c.sourceId]?.stmtBalance ?? c.stmtBalance }); }} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
+                        <div className="flex gap-0.5 ">
+                          <button onClick={() => { setEditCashId(c.sourceId); setEditCashData({ glBalance: cashEdits[c.sourceId]?.glBalance ?? c.glBalance, stmtBalance: cashEdits[c.sourceId]?.stmtBalance ?? c.stmtBalance }); }} className="p-1.5 hover:bg-muted rounded-lg text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
                         </div>
                       )}
                     </td>

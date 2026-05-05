@@ -202,18 +202,18 @@ export function ActivityTab() {
                           Split
                         </button>
                         <button
-                          className="p-1.5 hover:bg-muted rounded-lg transition-colors"
+                          className="p-1.5 hover:bg-muted rounded-lg text-foreground"
                           onClick={() => { setEditItem(item); setEditValues({ date: item.date, description: item.description, totalAmount: item.totalAmount, type: item.type, loanId: item.loanId }); }}
                           title="Edit"
                         >
-                          <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                          <Pencil className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors"
+                          className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive"
                           onClick={() => { deleteActivity(item.id); toast.success('Activity deleted'); }}
                           title="Delete"
                         >
-                          <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>

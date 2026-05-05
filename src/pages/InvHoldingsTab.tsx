@@ -208,7 +208,7 @@ export function InvHoldingsTab({ schedules, totals, allSources, onUpload, isEmpt
           </thead>
           <tbody>
             {visible.map((s) => (
-              <tr key={s.key} className="border-b border-border/50 hover:bg-muted/30 transition-colors group">
+              <tr key={s.key} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                 <td className="px-4 py-3 text-sm">
                   <div className="font-medium">{s.security}</div>
                   <div className="text-xs text-muted-foreground font-mono">{s.ticker}</div>
@@ -227,9 +227,9 @@ export function InvHoldingsTab({ schedules, totals, allSources, onUpload, isEmpt
                   {fmtSigned(s.unrealizedGL)}
                 </td>
                 <td className="px-3 py-3">
-                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => toast('Holdings are computed from source transactions')} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
-                    <button onClick={() => setHiddenKeys(prev => { const n = new Set(prev); n.add(s.key); return n; })} className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                  <div className="flex gap-0.5 ">
+                    <button onClick={() => toast('Holdings are computed from source transactions')} className="p-1.5 hover:bg-muted rounded-lg text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => setHiddenKeys(prev => { const n = new Set(prev); n.add(s.key); return n; })} className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
                 </td>
               </tr>

@@ -287,8 +287,8 @@ export function InvTransactionsTab({
                       onAddTx?.(tx);
                       setAddingNew(false);
                       toast.success('Transaction added');
-                    }} className="p-1.5 rounded-md hover:bg-green-50 text-muted-foreground hover:text-green-600 transition-colors"><Check className="h-3.5 w-3.5" /></button>
-                    <button onClick={() => setAddingNew(false)} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><X className="h-3.5 w-3.5" /></button>
+                    }} className="p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-600"><Check className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => setAddingNew(false)} className="p-1.5 hover:bg-muted rounded-lg text-foreground"><X className="h-3.5 w-3.5" /></button>
                   </div>
                 </td>
               </tr>
@@ -297,7 +297,7 @@ export function InvTransactionsTab({
               const issues = validateTx(t);
               const status = (t.status ?? "published") as TxStatus;
               return (
-                <tr key={t.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors group">
+                <tr key={t.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3">
                     <Checkbox
                       checked={selectedTx.has(t.id)}
@@ -379,13 +379,13 @@ export function InvTransactionsTab({
                   <td className="px-3 py-3">
                     {editId === t.id ? (
                       <div className="flex gap-0.5">
-                        <button onClick={() => { updateTx(t.id, editData); setEditId(null); toast.success('Saved'); }} className="p-1.5 rounded-md hover:bg-green-50 text-muted-foreground hover:text-green-600 transition-colors"><Check className="h-3.5 w-3.5" /></button>
-                        <button onClick={() => setEditId(null)} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><X className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => { updateTx(t.id, editData); setEditId(null); toast.success('Saved'); }} className="p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-600"><Check className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => setEditId(null)} className="p-1.5 hover:bg-muted rounded-lg text-foreground"><X className="h-3.5 w-3.5" /></button>
                       </div>
                     ) : (
-                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => { setEditId(t.id); setEditData({}); }} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
-                        <button onClick={() => { onDeleteTx?.(t.id); toast.success('Transaction removed'); }} className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                      <div className="flex gap-0.5 ">
+                        <button onClick={() => { setEditId(t.id); setEditData({}); }} className="p-1.5 hover:bg-muted rounded-lg text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => { onDeleteTx?.(t.id); toast.success('Transaction removed'); }} className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                       </div>
                     )}
                   </td>

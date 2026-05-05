@@ -115,13 +115,13 @@ export function InvAJEsTab({ ajes }: Props) {
                     setLocalAjes(prev => [...prev, {...entry, _localId: prev.length}]);
                     setAddingAje(false);
                     toast.success('AJE added');
-                  }} className="p-1.5 rounded-md hover:bg-green-50 text-muted-foreground hover:text-green-600 transition-colors"><Check className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => setAddingAje(false)} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><X className="h-3.5 w-3.5" /></button>
+                  }} className="p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-600"><Check className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => setAddingAje(false)} className="p-1.5 hover:bg-muted rounded-lg text-foreground"><X className="h-3.5 w-3.5" /></button>
                 </div></td>
               </tr>
             )}
             {visible.map((a) => (
-              <tr key={a.ref} className="border-b border-border/50 hover:bg-muted/30 transition-colors group">
+              <tr key={a.ref} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                 <td className="px-4 py-3 font-mono text-xs">{a.ref}</td>
                 <td className="px-4 py-3 text-sm">
                   {editRef === a.ref
@@ -155,13 +155,13 @@ export function InvAJEsTab({ ajes }: Props) {
                 <td className="px-3 py-3">
                   {editRef === a.ref ? (
                     <div className="flex gap-0.5">
-                      <button onClick={() => { setLocalAjes(prev => prev.map(x => x.ref === a.ref ? {...x, ...editAjeData} : x)); setEditRef(null); toast.success('AJE updated'); }} className="p-1.5 rounded-md hover:bg-green-50 text-muted-foreground hover:text-green-600 transition-colors"><Check className="h-3.5 w-3.5" /></button>
-                      <button onClick={() => setEditRef(null)} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><X className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => { setLocalAjes(prev => prev.map(x => x.ref === a.ref ? {...x, ...editAjeData} : x)); setEditRef(null); toast.success('AJE updated'); }} className="p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-600"><Check className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => setEditRef(null)} className="p-1.5 hover:bg-muted rounded-lg text-foreground"><X className="h-3.5 w-3.5" /></button>
                     </div>
                   ) : (
-                    <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => { setEditRef(a.ref); setEditAjeData({}); }} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
-                      <button onClick={() => { setLocalAjes(prev => prev.filter(x => x.ref !== a.ref)); toast.success('AJE removed'); }} className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                    <div className="flex gap-0.5 ">
+                      <button onClick={() => { setEditRef(a.ref); setEditAjeData({}); }} className="p-1.5 hover:bg-muted rounded-lg text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => { setLocalAjes(prev => prev.filter(x => x.ref !== a.ref)); toast.success('AJE removed'); }} className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
                   )}
                 </td>

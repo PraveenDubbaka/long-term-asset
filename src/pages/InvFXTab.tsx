@@ -83,7 +83,7 @@ export function InvFXTab({ fxSchedule }: Props) {
           </thead>
           <tbody>
             {localRates.map(r => (
-              <tr key={r.ccy} className="border-b border-border/50 hover:bg-muted/30 transition-colors group">
+              <tr key={r.ccy} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                 <td className="px-4 py-3"><Badge variant="outline" className="text-xs font-mono">{r.ccy}</Badge></td>
                 {editRateCcy === r.ccy ? (
                   <>
@@ -103,13 +103,13 @@ export function InvFXTab({ fxSchedule }: Props) {
                 <td className="px-3 py-3">
                   {editRateCcy === r.ccy ? (
                     <div className="flex gap-0.5">
-                      <button onClick={() => { setLocalRates(prev => prev.map(x => x.ccy === r.ccy ? {...x, ...editRateData} : x)); setEditRateCcy(null); toast.success('Rate updated'); }} className="p-1.5 rounded-md hover:bg-green-50 text-muted-foreground hover:text-green-600 transition-colors"><Check className="h-3.5 w-3.5" /></button>
-                      <button onClick={() => setEditRateCcy(null)} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><X className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => { setLocalRates(prev => prev.map(x => x.ccy === r.ccy ? {...x, ...editRateData} : x)); setEditRateCcy(null); toast.success('Rate updated'); }} className="p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-600"><Check className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => setEditRateCcy(null)} className="p-1.5 hover:bg-muted rounded-lg text-foreground"><X className="h-3.5 w-3.5" /></button>
                     </div>
                   ) : (
-                    <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => { setEditRateCcy(r.ccy); setEditRateData({}); }} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
-                      <button onClick={() => { setLocalRates(prev => prev.filter(x => x.ccy !== r.ccy)); toast.success('Rate removed'); }} className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                    <div className="flex gap-0.5 ">
+                      <button onClick={() => { setEditRateCcy(r.ccy); setEditRateData({}); }} className="p-1.5 hover:bg-muted rounded-lg text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => { setLocalRates(prev => prev.filter(x => x.ccy !== r.ccy)); toast.success('Rate removed'); }} className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
                   )}
                 </td>
@@ -130,8 +130,8 @@ export function InvFXTab({ fxSchedule }: Props) {
                     setLocalRates(prev => [...prev, { ccy: newRate.ccy!, opening: newRate.opening ?? 1, average: newRate.average ?? 1, closing: newRate.closing ?? 1, rateSource: newRate.rateSource ?? 'Manual' }]);
                     setAddingRate(false);
                     toast.success('Rate added');
-                  }} className="p-1.5 rounded-md hover:bg-green-50 text-muted-foreground hover:text-green-600 transition-colors"><Check className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => setAddingRate(false)} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><X className="h-3.5 w-3.5" /></button>
+                  }} className="p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-600"><Check className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => setAddingRate(false)} className="p-1.5 hover:bg-muted rounded-lg text-foreground"><X className="h-3.5 w-3.5" /></button>
                 </div></td>
               </tr>
             </tfoot>
@@ -172,7 +172,7 @@ export function InvFXTab({ fxSchedule }: Props) {
           </thead>
           <tbody>
             {visibleEventsWithIndex.map(({ e, i }) => (
-              <tr key={i} className="border-b border-border/50 hover:bg-muted/30 transition-colors group">
+              <tr key={i} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                 <td className="px-4 py-3 text-xs">{e.date}</td>
                 <td className="px-4 py-3 text-sm">
                   <div className="font-medium">{e.security}</div>
@@ -186,9 +186,9 @@ export function InvFXTab({ fxSchedule }: Props) {
                   {fmtSigned(e.realizedFxCAD)}
                 </td>
                 <td className="px-3 py-3">
-                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => toast('Edit source transactions to modify FX events')} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
-                    <button onClick={() => setHiddenFxEvents(prev => { const n = new Set(prev); n.add(i); return n; })} className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                  <div className="flex gap-0.5 ">
+                    <button onClick={() => toast('Edit source transactions to modify FX events')} className="p-1.5 hover:bg-muted rounded-lg text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => setHiddenFxEvents(prev => { const n = new Set(prev); n.add(i); return n; })} className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
                 </td>
               </tr>
