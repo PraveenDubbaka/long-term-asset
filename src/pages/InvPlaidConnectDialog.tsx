@@ -162,7 +162,7 @@ export default function InvPlaidConnectDialog({
                 <button
                   key={i.id}
                   onClick={() => { setInst(i); setStep(2); }}
-                  className="rounded-xl border border-border bg-card p-4 text-left hover:bg-accent transition-colors flex items-center gap-3"
+                  className="rounded-xl border border-border bg-card p-4 text-left hover:bg-muted transition-colors flex items-center gap-3"
                 >
                   <div
                     className="h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -216,7 +216,7 @@ export default function InvPlaidConnectDialog({
               return (
                 <label
                   key={a.id}
-                  className="flex items-center gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-accent"
+                  className="flex items-center gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted"
                 >
                   <Checkbox
                     checked={checked}

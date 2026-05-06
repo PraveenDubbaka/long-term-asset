@@ -288,15 +288,7 @@ const InvestmentPage = () => {
                       <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
                     </span>
                   </button>
-                  {/* Quick-refresh icon */}
-                  <button
-                    onClick={handlePlaidRefresh}
-                    disabled={plaidRefreshing}
-                    title="Sync latest from Plaid"
-                    className="h-[26px] w-[26px] flex items-center justify-center rounded-full border border-border bg-white dark:bg-card shadow-sm hover:shadow-md transition-all disabled:opacity-50"
-                  >
-                    <RefreshCw className={`h-3 w-3 text-muted-foreground ${plaidRefreshing ? 'animate-spin' : ''}`} />
-                  </button>
+
                 </div>
               )}
             </div>
