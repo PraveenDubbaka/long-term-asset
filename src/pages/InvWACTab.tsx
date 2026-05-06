@@ -1,12 +1,13 @@
 import { useState, useMemo, useRef, Fragment } from 'react';
 import ReactDOM from 'react-dom';
-import { Pencil, Trash2, Plus, Check, X, ListFilter, ArrowUp, ArrowDown, ChevronDown, Send, Upload } from 'lucide-react';
+import { Pencil, Trash2, Plus, Check, X, ListFilter, ArrowUp, ArrowDown, ArrowUpDown, ChevronDown, Send, Upload } from 'lucide-react';
 import { Badge } from '@/components/wp-ui/badge';
 import { Button } from '@/components/wp-ui/button';
 import type { SecuritySchedule, WacRow, ComputeOptions } from '@/lib/luka/compute';
 import type { LocalInvJE } from './InvAJEsTab';
 import { fmtCAD, fmtNum } from './InvHoldingsTab';
 import { fmtDate } from '../lib/utils';
+import { SearchFilter, ColFilter } from './InvTableFilters';
 import InvWACImportModal from './InvWACImportModal';
 import toast from 'react-hot-toast';
 
@@ -45,10 +46,21 @@ export function InvWACTab({ schedules, opts, onAddToAJEs }: Props) {
   const filterBtnRef = useRef<HTMLButtonElement>(null);
   const [filterPos, setFilterPos] = useState({ top: 0, left: 0 });
 
-  type SortField = 'name' | 'ticker' | 'units' | 'wac' | 'fmv';
+  type SortField = 'security' | 'ticker' | 'date' | 'cumUnits' | 'cumCost' | 'wac';
   type SortDir   = 'asc' | 'desc';
-  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortField, setSortField] = useState<SortField>('security');
   const [sortDir,   setSortDir]   = useState<SortDir>('asc');
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('asc'); }
+  };
+  const sortIcon = (field: SortField) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />;
+    return sortDir === 'asc'
+      ? <ArrowUp className="h-3 w-3 text-primary" />
+      : <ArrowDown className="h-3 w-3 text-primary" />;
+  };
 
   // Local row overrides per security key: null means "use computed rows"
   const [rowOverrides, setRowOverrides] = useState<Record<string, WacRow[]>>({});
@@ -122,11 +134,12 @@ export function InvWACTab({ schedules, opts, onAddToAJEs }: Props) {
     return [...filtered].sort((a, b) => {
       let cmp = 0;
       switch (sortField) {
-        case 'name':   cmp = a.security.localeCompare(b.security); break;
-        case 'ticker': cmp = a.ticker.localeCompare(b.ticker);     break;
-        case 'units':  cmp = a.closingUnits - b.closingUnits;      break;
-        case 'wac':    cmp = a.closingWac   - b.closingWac;        break;
-        case 'fmv':    cmp = a.fmvCAD       - b.fmvCAD;            break;
+        case 'security': cmp = a.security.localeCompare(b.security);                                  break;
+        case 'ticker':   cmp = a.ticker.localeCompare(b.ticker);                                       break;
+        case 'date':     cmp = (getRows(a)[0]?.date ?? '').localeCompare(getRows(b)[0]?.date ?? '');   break;
+        case 'cumUnits': cmp = a.closingUnits    - b.closingUnits;                                     break;
+        case 'cumCost':  cmp = a.closingCostCAD  - b.closingCostCAD;                                   break;
+        case 'wac':      cmp = a.closingWac      - b.closingWac;                                       break;
       }
       return sortDir === 'asc' ? cmp : -cmp;
     });
@@ -242,11 +255,12 @@ export function InvWACTab({ schedules, opts, onAddToAJEs }: Props) {
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Sort by</p>
               <div className="flex gap-2">
                 <select value={sortField} onChange={(e) => setSortField(e.target.value as SortField)} className={`flex-1 ${SEL_CLS}`}>
-                  <option value="name">Security name</option>
+                  <option value="security">Security name</option>
                   <option value="ticker">Ticker</option>
-                  <option value="units">Closing units</option>
+                  <option value="date">First entry date</option>
+                  <option value="cumUnits">Closing units</option>
+                  <option value="cumCost">Closing cost</option>
                   <option value="wac">WAC</option>
-                  <option value="fmv">FMV (CAD)</option>
                 </select>
                 <Button variant="secondary" size="sm" onClick={() => setSortDir((d) => d === 'asc' ? 'desc' : 'asc')} className="shrink-0">
                   {sortDir === 'asc' ? <><ArrowUp className="!w-3.5 !h-3.5" /> Asc</> : <><ArrowDown className="!w-3.5 !h-3.5" /> Desc</>}
@@ -272,26 +286,72 @@ export function InvWACTab({ schedules, opts, onAddToAJEs }: Props) {
               {/* ── Sticky frozen header ─────────────────────────────── */}
               <thead className="sticky top-0 z-10">
                 <tr className="bg-[#f0f2f5] dark:bg-slate-800 border-b-2 border-border">
-                  {[
-                    ['Security',  'text-left',  'min-w-[130px]'],
-                    ['Ticker',    'text-left',  'w-16'],
-                    ['Date',      'text-left',  'w-28'],
-                    ['Type',      'text-left',  'min-w-[130px]'],
-                    ['Units In',  'text-right', 'w-24'],
-                    ['Units Out', 'text-right', 'w-24'],
-                    ['Cum Units', 'text-right', 'w-24'],
-                    ['Cost In',   'text-right', 'w-28'],
-                    ['Cost Out',  'text-right', 'w-28'],
-                    ['Cum Cost',  'text-right', 'w-28'],
-                    ['WAC',       'text-right', 'w-24'],
-                    ['Actions',   'text-left',  'w-24'],
-                  ].map(([label, align, w]) => (
-                    <th key={label as string}
-                      className={`${align} ${w} px-3 py-2 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 last:border-r-0`}
-                    >
-                      {label}
-                    </th>
-                  ))}
+
+                  {/* Security — SearchFilter + sort */}
+                  <th className="text-left min-w-[150px] px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                    <span className="flex items-center gap-1">
+                      <button onClick={() => handleSort('security')} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                        Security {sortIcon('security')}
+                      </button>
+                      <SearchFilter label="" value={filterSecurity} onChange={setFilterSecurity} placeholder="Ticker or name…" />
+                    </span>
+                  </th>
+
+                  {/* Ticker — sort only */}
+                  <th className="text-left w-16 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                    <button onClick={() => handleSort('ticker')} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                      Ticker {sortIcon('ticker')}
+                    </button>
+                  </th>
+
+                  {/* Date — sort only */}
+                  <th className="text-left w-28 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                    <button onClick={() => handleSort('date')} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                      Date {sortIcon('date')}
+                    </button>
+                  </th>
+
+                  {/* Type — ColFilter */}
+                  <th className="text-left min-w-[140px] px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                    <ColFilter label="Type" options={uniqueTypes} value={filterType} onChange={setFilterType} />
+                  </th>
+
+                  {/* Units In — static */}
+                  <th className="text-right w-24 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">Units In</th>
+
+                  {/* Units Out — static */}
+                  <th className="text-right w-24 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">Units Out</th>
+
+                  {/* Cum Units — sort */}
+                  <th className="text-right w-24 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                    <button onClick={() => handleSort('cumUnits')} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">
+                      Cum Units {sortIcon('cumUnits')}
+                    </button>
+                  </th>
+
+                  {/* Cost In — static */}
+                  <th className="text-right w-28 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">Cost In</th>
+
+                  {/* Cost Out — static */}
+                  <th className="text-right w-28 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">Cost Out</th>
+
+                  {/* Cum Cost — sort */}
+                  <th className="text-right w-28 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                    <button onClick={() => handleSort('cumCost')} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">
+                      Cum Cost {sortIcon('cumCost')}
+                    </button>
+                  </th>
+
+                  {/* WAC — sort */}
+                  <th className="text-right w-24 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                    <button onClick={() => handleSort('wac')} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">
+                      WAC {sortIcon('wac')}
+                    </button>
+                  </th>
+
+                  {/* Actions — static */}
+                  <th className="text-left w-20 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Actions</th>
+
                 </tr>
               </thead>
 
@@ -415,7 +475,7 @@ export function InvWACTab({ schedules, opts, onAddToAJEs }: Props) {
                                   <button onClick={() => setEditKey(null)} className="p-1.5 rounded hover:bg-muted text-muted-foreground" title="Cancel"><X className="h-3.5 w-3.5" /></button>
                                 </div>
                               ) : (
-                                <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 hover:opacity-100 [tr:hover_&]:opacity-100">
+                                <div className="flex gap-0.5">
                                   <button onClick={() => startEdit(s.key, actualIdx, r)} className="p-1.5 rounded hover:bg-muted text-muted-foreground" title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
                                   <button onClick={() => deleteRow(s.key, actualIdx)} className="p-1.5 rounded hover:bg-destructive/10 text-destructive" title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
                                 </div>
