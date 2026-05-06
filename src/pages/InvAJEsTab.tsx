@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Check, Send, FileDown, Trash2, ChevronDown, ChevronRight, RotateCcw } from 'lucide-react';
 import type { AJE } from '@/lib/luka/compute';
 import { fmtCAD } from './InvHoldingsTab';
+import { fmtDate } from '../lib/utils';
 import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
 import { StyledCard } from '@/components/wp-ui/card';
@@ -385,7 +386,7 @@ export function InvAJEsTab({ ajes, pendingQueue, onQueueConsumed }: Props) {
                     {je.deleted ? (
                       <div className="flex items-center gap-3 w-full">
                         <span className="text-xs text-foreground italic flex-1">
-                          Deleted{je.deletedAt ? ` on ${new Date(je.deletedAt).toLocaleDateString('en-CA')}` : ''}
+                          Deleted{je.deletedAt ? ` on ${fmtDate(je.deletedAt)}` : ''}
                         </span>
                         <Button variant="secondary" size="sm"
                           onClick={() => { restoreJE(je._id); toast.success('AJE restored'); }}

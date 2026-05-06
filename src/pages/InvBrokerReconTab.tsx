@@ -1,13 +1,14 @@
 import { Fragment, useState, useMemo } from 'react';
 import {
   CheckCircle2, AlertTriangle, ChevronDown, ChevronRight,
-  Pencil, Check, X, Info, FilePlus2, Plus, Trash2,
+  Pencil, Check, X, Info, Send, Plus, Trash2,
 } from 'lucide-react';
 import { Badge } from '@/components/wp-ui/badge';
 import { Button } from '@/components/wp-ui/button';
 import type { InvestmentReconGroup, CashReconRow } from '@/lib/luka/compute';
 import type { LocalInvJE } from './InvAJEsTab';
 import { fmtNum, fmtCcy } from './InvHoldingsTab';
+import { fmtDate } from '../lib/utils';
 import { ColFilter, ClearFiltersBtn } from './InvTableFilters';
 import { CHART_OF_ACCOUNTS } from '@/lib/luka/coa';
 import toast from 'react-hot-toast';
@@ -366,7 +367,7 @@ function BankReconPanel({
                         </span>
                         {ITEM_TYPE_META[item.type].label}
                         <div className="text-muted-foreground mt-0.5 leading-tight">{item.description}</div>
-                        {item.date && <div className="text-muted-foreground text-[10px]">{item.date}</div>}
+                        {item.date && <div className="text-muted-foreground text-[10px]">{fmtDate(item.date)}</div>}
                       </div>
                     )}
                   </td>
@@ -474,7 +475,7 @@ function BankReconPanel({
                         </span>
                         {ITEM_TYPE_META[item.type].label}
                         <div className="text-muted-foreground mt-0.5 leading-tight">{item.description}</div>
-                        {item.date && <div className="text-muted-foreground text-[10px]">{item.date}</div>}
+                        {item.date && <div className="text-muted-foreground text-[10px]">{fmtDate(item.date)}</div>}
                       </div>
                     )}
                   </td>
@@ -583,7 +584,7 @@ function BankReconPanel({
               className="h-8 gap-1.5"
               onClick={handlePostVariance}
             >
-              <FilePlus2 className="h-3.5 w-3.5" />
+              <Send className="h-3.5 w-3.5" />
               Post Variance to AJEs
             </Button>
           </div>
@@ -854,7 +855,7 @@ export function InvBrokerReconTab({ invRecon, cashRecon, onAddToAJEs }: Props) {
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Adj. Book</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Residual</th>
               <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide"><ColFilter label="Status" options={['Pass', 'Variance']} value={cashFilterStatus} onChange={setCashFilterStatus} /></th>
-              <th className="px-3 py-3 w-16"></th>
+              <th className="px-3 py-3 w-16 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -1009,7 +1010,7 @@ export function InvBrokerReconTab({ invRecon, cashRecon, onAddToAJEs }: Props) {
                             }
                           }}
                         >
-                          <FilePlus2 className="!w-3 !h-3" /> Add to AJEs
+                          <Send className="!w-3 !h-3" /> Add to AJEs
                         </Button>
                       )
                     }

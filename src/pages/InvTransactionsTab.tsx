@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
-import { AlertTriangle, X, Pencil, Trash2, Plus, Check } from 'lucide-react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { AlertTriangle, X, Pencil, Trash2, Plus, Check, Upload } from 'lucide-react';
 import { Badge } from '@/components/wp-ui/badge';
 import { Button } from '@/components/wp-ui/button';
 import { Checkbox } from '@/components/wp-ui/checkbox';
@@ -8,10 +9,13 @@ import {
 } from '@/components/wp-ui/tooltip';
 import { CHART_OF_ACCOUNTS, defaultTbAccount } from '@/lib/luka/coa';
 import { validateTx } from '@/lib/luka/compute';
-import type { Transaction, TxStatus, Source } from '@/lib/luka/types';
+import type { Transaction, TxType, TxStatus, Source } from '@/lib/luka/types';
 import { fmtNum } from './InvHoldingsTab';
+import { fmtDate } from '../lib/utils';
 import { ColFilter, SearchFilter } from './InvTableFilters';
 import InvPlaidConnectDialog from './InvPlaidConnectDialog';
+import InvPriorYearImport from './InvPriorYearImport';
+import type { PriorYearLot } from '@/lib/luka/types';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -24,6 +28,9 @@ interface Props {
   entityName: string;
   onDeleteTx?: (id: string) => void;
   onAddTx?: (tx: Transaction) => void;
+  importedLots?: PriorYearLot[] | null;
+  onApplyLots?: (lots: PriorYearLot[]) => void;
+  onResetLots?: () => void;
 }
 
 const TxStatusBadge = ({ status }: { status: TxStatus }) => {
@@ -37,6 +44,87 @@ const TxStatusBadge = ({ status }: { status: TxStatus }) => {
 };
 
 
+/** Portal-based combobox — renders dropdown in <body> so overflow-x-auto never clips it */
+function SecurityCombobox({
+  value,
+  onChange,
+  options,
+  placeholder,
+  className,
+  autoUpperCase = false,
+}: {
+  value: string;
+  onChange: (val: string, paired?: string) => void;
+  options: { value: string; hint: string }[];
+  placeholder?: string;
+  className?: string;
+  autoUpperCase?: boolean;
+}) {
+  const [open, setOpen]     = useState(false);
+  const [query, setQuery]   = useState(value);
+  const inputRef            = useRef<HTMLInputElement>(null);
+  const [pos, setPos]       = useState({ top: 0, left: 0, width: 0 });
+
+  // Keep local query in sync when parent value changes (e.g. cross-fill)
+  useEffect(() => { setQuery(value); }, [value]);
+
+  const filtered = useMemo(() => {
+    if (!query) return options;
+    const q = query.toLowerCase();
+    return options.filter(o =>
+      o.value.toLowerCase().includes(q) || o.hint.toLowerCase().includes(q),
+    );
+  }, [query, options]);
+
+  const reposition = () => {
+    if (!inputRef.current) return;
+    const r = inputRef.current.getBoundingClientRect();
+    setPos({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 200) });
+  };
+
+  const handleSelect = (o: { value: string; hint: string }) => {
+    setQuery(o.value);
+    onChange(o.value, o.hint);
+    setOpen(false);
+  };
+
+  return (
+    <div className="relative">
+      <input
+        ref={inputRef}
+        value={query}
+        placeholder={placeholder}
+        className={className}
+        onChange={e => {
+          const v = autoUpperCase ? e.target.value.toUpperCase() : e.target.value;
+          setQuery(v);
+          onChange(v);
+        }}
+        onFocus={() => { reposition(); setOpen(true); }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+      />
+      {open && filtered.length > 0 && createPortal(
+        <ul
+          style={{ position: 'fixed', top: pos.top, left: pos.left, minWidth: pos.width, zIndex: 9999 }}
+          className="bg-white dark:bg-card border border-border rounded-lg shadow-xl max-h-52 overflow-y-auto text-sm py-1"
+        >
+          {filtered.map(o => (
+            <li
+              key={o.value}
+              onMouseDown={() => handleSelect(o)}
+              className="flex items-center justify-between gap-4 px-3 py-2 hover:bg-muted cursor-pointer"
+            >
+              <span className="font-medium truncate">{o.value}</span>
+              <span className="text-xs text-muted-foreground font-mono shrink-0">{o.hint}</span>
+            </li>
+          ))}
+        </ul>,
+        document.body,
+      )}
+    </div>
+  );
+}
+
 export function InvTransactionsTab({
   effectiveTxns,
   allSources,
@@ -47,8 +135,12 @@ export function InvTransactionsTab({
   entityName,
   onDeleteTx,
   onAddTx,
+  importedLots,
+  onApplyLots,
+  onResetLots,
 }: Props) {
-  const [txStatusFilter, setTxStatusFilter] = useState<"all" | TxStatus>("all");
+  const [txStatusFilter,  setTxStatusFilter]  = useState<"all" | TxStatus>("all");
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<Set<string>>(new Set());
 
   // Inline edit state
@@ -60,15 +152,21 @@ export function InvTransactionsTab({
   const [newTx, setNewTx] = useState<Partial<Transaction>>({});
 
   // Column-level filters
-  const [filterSource,   setFilterSource]   = useState("");
-  const [filterType,     setFilterType]     = useState("");
-  const [filterSecurity, setFilterSecurity] = useState("");
+  const [filterSource,    setFilterSource]    = useState("");
+  const [filterType,      setFilterType]      = useState("");
+  const [filterSecurity,  setFilterSecurity]  = useState("");
+  const [filterTicker,    setFilterTicker]    = useState("");
+  const [filterCcy,       setFilterCcy]       = useState("");
+  const [filterTbAccount, setFilterTbAccount] = useState("");
+  const [filterTradeDate, setFilterTradeDate] = useState("");
+  const [filterStatus,    setFilterStatus]    = useState("");
   const IIC = 'input-double-border h-9 text-sm px-3 border border-[#dcdfe4] rounded-[10px] bg-white dark:bg-card text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)] focus:outline-none focus:ring-0';
 
-  const anyColFilter = filterSource || filterType || filterSecurity;
+  const anyColFilter = filterSource || filterType || filterSecurity || filterTicker || filterCcy || filterTbAccount || filterTradeDate || filterStatus;
 
   const clearColFilters = () => {
     setFilterSource(""); setFilterType(""); setFilterSecurity("");
+    setFilterTicker(""); setFilterCcy(""); setFilterTbAccount(""); setFilterTradeDate(""); setFilterStatus("");
   };
 
   // Unique values for dropdown filters
@@ -91,6 +189,41 @@ export function InvTransactionsTab({
     [effectiveTxns],
   );
 
+  const uniqueTickers = useMemo(
+    () => Array.from(new Set(effectiveTxns.map((t) => t.ticker).filter(Boolean))).sort(),
+    [effectiveTxns],
+  );
+
+  const uniqueCurrencies = useMemo(
+    () => Array.from(new Set(effectiveTxns.map((t) => t.currency).filter(Boolean))).sort(),
+    [effectiveTxns],
+  );
+
+  const uniqueTbAccounts = useMemo(
+    () => Array.from(new Set(effectiveTxns.map((t) => t.tbAccount ?? defaultTbAccount(t.type)).filter(Boolean))).sort(),
+    [effectiveTxns],
+  );
+
+  // Unique security/ticker pairs for datalist autocomplete
+  const knownSecurities = useMemo(() => {
+    const map = new Map<string, string>(); // ticker → security name
+    for (const t of effectiveTxns) {
+      if (t.ticker && t.security) map.set(t.ticker, t.security);
+    }
+    return Array.from(map.entries()).map(([ticker, security]) => ({ ticker, security })).sort((a, b) => a.ticker.localeCompare(b.ticker));
+  }, [effectiveTxns]);
+
+  /** When a ticker is chosen from the datalist, auto-fill the security name */
+  const resolveSecurityFromTicker = (ticker: string) => {
+    const match = knownSecurities.find(k => k.ticker.toLowerCase() === ticker.toLowerCase());
+    return match?.security ?? null;
+  };
+  /** When a security name is chosen, auto-fill the ticker */
+  const resolveTickerFromSecurity = (security: string) => {
+    const match = knownSecurities.find(k => k.security.toLowerCase() === security.toLowerCase());
+    return match?.ticker ?? null;
+  };
+
   const visibleTxns = useMemo(() => {
     let txns = [...effectiveTxns].sort((a, b) => a.date.localeCompare(b.date));
 
@@ -105,7 +238,12 @@ export function InvTransactionsTab({
         return name === filterSource;
       });
 
-    if (filterType) txns = txns.filter((t) => t.type === filterType);
+    if (filterType)      txns = txns.filter((t) => t.type === filterType);
+    if (filterTicker)    txns = txns.filter((t) => t.ticker === filterTicker);
+    if (filterCcy)       txns = txns.filter((t) => t.currency === filterCcy);
+    if (filterTbAccount) txns = txns.filter((t) => (t.tbAccount ?? defaultTbAccount(t.type)) === filterTbAccount);
+    if (filterTradeDate) txns = txns.filter((t) => (t.tradeDate ?? t.date).includes(filterTradeDate));
+    if (filterStatus)    txns = txns.filter((t) => (t.status ?? "published") === filterStatus);
 
     if (filterSecurity)
       txns = txns.filter(
@@ -115,7 +253,8 @@ export function InvTransactionsTab({
       );
 
     return txns;
-  }, [effectiveTxns, txStatusFilter, filterSource, filterType, filterSecurity, allSources]);
+  }, [effectiveTxns, txStatusFilter, filterSource, filterType, filterSecurity,
+      filterTicker, filterCcy, filterTbAccount, filterTradeDate, allSources]);
 
   const txCounts = useMemo(() => {
     const c: { all: number; pending: number; approved: number; published: number } = {
@@ -154,6 +293,17 @@ export function InvTransactionsTab({
             className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-primary bg-primary/5 text-primary text-xs font-medium hover:bg-primary/10 transition-colors"
           >
             <Plus className="h-3.5 w-3.5" /> Add Transaction
+          </button>
+          <button
+            onClick={() => setImportModalOpen(true)}
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-border bg-background text-foreground text-xs font-medium hover:bg-muted transition-colors"
+          >
+            <Upload className="h-3.5 w-3.5" /> Import
+            {importedLots && importedLots.length > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold">
+                {importedLots.length}
+              </span>
+            )}
           </button>
           <InvPlaidConnectDialog
             defaultPeriodStart="2024-01-01"
@@ -222,7 +372,14 @@ export function InvTransactionsTab({
                   }}
                 />
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Trade Date</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                <SearchFilter
+                  label="Trade Date"
+                  value={filterTradeDate}
+                  onChange={setFilterTradeDate}
+                  placeholder="e.g. 2024-06"
+                />
+              </th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Settlement</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 <ColFilter
@@ -239,6 +396,22 @@ export function InvTransactionsTab({
                   onChange={setFilterSecurity}
                 />
               </th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                <ColFilter
+                  label="Ticker"
+                  options={uniqueTickers}
+                  value={filterTicker}
+                  onChange={setFilterTicker}
+                />
+              </th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                <ColFilter
+                  label="Ccy"
+                  options={uniqueCurrencies}
+                  value={filterCcy}
+                  onChange={setFilterCcy}
+                />
+              </th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 <ColFilter
                   label="Type"
@@ -247,14 +420,28 @@ export function InvTransactionsTab({
                   onChange={setFilterType}
                 />
               </th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Units</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Units / Shares</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Price</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">FX</th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Net</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">TB Account</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Amount</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <ColFilter
+                  label="TB Account"
+                  options={uniqueTbAccounts}
+                  value={filterTbAccount}
+                  onChange={setFilterTbAccount}
+                />
+              </th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <ColFilter
+                  label="Status"
+                  options={["pending", "approved", "published"]}
+                  value={filterStatus}
+                  onChange={setFilterStatus}
+                />
+              </th>
               <th className="px-4 py-3 w-8"></th>
-              <th className="px-3 py-3 w-20"></th>
+              <th className="px-3 py-3 w-20 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -265,15 +452,39 @@ export function InvTransactionsTab({
                 <td className="px-4 py-2"><input type="date" value={newTx.settlementDate ?? ''} onChange={e => setNewTx(d => ({...d, settlementDate: e.target.value || undefined}))} className={`${IIC} w-28`} title="Settlement date" /></td>
                 <td className="px-4 py-2"><select value={newTx.sourceId ?? ''} onChange={e => setNewTx(d => ({...d, sourceId: e.target.value}))} className={`${IIC} w-20 cursor-pointer`}><option value="">—</option>{allSources.map(s => <option key={s.id} value={s.id}>{s.institution.split(' ')[0]}</option>)}</select></td>
                 <td className="px-4 py-2">
-                  <input placeholder="Security" value={newTx.security ?? ''} onChange={e => setNewTx(d => ({...d, security: e.target.value}))} className={`${IIC} w-32`} />
-                  <input placeholder="Ticker" value={newTx.ticker ?? ''} onChange={e => setNewTx(d => ({...d, ticker: e.target.value}))} className={`${IIC} w-16 mt-0.5`} />
+                  <SecurityCombobox
+                    value={newTx.security ?? ''}
+                    placeholder="Security name"
+                    className={`${IIC} w-36`}
+                    options={knownSecurities.map(k => ({ value: k.security, hint: k.ticker }))}
+                    onChange={(sec, pairedTicker) =>
+                      setNewTx(d => ({ ...d, security: sec, ...(pairedTicker ? { ticker: pairedTicker } : {}) }))
+                    }
+                  />
+                </td>
+                <td className="px-4 py-2">
+                  <SecurityCombobox
+                    value={newTx.ticker ?? ''}
+                    placeholder="Ticker"
+                    className={`${IIC} w-20`}
+                    autoUpperCase
+                    options={knownSecurities.map(k => ({ value: k.ticker, hint: k.security }))}
+                    onChange={(ticker, pairedSec) =>
+                      setNewTx(d => ({ ...d, ticker, ...(pairedSec ? { security: pairedSec } : {}) }))
+                    }
+                  />
+                </td>
+                <td className="px-4 py-2">
+                  <select value={newTx.currency ?? 'CAD'} onChange={e => setNewTx(d => ({...d, currency: e.target.value as Transaction['currency']}))} className={`${IIC} w-20 cursor-pointer`}>
+                    {(['CAD','USD','EUR','GBP'] as Transaction['currency'][]).map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
                 </td>
                 <td className="px-4 py-2">
                   <select value={newTx.type ?? 'Purchase'} onChange={e => setNewTx(d => ({...d, type: e.target.value as Transaction['type']}))} className={`${IIC} cursor-pointer`}>
                     {(['Purchase','Sale','Dividend','Interest','Fee/Commission','Withholding Tax','Return of Capital','Reinvested Dividend','Transfer In','Transfer Out'] as Transaction['type'][]).map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </td>
-                <td className="px-4 py-2 text-right"><input type="number" value={newTx.units ?? 0} onChange={e => setNewTx(d => ({...d, units: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} /></td>
+                <td className="px-4 py-2 text-right"><input type="number" step="0.001" value={newTx.units ?? 0} onChange={e => setNewTx(d => ({...d, units: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} /></td>
                 <td className="px-4 py-2 text-right"><input type="number" value={newTx.price ?? 0} onChange={e => setNewTx(d => ({...d, price: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} /></td>
                 <td className="px-4 py-2 text-right"><input type="number" value={newTx.fxRate ?? ''} onChange={e => setNewTx(d => ({...d, fxRate: parseFloat(e.target.value)||undefined}))} className={`${IIC} w-20 text-right`} /></td>
                 <td className="px-4 py-2 text-right tabular-nums text-xs">0.00</td>
@@ -324,7 +535,7 @@ export function InvTransactionsTab({
                           className={`${IIC} w-28`}
                         />
                       )
-                      : (t.tradeDate ?? t.date)
+                      : fmtDate(t.tradeDate ?? t.date ?? '')
                     }
                   </td>
                   <td className="px-4 py-3 text-xs whitespace-nowrap">
@@ -339,31 +550,102 @@ export function InvTransactionsTab({
                         />
                       )
                       : (t.settlementDate
-                          ? t.settlementDate
+                          ? fmtDate(t.settlementDate)
                           : <span className="text-muted-foreground text-[11px]">—</span>)
                     }
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant="outline" className="text-xs">
-                      {allSources.find((s) => s.id === t.sourceId)?.institution.split(" ")[0] ?? t.sourceId}
-                    </Badge>
+                    {editId === t.id ? (
+                      <select
+                        value={editData.sourceId ?? t.sourceId}
+                        onChange={e => setEditData(d => ({ ...d, sourceId: e.target.value }))}
+                        className={`${IIC} w-[130px] cursor-pointer`}
+                      >
+                        {allSources.map(s => (
+                          <option key={s.id} value={s.id}>{s.institution.split(' ')[0]} ({s.id})</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">
+                        {allSources.find((s) => s.id === t.sourceId)?.institution.split(" ")[0] ?? t.sourceId}
+                      </Badge>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm">
-                    <div className="font-medium">{t.security}</div>
-                    <div className="text-xs text-muted-foreground font-mono">{t.ticker} · {t.currency}</div>
+                    {editId === t.id ? (
+                      <SecurityCombobox
+                        value={editData.security ?? t.security}
+                        placeholder="Security name"
+                        className={`${IIC} w-36`}
+                        options={knownSecurities.map(k => ({ value: k.security, hint: k.ticker }))}
+                        onChange={(sec, pairedTicker) =>
+                          setEditData(d => ({ ...d, security: sec, ...(pairedTicker ? { ticker: pairedTicker } : {}) }))
+                        }
+                      />
+                    ) : (
+                      <div className="font-medium">{t.security}</div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs">
+                    {editId === t.id ? (
+                      <SecurityCombobox
+                        value={editData.ticker ?? t.ticker}
+                        placeholder="Ticker"
+                        className={`${IIC} w-20`}
+                        autoUpperCase
+                        options={knownSecurities.map(k => ({ value: k.ticker, hint: k.security }))}
+                        onChange={(ticker, pairedSec) =>
+                          setEditData(d => ({ ...d, ticker, ...(pairedSec ? { security: pairedSec } : {}) }))
+                        }
+                      />
+                    ) : (
+                      <span className="text-muted-foreground">{t.ticker}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {editId === t.id ? (
+                      <select
+                        value={editData.currency ?? t.currency}
+                        onChange={e => setEditData(d => ({ ...d, currency: e.target.value as Transaction['currency'] }))}
+                        className={`${IIC} w-20 cursor-pointer`}
+                      >
+                        {(['CAD','USD','EUR','GBP'] as Transaction['currency'][]).map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-muted-foreground font-mono">{t.currency}</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
-                    <Badge
-                      variant={t.type === "Sale" ? "destructive" : t.type === "Purchase" ? "default" : "secondary"}
-                      className="text-xs"
-                    >
-                      {t.type}
-                    </Badge>
+                    {editId === t.id ? (
+                      <select
+                        value={editData.type ?? t.type}
+                        onChange={e => setEditData(d => ({ ...d, type: e.target.value as TxType }))}
+                        className={`${IIC} w-[160px] cursor-pointer`}
+                      >
+                        {([
+                          "Purchase", "Sale", "Dividend", "Interest",
+                          "Return of Capital", "Reinvested Dividend", "Withholding Tax",
+                          "Fee/Commission", "Transfer In", "Transfer Out",
+                          "FX Conversion", "Stock Split", "Opening",
+                        ] as TxType[]).map(ty => (
+                          <option key={ty} value={ty}>{ty}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Badge
+                        variant={t.type === "Sale" ? "destructive" : t.type === "Purchase" ? "default" : "secondary"}
+                        className="text-xs"
+                      >
+                        {t.type}
+                      </Badge>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums text-xs">
                     {editId === t.id
-                      ? <input type="number" value={editData.units ?? t.units} onChange={e => setEditData(d => ({...d, units: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} />
-                      : fmtNum(t.units, 2)}
+                      ? <input type="number" step="0.001" value={editData.units ?? t.units} onChange={e => setEditData(d => ({...d, units: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} />
+                      : fmtNum(t.units, 3)}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums text-xs">
                     {editId === t.id
@@ -426,7 +708,7 @@ export function InvTransactionsTab({
             })}
             {visibleTxns.length === 0 && (
               <tr>
-                <td colSpan={14} className="text-center text-sm text-muted-foreground py-8">
+                <td colSpan={16} className="text-center text-sm text-muted-foreground py-8">
                   {anyColFilter
                     ? "No transactions match the active filters."
                     : "No transactions in this status."}
@@ -436,6 +718,30 @@ export function InvTransactionsTab({
           </tbody>
         </table>
       </div>
+
+      {/* Import Prior-Year Modal */}
+      {importModalOpen && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setImportModalOpen(false)} />
+          <div className="relative z-10 w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl bg-background">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h2 className="text-base font-semibold text-foreground">Import Prior-Year Schedule</h2>
+              <button onClick={() => setImportModalOpen(false)} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="p-5">
+              <InvPriorYearImport
+                applied={!!(importedLots && importedLots.length > 0)}
+                appliedCount={importedLots?.length ?? 0}
+                onApply={(lots) => { onApplyLots?.(lots); setImportModalOpen(false); }}
+                onReset={() => { onResetLots?.(); }}
+              />
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }

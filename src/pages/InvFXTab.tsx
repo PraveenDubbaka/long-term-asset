@@ -3,6 +3,7 @@ import { Badge } from '@/components/wp-ui/badge';
 import type { FxScheduleResult } from '@/lib/luka/compute';
 import type { FxRateInfo } from '@/lib/luka/types';
 import { fmtNum, fmtCcy, fmtSigned } from './InvHoldingsTab';
+import { fmtDate } from '../lib/utils';
 import { ColFilter, SearchFilter, ClearFiltersBtn } from './InvTableFilters';
 import { Pencil, Trash2, Plus, Check, X } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -78,7 +79,7 @@ export function InvFXTab({ fxSchedule }: Props) {
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Average</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Closing</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Source</th>
-              <th className="px-3 py-3 w-16"></th>
+              <th className="px-3 py-3 w-16 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -167,13 +168,13 @@ export function InvFXTab({ fxSchedule }: Props) {
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Rate at Acq</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Rate at Txn</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Realized FX (CAD)</th>
-              <th className="px-3 py-3 w-16"></th>
+              <th className="px-3 py-3 w-16 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Actions</th>
             </tr>
           </thead>
           <tbody>
             {visibleEventsWithIndex.map(({ e, i }) => (
               <tr key={i} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                <td className="px-4 py-3 text-xs">{e.date}</td>
+                <td className="px-4 py-3 text-xs">{fmtDate(e.date)}</td>
                 <td className="px-4 py-3 text-sm">
                   <div className="font-medium">{e.security}</div>
                   <div className="text-xs text-muted-foreground font-mono">{e.ticker}</div>

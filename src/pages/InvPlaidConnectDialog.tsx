@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import {
-  Plug, ChevronRight, ChevronLeft, Loader2, CheckCircle2,
+  Plug, ChevronRight, ChevronLeft, Loader2, CheckCircle2, RefreshCw,
   Landmark, TrendingUp, BarChart3, Shield, Leaf, Building2, type LucideIcon,
 } from "lucide-react";
 import {
@@ -15,6 +15,7 @@ import {
   fetchMockInvestmentTransactions, plaidAccountToSource, plaidToSourceTransaction,
 } from "@/lib/luka/plaidMock";
 import { Source, Transaction, TxType } from "@/lib/luka/types";
+import { usePlaidStore } from "../store/usePlaidStore";
 import toast from "react-hot-toast";
 
 interface Props {
@@ -50,6 +51,14 @@ export default function InvPlaidConnectDialog({
   const [preview, setPreview] = useState<Record<string, PlaidInvestmentTxn[]>>({});
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
   const [edits, setEdits] = useState<Record<string, Partial<PlaidInvestmentTxn>>>({});
+
+  // Read global connection state so the trigger button can reflect it
+  const { plaidConnected, plaidRefreshing, refresh: plaidRefresh } = usePlaidStore();
+
+  const handleRefresh = async () => {
+    await plaidRefresh();
+    toast.success('Plaid synced — transactions up to date');
+  };
 
   const reset = () => {
     setStep(1); setInst(null); setUser(""); setPass("");
@@ -98,6 +107,13 @@ export default function InvPlaidConnectDialog({
       }
     }
     onImport(newSources, newTxns);
+    // Sync connection state to global store — header badge reads from here
+    usePlaidStore.getState().connect({
+      id:    inst.id,
+      name:  inst.name,
+      abbr:  inst.name.split(' ').map((w) => w[0]).join('').slice(0, 3).toUpperCase(),
+      color: inst.color,
+    });
     toast.success(
       `Imported ${newTxns.length} transaction${newTxns.length === 1 ? "" : "s"} from ${newSources.length} account${newSources.length === 1 ? "" : "s"}.`,
     );
@@ -106,11 +122,23 @@ export default function InvPlaidConnectDialog({
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogTrigger asChild>
-        <Button variant="default" size="sm" className="gap-2">
-          <Plug className="h-4 w-4" /> Connect
-        </Button>
-      </DialogTrigger>
+      {/* ── Trigger: Refresh when connected, Connect when not ── */}
+      {plaidConnected ? (
+        <button
+          onClick={handleRefresh}
+          disabled={plaidRefreshing}
+          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-border bg-background text-foreground text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${plaidRefreshing ? 'animate-spin' : ''}`} />
+          {plaidRefreshing ? 'Refreshing…' : 'Refresh'}
+        </button>
+      ) : (
+        <DialogTrigger asChild>
+          <Button variant="default" size="sm" className="gap-2">
+            <Plug className="h-4 w-4" /> Connect
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

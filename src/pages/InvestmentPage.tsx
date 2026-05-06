@@ -28,8 +28,8 @@ import { InvAJEsTab }         from "./InvAJEsTab";
 import type { LocalInvJE }    from "./InvAJEsTab";
 import { InvIncomeTab }       from "./InvIncomeTab";
 import { InvBrokerReconTab }  from "./InvBrokerReconTab";
+import { InvTaxReconTab }     from "./InvTaxReconTab";
 import { InvFlagsTab }        from "./InvFlagsTab";
-import { InvUnrealizedTab }   from "./InvUnrealizedTab";
 import { usePlaidStore } from "../store/usePlaidStore";
 import type { PlaidInstitution } from "../store/usePlaidStore";
 import {
@@ -77,12 +77,11 @@ const tabs = [
   { id: "transactions", label: "Transactions"       },
   { id: "wac",          label: "WAC Schedule"       },
   { id: "gainloss",     label: "Gain / Loss"        },
-  { id: "unrealized",   label: "Unrealized G/L"     },
   { id: "fx",           label: "FX Schedule"        },
   { id: "income",       label: "Income & Expenses"  },
   { id: "brokerrecon",  label: "Broker Recon"       },
+  { id: "taxrecon",     label: "Tax Recon"          },
   { id: "ajes",         label: "AJEs"               },
-  { id: "sources",      label: "Sources"            },
   { id: "holdings",     label: "Holdings"           },
 ];
 
@@ -265,22 +264,40 @@ const InvestmentPage = () => {
                 {eng.status}
               </Badge>
 
-              {/* ── Plaid connected badge (shown after In Progress) ── */}
+              {/* ── Plaid connection badge (shown after In Progress) ── */}
               {plaidConnected && plaidInstitution && (
-                <button
-                  onClick={() => setShowPlaid(true)}
-                  title={`${plaidInstitution.name} · Last synced ${plaidLastSync?.toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' }) ?? '—'}`}
-                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-border bg-card hover:bg-muted transition-colors"
-                >
-                  <span
-                    className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0"
-                    style={{ backgroundColor: plaidInstitution.color }}
+                <div className="inline-flex items-center gap-1">
+                  {/* Xero-style institution pill — click to manage */}
+                  <button
+                    onClick={() => setShowPlaid(true)}
+                    title={`Last synced ${plaidLastSync?.toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' }) ?? '—'} · Click to manage`}
+                    className="inline-flex items-center gap-0 h-[26px] rounded-full border border-border bg-white dark:bg-card shadow-sm hover:shadow-md transition-all overflow-hidden"
                   >
-                    {plaidInstitution.abbr.slice(0, 2)}
-                  </span>
-                  <span className="text-xs font-medium text-foreground">{plaidInstitution.abbr}</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
-                </button>
+                    {/* Coloured institution logo circle */}
+                    <span
+                      className="h-full aspect-square flex items-center justify-center text-white font-black tracking-tight flex-shrink-0 rounded-full"
+                      style={{ background: plaidInstitution.color, fontSize: '8px', minWidth: '26px' }}
+                    >
+                      {plaidInstitution.abbr.slice(0, 3)}
+                    </span>
+                    {/* Institution name + green dot */}
+                    <span className="inline-flex items-center gap-1.5 px-2.5">
+                      <span className="text-[11px] font-semibold text-foreground leading-none whitespace-nowrap">
+                        {plaidInstitution.name.split(' ')[0]}
+                      </span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
+                    </span>
+                  </button>
+                  {/* Quick-refresh icon */}
+                  <button
+                    onClick={handlePlaidRefresh}
+                    disabled={plaidRefreshing}
+                    title="Sync latest from Plaid"
+                    className="h-[26px] w-[26px] flex items-center justify-center rounded-full border border-border bg-white dark:bg-card shadow-sm hover:shadow-md transition-all disabled:opacity-50"
+                  >
+                    <RefreshCw className={`h-3 w-3 text-muted-foreground ${plaidRefreshing ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
               )}
             </div>
 
@@ -377,8 +394,8 @@ const InvestmentPage = () => {
                       </select>
                       <p className="text-xs text-muted-foreground">
                         {opts.measurementBasis === 'FVTPL'
-                          ? 'Fair value AJEs will be suggested in the Unrealized G/L tab.'
-                          : 'Unrealized G/L shown for disclosure only — no AJEs generated.'}
+                          ? 'Fair value AJEs will be suggested in the AJEs tab.'
+                          : 'Unrealized G/L shown in Gain / Loss tab for disclosure only.'}
                       </p>
                     </div>
                   </div>
@@ -430,6 +447,9 @@ const InvestmentPage = () => {
               entityName={eng.client}
               onDeleteTx={(id) => setHiddenTxIds(prev => { const next = new Set(prev); next.add(id); return next; })}
               onAddTx={(tx) => setManualTxns(prev => [...prev, tx])}
+              importedLots={importedLots}
+              onApplyLots={(lots) => { setImportedLots(lots); setOpts((o) => ({ ...o, includePriorYear: true })); }}
+              onResetLots={() => { setImportedLots(null); toast("Reverted to mock prior-year file"); }}
             />
           </div>
           <div className={`flex-1 ${activeTab === "wac" ? "" : "hidden"}`}>
@@ -437,13 +457,6 @@ const InvestmentPage = () => {
           </div>
           <div className={`flex-1 ${activeTab === "gainloss" ? "" : "hidden"}`}>
             <InvGainLossTab schedules={schedules} totals={invTotals} onAddToAJEs={pushToAJEs} />
-          </div>
-          <div className={`flex-1 ${activeTab === "unrealized" ? "" : "hidden"}`}>
-            <InvUnrealizedTab
-              schedules={schedules}
-              measurementBasis={opts.measurementBasis}
-              onAddToAJEs={pushToAJEs}
-            />
           </div>
           <div className={`flex-1 ${activeTab === "fx" ? "" : "hidden"}`}>
             <InvFXTab fxSchedule={fxSchedule} />
@@ -454,38 +467,11 @@ const InvestmentPage = () => {
           <div className={`flex-1 ${activeTab === "brokerrecon" ? "" : "hidden"}`}>
             <InvBrokerReconTab invRecon={invRecon} cashRecon={cashRecon} onAddToAJEs={pushToAJEs} />
           </div>
+          <div className={`flex-1 ${activeTab === "taxrecon" ? "" : "hidden"}`}>
+            <InvTaxReconTab schedules={schedules} />
+          </div>
           <div className={`flex-1 ${activeTab === "ajes" ? "" : "hidden"}`}>
             <InvAJEsTab ajes={ajes} pendingQueue={ajeQueue} onQueueConsumed={clearAjeQueue} />
-          </div>
-          <div className={`flex-1 ${activeTab === "sources" ? "" : "hidden"}`}>
-            <InvFlagsTab
-              allSources={allInvSources}
-              opts={opts}
-              setOpts={setOpts}
-              importedLots={importedLots}
-              effectivePY={effectivePY}
-              importedTxnsBySource={importedTxnsBySource}
-              onApplyLots={(lots) => { setImportedLots(lots); setOpts((o) => ({ ...o, includePriorYear: true })); }}
-              onResetLots={() => { setImportedLots(null); toast("Reverted to mock prior-year file"); }}
-              onApplySourceTxns={(sid, txns) => setImportedTxnsBySource((m) => ({ ...m, [sid]: txns }))}
-              onResetSourceTxns={(sid) => setImportedTxnsBySource((m) => { const { [sid]: _, ...rest } = m; return rest; })}
-              onPlaidConnected={(newSources, newTxns) => {
-                setPlaidSources((prev) => {
-                  const ids = new Set(prev.map((s) => s.id));
-                  return [...prev, ...newSources.filter((s) => !ids.has(s.id))];
-                });
-                setPlaidTxns((prev) => {
-                  const ids = new Set(prev.map((t) => t.id));
-                  return [...prev, ...newTxns.filter((t) => !ids.has(t.id))];
-                });
-              }}
-              onPlaidDisconnect={(sid) => {
-                setPlaidSources((prev) => prev.filter((s) => s.id !== sid));
-                setPlaidTxns((prev) => prev.filter((t) => t.sourceId !== sid));
-              }}
-              setActiveTab={setActiveTab}
-              entityName={eng.client}
-            />
           </div>
 
           {/* ── Import wizard — modal overlay ─────────────────────────────── */}

@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react';
-import { Eye, TrendingUp, Wallet, Pencil, Trash2, Check, X, FilePlus2 } from 'lucide-react';
+import { Eye, TrendingUp, Pencil, Trash2, Check, X, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { SecuritySchedule } from '@/lib/luka/compute';
 import type { LocalInvJE } from './InvAJEsTab';
-import { Button } from '@/components/wp-ui/button';
 import { fmtCAD, fmtNum, fmtSigned } from './InvHoldingsTab';
+import { fmtDate } from '../lib/utils';
 import { SearchFilter, ClearFiltersBtn } from './InvTableFilters';
 import { CHART_OF_ACCOUNTS } from '@/lib/luka/coa';
 
@@ -26,6 +26,7 @@ interface DisposalRow {
   proceeds: number;       // net proceeds (= grossProceeds − fees)
   costOut: number;        // ACB released
   gl: number;
+  unrealizedGL: number;   // remaining unrealized G/L for this security
   tbAccount: string;
 }
 
@@ -59,6 +60,7 @@ export function InvGainLossTab({ schedules, totals, onAddToAJEs }: Props) {
               proceeds:     net,                   // net proceeds
               costOut:      r.costOut,
               gl,
+              unrealizedGL: s.unrealizedGL,
               tbAccount: gl >= 0 ? '4800' : '4900',
             };
           }),
@@ -126,7 +128,7 @@ export function InvGainLossTab({ schedules, totals, onAddToAJEs }: Props) {
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex items-start justify-between">
             <p className="text-xs text-muted-foreground">Total Realized G/L</p>
@@ -145,14 +147,6 @@ export function InvGainLossTab({ schedules, totals, onAddToAJEs }: Props) {
           <p className={`mt-2 text-2xl font-semibold tabular-nums ${totals.unrealized >= 0 ? "text-foreground" : "text-foreground"}`}>
             {fmtSigned(totals.unrealized)}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">CAD</p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <div className="flex items-start justify-between">
-            <p className="text-xs text-muted-foreground">Carrying Value</p>
-            <Wallet className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">{fmtCAD(totals.cost)}</p>
           <p className="text-xs text-muted-foreground mt-1">CAD</p>
         </div>
       </div>
@@ -184,13 +178,16 @@ export function InvGainLossTab({ schedules, totals, onAddToAJEs }: Props) {
               {/* col 6 */}
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Realized G/L</th>
               {/* col 7 */}
+              <th
+                className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap"
+                title="Unrealized G/L on the remaining open position for this security"
+              >
+                Unrealized G/L
+              </th>
+              {/* col 8 */}
               <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">TB Account</th>
-              {/* col 8 — AJE push */}
-              {onAddToAJEs && (
-                <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">AJE</th>
-              )}
               {/* col 9 */}
-              <th className="px-3 py-3 w-16"></th>
+              <th className="px-3 py-3 w-24 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -200,7 +197,7 @@ export function InvGainLossTab({ schedules, totals, onAddToAJEs }: Props) {
                 className={`border-b border-border/50 hover:bg-muted/30 transition-colors${editId === r.key ? ' bg-primary/5' : ''}`}
               >
                 {/* col 1 — Date */}
-                <td className="px-4 py-3 text-xs">{r.date}</td>
+                <td className="px-4 py-3 text-xs">{fmtDate(r.date)}</td>
                 {/* col 2 — Security */}
                 <td className="px-4 py-3 text-sm">
                   <div className="font-medium">{r.security}</div>
@@ -219,10 +216,16 @@ export function InvGainLossTab({ schedules, totals, onAddToAJEs }: Props) {
                 {/* col 5 — ACB Released */}
                 <td className="px-4 py-3 text-right tabular-nums">{fmtCAD(r.costOut)}</td>
                 {/* col 6 — Realized G/L */}
-                <td className={`px-4 py-3 text-right tabular-nums font-medium ${r.gl >= 0 ? "text-foreground" : "text-foreground"}`}>
+                <td className="px-4 py-3 text-right tabular-nums font-medium text-foreground">
                   {fmtSigned(r.gl)}
                 </td>
-                {/* col 7 — TB Account (editable) */}
+                {/* col 7 — Unrealized G/L (remaining open position) */}
+                <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                  {r.unrealizedGL !== 0
+                    ? <span className={r.unrealizedGL >= 0 ? 'text-foreground' : 'text-foreground'}>{fmtSigned(r.unrealizedGL)}</span>
+                    : <span className="text-muted-foreground/40">—</span>}
+                </td>
+                {/* col 8 — TB Account (editable) */}
                 <td className="px-4 py-3">
                   {editId === r.key ? (
                     <select
@@ -238,51 +241,33 @@ export function InvGainLossTab({ schedules, totals, onAddToAJEs }: Props) {
                     <span className="text-xs text-muted-foreground">{getTbLabel(getTbAccount(r))}</span>
                   )}
                 </td>
-                {/* col 8 — AJE push */}
-                {onAddToAJEs && (
-                  <td className="px-4 py-3 text-center">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 px-2 text-xs gap-1"
-                      onClick={() => pushAJE(r)}
-                      title="Send disposition AJE to AJEs tab"
-                    >
-                      <FilePlus2 className="h-3 w-3" />
-                      → AJE
-                    </Button>
-                  </td>
-                )}
                 {/* col 9 — Actions */}
                 <td className="px-3 py-3">
                   {editId === r.key ? (
                     <div className="flex gap-0.5">
-                      <button
-                        onClick={() => saveEdit(r.key)}
-                        className="p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-600"
-                      >
+                      <button onClick={() => saveEdit(r.key)} className="p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-600">
                         <Check className="h-3.5 w-3.5" />
                       </button>
-                      <button
-                        onClick={() => setEditId(null)}
-                        className="p-1.5 hover:bg-muted rounded-lg text-foreground"
-                      >
+                      <button onClick={() => setEditId(null)} className="p-1.5 hover:bg-muted rounded-lg text-foreground">
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   ) : (
                     <div className="flex gap-0.5">
-                      <button
-                        onClick={() => { setEditId(r.key); setEditData({}); }}
-                        className="p-1.5 hover:bg-muted rounded-lg text-foreground"
-                      >
+                      {onAddToAJEs && (
+                        <button
+                          onClick={() => pushAJE(r)}
+                          title="Send disposition AJE to AJEs tab"
+                          className="p-1.5 hover:bg-primary/10 rounded-lg text-primary"
+                        >
+                          <Send className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      <button onClick={() => { setEditId(r.key); setEditData({}); }} className="p-1.5 hover:bg-muted rounded-lg text-foreground">
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
-                        onClick={() => {
-                          setHiddenKeys((prev) => { const n = new Set(prev); n.add(r.key); return n; });
-                          toast.success('Row hidden');
-                        }}
+                        onClick={() => { setHiddenKeys((prev) => { const n = new Set(prev); n.add(r.key); return n; }); toast.success('Row hidden'); }}
                         className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -295,19 +280,22 @@ export function InvGainLossTab({ schedules, totals, onAddToAJEs }: Props) {
 
             {visible.length === 0 && (
               <tr>
-                <td colSpan={onAddToAJEs ? 10 : 9} className="px-4 py-6 text-center text-sm text-muted-foreground">
+                <td colSpan={10} className="px-4 py-6 text-center text-sm text-muted-foreground">
                   {filterSecurity ? "No disposals match the security filter." : "No disposals in period."}
                 </td>
               </tr>
             )}
 
-            {/* Footer: label spans cols 1–5, total aligns under col 6 (Realized G/L), rest empty */}
+            {/* Footer: label spans cols 1–5, totals align under cols 6 & 7 */}
             <tr className="bg-muted/40 font-semibold border-t border-border">
-              <td colSpan={6} className="px-4 py-3 text-sm text-foreground">Total Realized G/L</td>
+              <td colSpan={6} className="px-4 py-3 text-sm text-foreground">Total</td>
               <td className="px-4 py-3 text-right tabular-nums text-foreground">
                 {fmtSigned(totals.realized)}
               </td>
-              <td colSpan={onAddToAJEs ? 3 : 2} />
+              <td className="px-4 py-3 text-right tabular-nums text-foreground">
+                {fmtSigned(totals.unrealized)}
+              </td>
+              <td colSpan={2} />
             </tr>
           </tbody>
         </table>
