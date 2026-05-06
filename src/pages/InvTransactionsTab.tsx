@@ -406,7 +406,7 @@ export function InvTransactionsTab({
               </th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
                 <ColFilter
-                  label="Ccy"
+                  label="CCY"
                   options={uniqueCurrencies}
                   value={filterCcy}
                   onChange={setFilterCcy}
@@ -614,7 +614,7 @@ export function InvTransactionsTab({
                         ))}
                       </select>
                     ) : (
-                      <span className="text-muted-foreground font-mono">{t.currency}</span>
+                      <Badge variant="outline" className="text-xs font-mono">{t.currency}</Badge>
                     )}
                   </td>
                   <td className="px-4 py-3">
