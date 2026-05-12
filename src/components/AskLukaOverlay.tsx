@@ -2160,21 +2160,21 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                         </div>
                       )}
 
-                      {/* ── Turn 2: user confirmation + schedule result ── */}
+                      {/* ── Turn 2: user confirmation + Long-term Asset workpaper view ── */}
                       {loanAmortStep !== "idle" && loanAmortData && (
                         <>
                           {/* User bubble — form summary */}
                           <div className="flex justify-end">
                             <div className="max-w-[80%] px-4 py-3 rounded-[12px] bg-primary text-primary-foreground text-sm leading-relaxed">
-                              Generate amortization schedule for{" "}
-                              <strong>
-                                {loanAmortData.principalAmount
-                                  ? `$${loanAmortData.principalAmount}`
-                                  : "uploaded loan agreement"}
-                              </strong>
-                              {loanAmortData.annualInterestRate && ` at ${loanAmortData.annualInterestRate}% ${loanAmortData.interestRateType}`}
-                              {loanAmortData.loanTenure && `, ${loanAmortData.loanTenure} months`}
-                              {loanAmortData.paymentType && ` — ${loanAmortData.paymentType}`}
+                              {loanAmortData.uploadedFile
+                                ? <>Analyse loan agreement <strong>{loanAmortData.uploadedFile}</strong> and show the Long-term Asset workpaper</>
+                                : <>Show Long-term Asset workpaper
+                                  {loanAmortData.principalAmount && <> for <strong>${loanAmortData.principalAmount}</strong></>}
+                                  {loanAmortData.annualInterestRate && ` at ${loanAmortData.annualInterestRate}% ${loanAmortData.interestRateType}`}
+                                  {loanAmortData.loanTenure && `, ${loanAmortData.loanTenure} months`}
+                                  {loanAmortData.paymentType && ` — ${loanAmortData.paymentType}`}
+                                </>
+                              }
                             </div>
                           </div>
 
@@ -2189,7 +2189,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                             <div className="flex-1 pt-1.5 min-h-[28px] min-w-0 overflow-x-auto">
                               {loanAmortStep === "thinking" ? (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium text-foreground luka-thinking-text">Calculating schedule</span>
+                                  <span className="text-sm font-medium text-foreground luka-thinking-text">Analysing Long-term Asset workpaper</span>
                                   <span className="flex gap-0.5">
                                     <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-1" />
                                     <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-2" />
@@ -2197,7 +2197,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                   </span>
                                 </div>
                               ) : (
-                                <LoanAmortizationResponse data={loanAmortData} />
+                                <LongTermAssetResponse />
                               )}
                             </div>
                           </div>
