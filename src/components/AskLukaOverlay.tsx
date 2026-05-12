@@ -16,6 +16,10 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { cn } from "@/lib/utils";
 import { PromptPicker } from "@/components/luka/PromptPicker";
 import { GrossMarginResponse } from "@/components/luka/GrossMarginResponse";
+import { LoanAmortizationPrompt } from "@/components/luka/LoanAmortizationPrompt";
+import { LoanAmortizationResponse } from "@/components/luka/LoanAmortizationResponse";
+import type { LoanAmortData } from "@/components/luka/LoanAmortizationPrompt";
+import { LongTermAssetResponse } from "@/components/luka/LongTermAssetResponse";
 import { LukaResponseActions } from "@/components/luka/LukaResponseActions";
 import { useStore } from "@/store/useStore";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
@@ -68,6 +72,8 @@ const suggestions = [
   "#Account Reconciliation",
   "#Bank Reconciliation",
   "#Capital Asset Amortization",
+  "#Loan Amortization",
+  "#Long-term Debt",
 ];
 
 const WP_THREADS = [
@@ -192,7 +198,9 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [displayedResponse, setDisplayedResponse] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [richResponseType, setRichResponseType] = useState<"gross-margin" | null>(null);
+  const [richResponseType, setRichResponseType] = useState<"gross-margin" | "loan-amortization" | "lt-debt" | null>(null);
+  const [loanAmortData,   setLoanAmortData]     = useState<LoanAmortData | null>(null);
+  const [loanAmortStep,   setLoanAmortStep]     = useState<"idle" | "thinking" | "done">("idle");
   const [revealStep, setRevealStep] = useState(-1);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [editMode, setEditMode] = useState<'ask' | 'auto'>('auto');
@@ -504,12 +512,19 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
     setSentMessage(promptLabel); setIsThinking(true);
     setAiResponse(null); setDisplayedResponse(""); setIsStreaming(false);
     setRichResponseType(null); setRevealStep(-1);
+    setLoanAmortData(null); setLoanAmortStep("idle");
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
-    const isGrossMargin = promptLabel.toLowerCase().includes("gross profit margin");
+    const isGrossMargin    = promptLabel.toLowerCase().includes("gross profit margin");
+    const isLoanAmort      = promptLabel.toLowerCase().includes("loan amortization");
+    const isLtDebt         = promptLabel.toLowerCase().includes("long-term debt") || promptLabel.toLowerCase().includes("long term debt") || promptLabel.toLowerCase().includes("long-term asset");
     setTimeout(() => {
       setIsThinking(false);
-      if (isGrossMargin) {
+      if (isLtDebt) {
+        setRichResponseType("lt-debt"); setAiResponse("__rich__");
+      } else if (isLoanAmort) {
+        setRichResponseType("loan-amortization"); setAiResponse("__rich__");
+      } else if (isGrossMargin) {
         setRichResponseType("gross-margin"); setAiResponse("__rich__");
         let s = 0;
         const reveal = () => { setRevealStep(s); s++; if (s <= 5) revealRef.current = window.setTimeout(reveal, 600); };
@@ -525,6 +540,12 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
         stream();
       }
     }, 2500);
+  }, []);
+
+  const handleLoanAmortSubmit = useCallback((data: LoanAmortData) => {
+    setLoanAmortData(data);
+    setLoanAmortStep("thinking");
+    setTimeout(() => setLoanAmortStep("done"), 2200);
   }, []);
 
   const handleSend = useCallback(() => {
@@ -2120,6 +2141,10 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                   <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-3" />
                                 </span>
                               </div>
+                            ) : richResponseType === "lt-debt" ? (
+                              <LongTermAssetResponse />
+                            ) : richResponseType === "loan-amortization" ? (
+                              <LoanAmortizationPrompt onSubmit={handleLoanAmortSubmit} />
                             ) : richResponseType === "gross-margin" ? (
                               <><GrossMarginResponse revealStep={revealStep} />{revealStep >= 5 && <LukaResponseActions />}</>
                             ) : (
@@ -2133,6 +2158,50 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                             )}
                           </div>
                         </div>
+                      )}
+
+                      {/* ── Turn 2: user confirmation + schedule result ── */}
+                      {loanAmortStep !== "idle" && loanAmortData && (
+                        <>
+                          {/* User bubble — form summary */}
+                          <div className="flex justify-end">
+                            <div className="max-w-[80%] px-4 py-3 rounded-[12px] bg-primary text-primary-foreground text-sm leading-relaxed">
+                              Generate amortization schedule for{" "}
+                              <strong>
+                                {loanAmortData.principalAmount
+                                  ? `$${loanAmortData.principalAmount}`
+                                  : "uploaded loan agreement"}
+                              </strong>
+                              {loanAmortData.annualInterestRate && ` at ${loanAmortData.annualInterestRate}% ${loanAmortData.interestRateType}`}
+                              {loanAmortData.loanTenure && `, ${loanAmortData.loanTenure} months`}
+                              {loanAmortData.paymentType && ` — ${loanAmortData.paymentType}`}
+                            </div>
+                          </div>
+
+                          {/* Luka response */}
+                          <div className="flex items-start gap-3 min-w-0 max-w-full">
+                            <div className={cn(
+                              "w-9 h-9 rounded-full bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(265_80%_55%)] flex items-center justify-center shrink-0",
+                              loanAmortStep === "thinking" && "luka-thinking-spin",
+                            )}>
+                              <LukaIcon size={16} />
+                            </div>
+                            <div className="flex-1 pt-1.5 min-h-[28px] min-w-0 overflow-x-auto">
+                              {loanAmortStep === "thinking" ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium text-foreground luka-thinking-text">Calculating schedule</span>
+                                  <span className="flex gap-0.5">
+                                    <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-1" />
+                                    <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-2" />
+                                    <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-3" />
+                                  </span>
+                                </div>
+                              ) : (
+                                <LoanAmortizationResponse data={loanAmortData} />
+                              )}
+                            </div>
+                          </div>
+                        </>
                       )}
                     </div>
                   )}
