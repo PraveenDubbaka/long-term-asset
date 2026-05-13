@@ -203,7 +203,7 @@ export function InvHoldingsTab({ schedules, totals, allSources, onUpload, isEmpt
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Cost (CAD)</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">FMV (CAD)</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Unrealized G/L</th>
-              <th className="px-3 py-3 w-16"></th>
+              <th className="px-3 py-3 w-16 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Actions</th>
             </tr>
           </thead>
           <tbody>

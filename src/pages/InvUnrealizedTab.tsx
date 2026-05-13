@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
-import { TrendingUp, TrendingDown, BarChart2, FilePlus2, Info } from 'lucide-react';
+import { TrendingUp, TrendingDown, BarChart2, Send, Info } from 'lucide-react';
 import { Badge } from '@/components/wp-ui/badge';
-import { Button } from '@/components/wp-ui/button';
 import type { SecuritySchedule } from '@/lib/luka/compute';
 import type { LocalInvJE } from './InvAJEsTab';
 import { fmtCAD, fmtNum, fmtSigned } from './InvHoldingsTab';
@@ -148,9 +147,7 @@ export function InvUnrealizedTab({ schedules, measurementBasis, onAddToAJEs }: P
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">FMV (CAD)</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Unrealized G/L</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">%</th>
-              {isFVTPL && (
-                <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Push AJE</th>
-              )}
+              <th className="px-3 py-3 w-16 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -179,24 +176,19 @@ export function InvUnrealizedTab({ schedules, measurementBasis, onAddToAJEs }: P
                       {pct >= 0 ? '+' : ''}{pct.toFixed(1)}%
                     </span>
                   </td>
-                  {isFVTPL && (
-                    <td className="px-4 py-3 text-center">
-                      {hasVariance ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 px-2 text-xs gap-1"
+                  <td className="px-3 py-3">
+                    <div className="flex gap-0.5">
+                      {isFVTPL && hasVariance && (
+                        <button
                           onClick={() => handleSuggestAJE(s)}
                           title="Send fair value AJE to AJEs tab"
+                          className="p-1.5 hover:bg-primary/10 rounded-lg text-primary"
                         >
-                          <FilePlus2 className="h-3 w-3" />
-                          → AJE
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
+                          <Send className="h-3.5 w-3.5" />
+                        </button>
                       )}
-                    </td>
-                  )}
+                    </div>
+                  </td>
                 </tr>
               );
             })}
@@ -204,7 +196,7 @@ export function InvUnrealizedTab({ schedules, measurementBasis, onAddToAJEs }: P
             {visible.length === 0 && (
               <tr>
                 <td
-                  colSpan={isFVTPL ? 9 : 8}
+                  colSpan={9}
                   className="px-4 py-6 text-center text-sm text-muted-foreground"
                 >
                   {filterSecurity ? 'No positions match the filter.' : 'No open positions.'}
@@ -225,7 +217,7 @@ export function InvUnrealizedTab({ schedules, measurementBasis, onAddToAJEs }: P
                   </span>
                 ) : '—'}
               </td>
-              {isFVTPL && <td />}
+              <td />
             </tr>
           </tbody>
         </table>
