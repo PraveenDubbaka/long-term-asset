@@ -3,7 +3,7 @@ import {
   TrendingUp, AlertTriangle, Calendar, DollarSign, BarChart2,
   ChevronDown, ChevronUp, FileSpreadsheet, Plus, CheckCircle2,
   ShieldAlert, ShieldCheck, Activity, ExternalLink, CreditCard,
-  Building2, FileText, BookOpen, Receipt, Layers, FileCheck,
+  Building2, FileText, BookOpen, Receipt, Layers, FileCheck, Send,
 } from "lucide-react";
 import { useStore } from "@/store/useStore";
 import toast from "react-hot-toast";
@@ -372,8 +372,43 @@ function LoansTab({ loans }: { loans: Loan[] }) {
 }
 
 function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: ContinuityRow[] }) {
-  const settings = useStore(s => s.settings);
+  const { settings, addJE, jes } = useStore(s => ({
+    settings: s.settings,
+    addJE:    s.addJE,
+    jes:      s.jes,
+  }));
   const [contView, setContView] = useState<"rollforward" | "repayment">("rollforward");
+
+  const postAJE = (loan: Loan, accruedInterest: number) => {
+    if (!accruedInterest || accruedInterest <= 0) {
+      toast.error("No accrued interest to post for this loan");
+      return;
+    }
+    const alreadyPosted = jes.some(
+      j => !j.deleted && j.type === "AccruedInterest" && j.loanId === loan.id,
+    );
+    if (alreadyPosted) {
+      toast.error("An accrued interest AJE already exists for this loan");
+      return;
+    }
+    const expAcct  = `${loan.glInterestExpenseAccount} – Interest Expense (${loan.currency})`;
+    const liabAcct = `${loan.glAccruedInterestAccount} – Accrued Interest Payable – ${loan.currency}`;
+    const jeId     = `je-ai-${Date.now()}`;
+    const period   = settings?.currentPeriod ?? "2024-12";
+    addJE({
+      id: jeId, type: "AccruedInterest",
+      description: `YE Accrued Interest – ${loan.name} (${loan.refNumber})`,
+      fiscalYear: period.slice(0, 4),
+      date: `${period}-01`,
+      loanId: loan.id, status: "Draft",
+      createdAt: new Date().toISOString(),
+      lines: [
+        { id: `${jeId}-dr`, account: expAcct,  description: `YE accrued interest – ${loan.name}`, debit: accruedInterest, credit: 0,              loanId: loan.id },
+        { id: `${jeId}-cr`, account: liabAcct, description: `YE accrued interest – ${loan.name}`, debit: 0,              credit: accruedInterest, loanId: loan.id },
+      ],
+    } as Parameters<typeof addJE>[0]);
+    toast.success(`AJE posted — ${loan.name}`);
+  };
 
   const period   = settings?.currentPeriod ?? "2024-12";
   const baseYear = parseInt(period.split("-")[0]);
@@ -462,7 +497,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
               <table className="w-full text-[11px]">
                 <thead>
                   <tr className="bg-muted/20 border-b border-border">
-                    {["Loan","Opening Bal.","+New Borr.","-Principal","-Interest","±FX","Closing Bal.","Accrued Int."].map(h=>(
+                    {["Loan","Opening Bal.","+New Borr.","-Principal","-Interest","±FX","Closing Bal.","Accrued Int.",""].map(h=>(
                       <th key={h} className={`px-2.5 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h==="Loan"?"text-left":"text-right"}`}>{h}</th>
                     ))}
                   </tr>
@@ -477,10 +512,12 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                           <p className="text-[10px] text-muted-foreground">{loan.lender} · {loan.currency}</p>
                         </td>
                         {Array(7).fill(0).map((_,j)=><td key={j} className="px-2.5 py-1.5 text-right text-muted-foreground">—</td>)}
+                        <td />
                       </tr>
                     );
                     const prin = row.principalRepayments ?? 0;
                     const int  = row.interestRepayments  ?? 0;
+                    const alreadyPosted = jes.some(j => !j.deleted && j.type === "AccruedInterest" && j.loanId === loan.id);
                     return (
                       <tr key={loan.id} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
                         <td className="px-2.5 py-1.5">
@@ -494,6 +531,20 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                         <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{row.fxTranslation !== 0 ? fmtParen(Math.abs(row.fxTranslation * fx)) : "—"}</td>
                         <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold">{fmtNum(row.closingBalance * fx)}</td>
                         <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{fmtNum(row.accruedInterest * fx)}</td>
+                        <td className="px-2.5 py-1.5 text-right">
+                          <button
+                            onClick={() => postAJE(loan, row.accruedInterest)}
+                            disabled={alreadyPosted || row.accruedInterest <= 0}
+                            title={alreadyPosted ? "AJE already posted" : "Post accrued interest AJE to AJEs tab"}
+                            className={`p-1 rounded-[5px] transition-colors ${
+                              alreadyPosted || row.accruedInterest <= 0
+                                ? "text-muted-foreground/40 cursor-not-allowed"
+                                : "text-primary hover:bg-primary/10 cursor-pointer"
+                            }`}
+                          >
+                            <Send className="h-3 w-3" />
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -508,6 +559,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                     <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-muted-foreground">—</td>
                     <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmtNum(rfTotals.closing)}</td>
                     <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmtNum(rfTotals.accrued)}</td>
+                    <td />
                   </tr>
                 </tfoot>
               </table>
