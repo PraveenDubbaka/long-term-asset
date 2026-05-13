@@ -466,7 +466,7 @@ function AJEsTabPanel({ jes }: { jes: JEProposal[] }) {
   const draft    = active.filter(j => j.status === "Draft").length;
   const approved = active.filter(j => j.status === "Approved").length;
   const posted   = active.filter(j => j.status === "Posted" || j.status === "Exported").length;
-  const [expandedJE, setExpandedJE] = useState<string | null>(null);
+  const [expandedJEs, setExpandedJEs] = useState<Set<string>>(() => new Set(jes.filter(j => !j.deleted).map(j => j.id)));
 
   const JE_TYPE_LABEL: Record<string, string> = {
     AccruedInterest: "Accrued Interest",
@@ -503,12 +503,12 @@ function AJEsTabPanel({ jes }: { jes: JEProposal[] }) {
       {/* JE list */}
       <div className="space-y-2">
         {active.map(je => {
-          const isExpanded = expandedJE === je.id;
+          const isExpanded = expandedJEs.has(je.id);
           const loanName = je.loanId ? je.description.split("–")[1]?.trim() : undefined;
           return (
             <div key={je.id} className="rounded-[8px] border border-border overflow-hidden">
               <button
-                onClick={() => setExpandedJE(isExpanded ? null : je.id)}
+                onClick={() => setExpandedJEs(prev => { const next = new Set(prev); isExpanded ? next.delete(je.id) : next.add(je.id); return next; })}
                 className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-muted/30 transition-colors text-left"
               >
                 <div className="flex items-center gap-2 min-w-0">
