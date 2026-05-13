@@ -14,7 +14,7 @@ function SelectField({ label, required, options, value, onChange }: {
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="flex-1 min-w-[140px]">
+    <div className="flex-1 min-w-[140px] max-w-[250px]">
       <label className="block text-xs text-foreground mb-1">
         {label}{required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
@@ -33,7 +33,7 @@ function InputField({ label, required, placeholder, type = "text", value, onChan
   type?: string; value: string; onChange: (v: string) => void;
 }) {
   return (
-    <div className="flex-1 min-w-[120px]">
+    <div className="flex-1 min-w-[120px] max-w-[250px]">
       <label className="block text-xs text-foreground mb-1">
         {label}{required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
