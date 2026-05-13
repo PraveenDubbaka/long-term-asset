@@ -432,21 +432,20 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
   return (
     <div className="space-y-3">
 
-      {/* Sub-tab bar */}
-      <div className="flex items-center gap-0 border-b border-border">
-        {(["rollforward", "repayment"] as const).map(v => (
-          <button
-            key={v}
-            onClick={() => setContView(v)}
-            className={`px-3 py-1.5 text-[11px] font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
-              contView === v
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
+      {/* View selector dropdown */}
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">View:</span>
+        <div className="relative">
+          <select
+            value={contView}
+            onChange={e => setContView(e.target.value as "rollforward" | "repayment")}
+            className="h-8 text-[11px] pl-2.5 pr-7 border border-border rounded-[8px] bg-background text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 hover:border-primary/40 transition-colors"
           >
-            {v === "rollforward" ? "Roll-Forward" : "Repayment Schedule"}
-          </button>
-        ))}
+            <option value="rollforward">Roll-Forward</option>
+            <option value="repayment">Repayment Schedule</option>
+          </select>
+          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+        </div>
       </div>
 
       {/* ── Roll-Forward view ── */}
