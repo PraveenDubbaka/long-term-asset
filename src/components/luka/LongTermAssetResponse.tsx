@@ -97,8 +97,6 @@ function LoansTab({ loans }: { loans: Loan[] }) {
   }));
 
   const principalAccts = accountMappings.filter(a => a.type === "Principal");
-  const accruedAccts   = accountMappings.filter(a => a.type === "AccruedInterestPayable");
-  const interestAccts  = accountMappings.filter(a => a.type === "InterestExpense");
   const handleGLSave   = (id: string, field: string, code: string) =>
     updateLoan(id, { [field]: code } as Partial<Loan>);
 
@@ -166,8 +164,6 @@ function LoansTab({ loans }: { loans: Loan[] }) {
     { h: "IO Period (mo.)", left: false },
     { h: "Balloon Amt",     left: false },
     { h: "Status",          left: false },
-    { h: "GL Accrued Int.", left: false },
-    { h: "GL Int. Exp.",    left: false },
   ];
 
   return (
@@ -271,14 +267,6 @@ function LoansTab({ loans }: { loans: Loan[] }) {
                     </td>
                     {/* Status */}
                     <td className="px-2.5 py-1.5 text-right"><StatusBadge status={l.status} /></td>
-                    {/* GL Accrued Int. */}
-                    <td className="px-2.5 py-1.5 text-right">
-                      <GLSelect loanId={l.id} value={l.glAccruedInterestAccount} options={accruedAccts} field="glAccruedInterestAccount" onSave={handleGLSave} />
-                    </td>
-                    {/* GL Int. Exp. */}
-                    <td className="px-2.5 py-1.5 text-right">
-                      <GLSelect loanId={l.id} value={l.glInterestExpenseAccount} options={interestAccts} field="glInterestExpenseAccount" onSave={handleGLSave} />
-                    </td>
                   </tr>
                 );
               })}
@@ -290,7 +278,7 @@ function LoansTab({ loans }: { loans: Loan[] }) {
                 <td />
                 <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmt(loans.reduce((s,l)=>s+l.originalPrincipal*getFxRate(l),0))}</td>
                 <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmt(loans.reduce((s,l)=>s+toCAD(l.closingBalance??l.currentBalance,l.currency),0))}</td>
-                <td colSpan={9} />
+                <td colSpan={7} />
               </tr>
             </tfoot>
           </table>
