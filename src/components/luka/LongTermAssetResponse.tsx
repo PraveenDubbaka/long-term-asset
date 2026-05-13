@@ -217,7 +217,7 @@ function LoansTab({ loans }: { loans: Loan[] }) {
                     {/* Start */}
                     <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{fmtDate(l.startDate)}</td>
                     {/* Maturity */}
-                    <td className="px-2.5 py-1.5 text-right"><MaturityChip dateStr={l.maturityDate} /></td>
+                    <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{fmtDate(l.maturityDate)}</td>
                     {/* Tenure (Mo.) */}
                     <td className="px-2.5 py-1.5 text-right tabular-nums text-foreground">{getTenure(l)}</td>
                     {/* First Payment */}
