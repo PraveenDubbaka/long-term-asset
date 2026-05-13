@@ -107,11 +107,15 @@ export function LoanAmortizationPrompt({ onSubmit }: LoanAmortizationPromptProps
 
   const clearAll = () => setForm(EMPTY);
 
+  const isReady = !!(
+    form.uploadedFile ||
+    form.principalAmount.trim() ||
+    form.annualInterestRate.trim() ||
+    form.loanTenure.trim()
+  );
+
   const handleSubmit = () => {
-    if (!form.principalAmount && !form.uploadedFile) {
-      toast.error("Enter a Principal Amount or upload a loan agreement");
-      return;
-    }
+    if (!isReady) return;
     onSubmit?.(form);
     toast.success("Generating loan amortization schedule…");
   };
@@ -228,7 +232,12 @@ export function LoanAmortizationPrompt({ onSubmit }: LoanAmortizationPromptProps
           </button>
           <button
             onClick={handleSubmit}
-            className="h-9 px-5 rounded-[10px] bg-muted text-sm text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors font-medium disabled:opacity-50"
+            disabled={!isReady}
+            className={`h-9 px-5 rounded-[10px] text-sm font-medium transition-colors ${
+              isReady
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
+            }`}
           >
             Submit
           </button>
