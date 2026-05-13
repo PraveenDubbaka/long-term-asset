@@ -4,7 +4,7 @@ import {
   ChevronDown, ChevronUp, FileSpreadsheet, Plus, CheckCircle2,
   ShieldAlert, ShieldCheck, Activity, CreditCard,
   Building2, FileText, BookOpen, Receipt, Layers, FileCheck, Send, TrendingUp,
-  Download, Copy, RotateCcw,
+  Download, Copy, RotateCcw, X,
 } from "lucide-react";
 import { useStore } from "@/store/useStore";
 import toast from "react-hot-toast";
@@ -768,12 +768,50 @@ function AmortizationTabPanel({ loans, amortization }: { loans: Loan[]; amortiza
 }
 
 function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Covenant[] }) {
+  const updateCovenant = useStore(s => s.updateCovenant);
   const [selectedLoanId, setSelectedLoanId] = useState(loans[0]?.id ?? "");
+  const [editingCovId, setEditingCovId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Partial<Covenant>>({});
+
   const loan = loans.find(l => l.id === selectedLoanId);
   const loanCovs = covenants.filter(c => c.loanId === selectedLoanId);
-
   const breached = covenants.filter(c => c.status === "Breached").length;
   const atRisk   = covenants.filter(c => c.status === "At Risk").length;
+  const editingCov = covenants.find(c => c.id === editingCovId);
+
+  const openEdit = (cov: Covenant) => {
+    setDraft({ ...cov });
+    setEditingCovId(cov.id);
+  };
+
+  const setD = (k: keyof Covenant, v: unknown) => setDraft(p => ({ ...p, [k]: v }));
+
+  const computeStatus = (cur: number | undefined, thr: number | undefined, op: string | undefined) => {
+    if (cur === undefined || thr === undefined || !op) return "OK" as const;
+    const passes = op === ">=" ? cur >= thr : op === "<=" ? cur <= thr : op === ">" ? cur > thr : cur < thr;
+    if (!passes) return "Breached" as const;
+    const margin = thr !== 0 ? Math.abs(cur - thr) / Math.abs(thr) : 1;
+    return margin < 0.1 ? "At Risk" as const : "OK" as const;
+  };
+
+  const handleSave = () => {
+    if (!editingCovId) return;
+    updateCovenant(editingCovId, draft);
+    toast.success("Covenant saved");
+    setEditingCovId(null);
+  };
+
+  const handleRerun = () => {
+    if (!editingCovId) return;
+    const newStatus = computeStatus(draft.currentValue, draft.threshold, draft.operator);
+    const updated = { ...draft, status: newStatus };
+    setDraft(updated);
+    updateCovenant(editingCovId, updated);
+    toast.success(`Rerun complete — status: ${newStatus}`);
+    setEditingCovId(null);
+  };
+
+  const FIELD = "h-8 w-full text-[11px] px-2.5 border border-border rounded-[8px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40";
 
   return (
     <div className="space-y-3">
@@ -793,16 +831,9 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
       {/* Loan selector */}
       <div className="flex items-center gap-2">
         <span className="text-[11px] text-muted-foreground whitespace-nowrap">Loan:</span>
-        <select
-          value={selectedLoanId}
-          onChange={e => setSelectedLoanId(e.target.value)}
-          className="flex-1 h-8 text-[11px] px-2 border border-border rounded-[8px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
-        >
-          {loans.map(l => (
-            <option key={l.id} value={l.id}>
-              {l.name} · {l.lender} · {l.refNumber}
-            </option>
-          ))}
+        <select value={selectedLoanId} onChange={e => setSelectedLoanId(e.target.value)}
+          className="flex-1 h-8 text-[11px] px-2 border border-border rounded-[8px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40">
+          {loans.map(l => <option key={l.id} value={l.id}>{l.name} · {l.lender} · {l.refNumber}</option>)}
         </select>
         {loan && <span className="text-[10px] font-semibold text-muted-foreground bg-muted px-2 py-1 rounded-[4px]">{loan.currency}</span>}
         <span className="text-[10px] text-muted-foreground">{loanCovs.length} covenants</span>
@@ -815,7 +846,7 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
           <table className="w-full text-[11px]">
             <thead>
               <tr className="bg-muted/20 border-b border-border">
-                {["","Covenant","Type","Status","Current","Projected","Threshold","Frequency","Last Tested","Actions"].map(h=>(
+                {["","Covenant","Type","Status","Current","Projected","Threshold","Frequency","Last Tested",""].map(h=>(
                   <th key={h} className={`px-2.5 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide ${h===""||h==="Covenant"||h==="Type"||h==="Frequency"||h==="Last Tested"?"text-left":"text-right"}`}>{h}</th>
                 ))}
               </tr>
@@ -839,12 +870,103 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
                   <td className="px-2.5 py-2 text-muted-foreground">{cov.frequency}</td>
                   <td className="px-2.5 py-2 text-muted-foreground whitespace-nowrap">{cov.lastTested ? fmtDate(cov.lastTested) : "—"}</td>
                   <td className="px-2.5 py-2 text-right">
-                    <button className="text-[10px] text-primary hover:underline">Edit</button>
+                    <button onClick={() => openEdit(cov)} className="text-[10px] text-primary hover:underline">Edit</button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* ── Edit covenant overlay ── */}
+      {editingCovId && editingCov && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" onClick={() => setEditingCovId(null)} />
+          <div className="relative bg-background border border-border rounded-[16px] shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <div className="flex items-center gap-2">
+                <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${editingCov.status==="Breached"?"bg-red-500":editingCov.status==="At Risk"?"bg-amber-500":"bg-green-500"}`} />
+                <span className="text-sm font-semibold text-foreground">{editingCov.name}</span>
+                <StatusBadge status={draft.status ?? editingCov.status} />
+              </div>
+              <button onClick={() => setEditingCovId(null)} className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-[6px] hover:bg-muted">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <div className="px-5 py-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Current Value</label>
+                  <input type="number" step="0.01" value={draft.currentValue ?? ""} onChange={e => setD("currentValue", parseFloat(e.target.value) || 0)}
+                    className={FIELD} placeholder="e.g. 1.12" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Projected Value</label>
+                  <input type="number" step="0.01" value={draft.projectedValue ?? ""} onChange={e => setD("projectedValue", parseFloat(e.target.value) || 0)}
+                    className={FIELD} placeholder="e.g. 0.96" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Threshold</label>
+                  <input type="number" step="0.01" value={draft.threshold ?? ""} onChange={e => setD("threshold", parseFloat(e.target.value) || 0)}
+                    className={FIELD} placeholder="e.g. 1.25" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Operator</label>
+                  <select value={draft.operator ?? ">="} onChange={e => setD("operator", e.target.value)} className={FIELD}>
+                    <option value=">=">≥ (greater or equal)</option>
+                    <option value="<=">≤ (less or equal)</option>
+                    <option value=">"> &gt; (greater than)</option>
+                    <option value="<"> &lt; (less than)</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Frequency</label>
+                  <select value={draft.frequency ?? "Annual"} onChange={e => setD("frequency", e.target.value)} className={FIELD}>
+                    {["Annual","Semi-annual","Quarterly","Monthly"].map(f => <option key={f} value={f}>{f}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Last Tested</label>
+                  <input type="date" value={draft.lastTested?.slice(0,10) ?? ""} onChange={e => setD("lastTested", e.target.value)}
+                    className={FIELD} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Notes</label>
+                <textarea rows={2} value={draft.notes ?? ""} onChange={e => setD("notes", e.target.value)}
+                  className="w-full text-[11px] px-2.5 py-2 border border-border rounded-[8px] bg-background text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground"
+                  placeholder="Add a note…" />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-t border-border bg-muted/20">
+              <button onClick={() => setEditingCovId(null)}
+                className="h-8 px-4 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-[8px] bg-background hover:bg-muted transition-colors">
+                Cancel
+              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={handleRerun}
+                  className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium text-primary border border-primary/30 bg-primary/5 rounded-[8px] hover:bg-primary/10 transition-colors">
+                  <RotateCcw className="h-3 w-3" /> Save &amp; Rerun
+                </button>
+                <button onClick={handleSave}
+                  className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors">
+                  <CheckCircle2 className="h-3 w-3" /> Save
+                </button>
+              </div>
+            </div>
+
+          </div>
         </div>
       )}
     </div>
