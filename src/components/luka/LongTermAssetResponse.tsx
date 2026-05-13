@@ -99,11 +99,31 @@ function LoansTab({ loans }: { loans: Loan[] }) {
   const principalAccts = accountMappings.filter(a => a.type === "Principal");
   const accruedAccts   = accountMappings.filter(a => a.type === "AccruedInterestPayable");
   const interestAccts  = accountMappings.filter(a => a.type === "InterestExpense");
-
-  const handleGLSave = (id: string, field: string, code: string) =>
+  const handleGLSave   = (id: string, field: string, code: string) =>
     updateLoan(id, { [field]: code } as Partial<Loan>);
 
-  // GL Account Summary — group by principal account
+  // Monthly payment: manual override → PMT formula
+  const calcMonthlyPmt = (l: Loan): number | null => {
+    if (l.monthlyPayment != null && l.monthlyPayment > 0) return l.monthlyPayment;
+    if (!l.currentBalance || l.currentBalance <= 0) return null;
+    const r = l.rate / 100 / 12;
+    if (l.paymentType === "Interest-only" || l.paymentType === "Balloon") return l.currentBalance * r;
+    const months = Math.max(1, Math.round((new Date(l.maturityDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30.44)));
+    if (r === 0) return l.currentBalance / months;
+    return l.currentBalance * (r * Math.pow(1 + r, months)) / (Math.pow(1 + r, months) - 1);
+  };
+
+  const getFxRate = (l: Loan) => l.currency === "CAD" ? 1 : (l.fxRateToCAD ?? 1);
+
+  // Tenure: explicit or derived from start/maturity dates
+  const getTenure = (l: Loan): string => {
+    if (l.tenureMonths) return String(l.tenureMonths);
+    if (l.startDate && l.maturityDate)
+      return String(Math.round((new Date(l.maturityDate).getTime() - new Date(l.startDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
+    return "—";
+  };
+
+  // GL Account Summary
   const glGroups = useMemo(() => {
     const map = new Map<string, { loans: Loan[]; bal: number; glBal: number }>();
     loans.forEach(l => {
@@ -111,21 +131,44 @@ function LoansTab({ loans }: { loans: Loan[] }) {
       if (!map.has(acct)) map.set(acct, { loans: [], bal: 0, glBal: 0 });
       const g = map.get(acct)!;
       g.loans.push(l);
-      g.bal += toCAD(l.currentBalance, l.currency);
+      g.bal  += toCAD(l.currentBalance, l.currency);
       const recon = reconciliation.find(r => r.loanId === l.id && r.accountType === "Principal");
       g.glBal += toCAD(recon?.tbBalance ?? 0, l.currency);
     });
     return Array.from(map.entries());
   }, [loans, reconciliation]);
+  const glGrandBal = glGroups.reduce((s,[,g])=>s+g.bal,0);
+  const glGrandGL  = glGroups.reduce((s,[,g])=>s+g.glBal,0);
+  const glBalanced = Math.abs(glGrandGL - glGrandBal) < 1;
 
-  const glGrandBal  = glGroups.reduce((s,[,g])=>s+g.bal, 0);
-  const glGrandGL   = glGroups.reduce((s,[,g])=>s+g.glBal, 0);
-  const glBalanced  = Math.abs(glGrandGL - glGrandBal) < 1;
-
-  const COLS_LEFT = ["Loan Name","Lender","Collateral"] as const;
-  const COLS_MID  = ["Type","Rate Type","Int. Rate","Day Count","Pmt Type","Tenure","Start","Maturity","CCY"] as const;
-  const COLS_RIGHT = ["Orig. Amt","Balance","Closing Bal."] as const;
-  const COLS_GL   = ["GL Principal","GL Accrued Int.","GL Int. Exp."] as const;
+  // Column headers — exact order from full Loan Register page
+  const HEADERS = [
+    { h: "Loan Name",       left: true },
+    { h: "Lender",          left: true },
+    { h: "Current Collateral", left: true },
+    { h: "Type",            left: false },
+    { h: "Rate Type",       left: false },
+    { h: "Int. Rate (%)",   left: false },
+    { h: "Start",           left: false },
+    { h: "Maturity",        left: false },
+    { h: "Tenure (Mo.)",    left: false },
+    { h: "First Payment",   left: false },
+    { h: "CCY",             left: false },
+    { h: "Mo. Payment",     left: false },
+    { h: "Orig. Loan Amt",  left: false },
+    { h: "FX Rate",         left: false },
+    { h: "Converted Amt",   left: false },
+    { h: "Closing Balance", left: false },
+    { h: "GL Principal",    left: false },
+    { h: "Day Count",       left: false },
+    { h: "Payment Type",    left: false },
+    { h: "Compounding",     left: false },
+    { h: "IO Period (mo.)", left: false },
+    { h: "Balloon Amt",     left: false },
+    { h: "Status",          left: false },
+    { h: "GL Accrued Int.", left: false },
+    { h: "GL Int. Exp.",    left: false },
+  ];
 
   return (
     <div className="space-y-3">
@@ -135,91 +178,119 @@ function LoansTab({ loans }: { loans: Loan[] }) {
           <span className="text-[10px] text-muted-foreground">Manage facilities, terms, and GL mappings</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="text-[11px]" style={{ minWidth: "1100px" }}>
+          <table className="text-[11px]" style={{ minWidth: "1600px" }}>
             <thead>
               <tr className="bg-muted/30 border-b border-border">
-                {[...COLS_LEFT,...COLS_MID,...COLS_RIGHT,...COLS_GL].map(h => (
-                  <th key={h} className={`px-2.5 py-2 font-semibold text-muted-foreground uppercase tracking-wide text-[10px] whitespace-nowrap
-                    ${COLS_LEFT.includes(h as typeof COLS_LEFT[number]) ? "text-left" : "text-right"}`}>{h}</th>
+                {HEADERS.map(({ h, left }) => (
+                  <th key={h} className={`px-2.5 py-2 font-semibold text-muted-foreground uppercase tracking-wide text-[10px] whitespace-nowrap ${left ? "text-left" : "text-right"}`}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {loans.map((l, i) => (
-                <tr key={l.id} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
-                  {/* Loan Name */}
-                  <td className="px-2.5 py-1.5 min-w-[130px]">
-                    <p className="font-medium text-foreground whitespace-nowrap">{l.name}</p>
-                    <p className="text-[10px] text-muted-foreground">{l.refNumber}</p>
-                    <StatusBadge status={l.status} />
-                  </td>
-                  {/* Lender */}
-                  <td className="px-2.5 py-1.5 text-muted-foreground whitespace-nowrap min-w-[120px]">{l.lender}</td>
-                  {/* Collateral */}
-                  <td className="px-2.5 py-1.5 text-muted-foreground text-right max-w-[100px]">
-                    <span className="truncate block text-[10px]" title={l.securityDescription ?? "—"}>{l.securityDescription ? l.securityDescription.slice(0,22)+(l.securityDescription.length>22?"…":"") : "—"}</span>
-                  </td>
-                  {/* Type */}
-                  <td className="px-2.5 py-1.5 text-right">
-                    <span className="px-1.5 py-0.5 rounded-[4px] bg-muted text-foreground text-[10px]">{l.type}</span>
-                  </td>
-                  {/* Rate Type */}
-                  <td className="px-2.5 py-1.5 text-right">
-                    <span className={`text-[10px] font-medium ${l.interestType==="Variable"||l.interestType==="Floating"?"text-amber-600":"text-foreground"}`}>{l.interestType}</span>
-                  </td>
-                  {/* Int. Rate */}
-                  <td className="px-2.5 py-1.5 text-right tabular-nums font-medium">{l.rate.toFixed(2)}%</td>
-                  {/* Day Count */}
-                  <td className="px-2.5 py-1.5 text-right text-muted-foreground whitespace-nowrap">{l.dayCountBasis}</td>
-                  {/* Payment Type */}
-                  <td className="px-2.5 py-1.5 text-right whitespace-nowrap">
-                    <span className="text-[10px] text-muted-foreground">{l.paymentType}</span>
-                  </td>
-                  {/* Tenure */}
-                  <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{l.tenureMonths ?? "—"}</td>
-                  {/* Start */}
-                  <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-muted-foreground">{fmtDate(l.startDate)}</td>
-                  {/* Maturity */}
-                  <td className="px-2.5 py-1.5 text-right"><MaturityChip dateStr={l.maturityDate} /></td>
-                  {/* CCY */}
-                  <td className="px-2.5 py-1.5 text-right">
-                    <span className="text-[10px] font-medium text-muted-foreground">{l.currency}</span>
-                  </td>
-                  {/* Orig. Amt */}
-                  <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">
-                    {fmt(toCAD(l.originalPrincipal, l.currency))}
-                  </td>
-                  {/* Balance (CAD) */}
-                  <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold">
-                    {fmt(toCAD(l.currentBalance, l.currency))}
-                    {l.currency !== "CAD" && <p className="text-[10px] text-muted-foreground font-normal">{l.currency} {l.currentBalance.toLocaleString()}</p>}
-                  </td>
-                  {/* Closing Bal. */}
-                  <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">
-                    {l.closingBalance != null ? fmt(toCAD(l.closingBalance, l.currency)) : "—"}
-                  </td>
-                  {/* GL Principal */}
-                  <td className="px-2.5 py-1.5 text-right">
-                    <GLSelect loanId={l.id} value={l.glPrincipalAccount} options={principalAccts} field="glPrincipalAccount" onSave={handleGLSave} />
-                  </td>
-                  {/* GL Accrued Int. */}
-                  <td className="px-2.5 py-1.5 text-right">
-                    <GLSelect loanId={l.id} value={l.glAccruedInterestAccount} options={accruedAccts} field="glAccruedInterestAccount" onSave={handleGLSave} />
-                  </td>
-                  {/* GL Int. Exp. */}
-                  <td className="px-2.5 py-1.5 text-right">
-                    <GLSelect loanId={l.id} value={l.glInterestExpenseAccount} options={interestAccts} field="glInterestExpenseAccount" onSave={handleGLSave} />
-                  </td>
-                </tr>
-              ))}
+              {loans.map((l, i) => {
+                const fx       = getFxRate(l);
+                const pmt      = calcMonthlyPmt(l);
+                const pmtCAD   = pmt !== null ? pmt * fx : null;
+                const convAmt  = l.originalPrincipal * fx;
+                const closingCAD = (l.closingBalance ?? l.currentBalance) * fx;
+                return (
+                  <tr key={l.id} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
+                    {/* Loan Name */}
+                    <td className="px-2.5 py-1.5 min-w-[130px]">
+                      <p className="font-medium text-foreground whitespace-nowrap">{l.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{l.refNumber}</p>
+                    </td>
+                    {/* Lender */}
+                    <td className="px-2.5 py-1.5 text-foreground whitespace-nowrap min-w-[130px]">{l.lender}</td>
+                    {/* Current Collateral */}
+                    <td className="px-2.5 py-1.5 text-foreground max-w-[120px]">
+                      <span className="text-[10px] line-clamp-2" title={l.securityDescription ?? "—"}>
+                        {l.securityDescription ?? "—"}
+                      </span>
+                    </td>
+                    {/* Type */}
+                    <td className="px-2.5 py-1.5 text-right">
+                      <span className="px-1.5 py-0.5 rounded-[4px] bg-muted text-foreground text-[10px]">{l.type}</span>
+                    </td>
+                    {/* Rate Type */}
+                    <td className="px-2.5 py-1.5 text-right">
+                      <span className={`text-[10px] font-medium ${l.interestType==="Variable"||l.interestType==="Floating"?"text-amber-600":"text-foreground"}`}>{l.interestType}</span>
+                    </td>
+                    {/* Int. Rate */}
+                    <td className="px-2.5 py-1.5 text-right tabular-nums font-medium">{l.rate.toFixed(2)}%</td>
+                    {/* Start */}
+                    <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{fmtDate(l.startDate)}</td>
+                    {/* Maturity */}
+                    <td className="px-2.5 py-1.5 text-right"><MaturityChip dateStr={l.maturityDate} /></td>
+                    {/* Tenure (Mo.) */}
+                    <td className="px-2.5 py-1.5 text-right tabular-nums text-foreground">{getTenure(l)}</td>
+                    {/* First Payment */}
+                    <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">
+                      {l.firstPaymentDate ? fmtDate(l.firstPaymentDate) : "—"}
+                    </td>
+                    {/* CCY */}
+                    <td className="px-2.5 py-1.5 text-right">
+                      <span className="text-[10px] font-medium text-foreground border border-border rounded-[4px] px-1.5 py-0.5">{l.currency}</span>
+                    </td>
+                    {/* Mo. Payment */}
+                    <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap">
+                      {pmtCAD !== null
+                        ? <span className="font-mono text-foreground">{fmt(pmtCAD)}{!l.monthlyPayment && <span className="text-muted-foreground text-[9px] ml-0.5" title="Auto-calculated">~</span>}</span>
+                        : <span className="text-muted-foreground">—</span>}
+                    </td>
+                    {/* Orig. Loan Amt */}
+                    <td className="px-2.5 py-1.5 text-right tabular-nums text-foreground whitespace-nowrap">{fmt(l.originalPrincipal)}</td>
+                    {/* FX Rate */}
+                    <td className="px-2.5 py-1.5 text-right">
+                      {l.currency === "CAD"
+                        ? <span className="text-muted-foreground">—</span>
+                        : <div className="flex flex-col items-end gap-0.5">
+                            <span className="font-mono text-[10px] text-foreground tabular-nums">{fx.toFixed(4)}</span>
+                            <span className="text-[9px] text-muted-foreground">{l.fxRateType ?? "Closing"}</span>
+                          </div>}
+                    </td>
+                    {/* Converted Amt */}
+                    <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold text-foreground whitespace-nowrap">{fmt(convAmt)}</td>
+                    {/* Closing Balance */}
+                    <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold text-foreground whitespace-nowrap">{fmt(closingCAD)}</td>
+                    {/* GL Principal */}
+                    <td className="px-2.5 py-1.5 text-right">
+                      <GLSelect loanId={l.id} value={l.glPrincipalAccount} options={principalAccts} field="glPrincipalAccount" onSave={handleGLSave} />
+                    </td>
+                    {/* Day Count */}
+                    <td className="px-2.5 py-1.5 text-right font-mono text-foreground whitespace-nowrap">{l.dayCountBasis}</td>
+                    {/* Payment Type */}
+                    <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{l.paymentType}</td>
+                    {/* Compounding */}
+                    <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{l.compoundingFrequency ?? "Monthly"}</td>
+                    {/* IO Period */}
+                    <td className="px-2.5 py-1.5 text-right tabular-nums text-foreground">{l.interestOnlyPeriodMonths ?? "—"}</td>
+                    {/* Balloon Amt */}
+                    <td className="px-2.5 py-1.5 text-right tabular-nums text-foreground">
+                      {l.balloonAmount ? fmt(l.balloonAmount) : "00"}
+                    </td>
+                    {/* Status */}
+                    <td className="px-2.5 py-1.5 text-right"><StatusBadge status={l.status} /></td>
+                    {/* GL Accrued Int. */}
+                    <td className="px-2.5 py-1.5 text-right">
+                      <GLSelect loanId={l.id} value={l.glAccruedInterestAccount} options={accruedAccts} field="glAccruedInterestAccount" onSave={handleGLSave} />
+                    </td>
+                    {/* GL Int. Exp. */}
+                    <td className="px-2.5 py-1.5 text-right">
+                      <GLSelect loanId={l.id} value={l.glInterestExpenseAccount} options={interestAccts} field="glInterestExpenseAccount" onSave={handleGLSave} />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot>
               <tr className="bg-muted/30 border-t border-border font-semibold">
                 <td className="px-2.5 py-2 text-[11px] text-foreground" colSpan={12}>Total · {loans.length} facilities</td>
-                <td className="px-2.5 py-2 text-right text-[11px] tabular-nums">{fmt(loans.reduce((s,l)=>s+toCAD(l.originalPrincipal,l.currency),0))}</td>
-                <td className="px-2.5 py-2 text-right text-[11px] tabular-nums">{fmt(loans.reduce((s,l)=>s+toCAD(l.currentBalance,l.currency),0))}</td>
-                <td className="px-2.5 py-2 text-right text-[11px] tabular-nums">{fmt(loans.reduce((s,l)=>s+toCAD(l.closingBalance??l.currentBalance,l.currency),0))}</td>
-                <td colSpan={3} />
+                <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmt(loans.reduce((s,l)=>s+l.originalPrincipal,0))}</td>
+                <td />
+                <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmt(loans.reduce((s,l)=>s+l.originalPrincipal*getFxRate(l),0))}</td>
+                <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmt(loans.reduce((s,l)=>s+toCAD(l.closingBalance??l.currentBalance,l.currency),0))}</td>
+                <td colSpan={9} />
               </tr>
             </tfoot>
           </table>
@@ -242,7 +313,7 @@ function LoansTab({ loans }: { loans: Loan[] }) {
         <table className="w-full text-[11px]">
           <thead>
             <tr className="bg-muted/20 border-b border-border">
-              {["GL Account","Facilities","Original (CAD)","Balance (CAD)","Balance as per GL"].map(h=>(
+              {["GL Account","Facilities","Original (CAD)","Balance (CAD)","Balance As Per GL"].map(h=>(
                 <th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide ${h==="GL Account"?"text-left":"text-right"}`}>{h}</th>
               ))}
             </tr>
