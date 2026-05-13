@@ -87,6 +87,40 @@ function GLSelect({ loanId, value, options, field, onSave }: {
   );
 }
 
+// ─── Maturity ladder helper (mirrors ContinuityTab.tsx) ──────────────────────
+function calcMaturityLadder(
+  loan: Loan, closingBalance: number, period: string,
+): [number, number, number, number, number, number, number] {
+  if (closingBalance <= 0) return [0, 0, 0, 0, 0, 0, 0];
+  if (loan.type === "LOC" || loan.type === "Revolver") return [closingBalance, 0, 0, 0, 0, 0, 0];
+  const [y, m] = period.split("-").map(Number);
+  const maturity = new Date(loan.maturityDate);
+  const monthsToMaturity = Math.max(0,
+    (maturity.getFullYear() - y) * 12 + (maturity.getMonth() + 1 - m));
+  if (monthsToMaturity <= 0) return [closingBalance, 0, 0, 0, 0, 0, 0];
+  const result: [number, number, number, number, number, number, number] = [0, 0, 0, 0, 0, 0, 0];
+  if (loan.paymentType === "Interest-only" || loan.paymentType === "Balloon") {
+    result[Math.min(Math.floor((monthsToMaturity - 1) / 12), 6)] = closingBalance;
+    return result;
+  }
+  const r = loan.rate / 100 / 12;
+  const n = monthsToMaturity;
+  let bal = closingBalance;
+  if (r === 0) {
+    const mp = bal / n;
+    for (let i = 1; i <= n; i++) result[Math.min(Math.floor((i - 1) / 12), 6)] += mp;
+  } else {
+    const pmt = bal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+    for (let i = 1; i <= n && bal > 0.01; i++) {
+      const interest = bal * r;
+      const principal = Math.min(pmt - interest, bal);
+      result[Math.min(Math.floor((i - 1) / 12), 6)] += principal;
+      bal -= principal;
+    }
+  }
+  return result.map(Math.round) as [number, number, number, number, number, number, number];
+}
+
 // ─── Per-tab components ───────────────────────────────────────────────────────
 
 function LoansTab({ loans }: { loans: Loan[] }) {
@@ -338,6 +372,12 @@ function LoansTab({ loans }: { loans: Loan[] }) {
 }
 
 function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: ContinuityRow[] }) {
+  const settings = useStore(s => s.settings);
+  const [contView, setContView] = useState<"rollforward" | "repayment">("rollforward");
+
+  const period   = settings?.currentPeriod ?? "2024-12";
+  const baseYear = parseInt(period.split("-")[0]);
+
   // Latest continuity row per loan
   const latestRows = useMemo(() => {
     return loans.map(loan => {
@@ -346,118 +386,241 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
     });
   }, [loans, continuity]);
 
-  const totals = useMemo(() => latestRows.reduce((acc, { loan, row }) => {
+  const rfTotals = useMemo(() => latestRows.reduce((acc, { loan, row }) => {
     if (!row) return acc;
     const fx = toCAD(1, loan.currency);
-    acc.opening  += row.openingBalance       * fx;
-    acc.borrows  += row.newBorrowings        * fx;
-    acc.principal += (row.principalRepayments ?? 0) * fx;
-    acc.interest  += (row.interestRepayments  ?? 0) * fx;
-    acc.fxTrans   += row.fxTranslation       * fx;
-    acc.closing  += row.closingBalance       * fx;
-    acc.accrued  += row.accruedInterest      * fx;
+    acc.opening   += row.openingBalance              * fx;
+    acc.borrows   += row.newBorrowings               * fx;
+    acc.principal += (row.principalRepayments ?? 0)  * fx;
+    acc.interest  += (row.interestRepayments  ?? 0)  * fx;
+    acc.fxTrans   += row.fxTranslation               * fx;
+    acc.closing   += row.closingBalance              * fx;
+    acc.accrued   += row.accruedInterest             * fx;
     return acc;
   }, { opening:0, borrows:0, principal:0, interest:0, fxTrans:0, closing:0, accrued:0 }), [latestRows]);
 
+  // Ladder: compute in native currency → scale to CAD
+  const ladderRowsData = useMemo(() => loans.map(loan => {
+    const contRow = latestRows.find(r => r.loan.id === loan.id)?.row;
+    const closingNative = contRow?.closingBalance ?? loan.currentBalance;
+    const fx = toCAD(1, loan.currency);
+    const nativeLadder = calcMaturityLadder(loan, closingNative, period);
+    const ladder = nativeLadder.map(v => Math.round(v * fx)) as [number,number,number,number,number,number,number];
+    return { loan, ladder };
+  }), [loans, latestRows, period]);
+
+  const bsColHeaders = [
+    String(baseYear + 2), String(baseYear + 3), String(baseYear + 4),
+    String(baseYear + 5), String(baseYear + 6), "Thereafter",
+    `Current (${baseYear + 1})`, "Long-Term", "Total",
+  ];
+
+  const bsTotals = useMemo(() => ladderRowsData.reduce(
+    (s, r) => r.ladder.map((v, i) => s[i] + v) as [number,number,number,number,number,number,number],
+    [0,0,0,0,0,0,0] as [number,number,number,number,number,number,number],
+  ), [ladderRowsData]);
+
+  const repayYearLabels = useMemo(
+    () => Array.from({ length: 6 }, (_, i) => String(baseYear + i + 1)).concat(["Thereafter"]),
+    [baseYear],
+  );
+  const repayColTotals = repayYearLabels.map((_, i) =>
+    ladderRowsData.reduce((s, r) => s + (r.ladder[i] ?? 0), 0),
+  );
+  const repayGrandTotal = repayColTotals.reduce((s, v) => s + v, 0);
+
   return (
     <div className="space-y-3">
-      <div className="rounded-[8px] border border-border overflow-hidden">
-        <div className="px-3 py-2 bg-muted/40 border-b border-border">
-          <span className="text-[11px] font-semibold text-foreground">Continuity Roll-Forward</span>
-          <span className="text-[10px] text-muted-foreground ml-2">Opening → movements → closing by period</span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-[11px]">
-            <thead>
-              <tr className="bg-muted/20 border-b border-border">
-                {["Loan","Opening Bal.","+New Borr.","-Principal","-Interest","±FX","Closing Bal.","Accrued Int."].map(h=>(
-                  <th key={h} className={`px-2.5 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h==="Loan"?"text-left":"text-right"}`}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {latestRows.map(({ loan, row }, i) => {
-                const fx = toCAD(1, loan.currency);
-                if (!row) return (
-                  <tr key={loan.id} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
-                    <td className="px-2.5 py-1.5">
-                      <p className="font-medium text-foreground">{loan.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{loan.lender} · {loan.currency}</p>
-                    </td>
-                    {Array(7).fill(0).map((_,j)=><td key={j} className="px-2.5 py-1.5 text-right text-muted-foreground">—</td>)}
-                  </tr>
-                );
-                const prin = row.principalRepayments ?? 0;
-                const int  = row.interestRepayments  ?? 0;
-                return (
-                  <tr key={loan.id} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
-                    <td className="px-2.5 py-1.5">
-                      <p className="font-medium text-foreground">{loan.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{loan.lender} · {loan.currency}</p>
-                    </td>
-                    <td className="px-2.5 py-1.5 text-right tabular-nums">{fmtNum(row.openingBalance * fx)}</td>
-                    <td className="px-2.5 py-1.5 text-right tabular-nums text-green-700">{row.newBorrowings > 0 ? fmtNum(row.newBorrowings * fx) : "00"}</td>
-                    <td className="px-2.5 py-1.5 text-right tabular-nums text-red-600">{prin > 0 ? fmtParen(prin * fx) : "00"}</td>
-                    <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{int > 0 ? fmtParen(int * fx) : "00"}</td>
-                    <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{row.fxTranslation !== 0 ? fmtParen(Math.abs(row.fxTranslation * fx)) : "—"}</td>
-                    <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold">{fmtNum(row.closingBalance * fx)}</td>
-                    <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{fmtNum(row.accruedInterest * fx)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="bg-muted/30 border-t border-border font-semibold">
-                <td className="px-2.5 py-2 text-[11px] text-foreground">Total · {loans.length} facilities</td>
-                <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmtNum(totals.opening)}</td>
-                <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-green-700">{totals.borrows > 0 ? fmtNum(totals.borrows) : "00"}</td>
-                <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-red-600">{totals.principal > 0 ? fmtParen(totals.principal) : "00"}</td>
-                <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-muted-foreground">{totals.interest > 0 ? fmtParen(totals.interest) : "00"}</td>
-                <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-muted-foreground">—</td>
-                <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmtNum(totals.closing)}</td>
-                <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmtNum(totals.accrued)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+
+      {/* Sub-tab bar */}
+      <div className="flex items-center gap-0 border-b border-border">
+        {(["rollforward", "repayment"] as const).map(v => (
+          <button
+            key={v}
+            onClick={() => setContView(v)}
+            className={`px-3 py-1.5 text-[11px] font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
+              contView === v
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {v === "rollforward" ? "Roll-Forward" : "Repayment Schedule"}
+          </button>
+        ))}
       </div>
 
-      {/* Balance Sheet Classification */}
-      <div className="rounded-[8px] border border-border overflow-hidden">
-        <div className="px-3 py-2 bg-muted/40 border-b border-border">
-          <span className="text-[11px] font-semibold text-foreground">Balance Sheet Classification</span>
+      {/* ── Roll-Forward view ── */}
+      {contView === "rollforward" && (
+        <div className="space-y-3">
+
+          {/* Roll-Forward table */}
+          <div className="rounded-[8px] border border-border overflow-hidden">
+            <div className="px-3 py-2 bg-muted/40 border-b border-border">
+              <span className="text-[11px] font-semibold text-foreground">Continuity Roll-Forward</span>
+              <span className="text-[10px] text-muted-foreground ml-2">Opening → movements → closing by period</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px]">
+                <thead>
+                  <tr className="bg-muted/20 border-b border-border">
+                    {["Loan","Opening Bal.","+New Borr.","-Principal","-Interest","±FX","Closing Bal.","Accrued Int."].map(h=>(
+                      <th key={h} className={`px-2.5 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h==="Loan"?"text-left":"text-right"}`}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {latestRows.map(({ loan, row }, i) => {
+                    const fx = toCAD(1, loan.currency);
+                    if (!row) return (
+                      <tr key={loan.id} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
+                        <td className="px-2.5 py-1.5">
+                          <p className="font-medium text-foreground">{loan.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{loan.lender} · {loan.currency}</p>
+                        </td>
+                        {Array(7).fill(0).map((_,j)=><td key={j} className="px-2.5 py-1.5 text-right text-muted-foreground">—</td>)}
+                      </tr>
+                    );
+                    const prin = row.principalRepayments ?? 0;
+                    const int  = row.interestRepayments  ?? 0;
+                    return (
+                      <tr key={loan.id} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
+                        <td className="px-2.5 py-1.5">
+                          <p className="font-medium text-foreground">{loan.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{loan.lender} · {loan.currency}</p>
+                        </td>
+                        <td className="px-2.5 py-1.5 text-right tabular-nums">{fmtNum(row.openingBalance * fx)}</td>
+                        <td className="px-2.5 py-1.5 text-right tabular-nums text-green-700">{row.newBorrowings > 0 ? fmtNum(row.newBorrowings * fx) : "00"}</td>
+                        <td className="px-2.5 py-1.5 text-right tabular-nums text-red-600">{prin > 0 ? fmtParen(prin * fx) : "00"}</td>
+                        <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{int > 0 ? fmtParen(int * fx) : "00"}</td>
+                        <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{row.fxTranslation !== 0 ? fmtParen(Math.abs(row.fxTranslation * fx)) : "—"}</td>
+                        <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold">{fmtNum(row.closingBalance * fx)}</td>
+                        <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{fmtNum(row.accruedInterest * fx)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-muted/30 border-t border-border font-semibold">
+                    <td className="px-2.5 py-2 text-[11px] text-foreground">Total · {loans.length} facilities</td>
+                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmtNum(rfTotals.opening)}</td>
+                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-green-700">{rfTotals.borrows > 0 ? fmtNum(rfTotals.borrows) : "00"}</td>
+                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-red-600">{rfTotals.principal > 0 ? fmtParen(rfTotals.principal) : "00"}</td>
+                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-muted-foreground">{rfTotals.interest > 0 ? fmtParen(rfTotals.interest) : "00"}</td>
+                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-muted-foreground">—</td>
+                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmtNum(rfTotals.closing)}</td>
+                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmtNum(rfTotals.accrued)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          {/* Balance Sheet Classification — maturity ladder */}
+          <div className="rounded-[8px] border border-border overflow-hidden">
+            <div className="px-3 py-2 bg-muted/40 border-b border-border">
+              <span className="text-[11px] font-semibold text-foreground">Balance Sheet Classification</span>
+              <span className="text-[10px] text-muted-foreground ml-2">Current portion + maturity ladder by year (CAD equiv.)</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="text-[11px]" style={{ minWidth: "950px" }}>
+                <thead>
+                  <tr className="bg-muted/20 border-b border-border">
+                    <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-left whitespace-nowrap">Loan</th>
+                    {bsColHeaders.map(h => (
+                      <th key={h} className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-right whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {ladderRowsData.map(({ loan, ladder }, i) => {
+                    const longTerm = ladder.slice(1).reduce((s, v) => s + v, 0);
+                    const total    = ladder.reduce((s, v) => s + v, 0);
+                    return (
+                      <tr key={loan.id} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
+                        <td className="px-3 py-1.5 whitespace-nowrap">
+                          <p className="font-medium text-foreground">{loan.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{loan.lender} · {loan.currency}</p>
+                        </td>
+                        {/* yr+2 … Thereafter = ladder[1..6] */}
+                        {ladder.slice(1).map((v, j) => (
+                          <td key={j} className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{v > 0 ? fmtNum(v) : "00"}</td>
+                        ))}
+                        {/* Current: ladder[0] */}
+                        <td className="px-3 py-1.5 text-right tabular-nums text-primary font-medium">{ladder[0] > 0 ? fmtNum(ladder[0]) : "00"}</td>
+                        {/* Long-Term */}
+                        <td className="px-3 py-1.5 text-right tabular-nums font-medium">{longTerm > 0 ? fmtNum(longTerm) : "00"}</td>
+                        {/* Total */}
+                        <td className="px-3 py-1.5 text-right tabular-nums font-semibold">{fmtNum(total)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-muted/30 border-t border-border font-semibold">
+                    <td className="px-3 py-2 text-[11px] text-foreground">Total · {loans.length} facilities</td>
+                    {bsTotals.slice(1).map((v, i) => (
+                      <td key={i} className="px-3 py-2 text-right tabular-nums text-[11px] text-muted-foreground">{v > 0 ? fmtNum(v) : "00"}</td>
+                    ))}
+                    <td className="px-3 py-2 text-right tabular-nums text-[11px] text-primary">{bsTotals[0] > 0 ? fmtNum(bsTotals[0]) : "00"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-[11px]">{bsTotals.slice(1).reduce((s,v)=>s+v,0) > 0 ? fmtNum(bsTotals.slice(1).reduce((s,v)=>s+v,0)) : "00"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">{fmtNum(bsTotals.reduce((s,v)=>s+v,0))}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
         </div>
-        <table className="w-full text-[11px]">
-          <thead>
-            <tr className="bg-muted/20 border-b border-border">
-              {["Loan","Current Portion","Long-term Portion","Total"].map(h=>(
-                <th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide ${h==="Loan"?"text-left":"text-right"}`}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loans.map((l,i)=>{
-              const fx = toCAD(1, l.currency);
-              return (
-                <tr key={l.id} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
-                  <td className="px-3 py-1.5 font-medium text-foreground">{l.name}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums text-primary">{fmt(l.currentPortion * fx)}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{fmt(l.longTermPortion * fx)}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums font-semibold">{fmt(toCAD(l.currentBalance, l.currency))}</td>
+      )}
+
+      {/* ── Repayment Schedule view ── */}
+      {contView === "repayment" && (
+        <div className="rounded-[8px] border border-border overflow-hidden">
+          <div className="px-3 py-2 bg-muted/40 border-b border-border">
+            <span className="text-[11px] font-semibold text-foreground">Repayment Schedule</span>
+            <span className="text-[10px] text-muted-foreground ml-2">Scheduled principal repayments by year (CAD equiv.)</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="text-[11px]" style={{ minWidth: "820px" }}>
+              <thead>
+                <tr className="bg-muted/20 border-b border-border">
+                  <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-left whitespace-nowrap">Facility</th>
+                  {repayYearLabels.map(lbl => (
+                    <th key={lbl} className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-right whitespace-nowrap">{lbl}</th>
+                  ))}
+                  <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-right whitespace-nowrap">Total</th>
                 </tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr className="bg-muted/30 border-t border-border font-semibold">
-              <td className="px-3 py-2 text-[11px] text-foreground">Total</td>
-              <td className="px-3 py-2 text-right tabular-nums text-[11px] text-primary">{fmt(loans.reduce((s,l)=>s+toCAD(l.currentPortion,l.currency),0))}</td>
-              <td className="px-3 py-2 text-right tabular-nums text-[11px]">{fmt(loans.reduce((s,l)=>s+toCAD(l.longTermPortion,l.currency),0))}</td>
-              <td className="px-3 py-2 text-right tabular-nums text-[11px]">{fmt(loans.reduce((s,l)=>s+toCAD(l.currentBalance,l.currency),0))}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {ladderRowsData.map(({ loan, ladder }, i) => {
+                  const total = ladder.reduce((s, v) => s + v, 0);
+                  return (
+                    <tr key={loan.id} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
+                      <td className="px-3 py-1.5 whitespace-nowrap">
+                        <p className="font-medium text-foreground">{loan.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{loan.lender} · {loan.currency}</p>
+                      </td>
+                      {ladder.map((v, j) => (
+                        <td key={j} className="px-3 py-1.5 text-right tabular-nums text-foreground">{v > 0 ? fmtNum(v) : "00"}</td>
+                      ))}
+                      <td className="px-3 py-1.5 text-right tabular-nums font-semibold text-foreground">{fmtNum(total)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="bg-muted/30 border-t border-border font-semibold">
+                  <td className="px-3 py-2 text-[11px] text-foreground">Total · {loans.length} facilities</td>
+                  {repayColTotals.map((v, i) => (
+                    <td key={i} className="px-3 py-2 text-right tabular-nums text-[11px]">{v > 0 ? fmtNum(v) : "00"}</td>
+                  ))}
+                  <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">{fmtNum(repayGrandTotal)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
