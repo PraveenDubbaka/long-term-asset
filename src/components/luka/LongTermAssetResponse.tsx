@@ -194,7 +194,6 @@ function LoansTab({ loans }: { loans: Loan[] }) {
                     {/* Loan Name */}
                     <td className="px-2.5 py-1.5 min-w-[130px]">
                       <p className="font-medium text-foreground whitespace-nowrap">{l.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{l.refNumber}</p>
                     </td>
                     {/* Lender */}
                     <td className="px-2.5 py-1.5 text-foreground whitespace-nowrap min-w-[130px]">{l.lender}</td>
