@@ -4,6 +4,7 @@ import {
   ChevronDown, ChevronUp, FileSpreadsheet, Plus, CheckCircle2,
   ShieldAlert, ShieldCheck, Activity, CreditCard,
   Building2, FileText, BookOpen, Receipt, Layers, FileCheck, Send, TrendingUp,
+  Download, Copy, RotateCcw,
 } from "lucide-react";
 import { useStore } from "@/store/useStore";
 import toast from "react-hot-toast";
@@ -1167,6 +1168,15 @@ export function LongTermAssetResponse() {
         </button>
         <button onClick={() => toast.success("Exporting to Excel…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
           <FileSpreadsheet className="h-3.5 w-3.5" /> Export to Excel
+        </button>
+        <button onClick={() => toast.success("Downloading workpaper…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+          <Download className="h-3.5 w-3.5" /> Download
+        </button>
+        <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success("Link copied to clipboard"); }} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+          <Copy className="h-3.5 w-3.5" /> Copy
+        </button>
+        <button onClick={() => toast.success("Re-running analysis…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+          <RotateCcw className="h-3.5 w-3.5" /> Rerun
         </button>
       </div>
 
