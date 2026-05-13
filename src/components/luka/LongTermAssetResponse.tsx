@@ -522,7 +522,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
               <span className="text-[10px] text-muted-foreground ml-2">Current portion + maturity ladder by year (CAD equiv.)</span>
             </div>
             <div className="overflow-x-auto">
-              <table className="text-[11px]" style={{ minWidth: "950px" }}>
+              <table className="w-full text-[11px]">
                 <thead>
                   <tr className="bg-muted/20 border-b border-border">
                     <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-left whitespace-nowrap">Loan</th>
@@ -580,7 +580,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
             <span className="text-[10px] text-muted-foreground ml-2">Scheduled principal repayments by year (CAD equiv.)</span>
           </div>
           <div className="overflow-x-auto">
-            <table className="text-[11px]" style={{ minWidth: "820px" }}>
+            <table className="w-full text-[11px]">
               <thead>
                 <tr className="bg-muted/20 border-b border-border">
                   <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-left whitespace-nowrap">Facility</th>
