@@ -384,13 +384,6 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
       toast.error("No accrued interest to post for this loan");
       return;
     }
-    const alreadyPosted = jes.some(
-      j => !j.deleted && j.type === "AccruedInterest" && j.loanId === loan.id,
-    );
-    if (alreadyPosted) {
-      toast.error("An accrued interest AJE already exists for this loan");
-      return;
-    }
     const expAcct  = `${loan.glInterestExpenseAccount} – Interest Expense (${loan.currency})`;
     const liabAcct = `${loan.glAccruedInterestAccount} – Accrued Interest Payable – ${loan.currency}`;
     const jeId     = `je-ai-${Date.now()}`;
@@ -517,7 +510,6 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                     );
                     const prin = row.principalRepayments ?? 0;
                     const int  = row.interestRepayments  ?? 0;
-                    const alreadyPosted = jes.some(j => !j.deleted && j.type === "AccruedInterest" && j.loanId === loan.id);
                     return (
                       <tr key={loan.id} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
                         <td className="px-2.5 py-1.5">
@@ -534,10 +526,10 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                         <td className="px-2.5 py-1.5 text-right">
                           <button
                             onClick={() => postAJE(loan, row.accruedInterest)}
-                            disabled={alreadyPosted || row.accruedInterest <= 0}
-                            title={alreadyPosted ? "AJE already posted" : "Post accrued interest AJE to AJEs tab"}
+                            disabled={row.accruedInterest <= 0}
+                            title="Post accrued interest AJE to AJEs tab"
                             className={`p-1 rounded-[5px] transition-colors ${
-                              alreadyPosted || row.accruedInterest <= 0
+                              row.accruedInterest <= 0
                                 ? "text-muted-foreground/40 cursor-not-allowed"
                                 : "text-primary hover:bg-primary/10 cursor-pointer"
                             }`}
