@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import {
-  TrendingUp, AlertTriangle, Calendar, DollarSign, BarChart2,
+  AlertTriangle, Calendar, DollarSign, BarChart2,
   ChevronDown, ChevronUp, FileSpreadsheet, Plus, CheckCircle2,
-  ShieldAlert, ShieldCheck, Activity, ExternalLink, CreditCard,
-  Building2, FileText, BookOpen, Receipt, Layers, FileCheck, Send,
+  ShieldAlert, ShieldCheck, Activity, CreditCard,
+  Building2, FileText, BookOpen, Receipt, Layers, FileCheck, Send, TrendingUp,
 } from "lucide-react";
 import { useStore } from "@/store/useStore";
 import toast from "react-hot-toast";
@@ -1167,12 +1167,6 @@ export function LongTermAssetResponse() {
         </button>
         <button onClick={() => toast.success("Exporting to Excel…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
           <FileSpreadsheet className="h-3.5 w-3.5" /> Export to Excel
-        </button>
-        <button onClick={() => toast.success("Generating AJEs for all active loans…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-primary/10 border border-primary/20 text-xs font-medium text-primary hover:bg-primary/20 transition-colors">
-          <TrendingUp className="h-3.5 w-3.5" /> Generate AJEs
-        </button>
-        <button onClick={() => toast.success("Opening amortization schedules…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-primary/10 border border-primary/20 text-xs font-medium text-primary hover:bg-primary/20 transition-colors">
-          <ExternalLink className="h-3.5 w-3.5" /> View Full Workpaper
         </button>
       </div>
 
