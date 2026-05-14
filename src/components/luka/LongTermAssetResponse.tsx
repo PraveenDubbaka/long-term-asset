@@ -490,6 +490,13 @@ function LoansTab({ loans }: { loans: Loan[] }) {
                         {["Fixed","Variable","Floating","Hybrid","Step Rate"].map(t => <option key={t}>{t}</option>)}
                       </select>
                     </div>
+                    {/* Day Count */}
+                    <div style={{ flex: "1 1 100px", minWidth: 0 }}>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Day Count</label>
+                      <select className={LF} value={newLoan.dayCountBasis ?? "ACT/365"} onChange={e => setF("dayCountBasis", e.target.value)}>
+                        {["ACT/365","ACT/360","30/360"].map(d => <option key={d}>{d}</option>)}
+                      </select>
+                    </div>
                     {/* Rate */}
                     <div style={{ flex: "1 1 80px", minWidth: 0 }}>
                       <label className="block text-[10px] text-muted-foreground mb-1">Rate (%) <span className="text-red-500">*</span></label>
@@ -532,13 +539,6 @@ function LoansTab({ loans }: { loans: Loan[] }) {
                       <label className="block text-[10px] text-muted-foreground mb-1">Payment Type</label>
                       <select className={LF} value={newLoan.paymentType ?? "P&I"} onChange={e => setF("paymentType", e.target.value)}>
                         {["P&I","Interest-only","Balloon"].map(t => <option key={t}>{t}</option>)}
-                      </select>
-                    </div>
-                    {/* Day Count */}
-                    <div style={{ flex: "1 1 100px", minWidth: 0 }}>
-                      <label className="block text-[10px] text-muted-foreground mb-1">Day Count</label>
-                      <select className={LF} value={newLoan.dayCountBasis ?? "ACT/365"} onChange={e => setF("dayCountBasis", e.target.value)}>
-                        {["ACT/365","ACT/360","30/360"].map(d => <option key={d}>{d}</option>)}
                       </select>
                     </div>
                     {/* Security Description */}
