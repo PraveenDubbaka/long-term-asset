@@ -4,7 +4,7 @@ import {
   ChevronDown, ChevronUp, FileSpreadsheet, Plus, CheckCircle2,
   ShieldAlert, ShieldCheck, Activity, CreditCard,
   Building2, FileText, BookOpen, Receipt, Layers, FileCheck, Send, TrendingUp,
-  Download, Copy, RotateCcw, X, Trash2, Search, Check,
+  Download, Copy, RotateCcw, X, Trash2, Search, Check, Pencil,
 } from "lucide-react";
 import { COVENANT_TEMPLATES } from "@/lib/covenantTemplates";
 import { useStore } from "@/store/useStore";
@@ -863,6 +863,7 @@ function CovNameSelect({ value, onChange }: { value: string; onChange: (v: strin
 function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Covenant[] }) {
   const updateCovenant = useStore(s => s.updateCovenant);
   const addCovenant    = useStore(s => s.addCovenant);
+  const deleteCovenant = useStore(s => s.deleteCovenant);
   const [selectedLoanId, setSelectedLoanId] = useState(loans[0]?.id ?? "");
   const [editingCovId, setEditingCovId] = useState<string | null>(null);
   const [isNewCov, setIsNewCov] = useState(false);
@@ -1042,7 +1043,26 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
                   <td className="px-2.5 py-2 text-muted-foreground">{cov.frequency}</td>
                   <td className="px-2.5 py-2 text-muted-foreground whitespace-nowrap">{cov.lastTested ? fmtDate(cov.lastTested) : "—"}</td>
                   <td className="px-2.5 py-2 text-right">
-                    <button onClick={() => openEdit(cov)} className="text-[10px] text-primary hover:underline">Edit</button>
+                    <div className="inline-flex items-center gap-1">
+                      <button
+                        onClick={() => openEdit(cov)}
+                        className="p-1 rounded-[5px] text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                        title="Edit"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (editingCovId === cov.id) setEditingCovId(null);
+                          deleteCovenant(cov.id);
+                          toast.success("Covenant deleted");
+                        }}
+                        className="p-1 rounded-[5px] text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
