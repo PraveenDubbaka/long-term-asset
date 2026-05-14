@@ -1216,20 +1216,12 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
                 >
                   Cancel
                 </button>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleRerun}
-                    className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium text-primary border border-primary/30 bg-primary/5 rounded-[8px] hover:bg-primary/10 transition-colors"
-                  >
-                    <RotateCcw className="h-3 w-3" /> Save &amp; Rerun
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors"
-                  >
-                    <CheckCircle2 className="h-3 w-3" /> Save
-                  </button>
-                </div>
+                <button
+                  onClick={handleRerun}
+                  className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors"
+                >
+                  <RotateCcw className="h-3 w-3" /> Save &amp; Rerun
+                </button>
               </div>
 
               </div>{/* end inner panel */}
