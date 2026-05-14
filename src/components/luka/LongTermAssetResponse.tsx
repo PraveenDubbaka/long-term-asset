@@ -862,6 +862,7 @@ function CovNameSelect({ value, onChange }: { value: string; onChange: (v: strin
 
 function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Covenant[] }) {
   const updateCovenant = useStore(s => s.updateCovenant);
+  const addCovenant    = useStore(s => s.addCovenant);
   const [selectedLoanId, setSelectedLoanId] = useState(loans[0]?.id ?? "");
   const [editingCovId, setEditingCovId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Partial<Covenant>>({});
@@ -875,6 +876,29 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
   const openEdit = (cov: Covenant) => {
     setDraft({ ...cov });
     setEditingCovId(cov.id);
+  };
+
+  const handleNew = () => {
+    const newCov: Covenant = {
+      id:        `cov-${Date.now()}`,
+      loanId:    selectedLoanId,
+      name:      "",
+      type:      "Quantitative",
+      status:    "OK",
+      frequency: "Annual",
+      description: "",
+      operator:  ">=",
+      threshold: undefined,
+      currentValue: undefined,
+      projectedValue: undefined,
+      formulaLines: [],
+      denominatorLines: [],
+      useFormulaBuilder: true,
+      isRatioCovenant: true,
+    };
+    addCovenant(newCov);
+    setDraft({ ...newCov });
+    setEditingCovId(newCov.id);
   };
 
   const setD = (k: keyof Covenant, v: unknown) => setDraft(p => ({ ...p, [k]: v }));
@@ -967,7 +991,7 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
         </span>
       </div>
 
-      {/* Loan selector */}
+      {/* Loan selector + New button */}
       <div className="flex items-center gap-2">
         <span className="text-[11px] text-muted-foreground whitespace-nowrap">Loan:</span>
         <select value={selectedLoanId} onChange={e => setSelectedLoanId(e.target.value)}
@@ -976,6 +1000,12 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
         </select>
         {loan && <span className="text-[10px] font-semibold text-muted-foreground bg-muted px-2 py-1 rounded-[4px]">{loan.currency}</span>}
         <span className="text-[10px] text-muted-foreground">{loanCovs.length} covenants</span>
+        <button
+          onClick={handleNew}
+          className="inline-flex items-center gap-1 h-8 px-3 text-[11px] font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors shrink-0"
+        >
+          <Plus className="h-3 w-3" /> New
+        </button>
       </div>
 
       {loanCovs.length === 0 ? (
