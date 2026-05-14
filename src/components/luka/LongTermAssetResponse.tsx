@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useLayoutEffect } from "react";
 import {
   AlertTriangle, Calendar, DollarSign, BarChart2,
   ChevronDown, ChevronUp, FileSpreadsheet, Plus, CheckCircle2,
@@ -811,6 +811,28 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
     setEditingCovId(null);
   };
 
+  // ── Measure prompt-input position so the panel aligns exactly ────────────
+  const [panelRect, setPanelRect] = useState<{ left: number; right: number; bottom: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!editingCovId) { setPanelRect(null); return; }
+    const measure = () => {
+      const inputBox = document
+        .querySelector<HTMLElement>('input[placeholder="Type # for prompts or just ask anything..."]')
+        ?.closest<HTMLElement>(".luka-gradient-border");
+      if (!inputBox) return;
+      const r = inputBox.getBoundingClientRect();
+      setPanelRect({
+        left:   r.left,
+        right:  window.innerWidth - r.right,
+        bottom: window.innerHeight - r.top + 5,
+      });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [editingCovId]);
+
   // ── Formula-line helpers ──────────────────────────────────────────────────
   const getNumLines  = () => (draft.formulaLines     ?? editingCov?.formulaLines     ?? []) as CovenantFormulaLine[];
   const getDenLines  = () => (draft.denominatorLines ?? editingCov?.denominatorLines ?? []) as CovenantFormulaLine[];
@@ -973,8 +995,14 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
             {/* Transparent click-outside backdrop — no color, no blur */}
             <div className="fixed inset-0 z-[59]" onClick={() => setEditingCovId(null)} />
 
-            {/* Panel — same px padding as the prompt input, slides up from behind it */}
-            <div className="fixed inset-x-0 bottom-[7.75rem] z-[60] px-6 pointer-events-none">
+            {/* Panel — positioned to exactly match the prompt-input width + 5px gap above it */}
+            <div
+              className="fixed z-[60] pointer-events-none"
+              style={panelRect
+                ? { left: panelRect.left, right: panelRect.right, bottom: panelRect.bottom }
+                : { left: 24, right: 24, bottom: 124 }  /* fallback before first measure */
+              }
+            >
               <div className="w-full pointer-events-auto bg-background border border-border rounded-[12px] shadow-[0_2px_16px_rgba(0,0,0,0.09)] animate-in slide-in-from-bottom-4 fade-in duration-200 max-h-[58vh] flex flex-col">
 
               {/* Header */}
