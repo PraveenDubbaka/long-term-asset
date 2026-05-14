@@ -1165,7 +1165,23 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
                     <label className="block text-[10px] text-muted-foreground mb-1">Name</label>
                     <CovNameSelect
                       value={draft.name ?? editingCov.name}
-                      onChange={v => setD("name", v)}
+                      onChange={v => {
+                        const tmpl = COVENANT_TEMPLATES.find(t => t.id === v);
+                        if (tmpl) {
+                          setDraft(p => ({
+                            ...p,
+                            name:             v,
+                            operator:         tmpl.operator,
+                            threshold:        tmpl.threshold,
+                            isRatioCovenant:  tmpl.isRatio,
+                            useFormulaBuilder: true,
+                            formulaLines:     tmpl.numeratorLines.map((l, i) => ({ ...l, id: `fl-num-${Date.now()}-${i}` })),
+                            denominatorLines: (tmpl.denominatorLines ?? []).map((l, i) => ({ ...l, id: `fl-den-${Date.now()}-${i}` })),
+                          }));
+                        } else {
+                          setD("name", v);
+                        }
+                      }}
                     />
                   </div>
                   {/* Type */}
