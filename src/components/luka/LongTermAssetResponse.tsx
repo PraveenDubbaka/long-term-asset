@@ -969,18 +969,16 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
         );
 
         return (
-          <div className="fixed inset-0 z-50">
-            {/* Dim backdrop */}
-            <div
-              className="absolute inset-0 bg-black/20 backdrop-blur-[1px]"
-              onClick={() => setEditingCovId(null)}
-            />
+          <>
+            {/* Transparent click-outside backdrop — no color, no blur */}
+            <div className="fixed inset-0 z-[59]" onClick={() => setEditingCovId(null)} />
 
-            {/* Slide-up panel */}
-            <div className="absolute bottom-0 left-0 right-0 sm:left-auto sm:right-4 sm:bottom-4 sm:w-[440px] bg-background border border-border rounded-t-[16px] sm:rounded-[16px] shadow-2xl animate-in slide-in-from-bottom duration-200 max-h-[88vh] flex flex-col">
+            {/* Panel anchored just above the prompt input */}
+            <div className="fixed inset-x-0 bottom-[7.75rem] z-[60] px-6 pointer-events-none">
+              <div className="w-full mx-auto max-w-[700px] pointer-events-auto bg-background border border-border rounded-[16px] shadow-[0_-4px_24px_rgba(0,0,0,0.10)] animate-in slide-in-from-bottom duration-200 max-h-[58vh] flex flex-col">
 
-              {/* Drag pill (mobile only) */}
-              <div className="flex justify-center pt-2.5 pb-0.5 sm:hidden shrink-0">
+              {/* Drag pill */}
+              <div className="flex justify-center pt-2.5 pb-0.5 shrink-0">
                 <div className="w-8 h-1 rounded-full bg-border" />
               </div>
 
@@ -1115,8 +1113,9 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
                 </div>
               </div>
 
-            </div>
-          </div>
+              </div>{/* end inner panel */}
+            </div>{/* end px-6 outer */}
+          </>
         );
       })()}
     </div>
