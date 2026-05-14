@@ -1046,10 +1046,10 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
                     <div className="inline-flex items-center gap-1">
                       <button
                         onClick={() => openEdit(cov)}
-                        className="p-1 rounded-[5px] text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                        className="p-1.5 hover:bg-muted rounded-lg text-foreground transition-colors"
                         title="Edit"
                       >
-                        <Pencil className="h-3 w-3" />
+                        <Pencil className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => {
@@ -1057,10 +1057,10 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
                           deleteCovenant(cov.id);
                           toast.success("Covenant deleted");
                         }}
-                        className="p-1 rounded-[5px] text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive transition-colors"
                         title="Delete"
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </td>
