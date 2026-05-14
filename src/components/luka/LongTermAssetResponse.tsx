@@ -1304,32 +1304,77 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
   );
 }
 
-function AJEsTabPanel({ jes }: { jes: JEProposal[] }) {
-  const active = jes.filter(j => !j.deleted);
-  const draft    = active.filter(j => j.status === "Draft").length;
-  const approved = active.filter(j => j.status === "Approved").length;
-  const posted   = active.filter(j => j.status === "Posted" || j.status === "Exported").length;
-  const [expandedJEs, setExpandedJEs] = useState<Set<string>>(() => new Set(jes.filter(j => !j.deleted).map(j => j.id)));
+// ── AJEs helpers (mirrors AJEsTab.tsx) ────────────────────────────────────────
+const AJE_GL_ACCOUNTS = [
+  { value: "7100 – Interest Expense (CAD)",           label: "7100 – Interest Expense (CAD)"           },
+  { value: "7110 – Interest Expense (Variable)",       label: "7110 – Interest Expense (Variable)"      },
+  { value: "7120 – Finance Charges",                  label: "7120 – Finance Charges"                  },
+  { value: "7200 – Bank Charges & Interest",          label: "7200 – Bank Charges & Interest"          },
+  { value: "2100 – Long-Term Debt",                   label: "2100 – Long-Term Debt"                   },
+  { value: "2110 – Current Portion LT Debt",          label: "2110 – Current Portion LT Debt"          },
+  { value: "2115 – Current Portion (Mortgage)",       label: "2115 – Current Portion (Mortgage)"       },
+  { value: "2200 – Line of Credit",                   label: "2200 – Line of Credit"                   },
+  { value: "2300 – Accrued Interest Payable",         label: "2300 – Accrued Interest Payable"         },
+  { value: "2310 – Accrued Finance Charges",          label: "2310 – Accrued Finance Charges"          },
+];
+function ajeAccCode(account: string) { return account.split(/[\s–-]/)[0].trim(); }
+function ajeDescOptions(account: string, loanName: string): string[] {
+  const a = account.toLowerCase();
+  const s = loanName ? ` – ${loanName}` : "";
+  if (a.startsWith("71") || a.startsWith("72")) return [`YE accrued interest${s}`, `Interest expense accrual${s}`];
+  if (a.includes("2300") || a.includes("2310"))  return [`YE accrued interest payable${s}`, `Interest accrual – year end`];
+  if (a.includes("2110") || a.includes("2115"))  return [`Current portion reclass${s}`, `Reclassification – current portion LT debt`];
+  if (a.startsWith("21"))                        return [`LT portion after reclass${s}`, `Long-term debt – reclassification`];
+  return [];
+}
+const AJE_TYPE_LABEL: Record<string, string> = {
+  AccruedInterest: "Accrued Interest", CurrentPortionReclass: "Current Portion Reclass",
+  FXTranslation: "FX Translation", MissingSplit: "Missing Split", Manual: "Manual",
+};
 
-  const JE_TYPE_LABEL: Record<string, string> = {
-    AccruedInterest: "Accrued Interest",
-    CurrentPortionReclass: "Current Portion Reclass",
-    FXTranslation: "FX Translation",
-    MissingSplit: "Missing Split",
-    Manual: "Manual",
-  };
+function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
+  const { advanceJEStatus, deleteJE, restoreJE, purgeJE, updateJE } = useStore(s => ({
+    advanceJEStatus: s.advanceJEStatus, deleteJE: s.deleteJE,
+    restoreJE: s.restoreJE, purgeJE: s.purgeJE, updateJE: s.updateJE,
+  }));
+
+  const [expandedJEs,    setExpandedJEs]    = useState<Set<string>>(() => new Set(jes.filter(j => !j.deleted).map(j => j.id)));
+  const [filterStatus,   setFilterStatus]   = useState<string>("All");
+  const [customDescLines, setCustomDescLines] = useState<Set<string>>(new Set());
+
+  const activeJes  = jes.filter(j => !j.deleted);
+  const deletedJes = jes.filter(j =>  j.deleted);
+  const draft    = activeJes.filter(j => j.status === "Draft").length;
+  const approved = activeJes.filter(j => j.status === "Approved").length;
+  const posted   = activeJes.filter(j => j.status === "Posted" || j.status === "Exported").length;
+
+  const filtered = filterStatus === "Deleted"
+    ? deletedJes
+    : activeJes.filter(j => filterStatus === "All" || j.status === filterStatus);
+
+  const totalD = (je: JEProposal) => je.lines.reduce((s, l) => s + l.debit,  0);
+  const totalC = (je: JEProposal) => je.lines.reduce((s, l) => s + l.credit, 0);
+
+  // Collect extra accounts from existing JEs
+  const usedAccounts = Array.from(new Set(jes.flatMap(j => j.lines.map(l => l.account)).filter(Boolean)));
+  const allAccounts  = [...AJE_GL_ACCOUNTS, ...usedAccounts.filter(a => !AJE_GL_ACCOUNTS.some(p => p.value === a)).map(a => ({ value: a, label: a }))];
+
+  // Compact field classes (scaled for the Luka panel)
+  const CI = "w-full h-7 text-[11px] px-2 border border-[#dcdfe4] rounded-[6px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40";
+  const CS = `${CI} appearance-none cursor-pointer pr-6`;
+  const CN = `${CI} text-right tabular-nums pr-2`;
 
   return (
     <div className="space-y-3">
-      {/* Status counts */}
+      {/* Stats */}
       <div className="grid grid-cols-3 gap-2">
         {[
-          { label: "Draft", count: draft, sub: "Require review", color: "border-border" },
-          { label: "Approved", count: approved, sub: "Ready to post", color: "border-blue-200 bg-blue-50/30" },
-          { label: "Posted / Exported", count: posted, sub: "Complete", color: "border-green-200 bg-green-50/30" },
+          { label: "Draft",            count: draft,    sub: "Require review",  color: "border-border"                      },
+          { label: "Approved",         count: approved, sub: "Ready to post",   color: "border-blue-200 bg-blue-50/30"      },
+          { label: "Posted/Exported",  count: posted,   sub: "Complete",        color: "border-green-200 bg-green-50/30"    },
         ].map(({ label, count, sub, color }) => (
           <div key={label} className={`rounded-[8px] border ${color} px-3 py-2`}>
-            <p className="text-lg font-bold text-foreground tabular-nums leading-tight">{count}</p>
+            <p className="text-base font-bold text-foreground tabular-nums leading-tight">{count}</p>
             <p className="text-[11px] font-medium text-foreground">{label}</p>
             <p className="text-[10px] text-muted-foreground">{sub}</p>
           </div>
@@ -1339,75 +1384,199 @@ function AJEsTabPanel({ jes }: { jes: JEProposal[] }) {
       {draft > 0 && (
         <div className="flex items-start gap-2 rounded-[8px] border border-amber-200 bg-amber-50/50 px-3 py-2">
           <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
-          <span className="text-[11px] text-amber-700">{draft} AJEs require preparer review — review and approve each entry before posting. Entries are automatically suggested based on year-end calculations.</span>
+          <span className="text-[11px] text-amber-700">{draft} AJEs require preparer review — review and approve each entry before posting.</span>
         </div>
       )}
 
+      {/* Filter pills */}
+      <div className="flex gap-1 flex-wrap">
+        {(["All", "Draft", "Approved", "Posted", "Exported"] as const).map(s => (
+          <button key={s} onClick={() => setFilterStatus(s)}
+            className={`px-2.5 py-1 text-[11px] rounded-full font-medium transition-all ${filterStatus === s ? "bg-primary text-primary-foreground" : "bg-muted text-foreground hover:bg-muted/80"}`}>
+            {s}
+          </button>
+        ))}
+        <button onClick={() => setFilterStatus("Deleted")}
+          className={`flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-full font-medium transition-all ${filterStatus === "Deleted" ? "bg-red-500 text-white" : "bg-muted text-foreground hover:bg-muted/80"}`}>
+          <Trash2 className="w-2.5 h-2.5" /> Deleted
+          {deletedJes.length > 0 && (
+            <span className={`ml-0.5 min-w-[14px] h-3.5 flex items-center justify-center rounded-full text-[9px] font-bold px-1 ${filterStatus === "Deleted" ? "bg-white/20" : "bg-red-100 text-red-600"}`}>{deletedJes.length}</span>
+          )}
+        </button>
+      </div>
+
       {/* JE list */}
       <div className="space-y-2">
-        {active.map(je => {
+        {filtered.map(je => {
+          const loan       = je.loanId ? loans.find(l => l.id === je.loanId) : null;
           const isExpanded = expandedJEs.has(je.id);
-          const loanName = je.loanId ? je.description.split("–")[1]?.trim() : undefined;
+          const isBalanced = Math.abs(totalD(je) - totalC(je)) < 0.01;
+
           return (
-            <div key={je.id} className="rounded-[8px] border border-border overflow-hidden">
+            <div key={je.id} className={`rounded-[8px] border border-border overflow-hidden ${je.deleted ? "opacity-60" : ""}`}>
+              {/* Header */}
               <button
-                onClick={() => setExpandedJEs(prev => { const next = new Set(prev); isExpanded ? next.delete(je.id) : next.add(je.id); return next; })}
+                onClick={() => setExpandedJEs(prev => { const n = new Set(prev); isExpanded ? n.delete(je.id) : n.add(je.id); return n; })}
                 className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-muted/30 transition-colors text-left"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">{je.id}</span>
-                  <span className="text-[11px] font-semibold text-primary shrink-0">{JE_TYPE_LABEL[je.type] ?? je.type}</span>
-                  {loanName && <span className="text-[10px] text-muted-foreground truncate">{loanName}</span>}
+                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">{je.id.toUpperCase()}</span>
+                  <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold text-foreground shrink-0">{AJE_TYPE_LABEL[je.type] ?? je.type}</span>
+                  {loan && <span className="text-[10px] text-muted-foreground truncate">{loan.name}</span>}
+                  {!isBalanced && <span className="inline-flex items-center rounded-full bg-red-100 text-red-600 border border-red-200 px-1.5 py-0.5 text-[9px] font-semibold shrink-0">Unbalanced</span>}
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-2">
                   <StatusBadge status={je.status} />
                   {isExpanded ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
                 </div>
               </button>
+
+              {/* Expanded body */}
               {isExpanded && (
-                <div className="border-t border-border px-3 pb-3 pt-2">
-                  <p className="text-[11px] font-medium text-foreground mb-2">{je.description}</p>
-                  <table className="w-full text-[11px]">
+                <div className="border-t border-border">
+                  <p className="px-3 pt-2 pb-1 text-[11px] font-medium text-foreground">{je.description}</p>
+
+                  {/* Lines table */}
+                  <table className="w-full text-[11px] border-collapse">
                     <thead>
-                      <tr className="border-b border-border/40">
-                        {["Acc No.","Description","Debit","Credit"].map(h=>(
-                          <th key={h} className={`pb-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide ${h==="Acc No."||h==="Description"?"text-left":"text-right"}`}>{h}</th>
-                        ))}
+                      <tr className="border-b border-border bg-muted/50">
+                        <th className="py-2 px-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-left whitespace-nowrap">Acc No.</th>
+                        <th className="py-2 px-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-left">Description</th>
+                        <th className="py-2 px-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-right">Debit</th>
+                        <th className="py-2 px-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-right">Credit</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {je.lines.map(line => (
-                        <tr key={line.id} className="border-b border-border/30">
-                          <td className="py-1 font-mono text-primary">{line.account}</td>
-                          <td className="py-1 text-foreground pr-4">{line.description}</td>
-                          <td className="py-1 text-right tabular-nums">{line.debit > 0 ? fmtNum(line.debit) : ""}</td>
-                          <td className="py-1 text-right tabular-nums">{line.credit > 0 ? fmtNum(line.credit) : ""}</td>
-                        </tr>
-                      ))}
+                      {je.lines.map(line => {
+                        const descOpts   = ajeDescOptions(line.account, loan?.name ?? "");
+                        const isCustom   = customDescLines.has(line.id);
+                        return (
+                          <tr key={line.id} className="border-b border-border hover:bg-muted/20">
+                            {/* Account */}
+                            <td className="py-1.5 px-3 min-w-[100px] w-[130px]">
+                              <div className="relative">
+                                <select className={`${CS} font-mono`} style={{ color: "transparent" }}
+                                  value={line.account}
+                                  onChange={e => updateJE(je.id, { lines: je.lines.map(l => l.id === line.id ? { ...l, account: e.target.value } : l) })}>
+                                  {!allAccounts.some(a => a.value === line.account) && line.account && <option value={line.account}>{line.account}</option>}
+                                  <option value="">Select</option>
+                                  <optgroup label="Expense">{allAccounts.filter(a => a.value.startsWith("7")).map(a => <option key={a.value} value={a.value}>{a.label}</option>)}</optgroup>
+                                  <optgroup label="Liability">{allAccounts.filter(a => a.value.startsWith("2")).map(a => <option key={a.value} value={a.value}>{a.label}</option>)}</optgroup>
+                                </select>
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] font-mono text-foreground pointer-events-none select-none">
+                                  {line.account ? ajeAccCode(line.account) : <span className="font-sans font-normal text-muted-foreground">Select</span>}
+                                </span>
+                                <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+                              </div>
+                            </td>
+                            {/* Description */}
+                            <td className="py-1.5 px-3">
+                              {isCustom ? (
+                                <input type="text" autoFocus className={CI} value={line.description}
+                                  placeholder="Enter custom description…"
+                                  onChange={e => updateJE(je.id, { lines: je.lines.map(l => l.id === line.id ? { ...l, description: e.target.value } : l) })}
+                                  onBlur={() => setCustomDescLines(prev => { const n = new Set(prev); n.delete(line.id); return n; })} />
+                              ) : (
+                                <div className="relative">
+                                  <select className={CS} value={line.description}
+                                    onChange={e => {
+                                      if (e.target.value === "__custom__") {
+                                        setCustomDescLines(prev => new Set([...prev, line.id]));
+                                        updateJE(je.id, { lines: je.lines.map(l => l.id === line.id ? { ...l, description: "" } : l) });
+                                      } else {
+                                        updateJE(je.id, { lines: je.lines.map(l => l.id === line.id ? { ...l, description: e.target.value } : l) });
+                                      }
+                                    }}>
+                                    <option value="">— select —</option>
+                                    {descOpts.map(d => <option key={d} value={d}>{d}</option>)}
+                                    {line.description && !descOpts.includes(line.description) && <option value={line.description}>{line.description}</option>}
+                                    <option value="__custom__">＋ Custom…</option>
+                                  </select>
+                                  <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+                                </div>
+                              )}
+                            </td>
+                            {/* Debit */}
+                            <td className="py-1.5 px-3 w-24">
+                              <input type="number" min="0" step="0.01" className={CN} value={line.debit || ""} placeholder="0.00"
+                                onChange={e => updateJE(je.id, { lines: je.lines.map(l => l.id === line.id ? { ...l, debit: parseFloat(e.target.value) || 0 } : l) })} />
+                            </td>
+                            {/* Credit */}
+                            <td className="py-1.5 px-3 w-24">
+                              <input type="number" min="0" step="0.01" className={CN} value={line.credit || ""} placeholder="0.00"
+                                onChange={e => updateJE(je.id, { lines: je.lines.map(l => l.id === line.id ? { ...l, credit: parseFloat(e.target.value) || 0 } : l) })} />
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                     <tfoot>
-                      <tr className="border-t border-border font-semibold">
-                        <td className="pt-1 text-[11px] text-foreground" colSpan={2}>Total</td>
-                        <td className="pt-1 text-right tabular-nums text-[11px]">{fmt(je.lines.reduce((s,l)=>s+l.debit,0))}</td>
-                        <td className="pt-1 text-right tabular-nums text-[11px]">{fmt(je.lines.reduce((s,l)=>s+l.credit,0))}</td>
+                      <tr className="border-t border-border bg-muted/30 font-semibold text-[11px]">
+                        <td className="py-2 px-3 text-foreground" colSpan={2}>Total</td>
+                        <td className="py-2 px-3 text-right tabular-nums">{fmt(totalD(je))}</td>
+                        <td className="py-2 px-3 text-right tabular-nums">{fmt(totalC(je))}</td>
                       </tr>
                     </tfoot>
                   </table>
-                  <div className="flex items-center gap-2 mt-2.5">
-                    {je.status === "Draft" && (
-                      <button onClick={()=>toast.success(`JE ${je.id} approved`)} className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors">
-                        <CheckCircle2 className="h-3 w-3" /> Approve
-                      </button>
+
+                  {/* Notes */}
+                  <div className="px-3 py-2.5 border-t border-border bg-background">
+                    <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Notes</label>
+                    <textarea rows={2} className="w-full text-[11px] px-2.5 py-2 rounded-[6px] border border-[#dcdfe4] bg-background text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary/40"
+                      placeholder="Add a note for this entry…"
+                      value={je.notes ?? ""}
+                      onChange={e => updateJE(je.id, { notes: e.target.value })} />
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 px-3 py-2.5 border-t border-border bg-muted/20">
+                    {je.deleted ? (
+                      <>
+                        <span className="text-[11px] text-muted-foreground italic flex-1">Deleted</span>
+                        <button onClick={() => { restoreJE(je.id); toast.success("JE restored"); }}
+                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] border border-border bg-background text-[11px] font-medium text-foreground hover:bg-muted transition-colors">
+                          <RotateCcw className="h-3 w-3" /> Restore
+                        </button>
+                        <button onClick={() => { purgeJE(je.id); toast("JE permanently deleted", { icon: "🗑️" }); }}
+                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] border border-red-200 bg-background text-[11px] font-medium text-red-500 hover:text-red-700 hover:border-red-300 transition-colors">
+                          <Trash2 className="h-3 w-3" /> Delete Permanently
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {je.status === "Draft" && (
+                          <button onClick={() => { advanceJEStatus(je.id, "Approved", "K. Chen"); toast.success("JE approved"); }}
+                            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] bg-emerald-600 text-white text-[11px] font-medium hover:bg-emerald-700 transition-colors">
+                            <Check className="h-3 w-3" /> Approve
+                          </button>
+                        )}
+                        {je.status === "Approved" && (
+                          <button onClick={() => { advanceJEStatus(je.id, "Posted", "K. Chen"); toast.success("JE posted"); }}
+                            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors">
+                            <Send className="h-3 w-3" /> Post
+                          </button>
+                        )}
+                        {(je.status === "Draft" || je.status === "Approved") && (
+                          <button onClick={() => advanceJEStatus(je.id, "Draft", "")}
+                            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] border border-border bg-background text-[11px] font-medium text-foreground hover:bg-muted transition-colors">
+                            Revert to Draft
+                          </button>
+                        )}
+                        <button onClick={() => { deleteJE(je.id); toast("JE moved to Deleted", { icon: "🗑️" }); }}
+                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] border border-red-200 bg-background text-[11px] font-medium text-red-500 hover:text-red-700 hover:border-red-300 transition-colors">
+                          <Trash2 className="h-3 w-3" /> Delete
+                        </button>
+                      </>
                     )}
-                    <button onClick={()=>toast.success(`JE ${je.id} action`)} className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] border border-border bg-background text-[11px] font-medium text-foreground hover:bg-muted transition-colors">
-                      {je.status === "Draft" ? "Revert to Draft" : "View"}
-                    </button>
                   </div>
                 </div>
               )}
             </div>
           );
         })}
+        {filtered.length === 0 && (
+          <p className="text-center py-8 text-[11px] text-muted-foreground">No journal entries match the filter</p>
+        )}
       </div>
     </div>
   );
@@ -1610,7 +1779,7 @@ export function LongTermAssetResponse() {
         {activeTab === "continuity"   && <ContinuityTabPanel loans={loans} continuity={continuity} />}
         {activeTab === "amortization" && <AmortizationTabPanel loans={loans} amortization={amortization} />}
         {activeTab === "covenants"    && <CovenantsTabPanel loans={loans} covenants={covenants} />}
-        {activeTab === "ajes"         && <AJEsTabPanel jes={jes} />}
+        {activeTab === "ajes"         && <AJEsTabPanel jes={jes} loans={loans} />}
         {activeTab === "notes"        && <NotesTabPanel loans={loans} continuity={continuity} reconciliation={reconciliation} settings={settings} />}
       </div>
 
