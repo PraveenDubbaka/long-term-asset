@@ -1013,7 +1013,9 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
                     : editingCov.status === "At Risk" ? "bg-amber-500"
                     : "bg-green-500"
                   }`} />
-                  <span className="text-sm font-semibold text-foreground truncate">{editingCov.name}</span>
+                  <span className="text-sm font-semibold text-foreground truncate">
+                    {(draft.name ?? editingCov.name) || "Edit Covenant"}
+                  </span>
                   <StatusBadge status={draft.status ?? editingCov.status} />
                 </div>
                 <button
@@ -1026,6 +1028,30 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
 
               {/* Scrollable body */}
               <div className="overflow-y-auto flex-1 px-4 py-4 space-y-4">
+
+                {/* Covenant Identity */}
+                <div>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Covenant</p>
+                  <div className="grid grid-cols-[1fr_auto] gap-3">
+                    <div>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Name</label>
+                      <input
+                        type="text"
+                        value={draft.name ?? editingCov.name}
+                        onChange={e => setD("name", e.target.value)}
+                        className={FIELD}
+                        placeholder="e.g. DSCR – Debt Service Coverage Ratio"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Type</label>
+                      <select value={draft.type ?? editingCov.type} onChange={e => setD("type", e.target.value)} className={FIELD} style={{ minWidth: "140px" }}>
+                        <option value="Quantitative">Quantitative</option>
+                        <option value="Qualitative">Qualitative</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
 
                 {/* Values & Threshold */}
                 <div>
