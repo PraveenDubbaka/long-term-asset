@@ -4,7 +4,7 @@ import {
   ChevronDown, ChevronUp, FileSpreadsheet, Plus, CheckCircle2,
   ShieldAlert, ShieldCheck, Activity, CreditCard,
   Building2, FileText, BookOpen, Receipt, Layers, FileCheck, Send, TrendingUp,
-  Download, Copy, RotateCcw, X, Trash2, Search, Check, Pencil,
+  Download, Copy, RotateCcw, X, Trash2, Search, Check, Pencil, Folder,
 } from "lucide-react";
 import { COVENANT_TEMPLATES } from "@/lib/covenantTemplates";
 import { useStore } from "@/store/useStore";
@@ -1888,6 +1888,23 @@ export function LongTermAssetResponse() {
 
   const [activeTab, setActiveTab] = useState<TabId>("loans");
 
+  // ── Add-to-Workpaper slide-up ──────────────────────────────────────────────
+  const [addToWpOpen,   setAddToWpOpen]   = useState(false);
+  const [selectedSheet, setSelectedSheet] = useState("pr-ltl-jj");
+  const [wpRect, setWpRect] = useState<{ left: number; right: number; bottom: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!addToWpOpen) { setWpRect(null); return; }
+    const el = document.querySelector(".luka-gradient-border") as HTMLElement | null;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setWpRect({ left: r.left, right: window.innerWidth - r.right, bottom: window.innerHeight - r.top + 8 });
+  }, [addToWpOpen]);
+
+  const LT_LEAD_SHEETS = [
+    { id: "pr-ltl-jj", code: "JJ", label: "Other long-term liabilities" },
+  ];
+
   const totalDebt           = loans.reduce((s, l) => s + toCAD(l.currentBalance, l.currency), 0);
   const totalCurrentPortion = loans.reduce((s, l) => s + toCAD(l.currentPortion, l.currency), 0);
   const totalLT             = loans.reduce((s, l) => s + toCAD(l.longTermPortion, l.currency), 0);
@@ -1977,7 +1994,7 @@ export function LongTermAssetResponse() {
 
       {/* Action buttons */}
       <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border">
-        <button onClick={() => toast.success("Schedule added to Long-term Debt workpaper")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+        <button onClick={() => setAddToWpOpen(true)} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
           <Plus className="h-3.5 w-3.5" /> Add to Workpaper
         </button>
 
@@ -1991,6 +2008,80 @@ export function LongTermAssetResponse() {
           <RotateCcw className="h-3.5 w-3.5" /> Rerun
         </button>
       </div>
+
+      {/* Add-to-Workpaper slide-up modal */}
+      {addToWpOpen && (
+        <>
+          <div className="fixed inset-0 z-[59]" onClick={() => setAddToWpOpen(false)} />
+          <div
+            className="fixed z-[60] pointer-events-none"
+            style={wpRect
+              ? { left: wpRect.left, right: wpRect.right, bottom: wpRect.bottom }
+              : { left: 24, right: 24, bottom: 124 }}
+          >
+            <div className="w-full pointer-events-auto bg-background border border-border rounded-[12px] shadow-[0_2px_16px_rgba(0,0,0,0.09)] animate-in slide-in-from-bottom-4 fade-in duration-200 flex flex-col">
+
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+                <span className="text-sm font-semibold text-foreground">Add to Workpaper</span>
+                <button onClick={() => setAddToWpOpen(false)} className="p-1 rounded-[6px] hover:bg-muted transition-colors text-muted-foreground">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="px-4 py-4 space-y-3">
+                <p className="text-xs text-muted-foreground">Select a lead sheet under <span className="font-medium text-foreground">Long-term liabilities</span> to add this workpaper to:</p>
+
+                {/* Folder header */}
+                <div className="flex items-center gap-2 px-1 pb-1">
+                  <Folder className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <span className="text-xs font-medium text-foreground">Long-term liabilities</span>
+                </div>
+
+                {/* Lead sheet options */}
+                <div className="space-y-1.5 pl-4">
+                  {LT_LEAD_SHEETS.map(sheet => (
+                    <button
+                      key={sheet.id}
+                      onClick={() => setSelectedSheet(sheet.id)}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[8px] border text-left transition-colors ${
+                        selectedSheet === sheet.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border bg-background hover:bg-muted"
+                      }`}
+                    >
+                      <BookOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span className="text-xs font-semibold text-primary shrink-0">{sheet.code}</span>
+                      <span className="text-xs text-foreground truncate flex-1">{sheet.label}</span>
+                      {selectedSheet === sheet.id && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20 shrink-0">
+                <button onClick={() => setAddToWpOpen(false)}
+                  className="h-8 px-4 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-[8px] bg-background hover:bg-muted transition-colors">
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    const sheet = LT_LEAD_SHEETS.find(s => s.id === selectedSheet);
+                    toast.success(`Added to ${sheet?.code} — ${sheet?.label}`);
+                    setAddToWpOpen(false);
+                  }}
+                  className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors"
+                >
+                  <Plus className="h-3 w-3" /> Add to Lead Sheet
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </>
+      )}
 
     </div>
   );
