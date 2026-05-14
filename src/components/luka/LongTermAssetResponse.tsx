@@ -1089,7 +1089,7 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
 
                   {/* Computed ratio */}
                   {computed !== null && (
-                    <div className="mt-2.5 flex items-center justify-between rounded-[8px] bg-primary/5 border border-primary/15 px-3 py-2">
+                    <div className="mt-2.5 flex items-center justify-end gap-2 rounded-[8px] bg-primary/5 border border-primary/15 px-3 py-2">
                       <span className="text-[11px] text-muted-foreground tabular-nums">
                         {numTotal.toLocaleString("en-CA", { maximumFractionDigits: 2 })} ÷ {denTotal.toLocaleString("en-CA", { maximumFractionDigits: 2 })}
                       </span>
