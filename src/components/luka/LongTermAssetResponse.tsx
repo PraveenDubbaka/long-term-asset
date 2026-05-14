@@ -433,7 +433,6 @@ function LoansTab({ loans }: { loans: Loan[] }) {
       {newLoanOpen && (() => {
         const LF = "h-8 w-full px-2.5 border border-border rounded-[8px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40";
         const LS = { fontSize: '0.9375rem', lineHeight: 1.3, fontWeight: 400, fontFamily: 'Inter, sans-serif' } as const;
-        const LL = "block text-muted-foreground mb-1";
         return (
           <>
             <div className="fixed inset-0 z-[59]" onClick={() => setNewLoanOpen(false)} />
@@ -458,89 +457,89 @@ function LoansTab({ loans }: { loans: Loan[] }) {
                   <div className="flex flex-wrap gap-x-3 gap-y-3">
                     {/* Name */}
                     <div style={{ flex: "3 1 180px", minWidth: 0 }}>
-                      <label className={LL} style={LS}>Loan Name <span className="text-red-500">*</span></label>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Loan Name <span className="text-red-500">*</span></label>
                       <input className={LF} style={LS} placeholder="e.g. Term Loan A" value={newLoan.name ?? ""} onChange={e => setF("name", e.target.value)} />
                     </div>
                     {/* Lender */}
                     <div style={{ flex: "2 1 140px", minWidth: 0 }}>
-                      <label className={LL} style={LS}>Lender <span className="text-red-500">*</span></label>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Lender <span className="text-red-500">*</span></label>
                       <input className={LF} style={LS} placeholder="e.g. Royal Bank of Canada" value={newLoan.lender ?? ""} onChange={e => setF("lender", e.target.value)} />
                     </div>
                     {/* Type */}
                     <div style={{ flex: "1 1 100px", minWidth: 0 }}>
-                      <label className={LL} style={LS}>Type</label>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Type</label>
                       <select className={LF} style={LS} value={newLoan.type ?? "Term"} onChange={e => setF("type", e.target.value)}>
                         {["Term","LOC","Revolver","Mortgage","Bridge"].map(t => <option key={t}>{t}</option>)}
                       </select>
                     </div>
                     {/* Currency */}
                     <div style={{ flex: "1 1 80px", minWidth: 0 }}>
-                      <label className={LL} style={LS}>Currency</label>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Currency</label>
                       <select className={LF} style={LS} value={newLoan.currency ?? "CAD"} onChange={e => setF("currency", e.target.value)}>
                         {["CAD","USD","EUR","GBP"].map(c => <option key={c}>{c}</option>)}
                       </select>
                     </div>
                     {/* Interest Type */}
                     <div style={{ flex: "1 1 110px", minWidth: 0 }}>
-                      <label className={LL} style={LS}>Interest Type</label>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Interest Type</label>
                       <select className={LF} style={LS} value={newLoan.interestType ?? "Fixed"} onChange={e => setF("interestType", e.target.value)}>
                         {["Fixed","Variable","Floating","Hybrid","Step Rate"].map(t => <option key={t}>{t}</option>)}
                       </select>
                     </div>
                     {/* Day Count */}
                     <div style={{ flex: "1 1 100px", minWidth: 0 }}>
-                      <label className={LL} style={LS}>Day Count</label>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Day Count</label>
                       <select className={LF} style={LS} value={newLoan.dayCountBasis ?? "ACT/365"} onChange={e => setF("dayCountBasis", e.target.value)}>
                         {["ACT/365","ACT/360","30/360"].map(d => <option key={d}>{d}</option>)}
                       </select>
                     </div>
                     {/* Rate */}
                     <div style={{ flex: "1 1 80px", minWidth: 0 }}>
-                      <label className={LL} style={LS}>Rate (%) <span className="text-red-500">*</span></label>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Rate (%) <span className="text-red-500">*</span></label>
                       <input type="number" step="0.01" className={LF} style={LS} placeholder="5.25" value={newLoan.rate || ""} onChange={e => setF("rate", parseFloat(e.target.value) || 0)} />
                     </div>
                     {/* Original Principal */}
                     <div style={{ flex: "1 1 120px", minWidth: 0 }}>
-                      <label className={LL} style={LS}>Original Principal <span className="text-red-500">*</span></label>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Original Principal <span className="text-red-500">*</span></label>
                       <input type="number" step="1000" className={LF} style={LS} placeholder="1,000,000" value={newLoan.originalPrincipal || ""} onChange={e => setF("originalPrincipal", parseFloat(e.target.value) || 0)} />
                     </div>
                     {/* Current Balance */}
                     <div style={{ flex: "1 1 120px", minWidth: 0 }}>
-                      <label className={LL} style={LS}>Current Balance</label>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Current Balance</label>
                       <input type="number" step="1000" className={LF} style={LS} placeholder="Same as original" value={newLoan.currentBalance || ""} onChange={e => setF("currentBalance", parseFloat(e.target.value) || 0)} />
                     </div>
                     {/* Start Date */}
                     <div style={{ flex: "1 1 120px", minWidth: 0 }}>
-                      <label className={LL} style={LS}>Start Date <span className="text-red-500">*</span></label>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Start Date <span className="text-red-500">*</span></label>
                       <input type="date" className={LF} style={LS} value={newLoan.startDate ?? ""} onChange={e => setF("startDate", e.target.value)} />
                     </div>
                     {/* Maturity Date */}
                     <div style={{ flex: "1 1 120px", minWidth: 0 }}>
-                      <label className={LL} style={LS}>Maturity Date <span className="text-red-500">*</span></label>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Maturity Date <span className="text-red-500">*</span></label>
                       <input type="date" className={LF} style={LS} value={newLoan.maturityDate ?? ""} onChange={e => setF("maturityDate", e.target.value)} />
                     </div>
                     {/* First Payment Date */}
                     <div style={{ flex: "1 1 120px", minWidth: 0 }}>
-                      <label className={LL} style={LS}>First Payment Date</label>
+                      <label className="block text-[10px] text-muted-foreground mb-1">First Payment Date</label>
                       <input type="date" className={LF} style={LS} value={newLoan.firstPaymentDate ?? ""} onChange={e => setF("firstPaymentDate", e.target.value)} />
                     </div>
                     {/* Payment Frequency */}
                     <div style={{ flex: "1 1 110px", minWidth: 0 }}>
-                      <label className={LL} style={LS}>Payment Frequency</label>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Payment Frequency</label>
                       <select className={LF} style={LS} value={newLoan.paymentFrequency ?? "Monthly"} onChange={e => setF("paymentFrequency", e.target.value)}>
                         {["Monthly","Quarterly","Semi-annual","Annual"].map(f => <option key={f}>{f}</option>)}
                       </select>
                     </div>
                     {/* Payment Type — inline */}
                     <div style={{ flex: "1 1 110px", minWidth: 0 }}>
-                      <label className={LL} style={LS}>Payment Type</label>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Payment Type</label>
                       <select className={LF} style={LS} value={newLoan.paymentType ?? "P&I"} onChange={e => setF("paymentType", e.target.value)}>
                         {["P&I","Interest-only","Balloon"].map(t => <option key={t}>{t}</option>)}
                       </select>
                     </div>
                     {/* Security Description */}
                     <div style={{ flex: "1 0 100%", minWidth: 0 }}>
-                      <label className={LL} style={LS}>Security / Collateral Description</label>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Security / Collateral Description</label>
                       <input className={LF} style={LS} placeholder="e.g. General Security Agreement over all assets" value={newLoan.securityDescription ?? ""} onChange={e => setF("securityDescription", e.target.value)} />
                     </div>
                   </div>
