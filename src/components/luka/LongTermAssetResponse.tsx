@@ -973,14 +973,9 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
             {/* Transparent click-outside backdrop — no color, no blur */}
             <div className="fixed inset-0 z-[59]" onClick={() => setEditingCovId(null)} />
 
-            {/* Panel anchored just above the prompt input */}
+            {/* Panel — same px padding as the prompt input, slides up from behind it */}
             <div className="fixed inset-x-0 bottom-[7.75rem] z-[60] px-6 pointer-events-none">
-              <div className="w-full mx-auto max-w-[700px] pointer-events-auto bg-background border border-border rounded-[16px] shadow-[0_-4px_24px_rgba(0,0,0,0.10)] animate-in slide-in-from-bottom duration-200 max-h-[58vh] flex flex-col">
-
-              {/* Drag pill */}
-              <div className="flex justify-center pt-2.5 pb-0.5 shrink-0">
-                <div className="w-8 h-1 rounded-full bg-border" />
-              </div>
+              <div className="w-full pointer-events-auto bg-background border border-border rounded-[12px] shadow-[0_2px_16px_rgba(0,0,0,0.09)] animate-in slide-in-from-bottom-4 fade-in duration-200 max-h-[58vh] flex flex-col">
 
               {/* Header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
