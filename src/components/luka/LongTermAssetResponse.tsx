@@ -1098,18 +1098,6 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
                   )}
                 </div>
 
-                {/* Notes */}
-                <div>
-                  <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Notes</label>
-                  <textarea
-                    rows={2}
-                    value={draft.notes ?? ""}
-                    onChange={e => setD("notes", e.target.value)}
-                    className="w-full text-[11px] px-2.5 py-2 border border-border rounded-[8px] bg-background text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground"
-                    placeholder="Add a note…"
-                  />
-                </div>
-
               </div>
 
               {/* Footer */}
