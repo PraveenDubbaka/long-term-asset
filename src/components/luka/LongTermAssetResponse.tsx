@@ -1599,9 +1599,7 @@ export function LongTermAssetResponse() {
         <button onClick={() => toast.success("Schedule added to Long-term Debt workpaper")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
           <Plus className="h-3.5 w-3.5" /> Add to Workpaper
         </button>
-        <button onClick={() => toast.success("Exporting to Excel…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
-          <FileSpreadsheet className="h-3.5 w-3.5" /> Export to Excel
-        </button>
+
         <button onClick={() => toast.success("Downloading workpaper…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
           <Download className="h-3.5 w-3.5" /> Download
         </button>
