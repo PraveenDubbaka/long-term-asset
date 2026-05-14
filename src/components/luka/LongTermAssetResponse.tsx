@@ -865,6 +865,7 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
   const addCovenant    = useStore(s => s.addCovenant);
   const [selectedLoanId, setSelectedLoanId] = useState(loans[0]?.id ?? "");
   const [editingCovId, setEditingCovId] = useState<string | null>(null);
+  const [isNewCov, setIsNewCov] = useState(false);
   const [draft, setDraft] = useState<Partial<Covenant>>({});
 
   const loan = loans.find(l => l.id === selectedLoanId);
@@ -875,6 +876,7 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
 
   const openEdit = (cov: Covenant) => {
     setDraft({ ...cov });
+    setIsNewCov(false);
     setEditingCovId(cov.id);
   };
 
@@ -898,6 +900,7 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
     };
     addCovenant(newCov);
     setDraft({ ...newCov });
+    setIsNewCov(true);
     setEditingCovId(newCov.id);
   };
 
@@ -1137,8 +1140,10 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
                     : "bg-green-500"
                   }`} />
                   <span className="text-sm font-semibold text-foreground truncate">
-                    {(COV_NAME_OPTIONS.find(o => o.value === (draft.name ?? editingCov.name))?.label
-                      ?? (draft.name ?? editingCov.name)) || "Edit Covenant"}
+                    {isNewCov
+                      ? "Add New Covenant"
+                      : (COV_NAME_OPTIONS.find(o => o.value === (draft.name ?? editingCov.name))?.label
+                          ?? (draft.name ?? editingCov.name)) || "Edit Covenant"}
                   </span>
                   <StatusBadge status={draft.status ?? editingCov.status} />
                 </div>
