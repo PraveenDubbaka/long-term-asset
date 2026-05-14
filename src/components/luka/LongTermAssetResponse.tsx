@@ -464,11 +464,6 @@ function LoansTab({ loans }: { loans: Loan[] }) {
                       <label className="block text-[10px] text-muted-foreground mb-1">Lender <span className="text-red-500">*</span></label>
                       <input className={LF} placeholder="e.g. Royal Bank of Canada" value={newLoan.lender ?? ""} onChange={e => setF("lender", e.target.value)} />
                     </div>
-                    {/* Ref Number */}
-                    <div style={{ flex: "1 1 110px", minWidth: 0 }}>
-                      <label className="block text-[10px] text-muted-foreground mb-1">Ref. Number</label>
-                      <input className={LF} placeholder="e.g. RBC-2025-001" value={newLoan.refNumber ?? ""} onChange={e => setF("refNumber", e.target.value)} />
-                    </div>
                     {/* Type */}
                     <div style={{ flex: "1 1 100px", minWidth: 0 }}>
                       <label className="block text-[10px] text-muted-foreground mb-1">Type</label>
@@ -534,7 +529,7 @@ function LoansTab({ loans }: { loans: Loan[] }) {
                         {["Monthly","Quarterly","Semi-annual","Annual"].map(f => <option key={f}>{f}</option>)}
                       </select>
                     </div>
-                    {/* Payment Type */}
+                    {/* Payment Type — inline */}
                     <div style={{ flex: "1 1 110px", minWidth: 0 }}>
                       <label className="block text-[10px] text-muted-foreground mb-1">Payment Type</label>
                       <select className={LF} value={newLoan.paymentType ?? "P&I"} onChange={e => setF("paymentType", e.target.value)}>
