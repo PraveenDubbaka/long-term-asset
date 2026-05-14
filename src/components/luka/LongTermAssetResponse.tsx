@@ -998,7 +998,7 @@ function CovNameSelect({ value, onChange }: { value: string; onChange: (v: strin
         ref={btnRef}
         type="button"
         onClick={() => open ? closeDropdown() : openDropdown()}
-        className="w-full h-8 pl-2.5 pr-7 text-left text-[11px] border border-border rounded-[8px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 flex items-center overflow-hidden relative"
+        className="w-full h-8 pl-2.5 pr-7 text-left text-sm border border-border rounded-[8px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 flex items-center overflow-hidden relative"
       >
         <span className={`truncate flex-1 ${!selected ? "text-muted-foreground" : ""}`}>
           {selected?.label ?? "— Select covenant —"}
@@ -1169,8 +1169,8 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
     setDraft(p => ({ ...p, [key]: cur.map(l => l.id === id ? { ...l, [field]: value } : l) }));
   };
 
-  const FIELD = "h-8 w-full text-[11px] px-2.5 border border-border rounded-[8px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40";
-  const LINE_INPUT = "h-7 text-[11px] px-2 border border-border rounded-[6px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40";
+  const FIELD = "h-8 w-full text-sm px-2.5 border border-border rounded-[8px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40";
+  const LINE_INPUT = "h-7 text-sm px-2 border border-border rounded-[6px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40";
 
   return (
     <div className="space-y-3">
@@ -1374,7 +1374,7 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
                 <div className="flex flex-wrap gap-x-3 gap-y-3">
                   {/* Name — widest field, takes priority */}
                   <div style={{ flex: "2 1 200px", minWidth: 0 }}>
-                    <label className="block text-[10px] text-muted-foreground mb-1">Name</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Name</label>
                     <CovNameSelect
                       value={draft.name ?? editingCov.name}
                       onChange={v => {
@@ -1398,7 +1398,7 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
                   </div>
                   {/* Type */}
                   <div style={{ flex: "1 1 120px", minWidth: 0 }}>
-                    <label className="block text-[10px] text-muted-foreground mb-1">Type</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Type</label>
                     <select value={draft.type ?? editingCov.type} onChange={e => setD("type", e.target.value)} className={FIELD}>
                       <option value="Quantitative">Quantitative</option>
                       <option value="Qualitative">Qualitative</option>
@@ -1406,28 +1406,28 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
                   </div>
                   {/* Current Value */}
                   <div style={{ flex: "1 1 90px", minWidth: 0 }}>
-                    <label className="block text-[10px] text-muted-foreground mb-1">Current Value</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Current Value</label>
                     <input type="number" step="0.01" value={draft.currentValue ?? ""}
                       onChange={e => setD("currentValue", parseFloat(e.target.value) || 0)}
                       className={FIELD} placeholder="e.g. 1.12" />
                   </div>
                   {/* Projected Value */}
                   <div style={{ flex: "1 1 90px", minWidth: 0 }}>
-                    <label className="block text-[10px] text-muted-foreground mb-1">Projected Value</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Projected Value</label>
                     <input type="number" step="0.01" value={draft.projectedValue ?? ""}
                       onChange={e => setD("projectedValue", parseFloat(e.target.value) || 0)}
                       className={FIELD} placeholder="e.g. 0.96" />
                   </div>
                   {/* Threshold */}
                   <div style={{ flex: "1 1 90px", minWidth: 0 }}>
-                    <label className="block text-[10px] text-muted-foreground mb-1">Threshold</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Threshold</label>
                     <input type="number" step="0.01" value={draft.threshold ?? ""}
                       onChange={e => setD("threshold", parseFloat(e.target.value) || 0)}
                       className={FIELD} placeholder="e.g. 1.25" />
                   </div>
                   {/* Operator */}
                   <div style={{ flex: "1 1 140px", minWidth: 0 }}>
-                    <label className="block text-[10px] text-muted-foreground mb-1">Operator</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Operator</label>
                     <select value={draft.operator ?? ">="} onChange={e => setD("operator", e.target.value)} className={FIELD}>
                       <option value=">=">≥ greater or equal</option>
                       <option value="<=">≤ less or equal</option>
@@ -1437,14 +1437,14 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
                   </div>
                   {/* Frequency */}
                   <div style={{ flex: "1 1 110px", minWidth: 0 }}>
-                    <label className="block text-[10px] text-muted-foreground mb-1">Frequency</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Frequency</label>
                     <select value={draft.frequency ?? "Annual"} onChange={e => setD("frequency", e.target.value)} className={FIELD}>
                       {["Annual","Semi-annual","Quarterly","Monthly"].map(f => <option key={f} value={f}>{f}</option>)}
                     </select>
                   </div>
                   {/* Last Tested */}
                   <div style={{ flex: "1 1 120px", minWidth: 0 }}>
-                    <label className="block text-[10px] text-muted-foreground mb-1">Last Tested</label>
+                    <label className="block text-xs text-muted-foreground mb-1">Last Tested</label>
                     <input type="date" value={draft.lastTested?.slice(0,10) ?? ""}
                       onChange={e => setD("lastTested", e.target.value)} className={FIELD} />
                   </div>
