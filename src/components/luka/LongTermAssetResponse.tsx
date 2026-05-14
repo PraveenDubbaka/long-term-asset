@@ -894,14 +894,14 @@ function AmortizationTabPanel({ loans, amortization }: { loans: Loan[]; amortiza
 
       {/* KPI cards */}
       {loan && (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="flex gap-2">
           {[
             { label: "Remaining Balance",  value: fmt(remaining),         sub: "Opening balance" },
             { label: "Total Interest",      value: fmt(totalInterest),     sub: "Full schedule" },
             { label: "Monthly Payment",     value: fmt(monthly),           sub: `${loan.paymentType}` },
             { label: "Maturity",            value: fmtDate(loan.maturityDate), sub: `${loan.rate}% ${loan.dayCountBasis}` },
           ].map(({ label, value, sub }) => (
-            <div key={label} className="rounded-[8px] border border-border bg-background px-3 py-2">
+            <div key={label} className="flex-1 rounded-[8px] border border-border bg-background px-3 py-2 min-w-0">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium mb-0.5">{label}</p>
               <p className="text-xs font-semibold text-foreground tabular-nums">{value}</p>
               <p className="text-[10px] text-muted-foreground">{sub}</p>
