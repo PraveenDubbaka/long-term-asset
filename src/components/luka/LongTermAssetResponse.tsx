@@ -1,11 +1,12 @@
-import { useMemo, useState, useLayoutEffect } from "react";
+import { useMemo, useState, useLayoutEffect, useRef, useEffect } from "react";
 import {
   AlertTriangle, Calendar, DollarSign, BarChart2,
   ChevronDown, ChevronUp, FileSpreadsheet, Plus, CheckCircle2,
   ShieldAlert, ShieldCheck, Activity, CreditCard,
   Building2, FileText, BookOpen, Receipt, Layers, FileCheck, Send, TrendingUp,
-  Download, Copy, RotateCcw, X, Trash2,
+  Download, Copy, RotateCcw, X, Trash2, Search, Check,
 } from "lucide-react";
+import { COVENANT_TEMPLATES } from "@/lib/covenantTemplates";
 import { useStore } from "@/store/useStore";
 import toast from "react-hot-toast";
 import type { Loan, ContinuityRow, AmortizationRow, Covenant, CovenantFormulaLine, JEProposal, ReconciliationItem, EngagementSettings, AccountMapping } from "@/types";
@@ -767,6 +768,98 @@ function AmortizationTabPanel({ loans, amortization }: { loans: Loan[]; amortiza
   );
 }
 
+// ─── Searchable covenant-name dropdown (mirrors workpaper CustomSelect) ───────
+const COV_NAME_OPTIONS = COVENANT_TEMPLATES.map(t => ({ value: t.id, label: t.label }));
+
+function CovNameSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const btnRef  = useRef<HTMLButtonElement>(null);
+
+  const openDropdown = () => {
+    if (!btnRef.current) return;
+    const r = btnRef.current.getBoundingClientRect();
+    setDropPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    setOpen(true);
+  };
+  const closeDropdown = () => { setOpen(false); setSearch(""); setDropPos(null); };
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) closeDropdown();
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const selected  = COV_NAME_OPTIONS.find(o => o.value === value);
+  const filtered  = search
+    ? COV_NAME_OPTIONS.filter(o => o.label.toLowerCase().includes(search.toLowerCase()))
+    : COV_NAME_OPTIONS;
+
+  return (
+    <div ref={wrapRef} className="relative w-full">
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={() => open ? closeDropdown() : openDropdown()}
+        className="w-full h-8 pl-2.5 pr-7 text-left text-[11px] border border-border rounded-[8px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 flex items-center overflow-hidden relative"
+      >
+        <span className={`truncate flex-1 ${!selected ? "text-muted-foreground" : ""}`}>
+          {selected?.label ?? "— Select covenant —"}
+        </span>
+        <ChevronDown className={`w-3 h-3 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 transition-transform shrink-0 ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && dropPos && (
+        <div
+          className="fixed z-[70] bg-popover border border-border rounded-xl shadow-2xl overflow-hidden"
+          style={{ top: dropPos.top, left: dropPos.left, minWidth: dropPos.width, width: "20rem" }}
+        >
+          {/* Search */}
+          <div className="px-2 pt-2 pb-1.5 border-b border-border">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+              <input
+                autoFocus
+                type="text"
+                placeholder="Search…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full h-7 pl-6 pr-2 text-[11px] border border-[#dcdfe4] rounded-[6px] bg-background text-foreground placeholder:text-muted-foreground focus:outline-none"
+              />
+            </div>
+          </div>
+          {/* Options */}
+          <div className="overflow-y-auto py-0.5 max-h-56">
+            {filtered.map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => { onChange(opt.value); closeDropdown(); }}
+                className={`w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 transition-colors ${
+                  opt.value === value
+                    ? "bg-primary/[0.06] text-primary font-medium"
+                    : "text-foreground hover:bg-muted/60"
+                }`}
+              >
+                <span className="flex-1 truncate">{opt.label}</span>
+                {opt.value === value && <Check className="w-3 h-3 shrink-0 text-primary" />}
+              </button>
+            ))}
+            {filtered.length === 0 && (
+              <p className="px-3 py-3 text-[11px] text-muted-foreground text-center">No options found</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Covenant[] }) {
   const updateCovenant = useStore(s => s.updateCovenant);
   const [selectedLoanId, setSelectedLoanId] = useState(loans[0]?.id ?? "");
@@ -1014,7 +1107,8 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
                     : "bg-green-500"
                   }`} />
                   <span className="text-sm font-semibold text-foreground truncate">
-                    {(draft.name ?? editingCov.name) || "Edit Covenant"}
+                    {(COV_NAME_OPTIONS.find(o => o.value === (draft.name ?? editingCov.name))?.label
+                      ?? (draft.name ?? editingCov.name)) || "Edit Covenant"}
                   </span>
                   <StatusBadge status={draft.status ?? editingCov.status} />
                 </div>
@@ -1035,12 +1129,9 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
                   <div className="grid grid-cols-[1fr_auto] gap-3">
                     <div>
                       <label className="block text-[10px] text-muted-foreground mb-1">Name</label>
-                      <input
-                        type="text"
+                      <CovNameSelect
                         value={draft.name ?? editingCov.name}
-                        onChange={e => setD("name", e.target.value)}
-                        className={FIELD}
-                        placeholder="e.g. DSCR – Debt Service Coverage Ratio"
+                        onChange={v => setD("name", v)}
                       />
                     </div>
                     <div>
