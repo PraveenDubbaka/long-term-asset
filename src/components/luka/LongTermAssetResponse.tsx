@@ -125,12 +125,63 @@ function calcMaturityLadder(
 
 // ─── Per-tab components ───────────────────────────────────────────────────────
 
+const EMPTY_LOAN_DRAFT = (): Partial<Loan> => ({
+  name: "", lender: "", refNumber: "", type: "Term",
+  currency: "CAD", interestType: "Fixed", rate: 0,
+  originalPrincipal: 0, currentBalance: 0,
+  startDate: "", maturityDate: "", firstPaymentDate: "",
+  paymentFrequency: "Monthly", paymentType: "P&I",
+  dayCountBasis: "ACT/365", status: "Active",
+  securityDescription: "",
+  glPrincipalAccount: "", glAccruedInterestAccount: "", glInterestExpenseAccount: "",
+  covenantIds: [], currentPortion: 0, longTermPortion: 0, accruedInterest: 0, attachments: [],
+});
+
 function LoansTab({ loans }: { loans: Loan[] }) {
-  const { accountMappings, reconciliation, updateLoan } = useStore(s => ({
+  const { accountMappings, reconciliation, updateLoan, addLoan } = useStore(s => ({
     accountMappings: s.accountMappings,
     reconciliation:  s.reconciliation,
     updateLoan:      s.updateLoan,
+    addLoan:         s.addLoan,
   }));
+
+  const [newLoanOpen,  setNewLoanOpen]  = useState(false);
+  const [newLoan,      setNewLoan]      = useState<Partial<Loan>>(EMPTY_LOAN_DRAFT);
+  const [panelRect,    setPanelRect]    = useState<{ left: number; right: number; bottom: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!newLoanOpen) { setPanelRect(null); return; }
+    const measure = () => {
+      const inputBox = document
+        .querySelector<HTMLElement>('input[placeholder="Type # for prompts or just ask anything..."]')
+        ?.closest<HTMLElement>(".luka-gradient-border");
+      if (!inputBox) return;
+      const r = inputBox.getBoundingClientRect();
+      setPanelRect({ left: r.left, right: window.innerWidth - r.right, bottom: window.innerHeight - r.top + 5 });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [newLoanOpen]);
+
+  const setF = (k: keyof Loan, v: unknown) => setNewLoan(p => ({ ...p, [k]: v }));
+
+  const handleSaveLoan = () => {
+    if (!newLoan.name?.trim() || !newLoan.lender?.trim()) {
+      toast.error("Loan name and lender are required");
+      return;
+    }
+    const loan: Loan = {
+      ...(EMPTY_LOAN_DRAFT() as Loan),
+      ...newLoan,
+      id: `loan-${Date.now()}`,
+      refNumber: newLoan.refNumber || `REF-${Date.now()}`,
+    } as Loan;
+    addLoan(loan);
+    toast.success("Loan added — generating amortization schedule…");
+    setNewLoanOpen(false);
+    setNewLoan(EMPTY_LOAN_DRAFT());
+  };
 
   const principalAccts = accountMappings.filter(a => a.type === "Principal");
   const handleGLSave   = (id: string, field: string, code: string) =>
@@ -207,7 +258,15 @@ function LoansTab({ loans }: { loans: Loan[] }) {
       <div className="rounded-[8px] border border-border overflow-hidden">
         <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
           <span className="text-[11px] font-semibold text-foreground">Loan Register</span>
-          <span className="text-[10px] text-muted-foreground">Manage facilities, terms, and GL mappings</span>
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] text-muted-foreground">Manage facilities, terms, and GL mappings</span>
+            <button
+              onClick={() => { setNewLoan(EMPTY_LOAN_DRAFT()); setNewLoanOpen(true); }}
+              className="inline-flex items-center gap-1 h-7 px-2.5 text-[11px] font-medium bg-primary text-primary-foreground rounded-[7px] hover:bg-primary/90 transition-colors shrink-0"
+            >
+              <Plus className="h-3 w-3" /> New Loan
+            </button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="text-[11px]" style={{ minWidth: "1600px" }}>
@@ -369,6 +428,144 @@ function LoansTab({ loans }: { loans: Loan[] }) {
           </tfoot>
         </table>
       </div>
+
+      {/* ── Add New Loan slide-up panel ── */}
+      {newLoanOpen && (() => {
+        const LF = "h-8 w-full text-[11px] px-2.5 border border-border rounded-[8px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40";
+        return (
+          <>
+            <div className="fixed inset-0 z-[59]" onClick={() => setNewLoanOpen(false)} />
+            <div
+              className="fixed z-[60] pointer-events-none"
+              style={panelRect
+                ? { left: panelRect.left, right: panelRect.right, bottom: panelRect.bottom }
+                : { left: 24, right: 24, bottom: 124 }}
+            >
+              <div className="w-full pointer-events-auto bg-background border border-border rounded-[12px] shadow-[0_2px_16px_rgba(0,0,0,0.09)] animate-in slide-in-from-bottom-4 fade-in duration-200 max-h-[62vh] flex flex-col">
+
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+                  <span className="text-sm font-semibold text-foreground">Add New Loan</span>
+                  <button onClick={() => setNewLoanOpen(false)} className="p-1 rounded-[6px] hover:bg-muted transition-colors text-muted-foreground">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className="overflow-y-auto flex-1 px-4 py-4">
+                  <div className="flex flex-wrap gap-x-3 gap-y-3">
+                    {/* Name */}
+                    <div style={{ flex: "3 1 180px", minWidth: 0 }}>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Loan Name <span className="text-red-500">*</span></label>
+                      <input className={LF} placeholder="e.g. Term Loan A" value={newLoan.name ?? ""} onChange={e => setF("name", e.target.value)} />
+                    </div>
+                    {/* Lender */}
+                    <div style={{ flex: "2 1 140px", minWidth: 0 }}>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Lender <span className="text-red-500">*</span></label>
+                      <input className={LF} placeholder="e.g. Royal Bank of Canada" value={newLoan.lender ?? ""} onChange={e => setF("lender", e.target.value)} />
+                    </div>
+                    {/* Ref Number */}
+                    <div style={{ flex: "1 1 110px", minWidth: 0 }}>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Ref. Number</label>
+                      <input className={LF} placeholder="e.g. RBC-2025-001" value={newLoan.refNumber ?? ""} onChange={e => setF("refNumber", e.target.value)} />
+                    </div>
+                    {/* Type */}
+                    <div style={{ flex: "1 1 100px", minWidth: 0 }}>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Type</label>
+                      <select className={LF} value={newLoan.type ?? "Term"} onChange={e => setF("type", e.target.value)}>
+                        {["Term","LOC","Revolver","Mortgage","Bridge"].map(t => <option key={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    {/* Currency */}
+                    <div style={{ flex: "1 1 80px", minWidth: 0 }}>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Currency</label>
+                      <select className={LF} value={newLoan.currency ?? "CAD"} onChange={e => setF("currency", e.target.value)}>
+                        {["CAD","USD","EUR","GBP"].map(c => <option key={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    {/* Interest Type */}
+                    <div style={{ flex: "1 1 110px", minWidth: 0 }}>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Interest Type</label>
+                      <select className={LF} value={newLoan.interestType ?? "Fixed"} onChange={e => setF("interestType", e.target.value)}>
+                        {["Fixed","Variable","Floating","Hybrid","Step Rate"].map(t => <option key={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    {/* Rate */}
+                    <div style={{ flex: "1 1 80px", minWidth: 0 }}>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Rate (%) <span className="text-red-500">*</span></label>
+                      <input type="number" step="0.01" className={LF} placeholder="5.25" value={newLoan.rate || ""} onChange={e => setF("rate", parseFloat(e.target.value) || 0)} />
+                    </div>
+                    {/* Original Principal */}
+                    <div style={{ flex: "1 1 120px", minWidth: 0 }}>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Original Principal <span className="text-red-500">*</span></label>
+                      <input type="number" step="1000" className={LF} placeholder="1,000,000" value={newLoan.originalPrincipal || ""} onChange={e => setF("originalPrincipal", parseFloat(e.target.value) || 0)} />
+                    </div>
+                    {/* Current Balance */}
+                    <div style={{ flex: "1 1 120px", minWidth: 0 }}>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Current Balance</label>
+                      <input type="number" step="1000" className={LF} placeholder="Same as original" value={newLoan.currentBalance || ""} onChange={e => setF("currentBalance", parseFloat(e.target.value) || 0)} />
+                    </div>
+                    {/* Start Date */}
+                    <div style={{ flex: "1 1 120px", minWidth: 0 }}>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Start Date <span className="text-red-500">*</span></label>
+                      <input type="date" className={LF} value={newLoan.startDate ?? ""} onChange={e => setF("startDate", e.target.value)} />
+                    </div>
+                    {/* Maturity Date */}
+                    <div style={{ flex: "1 1 120px", minWidth: 0 }}>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Maturity Date <span className="text-red-500">*</span></label>
+                      <input type="date" className={LF} value={newLoan.maturityDate ?? ""} onChange={e => setF("maturityDate", e.target.value)} />
+                    </div>
+                    {/* First Payment Date */}
+                    <div style={{ flex: "1 1 120px", minWidth: 0 }}>
+                      <label className="block text-[10px] text-muted-foreground mb-1">First Payment Date</label>
+                      <input type="date" className={LF} value={newLoan.firstPaymentDate ?? ""} onChange={e => setF("firstPaymentDate", e.target.value)} />
+                    </div>
+                    {/* Payment Frequency */}
+                    <div style={{ flex: "1 1 110px", minWidth: 0 }}>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Payment Frequency</label>
+                      <select className={LF} value={newLoan.paymentFrequency ?? "Monthly"} onChange={e => setF("paymentFrequency", e.target.value)}>
+                        {["Monthly","Quarterly","Semi-annual","Annual"].map(f => <option key={f}>{f}</option>)}
+                      </select>
+                    </div>
+                    {/* Payment Type */}
+                    <div style={{ flex: "1 1 110px", minWidth: 0 }}>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Payment Type</label>
+                      <select className={LF} value={newLoan.paymentType ?? "P&I"} onChange={e => setF("paymentType", e.target.value)}>
+                        {["P&I","Interest-only","Balloon"].map(t => <option key={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    {/* Day Count */}
+                    <div style={{ flex: "1 1 100px", minWidth: 0 }}>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Day Count</label>
+                      <select className={LF} value={newLoan.dayCountBasis ?? "ACT/365"} onChange={e => setF("dayCountBasis", e.target.value)}>
+                        {["ACT/365","ACT/360","30/360"].map(d => <option key={d}>{d}</option>)}
+                      </select>
+                    </div>
+                    {/* Security Description */}
+                    <div style={{ flex: "1 0 100%", minWidth: 0 }}>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Security / Collateral Description</label>
+                      <input className={LF} placeholder="e.g. General Security Agreement over all assets" value={newLoan.securityDescription ?? ""} onChange={e => setF("securityDescription", e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20 shrink-0">
+                  <button onClick={() => setNewLoanOpen(false)}
+                    className="h-8 px-4 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-[8px] bg-background hover:bg-muted transition-colors">
+                    Cancel
+                  </button>
+                  <button onClick={handleSaveLoan}
+                    className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors">
+                    <Plus className="h-3 w-3" /> Add Loan &amp; Run Amortization
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          </>
+        );
+      })()}
     </div>
   );
 }
