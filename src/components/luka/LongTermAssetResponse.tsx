@@ -4,11 +4,11 @@ import {
   ChevronDown, ChevronUp, FileSpreadsheet, Plus, CheckCircle2,
   ShieldAlert, ShieldCheck, Activity, CreditCard,
   Building2, FileText, BookOpen, Receipt, Layers, FileCheck, Send, TrendingUp,
-  Download, Copy, RotateCcw, X,
+  Download, Copy, RotateCcw, X, Trash2,
 } from "lucide-react";
 import { useStore } from "@/store/useStore";
 import toast from "react-hot-toast";
-import type { Loan, ContinuityRow, AmortizationRow, Covenant, JEProposal, ReconciliationItem, EngagementSettings, AccountMapping } from "@/types";
+import type { Loan, ContinuityRow, AmortizationRow, Covenant, CovenantFormulaLine, JEProposal, ReconciliationItem, EngagementSettings, AccountMapping } from "@/types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const USD_FX = 1.353;
@@ -811,7 +811,31 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
     setEditingCovId(null);
   };
 
+  // ── Formula-line helpers ──────────────────────────────────────────────────
+  const getNumLines  = () => (draft.formulaLines     ?? editingCov?.formulaLines     ?? []) as CovenantFormulaLine[];
+  const getDenLines  = () => (draft.denominatorLines ?? editingCov?.denominatorLines ?? []) as CovenantFormulaLine[];
+
+  const addFormLine = (kind: "num" | "den") => {
+    const key  = kind === "num" ? "formulaLines" : "denominatorLines";
+    const cur  = (draft[key] ?? editingCov?.[key] ?? []) as CovenantFormulaLine[];
+    const line: CovenantFormulaLine = { id: `fl-${Date.now()}`, sign: "+", description: "", glAccount: "", amount: 0, projectedAmount: 0, multiplier: 1 };
+    setDraft(p => ({ ...p, [key]: [...cur, line] }));
+  };
+
+  const removeFormLine = (kind: "num" | "den", id: string) => {
+    const key = kind === "num" ? "formulaLines" : "denominatorLines";
+    const cur = (draft[key] ?? editingCov?.[key] ?? []) as CovenantFormulaLine[];
+    setDraft(p => ({ ...p, [key]: cur.filter(l => l.id !== id) }));
+  };
+
+  const updateFormLine = (kind: "num" | "den", id: string, field: keyof CovenantFormulaLine, value: unknown) => {
+    const key = kind === "num" ? "formulaLines" : "denominatorLines";
+    const cur = (draft[key] ?? editingCov?.[key] ?? []) as CovenantFormulaLine[];
+    setDraft(p => ({ ...p, [key]: cur.map(l => l.id === id ? { ...l, [field]: value } : l) }));
+  };
+
   const FIELD = "h-8 w-full text-[11px] px-2.5 border border-border rounded-[8px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40";
+  const LINE_INPUT = "h-7 text-[11px] px-2 border border-border rounded-[6px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40";
 
   return (
     <div className="space-y-3">
@@ -879,96 +903,222 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
         </div>
       )}
 
-      {/* ── Edit covenant overlay ── */}
-      {editingCovId && editingCov && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" onClick={() => setEditingCovId(null)} />
-          <div className="relative bg-background border border-border rounded-[16px] shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+      {/* ── Edit covenant — slide-up panel ── */}
+      {editingCovId && editingCov && (() => {
+        const numLines  = getNumLines();
+        const denLines  = getDenLines();
+        const numTotal  = numLines.reduce((s, l) => s + (l.sign === "+" ? 1 : -1) * l.amount, 0);
+        const denTotal  = denLines.reduce((s, l) => s + (l.sign === "+" ? 1 : -1) * l.amount, 0);
+        const computed  = denTotal !== 0 ? numTotal / denTotal : null;
 
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-              <div className="flex items-center gap-2">
-                <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${editingCov.status==="Breached"?"bg-red-500":editingCov.status==="At Risk"?"bg-amber-500":"bg-green-500"}`} />
-                <span className="text-sm font-semibold text-foreground">{editingCov.name}</span>
-                <StatusBadge status={draft.status ?? editingCov.status} />
-              </div>
-              <button onClick={() => setEditingCovId(null)} className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-[6px] hover:bg-muted">
-                <X className="h-4 w-4" />
+        const FormulaSection = ({ kind, lines, total }: { kind: "num" | "den"; lines: CovenantFormulaLine[]; total: number }) => (
+          <div className="rounded-[8px] border border-border overflow-hidden">
+            <div className="px-2.5 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
+              <span className="text-[10px] font-semibold text-foreground">{kind === "num" ? "Numerator" : "Denominator"}</span>
+              <button
+                onClick={() => addFormLine(kind)}
+                className="inline-flex items-center gap-1 text-[10px] text-primary hover:bg-primary/10 rounded-[4px] px-1.5 py-0.5 transition-colors"
+              >
+                <Plus className="h-3 w-3" /> Add Row
               </button>
             </div>
-
-            {/* Form */}
-            <div className="px-5 py-4 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Current Value</label>
-                  <input type="number" step="0.01" value={draft.currentValue ?? ""} onChange={e => setD("currentValue", parseFloat(e.target.value) || 0)}
-                    className={FIELD} placeholder="e.g. 1.12" />
+            {lines.length === 0 ? (
+              <p className="px-3 py-2.5 text-[11px] text-muted-foreground italic">No lines yet — click Add Row</p>
+            ) : (
+              <>
+                <div className="divide-y divide-border/40">
+                  {lines.map(line => (
+                    <div key={line.id} className="flex items-center gap-1.5 px-2.5 py-1.5">
+                      <select
+                        value={line.sign}
+                        onChange={e => updateFormLine(kind, line.id, "sign", e.target.value as "+" | "-")}
+                        className={`w-10 ${LINE_INPUT} text-center cursor-pointer`}
+                      >
+                        <option value="+">+</option>
+                        <option value="-">−</option>
+                      </select>
+                      <input
+                        value={line.description}
+                        onChange={e => updateFormLine(kind, line.id, "description", e.target.value)}
+                        placeholder="Description"
+                        className={`flex-1 min-w-0 ${LINE_INPUT}`}
+                      />
+                      <input
+                        type="number"
+                        value={line.amount || ""}
+                        onChange={e => updateFormLine(kind, line.id, "amount", parseFloat(e.target.value) || 0)}
+                        placeholder="0"
+                        className={`w-20 ${LINE_INPUT} text-right tabular-nums`}
+                      />
+                      <button
+                        onClick={() => removeFormLine(kind, line.id)}
+                        className="p-1 text-muted-foreground/50 hover:text-destructive transition-colors rounded-[4px] shrink-0"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-                <div>
-                  <label className="block text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Projected Value</label>
-                  <input type="number" step="0.01" value={draft.projectedValue ?? ""} onChange={e => setD("projectedValue", parseFloat(e.target.value) || 0)}
-                    className={FIELD} placeholder="e.g. 0.96" />
+                <div className="px-2.5 py-1.5 bg-muted/30 flex items-center justify-end gap-2 border-t border-border/40">
+                  <span className="text-[10px] text-muted-foreground">Subtotal:</span>
+                  <span className="text-[11px] font-semibold tabular-nums">{total.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Threshold</label>
-                  <input type="number" step="0.01" value={draft.threshold ?? ""} onChange={e => setD("threshold", parseFloat(e.target.value) || 0)}
-                    className={FIELD} placeholder="e.g. 1.25" />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Operator</label>
-                  <select value={draft.operator ?? ">="} onChange={e => setD("operator", e.target.value)} className={FIELD}>
-                    <option value=">=">≥ (greater or equal)</option>
-                    <option value="<=">≤ (less or equal)</option>
-                    <option value=">"> &gt; (greater than)</option>
-                    <option value="<"> &lt; (less than)</option>
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Frequency</label>
-                  <select value={draft.frequency ?? "Annual"} onChange={e => setD("frequency", e.target.value)} className={FIELD}>
-                    {["Annual","Semi-annual","Quarterly","Monthly"].map(f => <option key={f} value={f}>{f}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Last Tested</label>
-                  <input type="date" value={draft.lastTested?.slice(0,10) ?? ""} onChange={e => setD("lastTested", e.target.value)}
-                    className={FIELD} />
-                </div>
-              </div>
-              <div>
-                <label className="block text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Notes</label>
-                <textarea rows={2} value={draft.notes ?? ""} onChange={e => setD("notes", e.target.value)}
-                  className="w-full text-[11px] px-2.5 py-2 border border-border rounded-[8px] bg-background text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground"
-                  placeholder="Add a note…" />
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-between px-5 py-3.5 border-t border-border bg-muted/20">
-              <button onClick={() => setEditingCovId(null)}
-                className="h-8 px-4 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-[8px] bg-background hover:bg-muted transition-colors">
-                Cancel
-              </button>
-              <div className="flex items-center gap-2">
-                <button onClick={handleRerun}
-                  className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium text-primary border border-primary/30 bg-primary/5 rounded-[8px] hover:bg-primary/10 transition-colors">
-                  <RotateCcw className="h-3 w-3" /> Save &amp; Rerun
-                </button>
-                <button onClick={handleSave}
-                  className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors">
-                  <CheckCircle2 className="h-3 w-3" /> Save
-                </button>
-              </div>
-            </div>
-
+              </>
+            )}
           </div>
-        </div>
-      )}
+        );
+
+        return (
+          <div className="fixed inset-0 z-50">
+            {/* Dim backdrop */}
+            <div
+              className="absolute inset-0 bg-black/20 backdrop-blur-[1px]"
+              onClick={() => setEditingCovId(null)}
+            />
+
+            {/* Slide-up panel */}
+            <div className="absolute bottom-0 left-0 right-0 sm:left-auto sm:right-4 sm:bottom-4 sm:w-[440px] bg-background border border-border rounded-t-[16px] sm:rounded-[16px] shadow-2xl animate-in slide-in-from-bottom duration-200 max-h-[88vh] flex flex-col">
+
+              {/* Drag pill (mobile only) */}
+              <div className="flex justify-center pt-2.5 pb-0.5 sm:hidden shrink-0">
+                <div className="w-8 h-1 rounded-full bg-border" />
+              </div>
+
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${
+                    editingCov.status === "Breached" ? "bg-red-500"
+                    : editingCov.status === "At Risk" ? "bg-amber-500"
+                    : "bg-green-500"
+                  }`} />
+                  <span className="text-sm font-semibold text-foreground truncate">{editingCov.name}</span>
+                  <StatusBadge status={draft.status ?? editingCov.status} />
+                </div>
+                <button
+                  onClick={() => setEditingCovId(null)}
+                  className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-[6px] hover:bg-muted shrink-0"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Scrollable body */}
+              <div className="overflow-y-auto flex-1 px-4 py-4 space-y-4">
+
+                {/* Values & Threshold */}
+                <div>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Values &amp; Threshold</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Current Value</label>
+                      <input type="number" step="0.01" value={draft.currentValue ?? ""}
+                        onChange={e => setD("currentValue", parseFloat(e.target.value) || 0)}
+                        className={FIELD} placeholder="e.g. 1.12" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Projected Value</label>
+                      <input type="number" step="0.01" value={draft.projectedValue ?? ""}
+                        onChange={e => setD("projectedValue", parseFloat(e.target.value) || 0)}
+                        className={FIELD} placeholder="e.g. 0.96" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Threshold</label>
+                      <input type="number" step="0.01" value={draft.threshold ?? ""}
+                        onChange={e => setD("threshold", parseFloat(e.target.value) || 0)}
+                        className={FIELD} placeholder="e.g. 1.25" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Operator</label>
+                      <select value={draft.operator ?? ">="} onChange={e => setD("operator", e.target.value)} className={FIELD}>
+                        <option value=">=">≥ greater or equal</option>
+                        <option value="<=">≤ less or equal</option>
+                        <option value=">">&gt; greater than</option>
+                        <option value="<">&lt; less than</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Schedule */}
+                <div>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Schedule</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Frequency</label>
+                      <select value={draft.frequency ?? "Annual"} onChange={e => setD("frequency", e.target.value)} className={FIELD}>
+                        {["Annual","Semi-annual","Quarterly","Monthly"].map(f => <option key={f} value={f}>{f}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-muted-foreground mb-1">Last Tested</label>
+                      <input type="date" value={draft.lastTested?.slice(0,10) ?? ""}
+                        onChange={e => setD("lastTested", e.target.value)} className={FIELD} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Formula / Method */}
+                <div>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Formula / Method</p>
+                  <div className="space-y-2">
+                    <FormulaSection kind="num" lines={numLines} total={numTotal} />
+                    <FormulaSection kind="den" lines={denLines} total={denTotal} />
+                  </div>
+
+                  {/* Computed ratio */}
+                  {computed !== null && (
+                    <div className="mt-2.5 flex items-center justify-between rounded-[8px] bg-primary/5 border border-primary/15 px-3 py-2">
+                      <span className="text-[11px] text-muted-foreground tabular-nums">
+                        {numTotal.toLocaleString("en-CA", { maximumFractionDigits: 2 })} ÷ {denTotal.toLocaleString("en-CA", { maximumFractionDigits: 2 })}
+                      </span>
+                      <span className="text-[12px] font-bold text-primary tabular-nums">= {computed.toFixed(2)}x</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Notes</label>
+                  <textarea
+                    rows={2}
+                    value={draft.notes ?? ""}
+                    onChange={e => setD("notes", e.target.value)}
+                    className="w-full text-[11px] px-2.5 py-2 border border-border rounded-[8px] bg-background text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground"
+                    placeholder="Add a note…"
+                  />
+                </div>
+
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20 shrink-0">
+                <button
+                  onClick={() => setEditingCovId(null)}
+                  className="h-8 px-4 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-[8px] bg-background hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleRerun}
+                    className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium text-primary border border-primary/30 bg-primary/5 rounded-[8px] hover:bg-primary/10 transition-colors"
+                  >
+                    <RotateCcw className="h-3 w-3" /> Save &amp; Rerun
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors"
+                  >
+                    <CheckCircle2 className="h-3 w-3" /> Save
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
