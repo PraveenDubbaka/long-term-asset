@@ -305,11 +305,19 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
   const verifyTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [lukaIsTyping, setLukaIsTyping] = useState(false);
   const scrollAnchorRef = useRef<HTMLDivElement>(null);
+  const chatBottomRef   = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom as Luka generates content
+  // Auto-scroll to bottom as Luka generates content (wizard view)
   useEffect(() => {
     scrollAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [verifyPhase, verifyRows.length, lukaIsTyping]);
+
+  // Auto-scroll to bottom when a new follow-up turn is added (threads view)
+  useEffect(() => {
+    if (followUpTurns.length > 0) {
+      setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 50);
+    }
+  }, [followUpTurns.length]);
 
   // Position agentic loan amort wizard above the input bar
   useLayoutEffect(() => {
@@ -650,25 +658,34 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
     }, 1600);
   }, []);
 
+  // ── Shared follow-up trigger — used by typed messages AND suggestion chips ──
+  const triggerFollowUp = useCallback((msg: string) => {
+    const intent = detectLtDebtIntent(msg);
+    const cfg = FOLLOW_UP_CFG[intent];
+    const id = `fu-${Date.now()}`;
+    setFollowUpTurns(prev => [...prev, { id, userMsg: msg, intent, phase: "thinking", clarifyChoice: null }]);
+    setTimeout(() => {
+      setFollowUpTurns(prev => prev.map(t => t.id === id
+        ? { ...t, phase: cfg.question ? "clarifying" : "working" } : t));
+      if (!cfg.question) {
+        setTimeout(() => {
+          setFollowUpTurns(prev => prev.map(t => t.id === id ? { ...t, phase: "done" } : t));
+        }, 1600);
+      }
+    }, 1600);
+  }, []);
+
+  // Determines if we're in "follow-up context" (a loan/debt summary is visible)
+  const isFollowUpContext = richResponseType === "lt-debt" ||
+    (richResponseType === "loan-amortization" && loanAmortStep !== "idle");
+
   const handleSend = useCallback(() => {
     if (!message.trim()) return;
     const msg = message.trim(); setMessage(""); setShowPromptPicker(false);
 
-    // ── Context-aware follow-up when lt-debt summary is already showing ──
-    if (richResponseType === "lt-debt") {
-      const intent = detectLtDebtIntent(msg);
-      const cfg = FOLLOW_UP_CFG[intent];
-      const id = `fu-${Date.now()}`;
-      setFollowUpTurns(prev => [...prev, { id, userMsg: msg, intent, phase: "thinking", clarifyChoice: null }]);
-      setTimeout(() => {
-        setFollowUpTurns(prev => prev.map(t => t.id === id
-          ? { ...t, phase: cfg.question ? "clarifying" : "working" } : t));
-        if (!cfg.question) {
-          setTimeout(() => {
-            setFollowUpTurns(prev => prev.map(t => t.id === id ? { ...t, phase: "done" } : t));
-          }, 1600);
-        }
-      }, 1600);
+    // ── Context-aware follow-up when any loan/debt summary is visible ──
+    if (isFollowUpContext) {
+      triggerFollowUp(msg);
       return;
     }
 
@@ -686,7 +703,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
       };
       stream();
     }, 2500);
-  }, [message, richResponseType]);
+  }, [message, isFollowUpContext, triggerFollowUp]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !showPromptPicker && message.trim()) { e.preventDefault(); handleSend(); }
@@ -2264,7 +2281,35 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                 </span>
                               </div>
                             ) : richResponseType === "lt-debt" ? (
-                              <LongTermAssetResponse />
+                              <div className="space-y-3">
+                                <LongTermAssetResponse />
+                                {/* ── Follow-up suggestion chips ── */}
+                                {followUpTurns.length === 0 && (
+                                  <div className="space-y-2 pt-1 animate-in fade-in duration-500">
+                                    <p className="text-xs text-muted-foreground font-medium">Continue with any of these or type your own question below:</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {[
+                                        { label: "Explain the DSCR breach",        msg: "Explain the DSCR covenant breach" },
+                                        { label: "Show maturity timeline",          msg: "Show maturity timeline for all loans" },
+                                        { label: "Break down accrued interest",     msg: "Break down accrued interest by loan" },
+                                        { label: "Generate year-end AJEs",          msg: "Generate adjusting journal entries" },
+                                        { label: "Explain variances",               msg: "Explain reconciliation variances" },
+                                        { label: "Drill into Term Loan A",          msg: "Tell me about Term Loan A" },
+                                        { label: "Show continuity schedule",        msg: "Show the debt continuity roll-forward" },
+                                        { label: "Export to Excel",                 msg: "Export to Excel workpaper" },
+                                      ].map(({ label, msg }) => (
+                                        <button
+                                          key={label}
+                                          onClick={() => triggerFollowUp(msg)}
+                                          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-primary transition-colors"
+                                        >
+                                          {label}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             ) : richResponseType === "loan-amortization" ? (
                               <div className="space-y-2.5 py-0.5">
                                 {/* Step 1: Searching workpapers */}
@@ -2869,6 +2914,8 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                           </React.Fragment>
                         );
                       })}
+                      {/* Scroll anchor — keeps bottom visible after new turns */}
+                      <div ref={chatBottomRef} className="h-2" />
                     </div>
                   )}
                 </div>
@@ -2886,7 +2933,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                           value={message}
                           onChange={handleInputChange}
                           onKeyDown={handleKeyDown}
-                          placeholder="Type # for prompts or just ask anything..."
+                          placeholder={isFollowUpContext ? "Ask a follow-up question about this summary…" : "Type # for prompts or just ask anything..."}
                           className={cn("w-full bg-transparent h-9 placeholder:text-foreground outline-none border-none text-sm", message.includes("#") ? "text-primary font-medium" : "text-foreground")}
                         />
                       </div>
