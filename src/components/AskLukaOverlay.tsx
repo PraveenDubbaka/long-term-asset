@@ -8,6 +8,8 @@ import {
   Bell, Settings, ArrowLeft, Lock, Upload, FileText, Mail, Square,
   FolderOpen, RotateCcw, Sparkles, Eye, Pin, LayoutList, CalendarDays, CalendarRange,
   ArrowUpDown, Check, BookOpen, HardDrive, FileSpreadsheet,
+  AlertTriangle, TrendingUp, TrendingDown, Info, Table2, RefreshCw,
+  Calendar, Receipt, Download,
 } from "lucide-react";
 import { Button } from "@/components/wp-ui/button";
 import { ScrollArea } from "@/components/wp-ui/scroll-area";
@@ -164,6 +166,59 @@ const AMORT_DRIVE_FILES = [
 ];
 type AmortSource = "existing" | "upload" | "drive" | "manual";
 
+// ── Free-prompt follow-up system ────────────────────────────────────────────
+type FreePromptIntent =
+  | "covenant" | "maturity" | "interest" | "aje"
+  | "variance" | "export"  | "loan"     | "continuity" | "general";
+
+interface FollowUpTurn {
+  id: string;
+  userMsg: string;
+  intent: FreePromptIntent;
+  phase: "thinking" | "clarifying" | "working" | "done";
+  clarifyChoice: string | null;
+}
+
+const FOLLOW_UP_CFG: Record<FreePromptIntent, { question: string | null; chips: string[] }> = {
+  covenant:   {
+    question: "Which covenant would you like to analyze in detail?",
+    chips: ["DSCR Breach — Term Loan A", "Min Cash At Risk — Operating LOC", "Full compliance overview"],
+  },
+  maturity:   { question: null, chips: [] },
+  interest:   {
+    question: "Which period should I calculate accrued interest for?",
+    chips: ["Year-end Dec 31, 2025", "Q1 2026 (Jan–Mar)", "Year-to-date May 2026"],
+  },
+  aje:        {
+    question: "Which journal entry would you like to generate?",
+    chips: ["Accrued interest — FY2025 year-end", "Current portion reclassification", "FX translation — USD Equipment Loan"],
+  },
+  variance:   { question: null, chips: [] },
+  export:     {
+    question: "What output format do you need?",
+    chips: ["Excel workpaper (.xlsx)", "Notes disclosure draft (PDF)", "Management summary report"],
+  },
+  loan:       {
+    question: "Which loan facility would you like to drill into?",
+    chips: ["Term Loan A — RBC ($3.75M)", "Operating LOC — TD ($875K)", "Equipment Loan — HSBC (USD $1.125M)"],
+  },
+  continuity: { question: null, chips: [] },
+  general:    { question: null, chips: [] },
+};
+
+function detectLtDebtIntent(msg: string): FreePromptIntent {
+  const m = msg.toLowerCase();
+  if (/covenant|breach|dscr|compliance|ratio|threshold|at risk/.test(m)) return "covenant";
+  if (/matur|due date|upcoming|coming due|expir|timeline/.test(m))        return "maturity";
+  if (/interest|accrued|accrual|expense|rate/.test(m))                    return "interest";
+  if (/aje|journal|entr|posting|post|adjusting/.test(m))                  return "aje";
+  if (/varianc|reconcil|differ|gap|discrepanc/.test(m))                   return "variance";
+  if (/export|excel|pdf|report|notes|disclosure|output/.test(m))          return "export";
+  if (/term loan|operating|loc|equipment|hsbc|rbc|\btd\b|facility/.test(m)) return "loan";
+  if (/continu|roll.forward|schedule|borrowing|repay|movement/.test(m))   return "continuity";
+  return "general";
+}
+
 export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
   // ── Threads chat state ──
   const [message, setMessage] = useState("");
@@ -222,6 +277,8 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
   const [amortDriveId,    setAmortDriveId]       = useState("gd-1");
   const [amortUploadFile, setAmortUploadFile]    = useState<string|null>(null);
   const [amortWizRect,    setAmortWizRect]       = useState<{left:number;right:number;bottom:number}|null>(null);
+  // ── Free-prompt follow-up turns (context-aware after lt-debt summary) ──
+  const [followUpTurns, setFollowUpTurns] = useState<FollowUpTurn[]>([]);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [editMode, setEditMode] = useState<'ask' | 'auto'>('auto');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -543,6 +600,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
     setRichResponseType(null); setRevealStep(-1);
     setLoanAmortData(null); setLoanAmortStep("idle");
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
+    setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
     const isGrossMargin    = promptLabel.toLowerCase().includes("gross profit margin");
@@ -583,9 +641,38 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
     setTimeout(() => setLoanAmortStep("done"), 2200);
   }, []);
 
+  const handleClarifyChoice = useCallback((turnId: string, choice: string) => {
+    setFollowUpTurns(prev => prev.map(t => t.id === turnId
+      ? { ...t, clarifyChoice: choice, phase: "working" } : t));
+    setTimeout(() => {
+      setFollowUpTurns(prev => prev.map(t => t.id === turnId
+        ? { ...t, phase: "done" } : t));
+    }, 1600);
+  }, []);
+
   const handleSend = useCallback(() => {
     if (!message.trim()) return;
     const msg = message.trim(); setMessage(""); setShowPromptPicker(false);
+
+    // ── Context-aware follow-up when lt-debt summary is already showing ──
+    if (richResponseType === "lt-debt") {
+      const intent = detectLtDebtIntent(msg);
+      const cfg = FOLLOW_UP_CFG[intent];
+      const id = `fu-${Date.now()}`;
+      setFollowUpTurns(prev => [...prev, { id, userMsg: msg, intent, phase: "thinking", clarifyChoice: null }]);
+      setTimeout(() => {
+        setFollowUpTurns(prev => prev.map(t => t.id === id
+          ? { ...t, phase: cfg.question ? "clarifying" : "working" } : t));
+        if (!cfg.question) {
+          setTimeout(() => {
+            setFollowUpTurns(prev => prev.map(t => t.id === id ? { ...t, phase: "done" } : t));
+          }, 1600);
+        }
+      }, 1600);
+      return;
+    }
+
+    // ── Default generic response ──
     setSentMessage(msg); setIsThinking(true); setAiResponse(null);
     setDisplayedResponse(""); setIsStreaming(false);
     if (streamRef.current) clearTimeout(streamRef.current);
@@ -599,7 +686,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
       };
       stream();
     }, 2500);
-  }, [message]);
+  }, [message, richResponseType]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !showPromptPicker && message.trim()) { e.preventDefault(); handleSend(); }
@@ -2279,6 +2366,509 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                           </div>
                         </>
                       )}
+
+                      {/* ── Free-prompt follow-up turns ── */}
+                      {followUpTurns.map(turn => {
+                        const cfg = FOLLOW_UP_CFG[turn.intent];
+                        const isThinkingTurn  = turn.phase === "thinking";
+                        const isClarifying    = turn.phase === "clarifying";
+                        const isWorking       = turn.phase === "working";
+                        const isDone          = turn.phase === "done";
+
+                        // ── Rich result content based on intent ──
+                        const renderResult = () => {
+                          const choice = turn.clarifyChoice ?? "";
+                          switch (turn.intent) {
+
+                            case "covenant": return (
+                              <div className="space-y-2 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                                <p className="text-sm text-foreground">
+                                  {choice.includes("Full") ? "Here's a full covenant compliance overview across all active loans:" : `Here's the detailed analysis for **${choice}**:`}
+                                </p>
+                                {choice.includes("Full") ? (
+                                  <div className="rounded-[10px] border border-border overflow-hidden">
+                                    <table className="w-full text-xs">
+                                      <thead><tr className="bg-muted/60 border-b border-border">
+                                        {["Loan","Covenant","Actual","Threshold","Status"].map(h => <th key={h} className="px-3 py-2 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>)}
+                                      </tr></thead>
+                                      <tbody>
+                                        {[
+                                          { loan: "Term Loan A", cov: "DSCR ≥ 1.25", actual: "1.12", threshold: "1.25", status: "Breached" },
+                                          { loan: "Operating LOC", cov: "Min Cash $500K", actual: "$425K", threshold: "$500K", status: "At Risk" },
+                                          { loan: "Term Loan A", cov: "Debt-to-EBITDA ≤ 3.5×", actual: "2.9×", threshold: "3.5×", status: "OK" },
+                                          { loan: "Equipment Loan", cov: "Fixed Charge Coverage ≥ 1.1×", actual: "1.34×", threshold: "1.1×", status: "OK" },
+                                        ].map((r, i) => (
+                                          <tr key={i} className={`border-b border-border/40 ${i % 2 ? "bg-muted/20" : ""}`}>
+                                            <td className="px-3 py-2 font-medium">{r.loan}</td>
+                                            <td className="px-3 py-2 text-muted-foreground">{r.cov}</td>
+                                            <td className="px-3 py-2 font-semibold">{r.actual}</td>
+                                            <td className="px-3 py-2">{r.threshold}</td>
+                                            <td className="px-3 py-2">
+                                              <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-[4px] border ${r.status === "Breached" ? "bg-red-50 text-red-700 border-red-200" : r.status === "At Risk" ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-green-50 text-green-700 border-green-200"}`}>
+                                                {r.status === "Breached" ? <AlertTriangle className="h-2.5 w-2.5" /> : r.status === "At Risk" ? <AlertTriangle className="h-2.5 w-2.5" /> : <CheckCircle2 className="h-2.5 w-2.5" />}
+                                                {r.status}
+                                              </span>
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                ) : choice.includes("DSCR") ? (
+                                  <div className="rounded-[10px] border border-red-200 bg-red-50/40 dark:bg-red-950/20 dark:border-red-900/30 overflow-hidden">
+                                    <div className="flex items-center gap-2 px-4 py-2.5 border-b border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-950/30">
+                                      <AlertTriangle className="h-3.5 w-3.5 text-red-600" />
+                                      <span className="text-xs font-semibold text-red-700 dark:text-red-400">DSCR Covenant — Breached</span>
+                                    </div>
+                                    <div className="px-4 py-3 space-y-2 text-xs">
+                                      <div className="grid grid-cols-3 gap-3">
+                                        {[{l:"Actual DSCR",v:"1.12",c:"text-red-600 font-bold"},{l:"Required",v:"≥ 1.25",c:"text-foreground"},{l:"Shortfall",v:"0.13",c:"text-red-600 font-semibold"}].map(r=>(
+                                          <div key={r.l} className="rounded-[8px] bg-background border border-border px-2.5 py-2 text-center"><p className="text-[10px] text-muted-foreground mb-0.5">{r.l}</p><p className={`text-sm ${r.c}`}>{r.v}</p></div>
+                                        ))}
+                                      </div>
+                                      <p className="text-muted-foreground pt-1"><span className="font-semibold text-foreground">Root cause:</span> Operating cash flow declined 8.4% YoY while debt service remained constant. EBITDA was impacted by one-time restructuring costs of $240K.</p>
+                                      <p className="text-muted-foreground"><span className="font-semibold text-foreground">Recommended action:</span> Disclose breach in financial statement notes. Obtain waiver letter from RBC or reclassify the loan as current under ASPE 3856.</p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="rounded-[10px] border border-amber-200 bg-amber-50/40 dark:bg-amber-950/20 overflow-hidden">
+                                    <div className="flex items-center gap-2 px-4 py-2.5 border-b border-amber-200 bg-amber-50 dark:bg-amber-950/30">
+                                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+                                      <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">Min Cash Covenant — At Risk</span>
+                                    </div>
+                                    <div className="px-4 py-3 space-y-2 text-xs">
+                                      <div className="grid grid-cols-3 gap-3">
+                                        {[{l:"Actual Cash",v:"$425K",c:"text-amber-600 font-bold"},{l:"Required",v:"≥ $500K",c:"text-foreground"},{l:"Shortfall",v:"$75K",c:"text-amber-600 font-semibold"}].map(r=>(
+                                          <div key={r.l} className="rounded-[8px] bg-background border border-border px-2.5 py-2 text-center"><p className="text-[10px] text-muted-foreground mb-0.5">{r.l}</p><p className={`text-sm ${r.c}`}>{r.v}</p></div>
+                                        ))}
+                                      </div>
+                                      <p className="text-muted-foreground pt-1"><span className="font-semibold text-foreground">Root cause:</span> Seasonal working capital draw in Q4 reduced unrestricted cash below the minimum balance threshold set by TD.</p>
+                                      <p className="text-muted-foreground"><span className="font-semibold text-foreground">Recommended action:</span> Monitor cash position weekly. Consider drawing on the LOC headroom ($625K available) only if absolutely necessary. Disclose as at-risk in notes.</p>
+                                    </div>
+                                  </div>
+                                )}
+                                <div className="flex gap-2 pt-1">
+                                  <button className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[7px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+                                    <FileSpreadsheet className="h-3 w-3" /> Export to Excel
+                                  </button>
+                                  <button className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[7px] border border-primary/20 bg-primary/8 text-xs font-medium text-primary hover:bg-primary/15 transition-colors">
+                                    <FileText className="h-3 w-3" /> Draft Notes Disclosure
+                                  </button>
+                                </div>
+                              </div>
+                            );
+
+                            case "maturity": return (
+                              <div className="space-y-2 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                                <p className="text-sm text-foreground">Here's the maturity timeline for all active loan facilities:</p>
+                                <div className="rounded-[10px] border border-border overflow-hidden">
+                                  <table className="w-full text-xs">
+                                    <thead><tr className="bg-muted/60 border-b border-border">
+                                      {["Facility","Lender","Balance (CAD)","Maturity Date","Days Remaining","Status"].map(h=><th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide ${h==="Balance (CAD)"||h==="Days Remaining"?"text-right":"text-left"}`}>{h}</th>)}
+                                    </tr></thead>
+                                    <tbody>
+                                      {[
+                                        { name:"Term Loan A",    lender:"RBC",  bal:"$4,085,000", date:"Sep 01, 2027", days:840,  label:"1y 11mo", cls:"text-muted-foreground" },
+                                        { name:"Operating LOC",  lender:"TD",   bal:"$875,000",   date:"Mar 15, 2026", days:304,  label:"10 mo",   cls:"text-amber-600 font-semibold" },
+                                        { name:"Equipment Loan", lender:"HSBC", bal:"$2,064,128", date:"Dec 01, 2026", days:565,  label:"1y 7mo",  cls:"text-muted-foreground" },
+                                      ].map((r,i)=>(
+                                        <tr key={i} className={`border-b border-border/40 ${i%2?"bg-muted/20":""}`}>
+                                          <td className="px-3 py-2 font-medium">{r.name}</td>
+                                          <td className="px-3 py-2 text-muted-foreground">{r.lender}</td>
+                                          <td className="px-3 py-2 text-right tabular-nums">{r.bal}</td>
+                                          <td className="px-3 py-2 whitespace-nowrap">{r.date}</td>
+                                          <td className={`px-3 py-2 text-right tabular-nums ${r.cls}`}>{r.label}</td>
+                                          <td className="px-3 py-2">
+                                            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-[4px] border ${r.days<=365?"bg-amber-50 text-amber-700 border-amber-200":"bg-green-50 text-green-700 border-green-200"}`}>
+                                              <Calendar className="h-2.5 w-2.5" />{r.days<=365?"Renewing Soon":"On Track"}
+                                            </span>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                                <div className="rounded-[10px] bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 px-3 py-2 flex items-start gap-2 text-xs text-amber-800 dark:text-amber-300">
+                                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                                  <span><strong>Operating LOC</strong> matures in ~10 months (Mar 15, 2026). Recommend initiating renewal discussions with TD by Q3 2025.</span>
+                                </div>
+                                <div className="flex gap-2 pt-1">
+                                  <button className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[7px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+                                    <CalendarDays className="h-3 w-3" /> Add renewal reminders
+                                  </button>
+                                  <button className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[7px] border border-primary/20 bg-primary/8 text-xs font-medium text-primary hover:bg-primary/15 transition-colors">
+                                    <FileSpreadsheet className="h-3 w-3" /> Export maturity ladder
+                                  </button>
+                                </div>
+                              </div>
+                            );
+
+                            case "interest": return (
+                              <div className="space-y-2 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                                <p className="text-sm text-foreground">
+                                  {choice.includes("Year-end") ? "Accrued interest calculation as at December 31, 2025:" : choice.includes("Q1") ? "Q1 2026 interest accrual breakdown (Jan 1 – Mar 31):" : "Year-to-date accrued interest through May 15, 2026:"}
+                                </p>
+                                <div className="rounded-[10px] border border-border overflow-hidden">
+                                  <table className="w-full text-xs">
+                                    <thead><tr className="bg-muted/60 border-b border-border">
+                                      {["Loan","Rate","Balance","Days","Accrued Interest","YTD Expense"].map(h=><th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide ${h==="Loan"?"text-left":"text-right"}`}>{h}</th>)}
+                                    </tr></thead>
+                                    <tbody>
+                                      {[
+                                        { name:"Term Loan A",    rate:"5.25%", bal:"$3,750,000", days: choice.includes("Year-end")?"365":choice.includes("Q1")?"90":"135", accrued:"$197,125",  ytd:"$197,125"  },
+                                        { name:"Operating LOC",  rate:"7.45%", bal:"$875,000",   days: choice.includes("Year-end")?"365":choice.includes("Q1")?"90":"135", accrued:"$65,169",   ytd:"$65,169"   },
+                                        { name:"Equipment Loan", rate:"6.10%", bal:"$1,522,500", days: choice.includes("Year-end")?"365":choice.includes("Q1")?"90":"135", accrued:"$92,873",   ytd:"$92,873"   },
+                                      ].map((r,i)=>(
+                                        <tr key={i} className={`border-b border-border/40 ${i%2?"bg-muted/20":""}`}>
+                                          <td className="px-3 py-2 font-medium">{r.name}</td>
+                                          <td className="px-3 py-2 text-right text-primary">{r.rate}</td>
+                                          <td className="px-3 py-2 text-right tabular-nums">{r.bal}</td>
+                                          <td className="px-3 py-2 text-right">{r.days}</td>
+                                          <td className="px-3 py-2 text-right tabular-nums font-semibold">{r.accrued}</td>
+                                          <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{r.ytd}</td>
+                                        </tr>
+                                      ))}
+                                      <tr className="bg-muted/40 font-semibold border-t border-border">
+                                        <td colSpan={4} className="px-3 py-2 text-xs">Total</td>
+                                        <td className="px-3 py-2 text-right tabular-nums">$355,167</td>
+                                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">$355,167</td>
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                </div>
+                                <div className="flex gap-2 pt-1">
+                                  <button className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[7px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+                                    <TrendingUp className="h-3 w-3" /> Generate AJE
+                                  </button>
+                                  <button className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[7px] border border-primary/20 bg-primary/8 text-xs font-medium text-primary hover:bg-primary/15 transition-colors">
+                                    <FileSpreadsheet className="h-3 w-3" /> Export schedule
+                                  </button>
+                                </div>
+                              </div>
+                            );
+
+                            case "aje": return (
+                              <div className="space-y-2 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                                <p className="text-sm text-foreground">
+                                  Journal entry drafted for: <span className="font-semibold text-primary">{choice}</span>
+                                </p>
+                                <div className="rounded-[10px] border border-border overflow-hidden">
+                                  <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-muted/40">
+                                    <Receipt className="h-3.5 w-3.5 text-primary" />
+                                    <span className="text-xs font-semibold text-foreground">{choice.includes("Accrued") ? "AJE-06 — Accrued Interest FY2025" : choice.includes("Current") ? "AJE-07 — Current Portion Reclassification" : "AJE-08 — FX Translation Adjustment"}</span>
+                                    <span className="ml-auto text-[10px] text-muted-foreground">Dec 31, 2025</span>
+                                  </div>
+                                  <table className="w-full text-xs">
+                                    <thead><tr className="border-b border-border/40 bg-muted/20">
+                                      <th className="px-3 py-1.5 text-left text-[10px] font-semibold text-muted-foreground uppercase">Account</th>
+                                      <th className="px-3 py-1.5 text-right text-[10px] font-semibold text-muted-foreground uppercase">Debit</th>
+                                      <th className="px-3 py-1.5 text-right text-[10px] font-semibold text-muted-foreground uppercase">Credit</th>
+                                    </tr></thead>
+                                    <tbody>
+                                      {(choice.includes("Accrued") ? [
+                                        { acct:"6100 — Interest Expense",              dr:"$355,167", cr:""          },
+                                        { acct:"2210 — Accrued Interest Payable",      dr:"",         cr:"$355,167"  },
+                                      ] : choice.includes("Current") ? [
+                                        { acct:"2120 — Long-term Debt",                dr:"$892,000", cr:""          },
+                                        { acct:"2110 — Current Portion of LTD",        dr:"",         cr:"$892,000"  },
+                                      ] : [
+                                        { acct:"2120 — Long-term Debt (USD)",          dr:"",         cr:"$45,230"   },
+                                        { acct:"7200 — Foreign Exchange Gain/Loss",    dr:"$45,230",  cr:""          },
+                                      ]).map((r,i)=>(
+                                        <tr key={i} className={`border-b border-border/40 ${i%2?"bg-muted/10":""}`}>
+                                          <td className="px-3 py-2 text-foreground">{r.acct}</td>
+                                          <td className="px-3 py-2 text-right tabular-nums text-primary font-medium">{r.dr}</td>
+                                          <td className="px-3 py-2 text-right tabular-nums text-foreground">{r.cr}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                                <div className="flex gap-2 pt-1">
+                                  <button className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[7px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+                                    <TrendingUp className="h-3 w-3" /> Add to AJEs tab
+                                  </button>
+                                  <button className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[7px] border border-primary/20 bg-primary/8 text-xs font-medium text-primary hover:bg-primary/15 transition-colors">
+                                    <Check className="h-3 w-3" /> Submit for review
+                                  </button>
+                                </div>
+                              </div>
+                            );
+
+                            case "variance": return (
+                              <div className="space-y-2 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                                <p className="text-sm text-foreground">Here's the reconciliation variance analysis across all loan facilities:</p>
+                                <div className="rounded-[10px] border border-border overflow-hidden">
+                                  <table className="w-full text-xs">
+                                    <thead><tr className="bg-muted/60 border-b border-border">
+                                      {["Loan","TB Balance","Workpaper","Variance","Root Cause"].map(h=><th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide ${h==="Loan"||h==="Root Cause"?"text-left":"text-right"}`}>{h}</th>)}
+                                    </tr></thead>
+                                    <tbody>
+                                      {[
+                                        { name:"Term Loan A",    tb:"$3,750,000", wp:"$3,750,000", var:"$0",     cause:"Reconciled",                cls:"text-green-600" },
+                                        { name:"Operating LOC",  tb:"$875,500",   wp:"$875,000",   var:"($500)", cause:"Rounding — bank statement",  cls:"text-amber-600" },
+                                        { name:"Equipment Loan", tb:"$2,064,128", wp:"$2,064,128", var:"$0",     cause:"Reconciled",                cls:"text-green-600" },
+                                        { name:"Accrued Int.",   tb:"$62,480",    wp:"$65,000",    var:"($2,520)",cause:"Missing Dec accrual entry", cls:"text-red-600"   },
+                                      ].map((r,i)=>(
+                                        <tr key={i} className={`border-b border-border/40 ${i%2?"bg-muted/20":""}`}>
+                                          <td className="px-3 py-2 font-medium">{r.name}</td>
+                                          <td className="px-3 py-2 text-right tabular-nums">{r.tb}</td>
+                                          <td className="px-3 py-2 text-right tabular-nums">{r.wp}</td>
+                                          <td className={`px-3 py-2 text-right tabular-nums font-semibold ${r.cls}`}>{r.var}</td>
+                                          <td className="px-3 py-2 text-muted-foreground">{r.cause}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                                <div className="rounded-[10px] bg-primary/5 border border-primary/15 px-3 py-2 text-xs text-foreground">
+                                  <strong>2 items require attention:</strong> LOC rounding ($500) can be overridden with reason. Accrued interest variance ($2,520) requires AJE — generate it from the AJEs tab.
+                                </div>
+                                <div className="flex gap-2 pt-1">
+                                  <button className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[7px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+                                    <TrendingUp className="h-3 w-3" /> Generate AJE for accrual
+                                  </button>
+                                  <button className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[7px] border border-primary/20 bg-primary/8 text-xs font-medium text-primary hover:bg-primary/15 transition-colors">
+                                    <Check className="h-3 w-3" /> Override LOC rounding
+                                  </button>
+                                </div>
+                              </div>
+                            );
+
+                            case "export": return (
+                              <div className="space-y-2 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                                <p className="text-sm text-foreground">
+                                  {choice.includes("Excel") ? "I've generated the Excel workpaper package for the Long-term Debt schedule:" : choice.includes("PDF") ? "The notes disclosure draft has been generated:" : "Management summary report is ready:"}
+                                </p>
+                                <div className="rounded-[10px] border border-border bg-background p-4 flex items-center gap-3">
+                                  <div className="h-10 w-10 rounded-[8px] bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                                    {choice.includes("Excel") ? <FileSpreadsheet className="h-5 w-5 text-primary" /> : <FileText className="h-5 w-5 text-primary" />}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-foreground truncate">{choice.includes("Excel") ? "LTD_Workpaper_FY2025.xlsx" : choice.includes("PDF") ? "LTD_Notes_Disclosure_Draft.pdf" : "LTD_Management_Summary.pdf"}</p>
+                                    <p className="text-xs text-muted-foreground">{choice.includes("Excel") ? "6 sheets · 248 KB" : "3 pages · 142 KB"} · Generated just now</p>
+                                  </div>
+                                  <button className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors shrink-0">
+                                    <Download className="h-3.5 w-3.5" /> Download
+                                  </button>
+                                </div>
+                                {choice.includes("Excel") && (
+                                  <div className="text-xs text-muted-foreground px-1">
+                                    Includes: Loan Register · Continuity Schedule · Amortization Tables · Covenant Tracking · Accrued Interest · AJE Package
+                                  </div>
+                                )}
+                              </div>
+                            );
+
+                            case "loan": return (
+                              <div className="space-y-2 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                                {[
+                                  {
+                                    match:"RBC",
+                                    name:"Term Loan A", lender:"Royal Bank of Canada", ref:"RBC-2022-4451", type:"Term", currency:"CAD",
+                                    balance:"$3,750,000", rate:"5.25% Fixed", basis:"ACT/365", maturity:"Sep 01, 2027",
+                                    current:"$450,000", lt:"$3,300,000", accrued:"$197,125", payment:"Monthly blended",
+                                    covenants:["DSCR ≥ 1.25 (BREACHED — 1.12)","Debt-to-EBITDA ≤ 3.5× (OK — 2.9×)"],
+                                  },
+                                  {
+                                    match:"TD",
+                                    name:"Operating LOC", lender:"Toronto-Dominion Bank", ref:"TD-LOC-8832", type:"LOC", currency:"CAD",
+                                    balance:"$875,000", rate:"7.45% Variable", basis:"ACT/365", maturity:"Mar 15, 2026",
+                                    current:"$875,000", lt:"$0", accrued:"$65,169", payment:"Interest only",
+                                    covenants:["Min Cash $500K (AT RISK — $425K)"],
+                                  },
+                                  {
+                                    match:"HSBC",
+                                    name:"Equipment Loan", lender:"HSBC Bank Canada", ref:"HSBC-EQ-2291", type:"Term", currency:"USD",
+                                    balance:"USD $1,125,000 (CAD $2,064,128)", rate:"6.10% Fixed", basis:"30/360", maturity:"Dec 01, 2026",
+                                    current:"$442,000", lt:"$1,622,128", accrued:"$92,873", payment:"Monthly blended",
+                                    covenants:["Fixed Charge Coverage ≥ 1.1× (OK — 1.34×)"],
+                                  },
+                                ].filter(l => choice.includes(l.match)).map(l => (
+                                  <div key={l.ref} className="rounded-[10px] border border-border overflow-hidden">
+                                    <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-muted/40">
+                                      <Building2 className="h-3.5 w-3.5 text-primary" />
+                                      <span className="text-xs font-semibold text-foreground">{l.name}</span>
+                                      <span className="text-[10px] text-muted-foreground">·</span>
+                                      <span className="text-[10px] text-muted-foreground">{l.ref}</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-0 divide-x divide-border">
+                                      {[
+                                        ["Lender", l.lender], ["Loan Type", l.type], ["Currency", l.currency], ["Balance", l.balance],
+                                        ["Rate", l.rate], ["Day Count", l.basis], ["Maturity", l.maturity], ["Payment", l.payment],
+                                        ["Current Portion", l.current], ["Long-term Portion", l.lt], ["Accrued Interest", l.accrued],
+                                      ].map(([label, value]) => (
+                                        <div key={label} className="px-3 py-1.5 border-b border-border/40">
+                                          <p className="text-[10px] text-muted-foreground">{label}</p>
+                                          <p className="text-xs font-medium text-foreground">{value}</p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <div className="px-3 py-2 border-t border-border/40">
+                                      <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wide font-semibold">Covenants</p>
+                                      {l.covenants.map((c,i) => (
+                                        <div key={i} className={`text-xs ${c.includes("BREACHED")?"text-red-600":c.includes("AT RISK")?"text-amber-600":"text-foreground"}`}>{c}</div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ))}
+                                <div className="flex gap-2 pt-1">
+                                  <button className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[7px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+                                    <Table2 className="h-3 w-3" /> View amortization schedule
+                                  </button>
+                                  <button className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[7px] border border-primary/20 bg-primary/8 text-xs font-medium text-primary hover:bg-primary/15 transition-colors">
+                                    <TrendingUp className="h-3 w-3" /> Generate AJEs
+                                  </button>
+                                </div>
+                              </div>
+                            );
+
+                            case "continuity": return (
+                              <div className="space-y-2 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                                <p className="text-sm text-foreground">Long-term Debt continuity roll-forward for FY2025 (Jan 1 → Dec 31, 2025):</p>
+                                <div className="rounded-[10px] border border-border overflow-hidden">
+                                  <table className="w-full text-xs">
+                                    <thead><tr className="bg-muted/60 border-b border-border">
+                                      {["Loan","Opening","New Draws","Repayments","FX Adj.","Closing"].map(h=><th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide ${h==="Loan"?"text-left":"text-right"}`}>{h}</th>)}
+                                    </tr></thead>
+                                    <tbody>
+                                      {[
+                                        { name:"Term Loan A",    open:"$4,085,000", draws:"—",        repay:"($335,000)", fx:"—",       close:"$3,750,000" },
+                                        { name:"Operating LOC",  open:"$0",         draws:"$875,000",  repay:"—",          fx:"—",       close:"$875,000"   },
+                                        { name:"Equipment Loan", open:"$2,284,775", draws:"—",        repay:"($252,775)", fx:"$32,000",  close:"$2,064,000" },
+                                      ].map((r,i)=>(
+                                        <tr key={i} className={`border-b border-border/40 ${i%2?"bg-muted/20":""}`}>
+                                          <td className="px-3 py-2 font-medium">{r.name}</td>
+                                          <td className="px-3 py-2 text-right tabular-nums">{r.open}</td>
+                                          <td className="px-3 py-2 text-right tabular-nums text-green-600">{r.draws}</td>
+                                          <td className="px-3 py-2 text-right tabular-nums text-red-500">{r.repay}</td>
+                                          <td className="px-3 py-2 text-right tabular-nums text-blue-500">{r.fx}</td>
+                                          <td className="px-3 py-2 text-right tabular-nums font-semibold">{r.close}</td>
+                                        </tr>
+                                      ))}
+                                      <tr className="bg-muted/40 font-semibold border-t border-border text-xs">
+                                        <td className="px-3 py-2">Total</td>
+                                        <td className="px-3 py-2 text-right tabular-nums">$6,369,775</td>
+                                        <td className="px-3 py-2 text-right tabular-nums text-green-600">$875,000</td>
+                                        <td className="px-3 py-2 text-right tabular-nums text-red-500">($587,775)</td>
+                                        <td className="px-3 py-2 text-right tabular-nums text-blue-500">$32,000</td>
+                                        <td className="px-3 py-2 text-right tabular-nums">$6,689,000</td>
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                </div>
+                                <div className="flex gap-2 pt-1">
+                                  <button className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[7px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+                                    <FileSpreadsheet className="h-3 w-3" /> Export continuity
+                                  </button>
+                                  <button className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[7px] border border-primary/20 bg-primary/8 text-xs font-medium text-primary hover:bg-primary/15 transition-colors">
+                                    <RefreshCw className="h-3 w-3" /> Reconcile to TB
+                                  </button>
+                                </div>
+                              </div>
+                            );
+
+                            default: return (
+                              <div className="space-y-2 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                                <p className="text-sm text-foreground leading-relaxed">
+                                  Based on the Long-term Debt summary, here's my analysis for: <em>"{turn.userMsg}"</em>
+                                </p>
+                                <div className="rounded-[10px] bg-primary/5 border border-primary/15 px-3 py-2.5 text-xs text-foreground leading-relaxed">
+                                  The current portfolio of 3 active loan facilities totalling <strong>$6.69M CAD</strong> shows 2 covenant issues requiring immediate attention. Net interest expense for FY2025 is estimated at <strong>$355,167</strong>. The Operating LOC matures in 10 months — renewal planning should begin in Q3.
+                                </div>
+                                <div className="flex flex-wrap gap-2 pt-1">
+                                  {["Show covenant details","Run maturity analysis","Export to Excel"].map(a=>(
+                                    <button key={a} onClick={() => handleClarifyChoice(turn.id, a)} className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[7px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">{a}</button>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          }
+                        };
+
+                        return (
+                          <React.Fragment key={turn.id}>
+                            {/* User bubble */}
+                            <div className="flex justify-end">
+                              <div className="max-w-[80%] px-4 py-3 rounded-[12px] bg-primary text-primary-foreground text-sm leading-relaxed">{turn.userMsg}</div>
+                            </div>
+
+                            {/* Luka response bubble */}
+                            <div className="flex items-start gap-3 min-w-0 max-w-full">
+                              <div className={cn("w-9 h-9 rounded-full bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(265_80%_55%)] flex items-center justify-center shrink-0", (isThinkingTurn || isWorking) && "luka-thinking-spin")}>
+                                <LukaIcon size={16} />
+                              </div>
+                              <div className="flex-1 pt-1.5 min-w-0">
+                                {isThinkingTurn && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium text-foreground luka-thinking-text">Analysing your question</span>
+                                    <span className="flex gap-0.5">
+                                      <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-1" />
+                                      <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-2" />
+                                      <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-3" />
+                                    </span>
+                                  </div>
+                                )}
+
+                                {isClarifying && (
+                                  <div className="space-y-2 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                                    <p className="text-sm text-foreground">{cfg.question}</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {cfg.chips.map(chip => (
+                                        <button
+                                          key={chip}
+                                          onClick={() => handleClarifyChoice(turn.id, chip)}
+                                          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-primary/25 bg-primary/6 text-xs font-medium text-primary hover:bg-primary/15 transition-colors"
+                                        >
+                                          {chip}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {(isWorking || isDone) && (
+                                  <div className="space-y-3">
+                                    {/* Show the clarify question + selected answer as a recap */}
+                                    {cfg.question && turn.clarifyChoice && (
+                                      <div className="space-y-1.5">
+                                        <p className="text-sm text-foreground">{cfg.question}</p>
+                                        <div className="flex flex-wrap gap-2">
+                                          {cfg.chips.map(chip => (
+                                            <span
+                                              key={chip}
+                                              className={cn(
+                                                "inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border text-xs font-medium transition-colors",
+                                                chip === turn.clarifyChoice
+                                                  ? "border-primary/40 bg-primary/10 text-primary"
+                                                  : "border-border/40 bg-muted/30 text-muted-foreground"
+                                              )}
+                                            >
+                                              {chip === turn.clarifyChoice && <Check className="h-3 w-3" />}
+                                              {chip}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                    {isWorking && (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium text-foreground luka-thinking-text">Working on it</span>
+                                        <span className="flex gap-0.5">
+                                          <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-1" />
+                                          <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-2" />
+                                          <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-3" />
+                                        </span>
+                                      </div>
+                                    )}
+                                    {isDone && renderResult()}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </React.Fragment>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
