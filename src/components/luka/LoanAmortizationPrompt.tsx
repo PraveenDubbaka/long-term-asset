@@ -53,12 +53,18 @@ interface LoanAmortizationPromptProps {
 }
 
 export interface LoanAmortData {
+  loanName: string;
+  lender: string;
+  loanType: string;
   interestRateType: string;
   paymentType: string;
   loanTenure: string;
+  currency: string;
   principalAmount: string;
   annualInterestRate: string;
+  dayCountBasis: string;
   loanStartDate: string;
+  maturityDate: string;
   paymentFrequency: string;
   firstPaymentDate: string;
   compoundingFrequency: string;
@@ -69,12 +75,18 @@ export interface LoanAmortData {
 }
 
 const EMPTY: LoanAmortData = {
+  loanName: "",
+  lender: "",
+  loanType: "Term",
   interestRateType: "Fixed",
   paymentType: "Blended (Amortizing)",
   loanTenure: "",
+  currency: "CAD",
   principalAmount: "",
   annualInterestRate: "",
+  dayCountBasis: "ACT/365",
   loanStartDate: "",
+  maturityDate: "",
   paymentFrequency: "",
   firstPaymentDate: "",
   compoundingFrequency: "",
@@ -109,9 +121,7 @@ export function LoanAmortizationPrompt({ onSubmit }: LoanAmortizationPromptProps
 
   const isReady = !!(
     form.uploadedFile ||
-    form.principalAmount.trim() ||
-    form.annualInterestRate.trim() ||
-    form.loanTenure.trim()
+    (form.loanName.trim() && form.principalAmount.trim() && form.annualInterestRate.trim() && form.loanTenure.trim())
   );
 
   const handleSubmit = () => {
@@ -177,13 +187,20 @@ export function LoanAmortizationPrompt({ onSubmit }: LoanAmortizationPromptProps
         <div>
           <p className="text-xs italic text-muted-foreground mb-2">Loan Identification:</p>
           <div className="flex flex-wrap gap-3">
+            <InputField label="Loan Name" required placeholder="e.g. Term Loan A"
+              value={form.loanName} onChange={set("loanName")} />
+            <InputField label="Lender" placeholder="e.g. Royal Bank of Canada"
+              value={form.lender} onChange={set("lender")} />
+            <SelectField label="Loan Type"
+              options={["Term", "LOC", "Revolver", "Mortgage", "Bridge"]}
+              value={form.loanType} onChange={set("loanType")} />
             <SelectField label="Interest Rate Type" required
               options={["Fixed", "Variable", "Mixed"]}
               value={form.interestRateType} onChange={set("interestRateType")} />
             <SelectField label="Payment Type" required
               options={["Blended (Amortizing)", "Interest Only", "Principal + Interest", "Balloon", "Custom"]}
               value={form.paymentType} onChange={set("paymentType")} />
-            <InputField label="Loan Tenure (in months)" required placeholder="Loan Tenure"
+            <InputField label="Loan Tenure (in months)" required placeholder="e.g. 60"
               type="number" value={form.loanTenure} onChange={set("loanTenure")} />
           </div>
         </div>
@@ -192,12 +209,20 @@ export function LoanAmortizationPrompt({ onSubmit }: LoanAmortizationPromptProps
         <div>
           <p className="text-xs italic text-muted-foreground mb-2">Loan Principal &amp; frequency:</p>
           <div className="flex flex-wrap gap-3">
+            <SelectField label="Currency" required
+              options={["CAD", "USD", "EUR", "GBP"]}
+              value={form.currency} onChange={set("currency")} />
             <InputField label="Principal Amount" required placeholder="e.g. 500,000"
               value={form.principalAmount} onChange={set("principalAmount")} />
-            <InputField label="Annual Interest rate (%)" required placeholder="e.g. 5.25"
+            <InputField label="Annual Interest Rate (%)" required placeholder="e.g. 5.25"
               type="number" value={form.annualInterestRate} onChange={set("annualInterestRate")} />
+            <SelectField label="Day Count Basis"
+              options={["ACT/365", "ACT/360", "30/360"]}
+              value={form.dayCountBasis} onChange={set("dayCountBasis")} />
             <InputField label="Loan Start Date" placeholder="MM/DD/YYYY"
               type="date" value={form.loanStartDate} onChange={set("loanStartDate")} />
+            <InputField label="Maturity Date" placeholder="MM/DD/YYYY"
+              type="date" value={form.maturityDate} onChange={set("maturityDate")} />
             <SelectField label="Payment Frequency" required
               options={["", "Monthly", "Semi-monthly", "Bi-weekly", "Weekly", "Quarterly", "Semi-annual", "Annual"]}
               value={form.paymentFrequency} onChange={set("paymentFrequency")} />
@@ -213,11 +238,11 @@ export function LoanAmortizationPrompt({ onSubmit }: LoanAmortizationPromptProps
             <SelectField label="Compounding Frequency"
               options={["", "Monthly", "Semi-annual", "Annual", "Daily", "Continuous"]}
               value={form.compoundingFrequency} onChange={set("compoundingFrequency")} />
-            <InputField label="Interest-Only Period (in months)" placeholder="Interest Only Period"
+            <InputField label="Interest-Only Period (in months)" placeholder="e.g. 12"
               type="number" value={form.interestOnlyPeriod} onChange={set("interestOnlyPeriod")} />
-            <InputField label="Fixed Payment Amount" placeholder="Fixed Payment Amount"
+            <InputField label="Fixed Payment Amount" placeholder="e.g. 5,000"
               value={form.fixedPaymentAmount} onChange={set("fixedPaymentAmount")} />
-            <InputField label="Balloon Amount" placeholder="Balloon Amount"
+            <InputField label="Balloon Amount" placeholder="e.g. 100,000"
               value={form.balloonAmount} onChange={set("balloonAmount")} />
           </div>
         </div>

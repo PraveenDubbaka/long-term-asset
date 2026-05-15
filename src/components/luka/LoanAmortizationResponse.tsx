@@ -104,7 +104,10 @@ export function LoanAmortizationResponse({ data }: Props) {
 
       {/* Intro text */}
       <p className="text-sm text-foreground leading-relaxed">
-        I've generated the <strong>loan amortization schedule</strong> based on your inputs — here's a summary:
+        I've generated the <strong>loan amortization schedule</strong>
+        {data.loanName && <> for <span className="font-medium text-primary">{data.loanName}</span></>}
+        {data.lender && <> · <span className="text-muted-foreground">{data.lender}</span></>}
+        {" "}— here's a summary:
       </p>
 
       {/* KPI row */}
@@ -174,10 +177,13 @@ export function LoanAmortizationResponse({ data }: Props) {
 
       {/* Summary line */}
       <div className="rounded-[10px] bg-primary/5 border border-primary/15 px-3 py-2.5 text-xs text-foreground leading-relaxed">
+        {data.currency && <><strong>CCY:</strong> {data.currency} &nbsp;·&nbsp;</>}
         <strong>Principal:</strong> {fmt(principal)} &nbsp;·&nbsp;
         <strong>Rate:</strong> {data.annualInterestRate}% {data.interestRateType} &nbsp;·&nbsp;
+        {data.dayCountBasis && <><strong>Day Count:</strong> {data.dayCountBasis} &nbsp;·&nbsp;</>}
         <strong>Term:</strong> {data.loanTenure} months &nbsp;·&nbsp;
         <strong>Type:</strong> {data.paymentType}
+        {data.loanType && <> &nbsp;·&nbsp;<strong>Loan Type:</strong> {data.loanType}</>}
       </div>
 
       {/* Action buttons */}
