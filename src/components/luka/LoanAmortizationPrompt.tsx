@@ -50,6 +50,7 @@ function InputField({ label, required, placeholder, type = "text", value, onChan
 
 interface LoanAmortizationPromptProps {
   onSubmit?: (data: LoanAmortData) => void;
+  hideUpload?: boolean;
 }
 
 export interface LoanAmortData {
@@ -96,7 +97,7 @@ const EMPTY: LoanAmortData = {
   uploadedFile: null,
 };
 
-export function LoanAmortizationPrompt({ onSubmit }: LoanAmortizationPromptProps) {
+export function LoanAmortizationPrompt({ onSubmit, hideUpload = false }: LoanAmortizationPromptProps) {
   const [form, setForm] = useState<LoanAmortData>(EMPTY);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -134,50 +135,54 @@ export function LoanAmortizationPrompt({ onSubmit }: LoanAmortizationPromptProps
     <div className="border border-border rounded-[12px] bg-background overflow-hidden text-sm">
 
       {/* Upload zone */}
-      <div className="px-5 pt-5 pb-4">
-        <p className="text-xs font-semibold text-foreground mb-2">
-          Upload Loan Agreement to Auto-Fill
-          <span className="text-red-500 ml-0.5">*</span>
-        </p>
-        <div
-          onDragOver={e => { e.preventDefault(); setDragging(true); }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={handleDrop}
-          onClick={() => fileRef.current?.click()}
-          className={cn(
-            "relative flex items-center justify-center gap-2 rounded-[10px] border-2 border-dashed cursor-pointer transition-colors py-4",
-            dragging ? "border-primary bg-primary/5" : "border-border/60 hover:border-primary/40 hover:bg-muted/30",
-          )}
-        >
-          <input ref={fileRef} type="file" accept=".pdf" className="hidden"
-            onChange={e => handleFile(e.target.files?.[0] ?? null)} />
-          {form.uploadedFile ? (
-            <div className="flex items-center gap-2 text-xs text-foreground">
-              <FileText className="h-4 w-4 text-primary" />
-              <span className="font-medium">{form.uploadedFile}</span>
-              <button onClick={e => { e.stopPropagation(); setForm(f => ({ ...f, uploadedFile: null })); }}
-                className="ml-1 hover:text-destructive transition-colors">
-                <X className="h-3.5 w-3.5" />
-              </button>
+      {!hideUpload && (
+        <>
+          <div className="px-5 pt-5 pb-4">
+            <p className="text-xs font-semibold text-foreground mb-2">
+              Upload Loan Agreement to Auto-Fill
+              <span className="text-red-500 ml-0.5">*</span>
+            </p>
+            <div
+              onDragOver={e => { e.preventDefault(); setDragging(true); }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => fileRef.current?.click()}
+              className={cn(
+                "relative flex items-center justify-center gap-2 rounded-[10px] border-2 border-dashed cursor-pointer transition-colors py-4",
+                dragging ? "border-primary bg-primary/5" : "border-border/60 hover:border-primary/40 hover:bg-muted/30",
+              )}
+            >
+              <input ref={fileRef} type="file" accept=".pdf" className="hidden"
+                onChange={e => handleFile(e.target.files?.[0] ?? null)} />
+              {form.uploadedFile ? (
+                <div className="flex items-center gap-2 text-xs text-foreground">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <span className="font-medium">{form.uploadedFile}</span>
+                  <button onClick={e => { e.stopPropagation(); setForm(f => ({ ...f, uploadedFile: null })); }}
+                    className="ml-1 hover:text-destructive transition-colors">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">
+                    <span className="text-primary font-medium">Click to upload</span> or drag and drop
+                    &nbsp;&nbsp;PDF (max. 1 file, max. 2MB)
+                  </span>
+                </>
+              )}
             </div>
-          ) : (
-            <>
-              <Upload className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">
-                <span className="text-primary font-medium">Click to upload</span> or drag and drop
-                &nbsp;&nbsp;PDF (max. 1 file, max. 2MB)
-              </span>
-            </>
-          )}
-        </div>
-      </div>
+          </div>
 
-      {/* OR divider */}
-      <div className="flex items-center gap-3 px-5 pb-4">
-        <div className="flex-1 h-px bg-border" />
-        <span className="text-xs text-muted-foreground font-medium">OR</span>
-        <div className="flex-1 h-px bg-border" />
-      </div>
+          {/* OR divider */}
+          <div className="flex items-center gap-3 px-5 pb-4">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs text-muted-foreground font-medium">OR</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+        </>
+      )}
 
       {/* Manual inputs */}
       <div className="px-5 pb-5 space-y-4">

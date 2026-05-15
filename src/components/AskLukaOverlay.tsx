@@ -2481,7 +2481,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
 
                   {/* ── Step 2d: Manual entry (reuse prompt form) ── */}
                   {amortWizStep === 2 && amortSource === "manual" && (
-                    <LoanAmortizationPrompt onSubmit={(data) => {
+                    <LoanAmortizationPrompt hideUpload onSubmit={(data) => {
                       handleLoanAmortSubmit(data);
                       setAmortPhase("found");
                     }} />
