@@ -152,9 +152,7 @@ function LoansTab({ loans }: { loans: Loan[] }) {
   useLayoutEffect(() => {
     if (!newLoanOpen) { setPanelRect(null); return; }
     const measure = () => {
-      const inputBox = document
-        .querySelector<HTMLElement>('input[placeholder="Type # for prompts or just ask anything..."]')
-        ?.closest<HTMLElement>(".luka-gradient-border");
+      const inputBox = document.querySelector<HTMLElement>(".luka-gradient-border");
       if (!inputBox) return;
       const r = inputBox.getBoundingClientRect();
       setPanelRect({ left: r.left, right: window.innerWidth - r.right, bottom: window.innerHeight - r.top + 5 });
@@ -1130,9 +1128,7 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
   useLayoutEffect(() => {
     if (!editingCovId) { setPanelRect(null); return; }
     const measure = () => {
-      const inputBox = document
-        .querySelector<HTMLElement>('input[placeholder="Type # for prompts or just ask anything..."]')
-        ?.closest<HTMLElement>(".luka-gradient-border");
+      const inputBox = document.querySelector<HTMLElement>(".luka-gradient-border");
       if (!inputBox) return;
       const r = inputBox.getBoundingClientRect();
       setPanelRect({
