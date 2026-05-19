@@ -377,7 +377,7 @@ export function ContinuityTab() {
                 </tbody>
                 <tfoot className="sticky bottom-0 z-10">
                   <tr className="bg-muted/80 border-t-2 border-primary/20 font-semibold">
-                    <td className="px-4 py-2.5 text-foreground whitespace-nowrap">Total · {repayRows.length} facilities</td>
+                    <td className="px-4 py-2.5" />
                     {colTotals.map((v, i) => (
                       <td key={i} className="px-4 py-2.5 text-right tabular-nums text-foreground">
                         {v > 0 ? fmtNumber(v) : '00'}
@@ -809,7 +809,7 @@ export function ContinuityTab() {
                   return (
                     <tfoot className="sticky bottom-0 z-10">
                       <tr className="bg-muted/80 border-t-2 border-primary/20 font-semibold">
-                        <td className="px-3 py-2.5 text-foreground whitespace-nowrap">Total · {consolidatedByLoan.length} facilities</td>
+                        <td className="px-3 py-2.5" />
                         {colVisible('openingBalance') && <td className="px-3 py-2.5 tabular-nums text-right text-foreground">{fmtNumber(gt.openingBalance)}</td>}
                         {colVisible('newBorrowings') && <td className="px-3 py-2.5 tabular-nums text-right text-foreground">{gt.newBorrowings > 0 ? fmtNumber(gt.newBorrowings) : '00'}</td>}
                         {colVisible('principalRepayments') && <td className="px-3 py-2.5 tabular-nums text-right text-foreground">{gt.repayments > 0 ? `(${fmtNumber(gt.repayments)})` : '00'}</td>}
@@ -916,7 +916,7 @@ export function ContinuityTab() {
                     {ladderRows.length > 1 && (
                       <tfoot className="sticky bottom-0 z-10">
                         <tr className="bg-muted/80 border-t-2 border-primary/20 font-semibold">
-                          <td className="px-3 py-2.5 text-foreground whitespace-nowrap">Total · {ladderRows.length} facilities</td>
+                          <td className="px-3 py-2.5" />
                           {/* yr+2 … thereafter */}
                           {totals.slice(1).map((v, i) => (
                             <td key={i} className="px-3 py-2.5 tabular-nums text-right text-foreground text-xs">

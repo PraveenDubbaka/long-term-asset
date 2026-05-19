@@ -1504,12 +1504,7 @@ export function LoansTab() {
                 return (
                   <tfoot className="sticky bottom-0 z-10">
                     <tr className="bg-muted/50 border-t-2 border-border">
-                      <td className="px-3 py-2 text-sm font-semibold text-foreground whitespace-nowrap" colSpan={ftLeading}>
-                        Total &middot; {filteredLoans.length} {filteredLoans.length === 1 ? 'facility' : 'facilities'}
-                        {activeFilterCount > 0 && (
-                          <span className="text-foreground font-normal ml-1.5">(filtered)</span>
-                        )}
-                      </td>
+                      <td className="px-3 py-2" colSpan={ftLeading} />
                       {isVisible('monthlyPayment') && (
                         <td className="px-3 py-2 text-right tabular-nums text-sm font-bold text-foreground whitespace-nowrap">
                           {fmtCurrency(totalMonthlyPayment, 'CAD')}

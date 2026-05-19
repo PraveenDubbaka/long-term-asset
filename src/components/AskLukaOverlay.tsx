@@ -210,6 +210,44 @@ const LT_FILE_KIND_COLOR: Record<string, string> = {
   "workpaper":      "bg-amber-50 text-amber-700 border-amber-200",
 };
 
+// What each file type contributes to the workpaper
+const LT_SOURCE_INFO: Record<string, {
+  dot: string;        // Tailwind bg colour for the dot
+  border: string;     // border + bg for the card
+  heading: string;    // text colour for heading
+  provides: string;   // what data will be extracted
+  priority: number;   // merge priority (lower = overrides)
+}> = {
+  "loan-agreement": {
+    dot:      "bg-blue-500",
+    border:   "border-blue-200 bg-blue-50/60",
+    heading:  "text-blue-800",
+    provides: "Loan terms — principal, interest rate, maturity date, payment schedule, covenant clauses",
+    priority: 1,
+  },
+  "loan-register": {
+    dot:      "bg-purple-500",
+    border:   "border-purple-200 bg-purple-50/60",
+    heading:  "text-purple-800",
+    provides: "Full facility list — all loans with lender, type, GL account codes, and current balances",
+    priority: 2,
+  },
+  "continuity": {
+    dot:      "bg-green-500",
+    border:   "border-green-200 bg-green-50/60",
+    heading:  "text-green-800",
+    provides: "Balance roll-forward — opening balance, new draws, repayments, FX translation, closing balance",
+    priority: 3,
+  },
+  "workpaper": {
+    dot:      "bg-amber-500",
+    border:   "border-amber-200 bg-amber-50/60",
+    heading:  "text-amber-800",
+    provides: "Prior-year comparatives, existing GL mappings, posted notes, and covenant history",
+    priority: 4,
+  },
+};
+
 // ── Agentic Long-term Debt wizard — mock discovery data ───────────────────
 const LT_DEBT_ENG_DOCS = [
   { id: "ltd-1", name: "Long-term Debt Workpaper FY2024.xlsx", path: "Workpapers / Long-term Debt / FY2024", date: "Dec 31, 2024", size: "312 KB", ext: "xlsx" },
@@ -3559,25 +3597,119 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                               );
                             })}
 
-                            {/* Contextual tips */}
+                            {/* ── Error tips (blocking) ── */}
                             {errorFiles.some(f => f.kind === "unsupported") && (
-                              <p className="text-[10px] text-red-600 px-0.5 flex items-start gap-1">
-                                <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
-                                Unsupported files will be ignored. Accepted formats: PDF, Excel (.xlsx / .xls), ZIP
-                              </p>
+                              <div className="flex items-start gap-1.5 rounded-[7px] border border-red-200 bg-red-50 px-2.5 py-2">
+                                <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5 text-red-500" />
+                                <p className="text-[10px] text-red-700 leading-relaxed">
+                                  <span className="font-semibold">Unsupported file type</span> — these files will be ignored.
+                                  Luka only reads <span className="font-medium">PDF</span>, <span className="font-medium">Excel (.xlsx / .xls)</span>, or <span className="font-medium">ZIP</span> archives.
+                                  Remove them or re-export in a supported format.
+                                </p>
+                              </div>
                             )}
                             {errorFiles.some(f => f.kind === "oversized") && (
-                              <p className="text-[10px] text-red-600 px-0.5 flex items-start gap-1">
-                                <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
-                                Files over 2 MB will be skipped. Please compress or split large files before uploading.
-                              </p>
+                              <div className="flex items-start gap-1.5 rounded-[7px] border border-red-200 bg-red-50 px-2.5 py-2">
+                                <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5 text-red-500" />
+                                <p className="text-[10px] text-red-700 leading-relaxed">
+                                  <span className="font-semibold">File too large</span> — files over 2 MB will be skipped.
+                                  Compress, split, or export only the relevant sheets before re-uploading.
+                                </p>
+                              </div>
                             )}
                             {ambigFiles.length > 0 && (
-                              <p className="text-[10px] text-amber-600 px-0.5 flex items-start gap-1">
-                                <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
-                                Please classify the highlighted Excel file{ambigFiles.length > 1 ? "s" : ""} so Luka knows how to process {ambigFiles.length > 1 ? "them" : "it"}.
-                              </p>
+                              <div className="flex items-start gap-1.5 rounded-[7px] border border-amber-200 bg-amber-50 px-2.5 py-2">
+                                <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5 text-amber-500" />
+                                <p className="text-[10px] text-amber-800 leading-relaxed">
+                                  <span className="font-semibold">{ambigFiles.length} file{ambigFiles.length > 1 ? "s need" : " needs"} classification</span> — Luka can't tell what type {ambigFiles.length > 1 ? "these Excel files are" : "this Excel file is"} from the filename.
+                                  Use the dropdown on each highlighted row to tell Luka how to process {ambigFiles.length > 1 ? "them" : "it"}.
+                                </p>
+                              </div>
                             )}
+
+                            {/* ── Sources breakdown — shown when ≥ 1 valid file ── */}
+                            {validFiles.length > 0 && (() => {
+                              // Build a map: kind → count
+                              const kindMap = new Map<string, number>();
+                              validFiles.forEach(f => {
+                                const k = f.userKind ?? f.kind;
+                                if (k !== "ambiguous") kindMap.set(k, (kindMap.get(k) ?? 0) + 1);
+                              });
+                              const kinds = [...kindMap.entries()]
+                                .sort((a, b) => (LT_SOURCE_INFO[a[0]]?.priority ?? 99) - (LT_SOURCE_INFO[b[0]]?.priority ?? 99));
+
+                              const hasAgreement  = kindMap.has("loan-agreement");
+                              const hasContinuity = kindMap.has("continuity");
+                              const hasRegister   = kindMap.has("loan-register");
+                              const mixedTypes    = kinds.length > 1;
+
+                              return (
+                                <div className="rounded-[8px] border border-border/70 bg-muted/20 overflow-hidden">
+                                  {/* Header */}
+                                  <div className="px-3 py-2 border-b border-border/50 bg-muted/30 flex items-center gap-1.5">
+                                    <span className="text-[10px] font-semibold text-foreground">What Luka will extract</span>
+                                    {mixedTypes && <span className="text-[9px] text-muted-foreground ml-auto">Merge priority: left → right</span>}
+                                  </div>
+
+                                  {/* Source rows */}
+                                  <div className="divide-y divide-border/40">
+                                    {kinds.map(([kind, count]) => {
+                                      const info = LT_SOURCE_INFO[kind];
+                                      if (!info) return null;
+                                      return (
+                                        <div key={kind} className="flex items-start gap-2.5 px-3 py-2">
+                                          <div className={`w-1.5 h-1.5 rounded-full ${info.dot} shrink-0 mt-1`} />
+                                          <div className="flex-1 min-w-0">
+                                            <p className={`text-[10px] font-semibold ${info.heading}`}>
+                                              {count > 1 ? `${count} × ` : ""}{LT_FILE_KIND_LABEL[kind]}
+                                            </p>
+                                            <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">{info.provides}</p>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+
+                                  {/* Conflict / merge rules — only shown when types are mixed */}
+                                  {mixedTypes && (
+                                    <div className="px-3 py-2 border-t border-border/50 bg-muted/10 space-y-1">
+                                      <p className="text-[10px] font-semibold text-foreground">How conflicts are resolved</p>
+                                      {hasAgreement && hasContinuity && (
+                                        <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                          <span className="font-medium text-blue-700">Loan agreement</span> terms (rate, dates, covenants) take priority.
+                                          The <span className="font-medium text-green-700">continuity schedule</span> fills in opening balances and roll-forward movements where the agreement is silent.
+                                        </p>
+                                      )}
+                                      {hasAgreement && hasRegister && (
+                                        <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                          <span className="font-medium text-blue-700">Loan agreements</span> override individual loan terms from the <span className="font-medium text-purple-700">loan register</span>. The register is used for any facilities not covered by an agreement.
+                                        </p>
+                                      )}
+                                      {!hasAgreement && hasContinuity && (
+                                        <p className="text-[10px] text-amber-700 leading-relaxed font-medium">
+                                          No loan agreements detected — Luka will derive loan terms from the continuity schedule. For more complete data (covenants, payment terms), add a loan agreement PDF.
+                                        </p>
+                                      )}
+                                      {!hasAgreement && !hasContinuity && hasRegister && (
+                                        <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                          Loan terms will come from the loan register. For richer extraction (payment schedules, covenant clauses), add loan agreement PDFs too.
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {/* Tip: continuity-only, no agreement */}
+                                  {!mixedTypes && !hasAgreement && hasContinuity && (
+                                    <div className="px-3 py-2 border-t border-border/50 bg-amber-50/50">
+                                      <p className="text-[10px] text-amber-700 leading-relaxed">
+                                        <span className="font-semibold">Tip:</span> Continuity schedules provide balances and movements, but not full loan terms.
+                                        Add a <span className="font-medium">loan agreement PDF</span> to also populate rate, maturity, covenants and payment schedule.
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </div>
                         )}
                       </div>
@@ -3677,22 +3809,26 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20 shrink-0">
-                  <div className="flex items-center gap-3">
+                <div className="flex items-center px-4 py-3 border-t border-border bg-muted/20 shrink-0">
+                  {/* Left — Back */}
+                  <div className="flex-1 flex items-center">
                     {ltDebtWizStep > 1 ? (
                       <button onClick={() => setLtDebtWizStep(s => s - 1)}
                         className="h-8 px-3 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-[8px] bg-background hover:bg-muted transition-colors">
                         Back
                       </button>
-                    ) : <div className="w-12" />}
-                    <div className="flex items-center gap-1.5">
-                      {Array.from({ length: ltDebtSource === "manual" ? 2 : 3 }).map((_, i) => (
-                        <div key={i} className={`rounded-full transition-all duration-200 ${
-                          i + 1 === ltDebtWizStep ? "w-4 h-2 bg-primary" : i + 1 < ltDebtWizStep ? "w-2 h-2 bg-primary/50" : "w-2 h-2 bg-muted-foreground/25"
-                        }`} />
-                      ))}
-                    </div>
+                    ) : null}
                   </div>
+                  {/* Center — step dots */}
+                  <div className="flex items-center gap-1.5">
+                    {Array.from({ length: ltDebtSource === "manual" ? 2 : 3 }).map((_, i) => (
+                      <div key={i} className={`rounded-full transition-all duration-200 ${
+                        i + 1 === ltDebtWizStep ? "w-4 h-2 bg-primary" : i + 1 < ltDebtWizStep ? "w-2 h-2 bg-primary/50" : "w-2 h-2 bg-muted-foreground/25"
+                      }`} />
+                    ))}
+                  </div>
+                  {/* Right — Next / Approve */}
+                  <div className="flex-1 flex items-center justify-end">
                   {/* Last step for all sources — approve and generate */}
                   {(ltDebtWizStep === 3 || (ltDebtWizStep === 2 && ltDebtSource === "manual")) ? (
                     <button
@@ -3728,6 +3864,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                       Next <ChevronRight className="h-3.5 w-3.5" />
                     </button>
                   )}
+                  </div>
                 </div>
 
               </div>

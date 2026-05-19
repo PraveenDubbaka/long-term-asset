@@ -6,6 +6,7 @@ import {
   ShieldAlert, ShieldCheck, Activity, CreditCard,
   Building2, FileText, BookOpen, Receipt, Layers, FileCheck, Send, TrendingUp,
   Download, Copy, RotateCcw, X, Trash2, Search, Check, Pencil, Folder,
+  Upload, Loader2, Maximize2, Minimize2,
 } from "lucide-react";
 import { COVENANT_TEMPLATES } from "@/lib/covenantTemplates";
 import { useStore } from "@/store/useStore";
@@ -210,6 +211,65 @@ const EMPTY_LOAN_DRAFT = (): Partial<Loan> => ({
   covenantIds: [], currentPortion: 0, longTermPortion: 0, accruedInterest: 0, attachments: [],
 });
 
+// ─── Multi-loan upload / duplicate-detection types ───────────────────────────
+type DuplicateAction = "overwrite" | "skip" | "keep-both";
+
+interface DetectedLoan {
+  id: string; sourceFile: string;
+  name: string; lender: string; type: string;
+  currency: "CAD" | "USD" | "EUR" | "GBP";
+  interestType: string; rate: number;
+  originalPrincipal: number; currentBalance: number;
+  startDate: string; maturityDate: string;
+  firstPaymentDate: string; paymentFrequency: string;
+  paymentType: string; dayCountBasis: string;
+  securityDescription: string;
+  isDuplicate: boolean; duplicateId?: string;
+  duplicateAction: DuplicateAction; selected: boolean;
+}
+
+function generateMockDetectedLoans(fileNames: string[]): DetectedLoan[] {
+  const now = Date.now();
+  const n0 = fileNames[0]?.toLowerCase() ?? "";
+  const result: DetectedLoan[] = [
+    {
+      id: `dl-${now}-0`, sourceFile: fileNames[0],
+      name: "Term Loan A", lender: "Royal Bank of Canada",
+      type: "Term", currency: "CAD", interestType: "Fixed",
+      rate: 5.25, originalPrincipal: 3750000, currentBalance: 3485200,
+      startDate: "2022-01-15", maturityDate: "2027-01-15", firstPaymentDate: "2022-02-15",
+      paymentFrequency: "Monthly", paymentType: "P&I", dayCountBasis: "ACT/365",
+      securityDescription: "General Security Agreement over all assets of the borrower",
+      isDuplicate: false, duplicateAction: "skip", selected: true,
+    },
+    {
+      id: `dl-${now}-1`, sourceFile: fileNames[0],
+      name: n0.includes("revolver") ? "Revolving Credit Facility" : "Term Loan B",
+      lender: n0.includes("td") ? "TD Bank" : n0.includes("bmo") ? "BMO Bank of Montreal" : "CIBC",
+      type: n0.includes("revolver") ? "Revolver" : "Term",
+      currency: "CAD", interestType: "Fixed",
+      rate: 6.25, originalPrincipal: 2500000, currentBalance: 2500000,
+      startDate: "2024-03-15", maturityDate: "2029-03-15", firstPaymentDate: "2024-04-15",
+      paymentFrequency: "Monthly", paymentType: "P&I", dayCountBasis: "ACT/365",
+      securityDescription: "General Security Agreement over all present and after-acquired property",
+      isDuplicate: false, duplicateAction: "skip", selected: true,
+    },
+  ];
+  if (fileNames.length > 1) {
+    result.push({
+      id: `dl-${now}-2`, sourceFile: fileNames[1],
+      name: "Mortgage — Commercial Property", lender: "First National Financial",
+      type: "Mortgage", currency: "CAD", interestType: "Fixed",
+      rate: 5.89, originalPrincipal: 4200000, currentBalance: 4200000,
+      startDate: "2024-06-01", maturityDate: "2029-06-01", firstPaymentDate: "2024-07-01",
+      paymentFrequency: "Monthly", paymentType: "P&I", dayCountBasis: "ACT/365",
+      securityDescription: "First charge mortgage over commercial property at 123 Business Way",
+      isDuplicate: false, duplicateAction: "skip", selected: true,
+    });
+  }
+  return result;
+}
+
 function LoansTab({ loans }: { loans: Loan[] }) {
   const { accountMappings, reconciliation, updateLoan, addLoan } = useStore(s => ({
     accountMappings: s.accountMappings,
@@ -221,6 +281,100 @@ function LoansTab({ loans }: { loans: Loan[] }) {
   const [newLoanOpen,  setNewLoanOpen]  = useState(false);
   const [newLoan,      setNewLoan]      = useState<Partial<Loan>>(EMPTY_LOAN_DRAFT);
   const [panelRect,    setPanelRect]    = useState<{ left: number; right: number; bottom: number } | null>(null);
+
+  // Upload-mode state for Add New Loan panel
+  const [newLoanMode,     setNewLoanMode]     = useState<"manual" | "upload" | "review">("manual");
+  const [uploadLoanState, setUploadLoanState] = useState<"idle" | "extracting">("idle");
+  const [uploadLoanFile,  setUploadLoanFile]  = useState<string | null>(null);
+  const [uploadDragging,  setUploadDragging]  = useState(false);
+  const [detectedLoans,   setDetectedLoans]   = useState<DetectedLoan[]>([]);
+  const uploadFileRef = useRef<HTMLInputElement>(null);
+  const [tableExpanded,   setTableExpanded]   = useState(false);
+
+  const closeNewLoanPanel = () => {
+    setNewLoanOpen(false);
+    setNewLoan(EMPTY_LOAN_DRAFT());
+    setNewLoanMode("manual");
+    setUploadLoanState("idle");
+    setUploadLoanFile(null);
+    setDetectedLoans([]);
+  };
+
+  const handleUploadLoanFiles = (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    const valid: File[] = [];
+    Array.from(fileList).forEach(f => {
+      const ext = (f.name.split(".").pop() ?? "").toLowerCase();
+      if (!["pdf", "xlsx", "xls"].includes(ext)) {
+        toast.error(`"${f.name}" skipped — only PDF or Excel accepted`);
+        return;
+      }
+      if (f.size > 5 * 1024 * 1024) {
+        toast.error(`"${f.name}" skipped — must be under 5 MB`);
+        return;
+      }
+      valid.push(f);
+    });
+    if (valid.length === 0) return;
+    const label = valid.length === 1
+      ? valid[0].name
+      : `${valid[0].name} +${valid.length - 1} more`;
+    setUploadLoanFile(label);
+    setUploadLoanState("extracting");
+    toast.success(`${valid.length} file${valid.length !== 1 ? "s" : ""} uploaded — extracting loan details…`);
+    setTimeout(() => {
+      const fileNames = valid.map(f => f.name);
+      const mock = generateMockDetectedLoans(fileNames);
+      const withDupes = mock.map(dl => {
+        const existing = loans.find(l => l.name.toLowerCase() === dl.name.toLowerCase());
+        return { ...dl, isDuplicate: !!existing, duplicateId: existing?.id };
+      });
+      setDetectedLoans(withDupes);
+      setUploadLoanState("idle");
+      setUploadLoanFile(null);
+      setNewLoanMode("review");
+      const dc = withDupes.filter(dl => dl.isDuplicate).length;
+      toast.success(
+        `${withDupes.length} loan${withDupes.length !== 1 ? "s" : ""} detected` +
+        (dc > 0 ? ` · ${dc} duplicate${dc !== 1 ? "s" : ""} flagged — choose an action` : "")
+      );
+    }, 2000);
+  };
+
+  const handleImportDetected = () => {
+    const toImport = detectedLoans.filter(dl => dl.selected && !(dl.isDuplicate && dl.duplicateAction === "skip"));
+    if (toImport.length === 0) { toast.error("No loans selected for import — un-skip at least one loan"); return; }
+    toImport.forEach((dl, i) => {
+      const isOverwrite = dl.isDuplicate && dl.duplicateAction === "overwrite" && !!dl.duplicateId;
+      const loan: Loan = {
+        ...(EMPTY_LOAN_DRAFT() as Loan),
+        id: isOverwrite ? dl.duplicateId! : `loan-${Date.now()}-${i}`,
+        name: dl.duplicateAction === "keep-both" ? `${dl.name} (Imported)` : dl.name,
+        lender: dl.lender,
+        type: dl.type as Loan["type"],
+        currency: dl.currency as Loan["currency"],
+        interestType: dl.interestType as Loan["interestType"],
+        rate: dl.rate,
+        originalPrincipal: dl.originalPrincipal,
+        currentBalance: dl.currentBalance,
+        startDate: dl.startDate, maturityDate: dl.maturityDate,
+        firstPaymentDate: dl.firstPaymentDate,
+        paymentFrequency: dl.paymentFrequency as Loan["paymentFrequency"],
+        paymentType: dl.paymentType as Loan["paymentType"],
+        dayCountBasis: dl.dayCountBasis as Loan["dayCountBasis"],
+        securityDescription: dl.securityDescription,
+        status: "Active", refNumber: `REF-${Date.now()}-${i}`,
+      };
+      if (isOverwrite) { updateLoan(dl.duplicateId!, loan); }
+      else             { addLoan(loan); }
+    });
+    const skipped = detectedLoans.length - toImport.length;
+    toast.success(
+      `${toImport.length} loan${toImport.length !== 1 ? "s" : ""} imported — generating amortization schedules…` +
+      (skipped > 0 ? ` (${skipped} skipped)` : "")
+    );
+    closeNewLoanPanel();
+  };
 
   useLayoutEffect(() => {
     if (!newLoanOpen) { setPanelRect(null); return; }
@@ -250,8 +404,7 @@ function LoansTab({ loans }: { loans: Loan[] }) {
     } as Loan;
     addLoan(loan);
     toast.success("Loan added — generating amortization schedule…");
-    setNewLoanOpen(false);
-    setNewLoan(EMPTY_LOAN_DRAFT());
+    closeNewLoanPanel();
   };
 
   const principalAccts = accountMappings.filter(a => a.type === "Principal");
@@ -297,32 +450,33 @@ function LoansTab({ loans }: { loans: Loan[] }) {
   const glGrandGL  = glGroups.reduce((s,[,g])=>s+g.glBal,0);
   const glBalanced = Math.abs(glGrandGL - glGrandBal) < 1;
 
-  // Column headers — exact order from full Loan Register page
   const HEADERS = [
-    { h: "Loan Name",       left: true },
-    { h: "Lender",          left: true },
-    { h: "Current Collateral", left: true },
-    { h: "Type",            left: false },
-    { h: "Rate Type",       left: false },
-    { h: "Int. Rate (%)",   left: false },
-    { h: "Start",           left: false },
-    { h: "Maturity",        left: false },
-    { h: "Tenure (Mo.)",    left: false },
-    { h: "First Payment",   left: false },
-    { h: "CCY",             left: false },
-    { h: "Mo. Payment",     left: false },
-    { h: "Orig. Loan Amt",  left: false },
-    { h: "FX Rate",         left: false },
-    { h: "Converted Amt",   left: false },
-    { h: "Closing Balance", left: false },
-    { h: "GL Principal",    left: false },
-    { h: "Day Count",       left: false },
-    { h: "Payment Type",    left: false },
-    { h: "Compounding",     left: false },
-    { h: "IO Period (mo.)", left: false },
-    { h: "Balloon Amt",     left: false },
-    { h: "Status",          left: false },
+    { h: "Loan Name",          left: true  },
+    { h: "Lender",             left: true  },
+    { h: "Current Collateral", left: true  },
+    { h: "Type",               left: false },
+    { h: "Rate Type",          left: false },
+    { h: "Int. Rate (%)",      left: false },
+    { h: "Start",              left: false },
+    { h: "Maturity",           left: false },
+    { h: "Tenure (Mo.)",       left: false },
+    { h: "First Payment",      left: false },
+    { h: "CCY",                left: false },
+    { h: "Mo. Payment",        left: false },
+    { h: "Orig. Loan Amt",     left: false },
+    { h: "FX Rate",            left: false },
+    { h: "Converted Amt",      left: false },
+    { h: "Closing Balance",    left: false },
+    { h: "GL Principal",       left: false },
+    { h: "Day Count",          left: false },
+    { h: "Payment Type",       left: false },
+    { h: "Compounding",        left: false },
+    { h: "IO Period (mo.)",    left: false },
+    { h: "Balloon Amt",        left: false },
+    { h: "Status",             left: false },
   ];
+  // compact = narrower table (text cols constrained), expanded = full width; both scroll
+  const fit = !tableExpanded;
 
   return (
     <div className="space-y-3">
@@ -332,6 +486,15 @@ function LoansTab({ loans }: { loans: Loan[] }) {
           <div className="flex items-center gap-3">
             <span className="text-[10px] text-muted-foreground">Manage facilities, terms, and GL mappings</span>
             <button
+              onClick={() => setTableExpanded(v => !v)}
+              title={tableExpanded ? "Fit to screen (compact)" : "Expand all columns"}
+              className="inline-flex items-center justify-center h-7 w-7 rounded-[7px] border border-border bg-background hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            >
+              {tableExpanded
+                ? <Minimize2 className="h-3.5 w-3.5" />
+                : <Maximize2 className="h-3.5 w-3.5" />}
+            </button>
+            <button
               onClick={() => { setNewLoan(EMPTY_LOAN_DRAFT()); setNewLoanOpen(true); }}
               className="inline-flex items-center gap-1 h-7 px-2.5 text-[11px] font-medium bg-primary text-primary-foreground rounded-[7px] hover:bg-primary/90 transition-colors shrink-0"
             >
@@ -339,35 +502,48 @@ function LoansTab({ loans }: { loans: Loan[] }) {
             </button>
           </div>
         </div>
+        {/* Both modes scroll — compact uses narrower text cols; numbers always fully visible */}
         <div className="overflow-x-auto">
-          <table className="text-[11px]" style={{ minWidth: "1600px" }}>
+          <table
+            className="text-[11px]"
+            style={{ minWidth: fit ? "1400px" : "1900px" }}
+          >
             <thead>
               <tr className="bg-muted/30 border-b border-border">
                 {HEADERS.map(({ h, left }) => (
-                  <th key={h} className={`px-2.5 py-2 font-semibold text-muted-foreground uppercase tracking-wide text-[10px] whitespace-nowrap ${left ? "text-left" : "text-right"}`}>{h}</th>
+                  <th
+                    key={h}
+                    className={`px-2.5 py-2 font-semibold text-muted-foreground uppercase tracking-wide text-[10px] whitespace-nowrap ${left ? "text-left" : "text-right"}`}
+                  >{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loans.map((l, i) => {
-                const fx       = getFxRate(l);
-                const pmt      = calcMonthlyPmt(l);
-                const pmtCAD   = pmt !== null ? pmt * fx : null;
-                const convAmt  = l.originalPrincipal * fx;
+                const fx         = getFxRate(l);
+                const pmt        = calcMonthlyPmt(l);
+                const pmtCAD     = pmt !== null ? pmt * fx : null;
+                const convAmt    = l.originalPrincipal * fx;
                 const closingCAD = (l.closingBalance ?? l.currentBalance) * fx;
                 return (
                   <tr key={l.id} className="border-b border-border transition-colors hover:bg-muted/30 cursor-pointer">
-                    {/* Loan Name */}
-                    <td className="px-2.5 py-1.5 min-w-[130px]">
-                      <p className="font-medium text-foreground whitespace-nowrap">{l.name}</p>
+                    {/* Loan Name — text constrained in compact */}
+                    <td className="px-2.5 py-1.5">
+                      <div className={fit ? "max-w-[110px] truncate font-medium text-foreground" : "font-medium text-foreground whitespace-nowrap min-w-[140px]"} title={l.name}>
+                        {l.name}
+                      </div>
                     </td>
-                    {/* Lender */}
-                    <td className="px-2.5 py-1.5 text-foreground whitespace-nowrap min-w-[130px]">{l.lender}</td>
-                    {/* Current Collateral */}
-                    <td className="px-2.5 py-1.5 text-foreground max-w-[120px]">
-                      <span className="text-[10px] line-clamp-2" title={l.securityDescription ?? "—"}>
+                    {/* Lender — text constrained in compact */}
+                    <td className="px-2.5 py-1.5 text-foreground">
+                      <div className={fit ? "max-w-[95px] truncate" : "whitespace-nowrap min-w-[130px]"} title={l.lender}>
+                        {l.lender}
+                      </div>
+                    </td>
+                    {/* Current Collateral — text constrained in compact */}
+                    <td className="px-2.5 py-1.5 text-foreground" title={l.securityDescription ?? "—"}>
+                      <div className={`text-[10px] ${fit ? "max-w-[80px] truncate" : "max-w-[140px] line-clamp-2"}`}>
                         {l.securityDescription ?? "—"}
-                      </span>
+                      </div>
                     </td>
                     {/* Type */}
                     <td className="px-2.5 py-1.5 text-right">
@@ -383,14 +559,14 @@ function LoansTab({ loans }: { loans: Loan[] }) {
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">{l.interestType ?? "Fixed"}</span>
                       )}
                     </td>
-                    {/* Int. Rate */}
-                    <td className="px-2.5 py-1.5 text-right tabular-nums font-medium">{l.rate.toFixed(2)}%</td>
+                    {/* Int. Rate — number, never truncate */}
+                    <td className="px-2.5 py-1.5 text-right tabular-nums font-medium whitespace-nowrap">{l.rate.toFixed(2)}%</td>
                     {/* Start */}
                     <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{fmtDate(l.startDate)}</td>
                     {/* Maturity */}
                     <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{fmtDate(l.maturityDate)}</td>
-                    {/* Tenure (Mo.) */}
-                    <td className="px-2.5 py-1.5 text-right tabular-nums text-foreground">{getTenure(l)}</td>
+                    {/* Tenure */}
+                    <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{getTenure(l)}</td>
                     {/* First Payment */}
                     <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">
                       {l.firstPaymentDate ? fmtDate(l.firstPaymentDate) : "—"}
@@ -406,35 +582,35 @@ function LoansTab({ loans }: { loans: Loan[] }) {
                         : <span className="text-muted-foreground">—</span>}
                     </td>
                     {/* Orig. Loan Amt */}
-                    <td className="px-2.5 py-1.5 text-right tabular-nums text-foreground whitespace-nowrap">{fmt(l.originalPrincipal)}</td>
+                    <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{fmt(l.originalPrincipal)}</td>
                     {/* FX Rate */}
                     <td className="px-2.5 py-1.5 text-right">
                       {l.currency === "CAD"
-                        ? <span className="text-muted-foreground">—</span>
+                        ? <span className="text-muted-foreground whitespace-nowrap">—</span>
                         : <div className="flex flex-col items-end gap-0.5">
-                            <span className="font-mono text-[10px] text-foreground tabular-nums">{fx.toFixed(4)}</span>
-                            <span className="text-[9px] text-muted-foreground">{l.fxRateType ?? "Closing"}</span>
+                            <span className="font-mono text-[10px] text-foreground tabular-nums whitespace-nowrap">{fx.toFixed(4)}</span>
+                            {!fit && <span className="text-[9px] text-muted-foreground">{l.fxRateType ?? "Closing"}</span>}
                           </div>}
                     </td>
                     {/* Converted Amt */}
-                    <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold text-foreground whitespace-nowrap">{fmt(convAmt)}</td>
+                    <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold whitespace-nowrap text-foreground">{fmt(convAmt)}</td>
                     {/* Closing Balance */}
-                    <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold text-foreground whitespace-nowrap">{fmt(closingCAD)}</td>
+                    <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold whitespace-nowrap text-foreground">{fmt(closingCAD)}</td>
                     {/* GL Principal */}
                     <td className="px-2.5 py-1.5 text-right">
                       <GLSelect loanId={l.id} value={l.glPrincipalAccount} options={principalAccts} field="glPrincipalAccount" onSave={handleGLSave} />
                     </td>
                     {/* Day Count */}
-                    <td className="px-2.5 py-1.5 text-right font-mono text-foreground whitespace-nowrap">{l.dayCountBasis}</td>
+                    <td className="px-2.5 py-1.5 text-right font-mono whitespace-nowrap text-foreground">{l.dayCountBasis}</td>
                     {/* Payment Type */}
                     <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{l.paymentType}</td>
                     {/* Compounding */}
                     <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{l.compoundingFrequency ?? "Monthly"}</td>
                     {/* IO Period */}
-                    <td className="px-2.5 py-1.5 text-right tabular-nums text-foreground">{l.interestOnlyPeriodMonths ?? "—"}</td>
+                    <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{l.interestOnlyPeriodMonths ?? "—"}</td>
                     {/* Balloon Amt */}
-                    <td className="px-2.5 py-1.5 text-right tabular-nums text-foreground">
-                      {l.balloonAmount ? fmt(l.balloonAmount) : "00"}
+                    <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">
+                      {l.balloonAmount ? fmt(l.balloonAmount) : "—"}
                     </td>
                     {/* Status */}
                     <td className="px-2.5 py-1.5 text-right"><StatusBadge status={l.status} /></td>
@@ -443,8 +619,9 @@ function LoansTab({ loans }: { loans: Loan[] }) {
               })}
             </tbody>
             <tfoot className="sticky bottom-0 z-10">
+              {/* 23 cols: Name(1)…MoPmt(12) | OrigAmt(13) | FX(14) | ConvAmt(15) | Closing(16) | GL…Status×7 */}
               <tr className="bg-muted/50 border-t-2 border-border font-semibold">
-                <td className="px-2.5 py-2 text-[11px] font-semibold text-foreground whitespace-nowrap" colSpan={12}>Total · {loans.length} {loans.length === 1 ? "facility" : "facilities"}</td>
+                <td className="px-2.5 py-2" colSpan={12} />
                 <td className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+l.originalPrincipal,0))}</td>
                 <td className="px-2.5 py-2" />
                 <td className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+l.originalPrincipal*getFxRate(l),0))}</td>
@@ -509,9 +686,12 @@ function LoansTab({ loans }: { loans: Loan[] }) {
       {/* ── Add New Loan slide-up panel ── */}
       {newLoanOpen && (() => {
         const LF = "h-8 w-full text-sm px-2.5 border border-border rounded-[8px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40";
+        const isFormReady = !!(newLoan.name?.trim() && newLoan.lender?.trim());
+        const importCount = detectedLoans.filter(dl => dl.selected && !(dl.isDuplicate && dl.duplicateAction === "skip")).length;
+        const dupeCount   = detectedLoans.filter(dl => dl.isDuplicate).length;
         return (
           <>
-            <div className="fixed inset-0 z-[59]" onClick={() => setNewLoanOpen(false)} />
+            <div className="fixed inset-0 z-[59]" onClick={closeNewLoanPanel} />
             <div
               className="fixed z-[60] pointer-events-none"
               style={panelRect
@@ -522,115 +702,323 @@ function LoansTab({ loans }: { loans: Loan[] }) {
 
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-                  <span className="text-sm font-semibold text-foreground">Add New Loan</span>
-                  <button onClick={() => setNewLoanOpen(false)} className="p-1 rounded-[6px] hover:bg-muted transition-colors text-muted-foreground">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-foreground">Add New Loan</span>
+                    {/* Mode tabs */}
+                    <div className="flex items-center gap-0.5 bg-muted/60 rounded-[8px] p-0.5">
+                      <button
+                        onClick={() => setNewLoanMode("manual")}
+                        className={`h-6 px-2.5 text-xs font-medium rounded-[6px] transition-colors ${newLoanMode === "manual" ? "bg-background border border-border/60 shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                      >
+                        Manual Entry
+                      </button>
+                      <button
+                        onClick={() => { setNewLoanMode("upload"); setUploadLoanState("idle"); setUploadLoanFile(null); setDetectedLoans([]); }}
+                        className={`h-6 px-2.5 text-xs font-medium rounded-[6px] transition-colors flex items-center gap-1 ${newLoanMode === "upload" || newLoanMode === "review" ? "bg-background border border-border/60 shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                      >
+                        <Upload className="h-2.5 w-2.5" />
+                        {newLoanMode === "review" ? "Review" : "Upload Doc"}
+                      </button>
+                    </div>
+                    {/* Review badge */}
+                    {newLoanMode === "review" && (
+                      <span className="text-[10px] text-muted-foreground">
+                        {detectedLoans.length} loan{detectedLoans.length !== 1 ? "s" : ""} detected
+                        {dupeCount > 0 && <span className="ml-1 text-amber-600 font-medium">· {dupeCount} duplicate{dupeCount !== 1 ? "s" : ""}</span>}
+                      </span>
+                    )}
+                  </div>
+                  <button onClick={closeNewLoanPanel} className="p-1 rounded-[6px] hover:bg-muted transition-colors text-muted-foreground">
                     <X className="h-4 w-4" />
                   </button>
                 </div>
 
-                {/* Body */}
-                <div className="overflow-y-auto flex-1 px-4 py-4">
-                  <div className="flex flex-wrap gap-x-3 gap-y-3">
-                    {/* Name */}
-                    <div style={{ flex: "3 1 180px", minWidth: 0 }}>
-                      <label className="block text-xs text-muted-foreground mb-1">Loan Name <span className="text-red-500">*</span></label>
-                      <input className={LF} placeholder="e.g. Term Loan A" value={newLoan.name ?? ""} onChange={e => setF("name", e.target.value)} />
+                {/* ── Upload mode ── */}
+                {newLoanMode === "upload" && (
+                  <div className="overflow-y-auto flex-1 p-4 space-y-3">
+                    {/* Drop zone */}
+                    {uploadLoanState === "idle" && (
+                      <div
+                        onDragOver={e => { e.preventDefault(); setUploadDragging(true); }}
+                        onDragLeave={() => setUploadDragging(false)}
+                        onDrop={e => { e.preventDefault(); setUploadDragging(false); handleUploadLoanFiles(e.dataTransfer.files); }}
+                        onClick={() => uploadFileRef.current?.click()}
+                        className={`flex flex-col items-center justify-center gap-3 rounded-[10px] border-2 border-dashed cursor-pointer transition-colors py-9 ${uploadDragging ? "border-primary bg-primary/5" : "border-border/60 hover:border-primary/40 hover:bg-muted/30"}`}
+                      >
+                        <input ref={uploadFileRef} type="file" accept=".pdf,.xlsx,.xls" multiple className="hidden"
+                          onChange={e => handleUploadLoanFiles(e.target.files)} />
+                        <div className="w-11 h-11 rounded-full bg-muted flex items-center justify-center">
+                          <Upload className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-medium text-foreground">
+                            <span className="text-primary">Click to upload</span> or drag and drop
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">PDF or Excel · multiple files supported · max 5 MB each</p>
+                        </div>
+                      </div>
+                    )}
+                    {/* Extracting spinner */}
+                    {uploadLoanState === "extracting" && (
+                      <div className="flex flex-col items-center justify-center gap-3 py-9">
+                        <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Loader2 className="h-5 w-5 text-primary animate-spin" />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-medium text-foreground">{uploadLoanFile}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">Extracting all loans — this takes a moment…</p>
+                        </div>
+                      </div>
+                    )}
+                    {/* Accepted docs hint */}
+                    {uploadLoanState === "idle" && (
+                      <div className="rounded-[8px] bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3">
+                        <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1.5">Accepted documents</p>
+                        <ul className="space-y-1">
+                          {[
+                            ["Loan agreements or credit facility letters", "Each loan extracted individually"],
+                            ["Term sheets or commitment letters",           "Principal, rate, dates populated"],
+                            ["Prior year workpaper (Excel)",                "All tabs detected and imported"],
+                          ].map(([doc, note]) => (
+                            <li key={doc} className="flex items-start gap-1.5">
+                              <Check className="h-3 w-3 text-blue-500 mt-0.5 shrink-0" />
+                              <span className="text-[11px] text-blue-700 dark:text-blue-300">
+                                <span className="font-medium">{doc}</span>
+                                <span className="text-blue-500 dark:text-blue-400"> — {note}</span>
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Review mode ── */}
+                {newLoanMode === "review" && (
+                  <div className="flex flex-col flex-1 min-h-0">
+                    {/* Toolbar */}
+                    <div className="px-4 py-2 border-b border-border bg-muted/10 shrink-0 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => { setNewLoanMode("upload"); setDetectedLoans([]); }}
+                          className="text-[11px] text-primary hover:underline flex items-center gap-1">
+                          ← Re-upload
+                        </button>
+                        {dupeCount > 0 && (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 font-medium">
+                            <AlertTriangle className="h-2.5 w-2.5" />
+                            {dupeCount} duplicate{dupeCount !== 1 ? "s" : ""} — set an action below
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setDetectedLoans(d => d.map(l => ({ ...l, selected: true })))}
+                          className="text-[10px] text-muted-foreground hover:text-foreground">Select all</button>
+                        <span className="text-muted-foreground text-[10px]">·</span>
+                        <button onClick={() => setDetectedLoans(d => d.map(l => ({ ...l, selected: false })))}
+                          className="text-[10px] text-muted-foreground hover:text-foreground">Deselect all</button>
+                      </div>
                     </div>
-                    {/* Lender */}
-                    <div style={{ flex: "2 1 140px", minWidth: 0 }}>
-                      <label className="block text-xs text-muted-foreground mb-1">Lender <span className="text-red-500">*</span></label>
-                      <input className={LF} placeholder="e.g. Royal Bank of Canada" value={newLoan.lender ?? ""} onChange={e => setF("lender", e.target.value)} />
+
+                    {/* Table */}
+                    <div className="overflow-auto flex-1 min-h-0">
+                      <table className="w-full text-[11px]" style={{ minWidth: 780 }}>
+                        <thead className="sticky top-0 z-10">
+                          <tr className="bg-muted/40 border-b border-border">
+                            {["","Loan Name","Lender","Type","CCY","Principal","Rate","Maturity","Status","Action"].map(h => (
+                              <th key={h} className={`px-2.5 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h === "" ? "w-8" : h === "Loan Name" || h === "Lender" ? "text-left" : "text-right"}`}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {detectedLoans.map((dl, i) => {
+                            const isSkipped = dl.isDuplicate && dl.duplicateAction === "skip";
+                            // Dim only the data cells, never status/action
+                            const dataDim = isSkipped ? "opacity-40" : "";
+                            return (
+                              <tr key={dl.id} className={`border-b border-border transition-colors ${dl.isDuplicate && !isSkipped ? "bg-amber-50/50 dark:bg-amber-950/10 hover:bg-amber-50 dark:hover:bg-amber-950/20" : isSkipped ? "bg-muted/5" : "hover:bg-muted/20"}`}>
+                                {/* Checkbox */}
+                                <td className={`px-2.5 py-2 text-center ${dataDim}`}>
+                                  <input type="checkbox" checked={dl.selected && !isSkipped} disabled={isSkipped}
+                                    onChange={e => setDetectedLoans(prev => prev.map((d, j) => j === i ? { ...d, selected: e.target.checked } : d))}
+                                    className="h-3.5 w-3.5 accent-primary cursor-pointer disabled:cursor-not-allowed" />
+                                </td>
+                                {/* Loan Name */}
+                                <td className={`px-2.5 py-2 ${dataDim}`}>
+                                  <p className={`font-medium whitespace-nowrap ${isSkipped ? "text-muted-foreground line-through" : "text-foreground"}`}>{dl.name}</p>
+                                  <p className="text-[9px] text-muted-foreground mt-0.5 truncate max-w-[150px]" title={dl.sourceFile}>{dl.sourceFile}</p>
+                                </td>
+                                {/* Lender */}
+                                <td className={`px-2.5 py-2 text-foreground whitespace-nowrap ${dataDim}`}>{dl.lender}</td>
+                                {/* Type */}
+                                <td className={`px-2.5 py-2 text-right ${dataDim}`}>
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border">{dl.type}</span>
+                                </td>
+                                {/* CCY */}
+                                <td className={`px-2.5 py-2 text-right ${dataDim}`}>
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border">{dl.currency}</span>
+                                </td>
+                                {/* Principal */}
+                                <td className={`px-2.5 py-2 text-right tabular-nums font-medium text-foreground whitespace-nowrap ${dataDim}`}>{fmt(dl.originalPrincipal)}</td>
+                                {/* Rate */}
+                                <td className={`px-2.5 py-2 text-right tabular-nums text-foreground ${dataDim}`}>{dl.rate.toFixed(2)}%</td>
+                                {/* Maturity */}
+                                <td className={`px-2.5 py-2 text-right whitespace-nowrap text-foreground ${dataDim}`}>{fmtDate(dl.maturityDate)}</td>
+                                {/* Status — always full opacity */}
+                                <td className="px-2.5 py-2 text-right">
+                                  {dl.isDuplicate
+                                    ? <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap"><AlertTriangle className="h-2.5 w-2.5" />Duplicate</span>
+                                    : <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-green-50 text-green-700 border border-green-200 whitespace-nowrap"><CheckCircle2 className="h-2.5 w-2.5" />New</span>
+                                  }
+                                </td>
+                                {/* Action — always full opacity */}
+                                <td className="px-2.5 py-2 text-right">
+                                  {dl.isDuplicate ? (
+                                    <select value={dl.duplicateAction}
+                                      onChange={e => setDetectedLoans(prev => prev.map((d, j) => j === i ? { ...d, duplicateAction: e.target.value as DuplicateAction } : d))}
+                                      className={`h-6 text-[10px] px-1.5 border rounded-[5px] focus:outline-none focus:ring-1 cursor-pointer font-medium transition-colors ${
+                                        isSkipped
+                                          ? "border-border bg-muted text-muted-foreground focus:ring-primary/30"
+                                          : "border-amber-300 bg-amber-50 text-amber-800 focus:ring-amber-400"
+                                      }`}
+                                    >
+                                      <option value="skip">Skip</option>
+                                      <option value="overwrite">Overwrite existing</option>
+                                      <option value="keep-both">Keep both</option>
+                                    </select>
+                                  ) : (
+                                    <span className="text-[10px] text-muted-foreground">—</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
-                    {/* Type */}
-                    <div style={{ flex: "1 1 100px", minWidth: 0 }}>
-                      <label className="block text-xs text-muted-foreground mb-1">Type</label>
-                      <select className={LF} value={newLoan.type ?? "Term"} onChange={e => setF("type", e.target.value)}>
-                        {["Term","LOC","Revolver","Mortgage","Bridge"].map(t => <option key={t}>{t}</option>)}
-                      </select>
-                    </div>
-                    {/* Currency */}
-                    <div style={{ flex: "1 1 80px", minWidth: 0 }}>
-                      <label className="block text-xs text-muted-foreground mb-1">Currency</label>
-                      <select className={LF} value={newLoan.currency ?? "CAD"} onChange={e => setF("currency", e.target.value)}>
-                        {["CAD","USD","EUR","GBP"].map(c => <option key={c}>{c}</option>)}
-                      </select>
-                    </div>
-                    {/* Interest Type */}
-                    <div style={{ flex: "1 1 110px", minWidth: 0 }}>
-                      <label className="block text-xs text-muted-foreground mb-1">Interest Type</label>
-                      <select className={LF} value={newLoan.interestType ?? "Fixed"} onChange={e => setF("interestType", e.target.value)}>
-                        {["Fixed","Variable","Floating","Hybrid","Step Rate"].map(t => <option key={t}>{t}</option>)}
-                      </select>
-                    </div>
-                    {/* Day Count */}
-                    <div style={{ flex: "1 1 100px", minWidth: 0 }}>
-                      <label className="block text-xs text-muted-foreground mb-1">Day Count</label>
-                      <select className={LF} value={newLoan.dayCountBasis ?? "ACT/365"} onChange={e => setF("dayCountBasis", e.target.value)}>
-                        {["ACT/365","ACT/360","30/360"].map(d => <option key={d}>{d}</option>)}
-                      </select>
-                    </div>
-                    {/* Rate */}
-                    <div style={{ flex: "1 1 80px", minWidth: 0 }}>
-                      <label className="block text-xs text-muted-foreground mb-1">Rate (%) <span className="text-red-500">*</span></label>
-                      <input type="number" step="0.01" className={LF} placeholder="5.25" value={newLoan.rate || ""} onChange={e => setF("rate", parseFloat(e.target.value) || 0)} />
-                    </div>
-                    {/* Original Principal */}
-                    <div style={{ flex: "1 1 120px", minWidth: 0 }}>
-                      <label className="block text-xs text-muted-foreground mb-1">Original Principal <span className="text-red-500">*</span></label>
-                      <input type="number" step="1000" className={LF} placeholder="1,000,000" value={newLoan.originalPrincipal || ""} onChange={e => setF("originalPrincipal", parseFloat(e.target.value) || 0)} />
-                    </div>
-                    {/* Current Balance */}
-                    <div style={{ flex: "1 1 120px", minWidth: 0 }}>
-                      <label className="block text-xs text-muted-foreground mb-1">Current Balance</label>
-                      <input type="number" step="1000" className={LF} placeholder="Same as original" value={newLoan.currentBalance || ""} onChange={e => setF("currentBalance", parseFloat(e.target.value) || 0)} />
-                    </div>
-                    {/* Start Date */}
-                    <div style={{ flex: "1 1 120px", minWidth: 0 }}>
-                      <label className="block text-xs text-muted-foreground mb-1">Start Date <span className="text-red-500">*</span></label>
-                      <input type="date" className={LF} value={newLoan.startDate ?? ""} onChange={e => setF("startDate", e.target.value)} />
-                    </div>
-                    {/* Maturity Date */}
-                    <div style={{ flex: "1 1 120px", minWidth: 0 }}>
-                      <label className="block text-xs text-muted-foreground mb-1">Maturity Date <span className="text-red-500">*</span></label>
-                      <input type="date" className={LF} value={newLoan.maturityDate ?? ""} onChange={e => setF("maturityDate", e.target.value)} />
-                    </div>
-                    {/* First Payment Date */}
-                    <div style={{ flex: "1 1 120px", minWidth: 0 }}>
-                      <label className="block text-xs text-muted-foreground mb-1">First Payment Date</label>
-                      <input type="date" className={LF} value={newLoan.firstPaymentDate ?? ""} onChange={e => setF("firstPaymentDate", e.target.value)} />
-                    </div>
-                    {/* Payment Frequency */}
-                    <div style={{ flex: "1 1 110px", minWidth: 0 }}>
-                      <label className="block text-xs text-muted-foreground mb-1">Payment Frequency</label>
-                      <select className={LF} value={newLoan.paymentFrequency ?? "Monthly"} onChange={e => setF("paymentFrequency", e.target.value)}>
-                        {["Monthly","Quarterly","Semi-annual","Annual"].map(f => <option key={f}>{f}</option>)}
-                      </select>
-                    </div>
-                    {/* Payment Type — inline */}
-                    <div style={{ flex: "1 1 110px", minWidth: 0 }}>
-                      <label className="block text-xs text-muted-foreground mb-1">Payment Type</label>
-                      <select className={LF} value={newLoan.paymentType ?? "P&I"} onChange={e => setF("paymentType", e.target.value)}>
-                        {["P&I","Interest-only","Balloon"].map(t => <option key={t}>{t}</option>)}
-                      </select>
-                    </div>
-                    {/* Security Description */}
-                    <div style={{ flex: "1 0 100%", minWidth: 0 }}>
-                      <label className="block text-xs text-muted-foreground mb-1">Security / Collateral Description</label>
-                      <input className={LF} placeholder="e.g. General Security Agreement over all assets" value={newLoan.securityDescription ?? ""} onChange={e => setF("securityDescription", e.target.value)} />
+
+                    {/* Duplicate legend */}
+                    {dupeCount > 0 && (
+                      <div className="px-4 py-2 border-t border-amber-200/60 bg-amber-50/60 dark:bg-amber-950/10 shrink-0">
+                        <p className="text-[10px] text-amber-700 dark:text-amber-400 leading-relaxed">
+                          <span className="font-semibold">Duplicate actions:</span>{" "}
+                          <span className="font-medium">Skip</span> — don't import · {" "}
+                          <span className="font-medium">Overwrite existing</span> — replace the existing loan's data · {" "}
+                          <span className="font-medium">Keep both</span> — import with "(Imported)" suffix
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Manual entry mode ── */}
+                {newLoanMode === "manual" && (
+                  <div className="overflow-y-auto flex-1 px-4 py-4">
+                    <div className="flex flex-wrap gap-x-3 gap-y-3">
+                      <div style={{ flex: "3 1 180px", minWidth: 0 }}>
+                        <label className="block text-xs text-muted-foreground mb-1">Loan Name <span className="text-red-500">*</span></label>
+                        <input className={LF} placeholder="e.g. Term Loan A" value={newLoan.name ?? ""} onChange={e => setF("name", e.target.value)} />
+                      </div>
+                      <div style={{ flex: "2 1 140px", minWidth: 0 }}>
+                        <label className="block text-xs text-muted-foreground mb-1">Lender <span className="text-red-500">*</span></label>
+                        <input className={LF} placeholder="e.g. Royal Bank of Canada" value={newLoan.lender ?? ""} onChange={e => setF("lender", e.target.value)} />
+                      </div>
+                      <div style={{ flex: "1 1 100px", minWidth: 0 }}>
+                        <label className="block text-xs text-muted-foreground mb-1">Type</label>
+                        <select className={LF} value={newLoan.type ?? "Term"} onChange={e => setF("type", e.target.value)}>
+                          {["Term","LOC","Revolver","Mortgage","Bridge"].map(t => <option key={t}>{t}</option>)}
+                        </select>
+                      </div>
+                      <div style={{ flex: "1 1 80px", minWidth: 0 }}>
+                        <label className="block text-xs text-muted-foreground mb-1">Currency</label>
+                        <select className={LF} value={newLoan.currency ?? "CAD"} onChange={e => setF("currency", e.target.value)}>
+                          {["CAD","USD","EUR","GBP"].map(c => <option key={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <div style={{ flex: "1 1 110px", minWidth: 0 }}>
+                        <label className="block text-xs text-muted-foreground mb-1">Interest Type</label>
+                        <select className={LF} value={newLoan.interestType ?? "Fixed"} onChange={e => setF("interestType", e.target.value)}>
+                          {["Fixed","Variable","Floating","Hybrid","Step Rate"].map(t => <option key={t}>{t}</option>)}
+                        </select>
+                      </div>
+                      <div style={{ flex: "1 1 100px", minWidth: 0 }}>
+                        <label className="block text-xs text-muted-foreground mb-1">Day Count</label>
+                        <select className={LF} value={newLoan.dayCountBasis ?? "ACT/365"} onChange={e => setF("dayCountBasis", e.target.value)}>
+                          {["ACT/365","ACT/360","30/360"].map(d => <option key={d}>{d}</option>)}
+                        </select>
+                      </div>
+                      <div style={{ flex: "1 1 80px", minWidth: 0 }}>
+                        <label className="block text-xs text-muted-foreground mb-1">Rate (%) <span className="text-red-500">*</span></label>
+                        <input type="number" step="0.01" className={LF} placeholder="5.25" value={newLoan.rate || ""} onChange={e => setF("rate", parseFloat(e.target.value) || 0)} />
+                      </div>
+                      <div style={{ flex: "1 1 120px", minWidth: 0 }}>
+                        <label className="block text-xs text-muted-foreground mb-1">Original Principal <span className="text-red-500">*</span></label>
+                        <input type="number" step="1000" className={LF} placeholder="1,000,000" value={newLoan.originalPrincipal || ""} onChange={e => setF("originalPrincipal", parseFloat(e.target.value) || 0)} />
+                      </div>
+                      <div style={{ flex: "1 1 120px", minWidth: 0 }}>
+                        <label className="block text-xs text-muted-foreground mb-1">Current Balance</label>
+                        <input type="number" step="1000" className={LF} placeholder="Same as original" value={newLoan.currentBalance || ""} onChange={e => setF("currentBalance", parseFloat(e.target.value) || 0)} />
+                      </div>
+                      <div style={{ flex: "1 1 120px", minWidth: 0 }}>
+                        <label className="block text-xs text-muted-foreground mb-1">Start Date <span className="text-red-500">*</span></label>
+                        <input type="date" className={LF} value={newLoan.startDate ?? ""} onChange={e => setF("startDate", e.target.value)} />
+                      </div>
+                      <div style={{ flex: "1 1 120px", minWidth: 0 }}>
+                        <label className="block text-xs text-muted-foreground mb-1">Maturity Date <span className="text-red-500">*</span></label>
+                        <input type="date" className={LF} value={newLoan.maturityDate ?? ""} onChange={e => setF("maturityDate", e.target.value)} />
+                      </div>
+                      <div style={{ flex: "1 1 120px", minWidth: 0 }}>
+                        <label className="block text-xs text-muted-foreground mb-1">First Payment Date</label>
+                        <input type="date" className={LF} value={newLoan.firstPaymentDate ?? ""} onChange={e => setF("firstPaymentDate", e.target.value)} />
+                      </div>
+                      <div style={{ flex: "1 1 110px", minWidth: 0 }}>
+                        <label className="block text-xs text-muted-foreground mb-1">Payment Frequency</label>
+                        <select className={LF} value={newLoan.paymentFrequency ?? "Monthly"} onChange={e => setF("paymentFrequency", e.target.value)}>
+                          {["Monthly","Quarterly","Semi-annual","Annual"].map(f => <option key={f}>{f}</option>)}
+                        </select>
+                      </div>
+                      <div style={{ flex: "1 1 110px", minWidth: 0 }}>
+                        <label className="block text-xs text-muted-foreground mb-1">Payment Type</label>
+                        <select className={LF} value={newLoan.paymentType ?? "P&I"} onChange={e => setF("paymentType", e.target.value)}>
+                          {["P&I","Interest-only","Balloon"].map(t => <option key={t}>{t}</option>)}
+                        </select>
+                      </div>
+                      <div style={{ flex: "1 0 100%", minWidth: 0 }}>
+                        <label className="block text-xs text-muted-foreground mb-1">Security / Collateral Description</label>
+                        <input className={LF} placeholder="e.g. General Security Agreement over all assets" value={newLoan.securityDescription ?? ""} onChange={e => setF("securityDescription", e.target.value)} />
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
-                {/* Footer */}
+                {/* ── Footer ── */}
                 <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20 shrink-0">
-                  <button onClick={() => setNewLoanOpen(false)}
+                  <button onClick={closeNewLoanPanel}
                     className="h-8 px-4 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-[8px] bg-background hover:bg-muted transition-colors">
                     Cancel
                   </button>
-                  <button onClick={handleSaveLoan}
-                    className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors">
-                    <Plus className="h-3 w-3" /> Add Loan &amp; Run Amortization
-                  </button>
+
+                  {/* Upload mode hint */}
+                  {newLoanMode === "upload" && (
+                    <p className="text-xs text-muted-foreground">Upload documents to detect loans automatically</p>
+                  )}
+
+                  {/* Review mode — import button */}
+                  {newLoanMode === "review" && (
+                    <button onClick={handleImportDetected} disabled={importCount === 0}
+                      className={`inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium rounded-[8px] transition-colors ${importCount > 0 ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"}`}>
+                      <Download className="h-3 w-3" />
+                      Import {importCount > 0 ? importCount : ""} Loan{importCount !== 1 ? "s" : ""} &amp; Run Amortization
+                    </button>
+                  )}
+
+                  {/* Manual mode — save button */}
+                  {newLoanMode === "manual" && (
+                    <button onClick={handleSaveLoan} disabled={!isFormReady}
+                      className={`inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium rounded-[8px] transition-colors ${isFormReady ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"}`}>
+                      <Plus className="h-3 w-3" /> Add Loan &amp; Run Amortization
+                    </button>
+                  )}
                 </div>
 
               </div>
@@ -814,7 +1202,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                 </tbody>
                 <tfoot>
                   <tr className="bg-muted/30 border-t border-border font-semibold">
-                    <td className="px-2.5 py-2 text-[11px] text-foreground">Total · {loans.length} facilities</td>
+                    <td className="px-2.5 py-2" />
                     <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmtNum(rfTotals.opening)}</td>
                     <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-green-700">{rfTotals.borrows > 0 ? fmtNum(rfTotals.borrows) : "00"}</td>
                     <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-red-600">{rfTotals.principal > 0 ? fmtParen(rfTotals.principal) : "00"}</td>
@@ -871,7 +1259,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                 </tbody>
                 <tfoot>
                   <tr className="bg-muted/30 border-t border-border font-semibold">
-                    <td className="px-3 py-2 text-[11px] text-foreground">Total · {loans.length} facilities</td>
+                    <td className="px-3 py-2" />
                     {bsTotals.slice(1).map((v, i) => (
                       <td key={i} className="px-3 py-2 text-right tabular-nums text-[11px] text-muted-foreground">{v > 0 ? fmtNum(v) : "00"}</td>
                     ))}
@@ -923,7 +1311,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
               </tbody>
               <tfoot>
                 <tr className="bg-muted/30 border-t border-border font-semibold">
-                  <td className="px-3 py-2 text-[11px] text-foreground">Total · {loans.length} facilities</td>
+                  <td className="px-3 py-2" />
                   {repayColTotals.map((v, i) => (
                     <td key={i} className="px-3 py-2 text-right tabular-nums text-[11px]">{v > 0 ? fmtNum(v) : "00"}</td>
                   ))}
@@ -1286,53 +1674,90 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
           <table className="w-full text-[11px]">
             <thead>
               <tr className="bg-muted/20 border-b border-border">
-                {["","Covenant","Type","Status","Current","Projected","Threshold","Frequency","Last Tested",""].map(h=>(
-                  <th key={h} className={`px-2.5 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide ${h===""||h==="Covenant"||h==="Type"||h==="Frequency"||h==="Last Tested"?"text-left":"text-right"}`}>{h}</th>
+                {[
+                  { h: "Covenant",    align: "left"  },
+                  { h: "Type",        align: "left"  },
+                  { h: "Status",      align: "left"  },
+                  { h: "Current",     align: "right" },
+                  { h: "Projected",   align: "right" },
+                  { h: "Threshold",   align: "right" },
+                  { h: "Frequency",   align: "left"  },
+                  { h: "Last Tested", align: "left"  },
+                  { h: "",            align: "right" },
+                ].map(({ h, align }) => (
+                  <th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-${align} whitespace-nowrap`}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {loanCovs.map((cov, i) => (
-                <tr key={cov.id} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
-                  <td className="px-2.5 py-2 w-4">
-                    <span className={`inline-block w-2 h-2 rounded-full ${cov.status==="Breached"?"bg-red-500":cov.status==="At Risk"?"bg-amber-500":"bg-green-500"}`} />
-                  </td>
-                  <td className="px-2.5 py-2 font-medium text-foreground whitespace-nowrap">{cov.name}</td>
-                  <td className="px-2.5 py-2 text-muted-foreground">{cov.type}</td>
-                  <td className="px-2.5 py-2"><StatusBadge status={cov.status} /></td>
-                  <td className="px-2.5 py-2 text-right tabular-nums font-medium">{cov.currentValue !== undefined ? `${cov.currentValue.toFixed(2)}x` : "—"}</td>
-                  <td className="px-2.5 py-2 text-right tabular-nums text-muted-foreground">
-                    {cov.projectedValue !== undefined
-                      ? <span className={cov.projectedValue < (cov.threshold ?? 0) ? "text-red-600" : "text-muted-foreground"}>{cov.projectedValue.toFixed(2)}x</span>
-                      : "—"}
-                  </td>
-                  <td className="px-2.5 py-2 text-right tabular-nums">{cov.threshold !== undefined ? `${cov.operator} ${cov.threshold}x` : "—"}</td>
-                  <td className="px-2.5 py-2 text-muted-foreground">{cov.frequency}</td>
-                  <td className="px-2.5 py-2 text-muted-foreground whitespace-nowrap">{cov.lastTested ? fmtDate(cov.lastTested) : "—"}</td>
-                  <td className="px-2.5 py-2 text-right">
-                    <div className="inline-flex items-center gap-1">
-                      <button
-                        onClick={() => openEdit(cov)}
-                        className="p-1.5 hover:bg-muted rounded-lg text-foreground transition-colors"
-                        title="Edit"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (editingCovId === cov.id) setEditingCovId(null);
-                          deleteCovenant(cov.id);
-                          toast.success("Covenant deleted");
-                        }}
-                        className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {loanCovs.map((cov, i) => {
+                // Operator-aware projected fail/warn detection
+                const projFails = cov.projectedValue !== undefined && cov.threshold !== undefined && (() => {
+                  const { projectedValue: p, threshold: t, operator: op } = cov;
+                  if (op === ">=") return p! < t!;
+                  if (op === "<=") return p! > t!;
+                  if (op === ">")  return p! <= t!;
+                  if (op === "<")  return p! >= t!;
+                  return false;
+                })();
+                const projWarn = !projFails && cov.projectedValue !== undefined && cov.threshold !== undefined && (() => {
+                  const margin = cov.threshold !== 0 ? Math.abs(cov.projectedValue! - cov.threshold!) / Math.abs(cov.threshold!) : 1;
+                  return margin < 0.1;
+                })();
+                const fmtRatio = (v: number) => `${v.toFixed(2)}x`;
+                const fmtThreshold = (op: string | undefined, v: number) => `${op ?? ""} ${v % 1 === 0 ? v.toFixed(0) : v.toFixed(2)}x`.trim();
+
+                return (
+                  <tr key={cov.id} className={`border-b border-border/40 ${i % 2 === 0 ? "" : "bg-muted/10"}`}>
+                    {/* Covenant name with dot */}
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${cov.status === "Breached" ? "bg-red-500" : cov.status === "At Risk" ? "bg-amber-500" : "bg-green-500"}`} />
+                        <span className="font-semibold text-foreground whitespace-nowrap">{cov.name}</span>
+                      </div>
+                    </td>
+                    {/* Type */}
+                    <td className="px-3 py-2.5 text-foreground whitespace-nowrap">{cov.type}</td>
+                    {/* Status */}
+                    <td className="px-3 py-2.5"><StatusBadge status={cov.status} /></td>
+                    {/* Current */}
+                    <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-foreground">
+                      {cov.currentValue !== undefined ? fmtRatio(cov.currentValue) : "—"}
+                    </td>
+                    {/* Projected — trend arrow */}
+                    <td className="px-3 py-2.5 text-right tabular-nums text-foreground">
+                      {cov.projectedValue !== undefined && cov.currentValue !== undefined
+                        ? <span className="inline-flex items-center justify-end gap-0.5">
+                            <span className="text-[9px] opacity-50">{cov.projectedValue > cov.currentValue ? "↑" : "↓"}</span>
+                            {fmtRatio(cov.projectedValue)}
+                          </span>
+                        : "—"}
+                    </td>
+                    {/* Threshold */}
+                    <td className="px-3 py-2.5 text-right tabular-nums text-foreground font-mono text-[10px]">
+                      {cov.threshold !== undefined ? fmtThreshold(cov.operator, cov.threshold) : "—"}
+                    </td>
+                    {/* Frequency */}
+                    <td className="px-3 py-2.5 text-foreground">{cov.frequency}</td>
+                    {/* Last Tested */}
+                    <td className="px-3 py-2.5 text-foreground whitespace-nowrap">{cov.lastTested ? fmtDate(cov.lastTested) : "—"}</td>
+                    {/* Actions */}
+                    <td className="px-3 py-2.5 text-right">
+                      <div className="inline-flex items-center gap-1">
+                        <button onClick={() => openEdit(cov)} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors" title="Edit">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => { if (editingCovId === cov.id) setEditingCovId(null); deleteCovenant(cov.id); toast.success("Covenant deleted"); }}
+                          className="p-1.5 hover:bg-destructive/10 rounded-lg text-muted-foreground hover:text-destructive transition-colors" title="Delete"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -1998,18 +2423,6 @@ export function LongTermAssetResponse() {
         <span className="font-medium">{settings.fiscalYearEnd?.slice(0,10).replace(/-/g, "-")}</span>:
       </p>
 
-      {/* Alert banners */}
-      {covenantAlert > 0 && (
-        <div className="flex items-center gap-2 rounded-[8px] border border-red-200 bg-red-50/60 px-3 py-1.5">
-          <ShieldAlert className="h-3.5 w-3.5 text-red-600 shrink-0" />
-          <span className="text-[11px] text-red-700 font-medium">
-            {breachedCount > 0 && `${breachedCount} covenant${breachedCount>1?"s":""} breached`}
-            {breachedCount > 0 && atRiskCount > 0 && " · "}
-            {atRiskCount > 0 && `${atRiskCount} at risk`}
-            {" — review Covenants tab"}
-          </span>
-        </div>
-      )}
 
       {/* Tab bar */}
       <div className="flex items-center gap-0 border-b border-border -mx-0 overflow-x-auto">
@@ -2020,7 +2433,7 @@ export function LongTermAssetResponse() {
             <button
               key={id}
               onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-1 px-3 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap shrink-0 ${
+              className={`flex items-center gap-1 px-3 py-2 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap shrink-0 ${
                 isActive
                   ? "border-primary text-primary bg-primary/5"
                   : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
