@@ -36,23 +36,32 @@ const daysUntil = (d: string) =>
 // ─── Small badge helpers ──────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
-    Breached: "bg-red-50 text-red-700 border-red-200",
-    "At Risk": "bg-amber-50 text-amber-700 border-amber-200",
-    OK: "bg-green-50 text-green-700 border-green-200",
-    Draft: "bg-muted text-muted-foreground border-border",
-    Approved: "bg-blue-50 text-blue-700 border-blue-200",
-    Posted: "bg-green-50 text-green-700 border-green-200",
-    Exported: "bg-purple-50 text-purple-700 border-purple-200",
+    // Loan statuses
+    Active:      "bg-green-50 text-green-700 border-green-200",
+    Inactive:    "bg-muted text-muted-foreground border-border opacity-60",
+    Closed:      "bg-muted text-muted-foreground border-border",
+    Replaced:    "bg-blue-50 text-blue-700 border-blue-200",
+    Refinanced:  "bg-amber-50 text-amber-700 border-amber-200",
+    // Covenant / compliance statuses
+    Breached:    "bg-red-50 text-red-700 border-red-200",
+    "At Risk":   "bg-amber-50 text-amber-700 border-amber-200",
+    OK:          "bg-green-50 text-green-700 border-green-200",
+    // JE statuses
+    Draft:       "bg-muted text-muted-foreground border-border",
+    Approved:    "bg-blue-50 text-blue-700 border-blue-200",
+    Posted:      "bg-green-50 text-green-700 border-green-200",
+    Exported:    "bg-purple-50 text-purple-700 border-purple-200",
   };
   const cls = map[status] ?? "bg-muted text-muted-foreground border-border";
   const icon =
+    status === "Active"   ? <CheckCircle2  className="h-2.5 w-2.5" /> :
     status === "Breached" ? <AlertTriangle className="h-2.5 w-2.5" /> :
     status === "At Risk"  ? <AlertTriangle className="h-2.5 w-2.5" /> :
     status === "OK"       ? <CheckCircle2  className="h-2.5 w-2.5" /> :
     status === "Approved" ? <CheckCircle2  className="h-2.5 w-2.5" /> :
     status === "Posted"   ? <CheckCircle2  className="h-2.5 w-2.5" /> : null;
   return (
-    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-[4px] border ${cls}`}>
+    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${cls}`}>
       {icon}{status}
     </span>
   );
@@ -283,7 +292,7 @@ function LoansTab({ loans }: { loans: Loan[] }) {
                 const convAmt  = l.originalPrincipal * fx;
                 const closingCAD = (l.closingBalance ?? l.currentBalance) * fx;
                 return (
-                  <tr key={l.id} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
+                  <tr key={l.id} className="border-b border-border transition-colors hover:bg-muted/30 cursor-pointer">
                     {/* Loan Name */}
                     <td className="px-2.5 py-1.5 min-w-[130px]">
                       <p className="font-medium text-foreground whitespace-nowrap">{l.name}</p>
@@ -298,11 +307,17 @@ function LoansTab({ loans }: { loans: Loan[] }) {
                     </td>
                     {/* Type */}
                     <td className="px-2.5 py-1.5 text-right">
-                      <span className="px-1.5 py-0.5 rounded-[4px] bg-muted text-foreground text-[10px]">{l.type}</span>
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">{l.type}</span>
                     </td>
                     {/* Rate Type */}
                     <td className="px-2.5 py-1.5 text-right">
-                      <span className={`text-[10px] font-medium ${l.interestType==="Variable"||l.interestType==="Floating"?"text-amber-600":"text-foreground"}`}>{l.interestType}</span>
+                      {l.interestType === "Variable"  && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">Variable</span>}
+                      {l.interestType === "Floating"  && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 whitespace-nowrap">Floating</span>}
+                      {l.interestType === "Hybrid"    && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap">Hybrid</span>}
+                      {l.interestType === "Step Rate" && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-teal-50 text-teal-700 border border-teal-200 whitespace-nowrap">Step Rate</span>}
+                      {(l.interestType === "Fixed" || (l.interestType !== "Variable" && l.interestType !== "Floating" && l.interestType !== "Hybrid" && l.interestType !== "Step Rate")) && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">{l.interestType ?? "Fixed"}</span>
+                      )}
                     </td>
                     {/* Int. Rate */}
                     <td className="px-2.5 py-1.5 text-right tabular-nums font-medium">{l.rate.toFixed(2)}%</td>
@@ -318,7 +333,7 @@ function LoansTab({ loans }: { loans: Loan[] }) {
                     </td>
                     {/* CCY */}
                     <td className="px-2.5 py-1.5 text-right">
-                      <span className="text-[10px] font-medium text-foreground border border-border rounded-[4px] px-1.5 py-0.5">{l.currency}</span>
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">{l.currency}</span>
                     </td>
                     {/* Mo. Payment */}
                     <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap">
@@ -363,13 +378,13 @@ function LoansTab({ loans }: { loans: Loan[] }) {
                 );
               })}
             </tbody>
-            <tfoot>
-              <tr className="bg-muted/30 border-t border-border font-semibold">
-                <td className="px-2.5 py-2 text-[11px] text-foreground" colSpan={12}>Total · {loans.length} facilities</td>
-                <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmt(loans.reduce((s,l)=>s+l.originalPrincipal,0))}</td>
-                <td />
-                <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmt(loans.reduce((s,l)=>s+l.originalPrincipal*getFxRate(l),0))}</td>
-                <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmt(loans.reduce((s,l)=>s+toCAD(l.closingBalance??l.currentBalance,l.currency),0))}</td>
+            <tfoot className="sticky bottom-0 z-10">
+              <tr className="bg-muted/50 border-t-2 border-border font-semibold">
+                <td className="px-2.5 py-2 text-[11px] font-semibold text-foreground whitespace-nowrap" colSpan={12}>Total · {loans.length} {loans.length === 1 ? "facility" : "facilities"}</td>
+                <td className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+l.originalPrincipal,0))}</td>
+                <td className="px-2.5 py-2" />
+                <td className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+l.originalPrincipal*getFxRate(l),0))}</td>
+                <td className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+toCAD(l.closingBalance??l.currentBalance,l.currency),0))}</td>
                 <td colSpan={7} />
               </tr>
             </tfoot>
