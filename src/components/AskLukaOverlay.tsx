@@ -166,6 +166,50 @@ const AMORT_DRIVE_FILES = [
 ];
 type AmortSource = "existing" | "upload" | "drive" | "manual";
 
+// ── LT Debt multi-file upload — types & classifier ─────────────────────────
+type LtDebtFileKind =
+  | "loan-agreement" | "continuity" | "loan-register" | "workpaper"
+  | "ambiguous" | "unsupported" | "oversized";
+
+interface LtDebtFile {
+  id: string; name: string; size: number; ext: string;
+  kind: LtDebtFileKind;
+  userKind?: Exclude<LtDebtFileKind, "unsupported" | "oversized" | "ambiguous">;
+}
+
+function classifyLtDebtFile(file: File): LtDebtFile {
+  const n   = file.name.toLowerCase();
+  const ext = (n.split(".").pop() ?? "").toLowerCase();
+  const id  = `ltf-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  if (!["pdf", "xlsx", "xls", "zip"].includes(ext))
+    return { id, name: file.name, size: file.size, ext, kind: "unsupported" };
+  if (file.size > 2 * 1024 * 1024)
+    return { id, name: file.name, size: file.size, ext, kind: "oversized" };
+  if (ext === "pdf" || ext === "zip")
+    return { id, name: file.name, size: file.size, ext, kind: "loan-agreement" };
+  // Excel — name-based detection
+  if (/continu|roll.?forward|movement/.test(n))
+    return { id, name: file.name, size: file.size, ext, kind: "continuity" };
+  if (/register|debt.?schedul|loan.?list|facilit/.test(n))
+    return { id, name: file.name, size: file.size, ext, kind: "loan-register" };
+  if (/workpaper|work.?paper|\bwp\b|fy\d{2,4}|prior.?year/.test(n))
+    return { id, name: file.name, size: file.size, ext, kind: "workpaper" };
+  return { id, name: file.name, size: file.size, ext, kind: "ambiguous" };
+}
+
+const LT_FILE_KIND_LABEL: Record<string, string> = {
+  "loan-agreement": "Loan Agreement",
+  "continuity":     "Continuity Schedule",
+  "loan-register":  "Loan Register",
+  "workpaper":      "Prior Year Workpaper",
+};
+const LT_FILE_KIND_COLOR: Record<string, string> = {
+  "loan-agreement": "bg-blue-50 text-blue-700 border-blue-200",
+  "continuity":     "bg-green-50 text-green-700 border-green-200",
+  "loan-register":  "bg-purple-50 text-purple-700 border-purple-200",
+  "workpaper":      "bg-amber-50 text-amber-700 border-amber-200",
+};
+
 // ── Agentic Long-term Debt wizard — mock discovery data ───────────────────
 const LT_DEBT_ENG_DOCS = [
   { id: "ltd-1", name: "Long-term Debt Workpaper FY2024.xlsx", path: "Workpapers / Long-term Debt / FY2024", date: "Dec 31, 2024", size: "312 KB", ext: "xlsx" },
@@ -295,7 +339,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
   const [ltDebtSource,      setLtDebtSource]     = useState<AmortSource>("existing");
   const [ltDebtSelDocId,    setLtDebtSelDocId]   = useState("ltd-1");
   const [ltDebtDriveId,     setLtDebtDriveId]    = useState("ltd-gd-1");
-  const [ltDebtUploadFile,  setLtDebtUploadFile] = useState<string|null>(null);
+  const [ltDebtUploadFiles, setLtDebtUploadFiles] = useState<LtDebtFile[]>([]);
   const [ltDebtGenerated,   setLtDebtGenerated]  = useState(false);
   const [ltDebtSrcLabel,    setLtDebtSrcLabel]   = useState<string|null>(null);
   const [ltDebtWizRect,     setLtDebtWizRect]    = useState<{left:number;right:number;bottom:number}|null>(null);
@@ -640,7 +684,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
     setLoanAmortData(null); setLoanAmortStep("idle");
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
     setLtDebtPhase("idle"); setLtDebtWizStep(1); setLtDebtSource("existing");
-    setLtDebtUploadFile(null); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
+    setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
     setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
@@ -3402,42 +3446,143 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                     </div>
                   )}
 
-                  {/* ── Step 2b: Upload ── */}
-                  {ltDebtWizStep === 2 && ltDebtSource === "upload" && (
-                    <div
-                      className={cn(
-                        "relative flex flex-col items-center justify-center gap-2 rounded-[10px] border-2 border-dashed cursor-pointer transition-colors py-10",
-                        ltDebtUploadFile ? "border-primary/40 bg-primary/5" : "border-border/60 hover:border-primary/40 hover:bg-muted/30",
-                      )}
-                      onClick={() => {
-                        const inp = document.createElement("input");
-                        inp.type = "file"; inp.accept = ".pdf,.xlsx,.xls";
-                        inp.onchange = e => {
-                          const f = (e.target as HTMLInputElement).files?.[0];
-                          if (f && f.size <= 2 * 1024 * 1024) setLtDebtUploadFile(f.name);
-                        };
-                        inp.click();
-                      }}
-                    >
-                      {ltDebtUploadFile ? (
-                        <div className="flex items-center gap-2 text-sm text-foreground">
-                          <FileText className="h-4 w-4 text-primary" />
-                          <span className="font-medium">{ltDebtUploadFile}</span>
-                          <button onClick={e => { e.stopPropagation(); setLtDebtUploadFile(null); }} className="ml-1 hover:text-destructive transition-colors">
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          <Upload className="h-5 w-5 text-muted-foreground" />
+                  {/* ── Step 2b: Upload (multi-file with smart classification) ── */}
+                  {ltDebtWizStep === 2 && ltDebtSource === "upload" && (() => {
+                    const addFiles = (rawFiles: FileList | null) => {
+                      if (!rawFiles) return;
+                      const classified = Array.from(rawFiles).map(classifyLtDebtFile);
+                      setLtDebtUploadFiles(prev => {
+                        const existing = new Set(prev.map(f => f.name));
+                        const next = [...prev, ...classified.filter(f => !existing.has(f.name))];
+                        return next.slice(0, 10);
+                      });
+                    };
+                    const validFiles = ltDebtUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
+                    const errorFiles = ltDebtUploadFiles.filter(f => f.kind === "unsupported" || f.kind === "oversized");
+                    const ambigFiles = ltDebtUploadFiles.filter(f => f.kind === "ambiguous" && !f.userKind);
+                    return (
+                      <div className="space-y-3">
+                        {/* Drop zone */}
+                        <div
+                          className={cn(
+                            "flex flex-col items-center justify-center gap-2 rounded-[10px] border-2 border-dashed cursor-pointer transition-colors py-6",
+                            ltDebtUploadFiles.length > 0 ? "border-primary/30 bg-primary/[0.02]" : "border-border/60 hover:border-primary/40 hover:bg-muted/30",
+                          )}
+                          onClick={() => {
+                            const inp = document.createElement("input");
+                            inp.type = "file"; inp.accept = ".pdf,.xlsx,.xls,.zip"; inp.multiple = true;
+                            inp.onchange = e => addFiles((e.target as HTMLInputElement).files);
+                            inp.click();
+                          }}
+                          onDragOver={e => e.preventDefault()}
+                          onDrop={e => { e.preventDefault(); addFiles(e.dataTransfer.files); }}
+                        >
+                          <Upload className="h-4 w-4 text-muted-foreground" />
                           <p className="text-sm text-muted-foreground text-center">
                             <span className="text-primary font-medium">Click to upload</span> or drag and drop
                           </p>
-                          <p className="text-xs text-muted-foreground">PDF or Excel · max 2 MB</p>
-                        </>
-                      )}
-                    </div>
-                  )}
+                          <p className="text-xs text-muted-foreground">PDF, Excel or ZIP · max 2 MB each · up to 10 files</p>
+                        </div>
+
+                        {/* File list */}
+                        {ltDebtUploadFiles.length > 0 && (
+                          <div className="space-y-1.5">
+                            {/* Summary bar */}
+                            <div className="flex items-center justify-between px-0.5">
+                              <p className="text-xs font-medium text-foreground">
+                                {ltDebtUploadFiles.length} file{ltDebtUploadFiles.length !== 1 ? "s" : ""} added
+                                {errorFiles.length > 0 && <span className="text-red-600 ml-1.5">· {errorFiles.length} with error{errorFiles.length !== 1 ? "s" : ""}</span>}
+                                {ambigFiles.length > 0 && <span className="text-amber-600 ml-1.5">· {ambigFiles.length} need{ambigFiles.length === 1 ? "s" : ""} classification</span>}
+                              </p>
+                              <button onClick={() => setLtDebtUploadFiles([])} className="text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+                                Clear all
+                              </button>
+                            </div>
+
+                            {/* File cards */}
+                            {ltDebtUploadFiles.map(f => {
+                              const resolvedKind = f.userKind ?? f.kind;
+                              const isError   = f.kind === "unsupported" || f.kind === "oversized";
+                              const isAmbig   = f.kind === "ambiguous" && !f.userKind;
+                              return (
+                                <div key={f.id} className={cn(
+                                  "flex items-center gap-2 px-3 py-2 rounded-[8px] border text-xs transition-colors",
+                                  isError ? "border-red-200 bg-red-50/50 dark:bg-red-950/20" :
+                                  isAmbig ? "border-amber-200 bg-amber-50/40 dark:bg-amber-950/20" :
+                                  "border-border bg-background"
+                                )}>
+                                  {/* Icon */}
+                                  {f.ext === "pdf"
+                                    ? <FileText        className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                                    : f.ext === "zip"
+                                    ? <FolderOpen      className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                                    : <FileSpreadsheet className="h-3.5 w-3.5 text-green-600 shrink-0" />}
+                                  {/* Name */}
+                                  <span className="flex-1 min-w-0 truncate font-medium text-foreground">{f.name}</span>
+                                  {/* Size */}
+                                  <span className="text-[10px] text-muted-foreground shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
+                                  {/* Badge / classify / error */}
+                                  {isError ? (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-red-700 border border-red-200 whitespace-nowrap shrink-0">
+                                      <AlertTriangle className="h-2.5 w-2.5" />
+                                      {f.kind === "unsupported" ? "Unsupported type" : "File too large"}
+                                    </span>
+                                  ) : isAmbig ? (
+                                    <select
+                                      onClick={e => e.stopPropagation()}
+                                      defaultValue=""
+                                      onChange={e => {
+                                        const v = e.target.value as Exclude<LtDebtFileKind, "unsupported" | "oversized" | "ambiguous">;
+                                        setLtDebtUploadFiles(prev => prev.map(x => x.id === f.id ? { ...x, userKind: v } : x));
+                                      }}
+                                      className="text-[10px] border border-amber-300 rounded-[6px] px-1.5 py-0.5 bg-background text-amber-700 focus:outline-none cursor-pointer shrink-0 max-w-[140px]"
+                                    >
+                                      <option value="" disabled>Classify file…</option>
+                                      <option value="loan-agreement">Loan Agreement</option>
+                                      <option value="continuity">Continuity Schedule</option>
+                                      <option value="loan-register">Loan Register</option>
+                                      <option value="workpaper">Prior Year Workpaper</option>
+                                    </select>
+                                  ) : (
+                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap shrink-0 ${LT_FILE_KIND_COLOR[resolvedKind] ?? "bg-muted text-foreground border-border"}`}>
+                                      {LT_FILE_KIND_LABEL[resolvedKind] ?? resolvedKind}
+                                    </span>
+                                  )}
+                                  {/* Remove */}
+                                  <button
+                                    onClick={e => { e.stopPropagation(); setLtDebtUploadFiles(prev => prev.filter(x => x.id !== f.id)); }}
+                                    className="shrink-0 text-muted-foreground hover:text-destructive transition-colors ml-0.5"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              );
+                            })}
+
+                            {/* Contextual tips */}
+                            {errorFiles.some(f => f.kind === "unsupported") && (
+                              <p className="text-[10px] text-red-600 px-0.5 flex items-start gap-1">
+                                <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
+                                Unsupported files will be ignored. Accepted formats: PDF, Excel (.xlsx / .xls), ZIP
+                              </p>
+                            )}
+                            {errorFiles.some(f => f.kind === "oversized") && (
+                              <p className="text-[10px] text-red-600 px-0.5 flex items-start gap-1">
+                                <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
+                                Files over 2 MB will be skipped. Please compress or split large files before uploading.
+                              </p>
+                            )}
+                            {ambigFiles.length > 0 && (
+                              <p className="text-[10px] text-amber-600 px-0.5 flex items-start gap-1">
+                                <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
+                                Please classify the highlighted Excel file{ambigFiles.length > 1 ? "s" : ""} so Luka knows how to process {ambigFiles.length > 1 ? "them" : "it"}.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* ── Step 2c: Drive file picker ── */}
                   {ltDebtWizStep === 2 && ltDebtSource === "drive" && (
@@ -3517,12 +3662,12 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                         </div>
                         <p className="text-xs text-foreground">
                           {ltDebtSource === "existing" && "Selected document"}
-                          {ltDebtSource === "upload"   && "Uploaded document"}
+                          {ltDebtSource === "upload"   && `${ltDebtUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized").length} document(s) uploaded`}
                           {ltDebtSource === "drive"    && "Selected from Google Drive"}
                         </p>
                         <span className="inline-flex items-center gap-1.5 text-xs bg-muted text-foreground rounded-full px-2.5 py-0.5 font-medium max-w-full">
                           {ltDebtSource === "existing" && <><FileText className="h-3 w-3 shrink-0" /><span className="truncate">{LT_DEBT_ENG_DOCS.find(d => d.id === ltDebtSelDocId)?.name}</span></>}
-                          {ltDebtSource === "upload"   && <><FileText className="h-3 w-3 shrink-0" /><span className="truncate">{ltDebtUploadFile ?? "No file"}</span></>}
+                          {ltDebtSource === "upload"   && <><Upload className="h-3 w-3 shrink-0" /><span className="truncate">{ltDebtUploadFiles.filter(f=>f.kind!=="unsupported"&&f.kind!=="oversized").length} valid file{ltDebtUploadFiles.filter(f=>f.kind!=="unsupported"&&f.kind!=="oversized").length!==1?"s":""}</span></>}
                           {ltDebtSource === "drive"    && <><HardDrive className="h-3 w-3 shrink-0" /><span className="truncate">{LT_DEBT_DRIVE_FILES.find(f => f.id === ltDebtDriveId)?.name}</span></>}
                         </span>
                       </div>
@@ -3554,7 +3699,13 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                       onClick={() => {
                         const srcLabel =
                           ltDebtSource === "existing" ? (LT_DEBT_ENG_DOCS.find(d => d.id === ltDebtSelDocId)?.name ?? "existing document") :
-                          ltDebtSource === "upload"   ? (ltDebtUploadFile ?? "uploaded file") :
+                          ltDebtSource === "upload"   ? (() => {
+                            const vf = ltDebtUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
+                            const counts: Partial<Record<string, number>> = {};
+                            vf.forEach(f => { const k = f.userKind ?? f.kind; counts[k] = (counts[k] ?? 0) + 1; });
+                            const parts = Object.entries(counts).map(([k, n]) => `${n} ${LT_FILE_KIND_LABEL[k] ?? k}${n! > 1 ? "s" : ""}`);
+                            return `${vf.length} uploaded document${vf.length !== 1 ? "s" : ""}${parts.length ? ` (${parts.join(", ")})` : ""}`;
+                          })() :
                           ltDebtSource === "drive"    ? (LT_DEBT_DRIVE_FILES.find(f => f.id === ltDebtDriveId)?.name ?? "Google Drive file") :
                           "current workpaper data";
                         setLtDebtSrcLabel(srcLabel);
@@ -3568,7 +3719,10 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                   ) : (
                     <button
                       onClick={() => setLtDebtWizStep(s => s + 1)}
-                      disabled={ltDebtWizStep === 2 && ltDebtSource === "upload" && !ltDebtUploadFile}
+                      disabled={ltDebtWizStep === 2 && ltDebtSource === "upload" && (
+                        ltDebtUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized").length === 0 ||
+                        ltDebtUploadFiles.some(f => f.kind === "ambiguous" && !f.userKind)
+                      )}
                       className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       Next <ChevronRight className="h-3.5 w-3.5" />
