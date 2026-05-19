@@ -2058,27 +2058,6 @@ function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
 
   return (
     <div className="space-y-3">
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-2">
-        {[
-          { label: "Draft",            count: draft,    sub: "Require review",  color: "border-border"                      },
-          { label: "Approved",         count: approved, sub: "Ready to post",   color: "border-blue-200 bg-blue-50/30"      },
-          { label: "Posted/Exported",  count: posted,   sub: "Complete",        color: "border-green-200 bg-green-50/30"    },
-        ].map(({ label, count, sub, color }) => (
-          <div key={label} className={`rounded-[8px] border ${color} px-3 py-2`}>
-            <p className="text-base font-bold text-foreground tabular-nums leading-tight">{count}</p>
-            <p className="text-[11px] font-medium text-foreground">{label}</p>
-            <p className="text-[10px] text-muted-foreground">{sub}</p>
-          </div>
-        ))}
-      </div>
-
-      {draft > 0 && (
-        <div className="flex items-start gap-2 rounded-[8px] border border-amber-200 bg-amber-50/50 px-3 py-2">
-          <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
-          <span className="text-[11px] text-amber-700">{draft} AJEs require preparer review — review and approve each entry before posting.</span>
-        </div>
-      )}
 
       {/* Filter pills */}
       <div className="flex gap-1 flex-wrap">
