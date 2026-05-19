@@ -1998,25 +1998,6 @@ export function LongTermAssetResponse() {
         <span className="font-medium">{settings.fiscalYearEnd?.slice(0,10).replace(/-/g, "-")}</span>:
       </p>
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-4 gap-2">
-        {[
-          { icon: DollarSign, label: "Total Debt",      value: fmt(totalDebt),           sub: `${loans.length} facilities` },
-          { icon: CreditCard, label: "Current Portion", value: fmt(totalCurrentPortion),  sub: "within 12mo" },
-          { icon: TrendingUp, label: "Long-term",       value: fmt(totalLT),              sub: "beyond 12mo" },
-          { icon: Activity,   label: "Accrued Int.",    value: fmt(totalAccrued),          sub: "year-end" },
-        ].map(({ icon: Icon, label, value, sub }) => (
-          <div key={label} className="rounded-[8px] border border-border bg-background px-2.5 py-2">
-            <div className="flex items-center gap-1 mb-0.5">
-              <Icon className="h-3 w-3 text-primary shrink-0" />
-              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide truncate">{label}</span>
-            </div>
-            <p className="text-xs font-semibold text-foreground tabular-nums">{value}</p>
-            <p className="text-[10px] text-muted-foreground">{sub}</p>
-          </div>
-        ))}
-      </div>
-
       {/* Alert banners */}
       {covenantAlert > 0 && (
         <div className="flex items-center gap-2 rounded-[8px] border border-red-200 bg-red-50/60 px-3 py-1.5">
