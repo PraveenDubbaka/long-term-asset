@@ -1,4 +1,5 @@
 import { useMemo, useState, useLayoutEffect, useRef, useEffect } from "react";
+import ReactDOM from "react-dom";
 import {
   AlertTriangle, Calendar, DollarSign, BarChart2,
   ChevronDown, ChevronUp, FileSpreadsheet, Plus, CheckCircle2,
@@ -75,7 +76,7 @@ function MaturityChip({ dateStr }: { dateStr: string }) {
   return <span className="text-[10px] text-muted-foreground">{fmtDate(dateStr)}</span>;
 }
 
-// ─── GL dropdown (auto-mapped, user can override + save) ─────────────────────
+// ─── GL combobox (matches LoansTab edit style) ───────────────────────────────
 
 function GLSelect({ loanId, value, options, field, onSave }: {
   loanId: string;
@@ -84,17 +85,80 @@ function GLSelect({ loanId, value, options, field, onSave }: {
   field: "glPrincipalAccount" | "glAccruedInterestAccount" | "glInterestExpenseAccount";
   onSave: (id: string, field: string, code: string) => void;
 }) {
+  const [open,  setOpen]  = useState(false);
+  const [query, setQuery] = useState("");
+  const [typed, setTyped] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropRef  = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+
+  const selected     = options.find(o => o.code === value);
+  const displayLabel = selected ? `${selected.code} — ${selected.name}` : (value || "—");
+
+  useEffect(() => { if (!typed) setQuery(displayLabel); }, [value, typed, displayLabel]);
+
+  const openDrop = () => {
+    if (inputRef.current) {
+      const r = inputRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 2, left: r.left, width: Math.max(r.width, 240) });
+    }
+    setQuery("");
+    setTyped(false);
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (!inputRef.current?.contains(e.target as Node) && !dropRef.current?.contains(e.target as Node)) {
+        setOpen(false); setTyped(false); setQuery(displayLabel);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open, displayLabel]);
+
+  const q        = query.toLowerCase();
+  const filtered = typed
+    ? options.filter(o => o.code.toLowerCase().includes(q) || o.name.toLowerCase().includes(q))
+    : options;
+
   return (
-    <select
-      value={value}
-      onChange={e => { onSave(loanId, field, e.target.value); toast.success(`GL mapping saved`); }}
-      className="text-[10px] font-mono text-primary bg-background border border-border rounded-[4px] px-1.5 py-0.5 cursor-pointer hover:border-primary/60 focus:outline-none focus:ring-1 focus:ring-primary/40 max-w-[90px]"
-      title={options.find(o => o.code === value)?.name ?? value}
-    >
-      {options.map(o => (
-        <option key={o.code} value={o.code}>{o.code} — {o.name}</option>
-      ))}
-    </select>
+    <>
+      <input
+        ref={inputRef}
+        value={open ? query : displayLabel}
+        placeholder="Search GL…"
+        onChange={e => { setQuery(e.target.value); setTyped(true); }}
+        onFocus={openDrop}
+        onClick={e => { e.stopPropagation(); openDrop(); }}
+        className="h-7 w-full min-w-[120px] px-2 text-[11px] font-mono border border-[#dcdfe4] rounded-[8px] bg-white text-foreground placeholder:text-muted-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] focus:outline-none focus:ring-1 focus:ring-primary/30 dark:bg-card dark:border-[hsl(220_15%_30%)] cursor-pointer"
+      />
+      {open && filtered.length > 0 && ReactDOM.createPortal(
+        <div
+          ref={dropRef}
+          style={{ position: "fixed", top: pos.top, left: pos.left, width: Math.max(pos.width, 260), zIndex: 9999 }}
+          className="bg-background border border-border rounded-[8px] shadow-lg py-1 max-h-52 overflow-y-auto"
+        >
+          {filtered.map(o => (
+            <div
+              key={o.code}
+              className={`px-3 py-1.5 text-xs cursor-pointer font-mono ${o.code === value ? "bg-primary/10 font-semibold text-primary" : "text-foreground hover:bg-muted"}`}
+              onMouseDown={e => {
+                e.preventDefault();
+                onSave(loanId, field, o.code);
+                toast.success("GL mapping saved");
+                setOpen(false); setTyped(false); setQuery(`${o.code} — ${o.name}`);
+              }}
+            >
+              <span className="font-semibold">{o.code}</span>
+              <span className="text-muted-foreground ml-1.5">— {o.name}</span>
+            </div>
+          ))}
+        </div>,
+        document.body,
+      )}
+    </>
   );
 }
 
