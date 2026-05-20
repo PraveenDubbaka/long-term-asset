@@ -8,7 +8,8 @@ import {
   Download, Copy, RotateCcw, X, Trash2, Search, Check, Pencil, Folder,
   Upload, Loader2, Maximize2, Minimize2,
 } from "lucide-react";
-import { COVENANT_TEMPLATES } from "@/lib/covenantTemplates";
+import { COVENANT_TEMPLATES, GL_ACCOUNTS, GL_CATEGORY_ORDER, GL_CATEGORY_LABELS } from "@/lib/covenantTemplates";
+import type { GlCategory } from "@/lib/covenantTemplates";
 import { useStore } from "@/store/useStore";
 import toast from "react-hot-toast";
 import type { Loan, ContinuityRow, AmortizationRow, Covenant, CovenantFormulaLine, JEProposal, ReconciliationItem, EngagementSettings, AccountMapping } from "@/types";
@@ -34,6 +35,110 @@ const fmtDate = (d: string) => {
 
 const daysUntil = (d: string) =>
   Math.round((new Date(d + "T00:00:00").getTime() - Date.now()) / 86400000);
+
+// ─── GL Account picker for covenant formula lines ────────────────────────────
+function CovAccountSelect({ value, onChange }: {
+  value: string;
+  onChange: (code: string, name: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [dropPos, setDropPos] = useState<{ top: number; left: number } | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const btnRef  = useRef<HTMLButtonElement>(null);
+
+  const openDropdown = () => {
+    if (!btnRef.current) return;
+    const r = btnRef.current.getBoundingClientRect();
+    setDropPos({ top: r.bottom + 4, left: r.left });
+    setOpen(true);
+  };
+  const closeDropdown = () => { setOpen(false); setSearch(''); setDropPos(null); };
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) closeDropdown();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const selected = GL_ACCOUNTS.find(a => a.code === value);
+  const filteredGroups = (GL_CATEGORY_ORDER as GlCategory[]).map(cat => ({
+    cat,
+    catLabel: GL_CATEGORY_LABELS[cat],
+    accounts: GL_ACCOUNTS.filter(a => a.category === cat && (
+      !search ||
+      a.name.toLowerCase().includes(search.toLowerCase()) ||
+      a.code.toLowerCase().includes(search.toLowerCase())
+    )),
+  })).filter(g => g.accounts.length > 0);
+
+  return (
+    <div ref={wrapRef} className="relative flex-1 min-w-0">
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={() => open ? closeDropdown() : openDropdown()}
+        className="w-full h-7 pl-2 pr-6 relative text-left border border-border rounded-[6px] bg-background hover:border-primary/50 focus:outline-none transition-colors flex items-center min-w-0 text-sm"
+      >
+        <span className={`truncate text-sm ${!selected ? 'text-muted-foreground' : 'text-foreground'}`}>
+          {selected?.name ?? '— Select account —'}
+        </span>
+        <ChevronDown className={`w-3 h-3 text-muted-foreground absolute right-1.5 top-1/2 -translate-y-1/2 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && dropPos && ReactDOM.createPortal(
+        <div
+          className="fixed z-[400] w-72 bg-popover border border-border rounded-xl shadow-2xl overflow-hidden"
+          style={{ top: dropPos.top, left: dropPos.left }}
+        >
+          <div className="px-2 pt-2 pb-1.5 border-b border-border">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+              <input
+                autoFocus
+                type="text"
+                placeholder="Search accounts…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full h-7 pl-6 pr-2 border border-[#dcdfe4] rounded-[6px] bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none"
+              />
+            </div>
+          </div>
+          <div className="max-h-56 overflow-y-auto py-0.5">
+            {filteredGroups.map(({ cat, catLabel, accounts }) => (
+              <div key={cat}>
+                <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/40 sticky top-0 select-none">
+                  {catLabel}
+                </div>
+                {accounts.map(a => (
+                  <button
+                    key={a.code}
+                    type="button"
+                    onClick={() => { onChange(a.code, a.name); closeDropdown(); }}
+                    className={`w-full text-left px-3 py-1.5 flex items-center gap-2 text-sm transition-colors ${
+                      a.code === value ? 'bg-primary/[0.06] text-primary font-medium' : 'text-foreground hover:bg-muted/60'
+                    }`}
+                  >
+                    <span className="font-mono text-[10px] text-muted-foreground shrink-0 w-10">{a.code}</span>
+                    <span className="truncate flex-1">{a.name}</span>
+                    {a.code === value && <Check className="w-3 h-3 shrink-0 text-primary" />}
+                  </button>
+                ))}
+              </div>
+            ))}
+            {filteredGroups.length === 0 && (
+              <p className="px-3 py-3 text-muted-foreground text-sm text-center">No accounts found</p>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
 
 // ─── Small badge helpers ──────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
@@ -1632,6 +1737,12 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
     setDraft(p => ({ ...p, [key]: cur.map(l => l.id === id ? { ...l, [field]: value } : l) }));
   };
 
+  const updateFormLineAccount = (kind: "num" | "den", id: string, code: string, name: string) => {
+    const key = kind === "num" ? "formulaLines" : "denominatorLines";
+    const cur = (draft[key] ?? editingCov?.[key] ?? []) as CovenantFormulaLine[];
+    setDraft(p => ({ ...p, [key]: cur.map(l => l.id === id ? { ...l, glAccount: code, description: name } : l) }));
+  };
+
   const FIELD = "h-8 w-full text-sm px-2.5 border border-border rounded-[8px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40";
   const LINE_INPUT = "h-7 text-sm px-2 border border-border rounded-[6px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40";
 
@@ -1704,8 +1815,8 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
                   const margin = cov.threshold !== 0 ? Math.abs(cov.projectedValue! - cov.threshold!) / Math.abs(cov.threshold!) : 1;
                   return margin < 0.1;
                 })();
-                const fmtRatio = (v: number) => `${v.toFixed(2)}x`;
-                const fmtThreshold = (op: string | undefined, v: number) => `${op ?? ""} ${v % 1 === 0 ? v.toFixed(0) : v.toFixed(2)}x`.trim();
+                const fmtRatio = (v: number) => v.toFixed(2);
+                const fmtThreshold = (op: string | undefined, v: number) => `${op ?? ""} ${v % 1 === 0 ? v.toFixed(0) : v.toFixed(2)}`.trim();
 
                 return (
                   <tr key={cov.id} className={`border-b border-border/40 ${i % 2 === 0 ? "" : "bg-muted/10"}`}>
@@ -1797,11 +1908,9 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
                         <option value="+">+</option>
                         <option value="-">−</option>
                       </select>
-                      <input
-                        value={line.description}
-                        onChange={e => updateFormLine(kind, line.id, "description", e.target.value)}
-                        placeholder="Description"
-                        className={`flex-1 min-w-0 ${LINE_INPUT}`}
+                      <CovAccountSelect
+                        value={line.glAccount ?? ""}
+                        onChange={(code, name) => updateFormLineAccount(kind, line.id, code, name)}
                       />
                       <input
                         type="number"
