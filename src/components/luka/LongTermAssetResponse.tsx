@@ -745,11 +745,6 @@ function LoansTab({ loans }: { loans: Loan[] }) {
             <span className="text-[11px] font-semibold text-foreground">GL Account Summary</span>
             <span className="text-[10px] text-muted-foreground">— principal balance by account · CAD equiv. (USD × 1.353)</span>
           </div>
-          {!glBalanced && (
-            <span className="text-[10px] text-amber-600 font-medium flex items-center gap-1">
-              <AlertTriangle className="h-3 w-3" /> Balance check failed
-            </span>
-          )}
         </div>
         <table className="w-full text-[11px]">
           <thead>
