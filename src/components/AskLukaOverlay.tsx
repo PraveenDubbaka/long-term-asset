@@ -1,4 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect, useLayoutEffect } from "react";
+import ReactDOM from "react-dom";
+import { accountMappings as allGLAccounts } from "@/data/mockData";
 import { LukaAttachMenu, AttachedFilesBar, useAttachedFiles } from "@/components/luka/LukaAttachMenu";
 import { VoiceRecordingOverlay } from "@/components/luka/VoiceRecordingOverlay";
 import {
@@ -262,13 +264,97 @@ const LT_DEBT_DRIVE_FILES = [
   { id: "ltd-gd-3", name: "All Loan Agreements Package 2025.zip", folder: "Client Documents / Contracts",  size: "2.1 MB", ext: "zip"  },
 ];
 
+const LT_RIGHT_COLS = new Set(["Int. Rate % *","Mo. Payment","Orig. Loan Amt","FX Rate","Closing Bal. *","IO Period (mo.)","Balloon Amt"]);
+
+// ── GL account combobox (compact, for review table) ─────────────────────────
+function GLComboboxMini({ value, onChange, required }: { value: string; onChange: (v: string) => void; required?: boolean }) {
+  const [open, setOpen]   = useState(false);
+  const [query, setQuery] = useState('');
+  const [typed, setTyped] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropRef  = useRef<HTMLDivElement>(null);
+  const [pos, setPos]     = useState({ top: 0, left: 0, width: 0 });
+
+  const selected     = allGLAccounts.find(a => a.code === value);
+  const displayLabel = selected ? `${selected.code} — ${selected.name}` : value;
+
+  useEffect(() => { if (!typed) setQuery(displayLabel); }, [value, typed, displayLabel]);
+
+  const openDrop = () => {
+    if (inputRef.current) {
+      const r = inputRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 2, left: r.left, width: Math.max(r.width, 260) });
+    }
+    setQuery(''); setTyped(false); setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (!inputRef.current?.contains(e.target as Node) && !dropRef.current?.contains(e.target as Node)) {
+        setOpen(false); setTyped(false); setQuery(displayLabel);
+      }
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open, displayLabel]);
+
+  const q        = query.toLowerCase();
+  const filtered = typed
+    ? allGLAccounts.filter(a => a.code.toLowerCase().includes(q) || a.name.toLowerCase().includes(q))
+    : allGLAccounts;
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        className={cn("h-6 text-[10px] px-1.5 border rounded bg-background focus:outline-none w-full font-mono",required && !value ? "border-red-400 bg-red-50/60 placeholder:text-red-400 text-red-600 focus:border-red-500" : "border-border focus:border-primary/40 placeholder:text-muted-foreground")}
+        value={open ? query : displayLabel}
+        placeholder="Search GL…"
+        onChange={e => { setQuery(e.target.value); setTyped(true); }}
+        onFocus={openDrop}
+        onClick={openDrop}
+      />
+      {open && filtered.length > 0 && ReactDOM.createPortal(
+        <div
+          ref={dropRef}
+          style={{ position: 'fixed', top: pos.top, left: pos.left, width: Math.max(pos.width, 260), zIndex: 9999 }}
+          className="bg-background border border-border rounded-md shadow-lg py-1 max-h-48 overflow-y-auto"
+        >
+          {filtered.map(a => (
+            <div
+              key={a.code}
+              className={`px-3 py-1 text-[11px] cursor-pointer font-mono ${a.code === value ? 'bg-primary/10 font-semibold text-primary' : 'text-foreground hover:bg-muted'}`}
+              onMouseDown={e => {
+                e.preventDefault();
+                onChange(a.code);
+                setOpen(false); setTyped(false);
+                setQuery(`${a.code} — ${a.name}`);
+              }}
+            >
+              <span className="font-semibold">{a.code}</span>
+              <span className="text-muted-foreground ml-1.5">— {a.name}</span>
+            </div>
+          ))}
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
+
 // ── LT Debt review row — extracted / manual loan entries ─────────────────
 interface LtDebtReviewRow {
   id: string; sourceFile?: string;
   name: string; lender: string; type: string; currency: string;
   originalPrincipal: string; currentBalance: string; rate: string;
   interestType: string; startDate: string; maturityDate: string;
-  paymentFrequency: string; status: string;
+  firstPaymentDate: string; monthlyPayment: string; fxRate: string;
+  paymentFrequency: string; paymentType: string;
+  dayCount: string; compounding: string;
+  ioPeriod: string; balloonAmt: string;
+  collateral: string; status: string;
+  glPrincipal: string;
 }
 
 const EMPTY_LT_ROW = (): LtDebtReviewRow => ({
@@ -276,10 +362,15 @@ const EMPTY_LT_ROW = (): LtDebtReviewRow => ({
   name: "", lender: "", type: "Term", currency: "CAD",
   originalPrincipal: "", currentBalance: "", rate: "",
   interestType: "Fixed", startDate: "", maturityDate: "",
-  paymentFrequency: "Monthly", status: "Active",
+  firstPaymentDate: "", monthlyPayment: "", fxRate: "",
+  paymentFrequency: "Monthly", paymentType: "P&I",
+  dayCount: "ACT/365", compounding: "Monthly",
+  ioPeriod: "", balloonAmt: "",
+  collateral: "", status: "Active",
+  glPrincipal: "",
 });
 
-const LT_REVIEW_REQUIRED: (keyof LtDebtReviewRow)[] = ["name", "lender", "currentBalance", "rate", "maturityDate"];
+const LT_REVIEW_REQUIRED: (keyof LtDebtReviewRow)[] = ["name", "lender", "currentBalance", "rate", "maturityDate", "glPrincipal"];
 
 function ltRowMissing(row: LtDebtReviewRow, field: keyof LtDebtReviewRow) {
   return !String(row[field] ?? "").trim();
@@ -289,27 +380,29 @@ function mockLtRowsFromFile(file: LtDebtFile): LtDebtReviewRow[] {
   const kind = file.userKind ?? file.kind;
   const sf = file.name;
   const uid = () => `ltr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  const X = { firstPaymentDate: "", monthlyPayment: "", fxRate: "", paymentType: "P&I", dayCount: "ACT/365", compounding: "Monthly", ioPeriod: "", balloonAmt: "" };
   if (kind === "loan-agreement") return [{
     id: uid(), sourceFile: sf,
     name: file.name.replace(/\.(pdf|zip)$/i, "").replace(/[-_]/g, " "),
     lender: "RBC Royal Bank", type: "Term", currency: "CAD",
     originalPrincipal: "3,750,000", currentBalance: "", rate: "",
     interestType: "Fixed", startDate: "2022-04-01", maturityDate: "2027-04-01",
-    paymentFrequency: "Monthly", status: "Active",
+    paymentFrequency: "Monthly", collateral: "", status: "Active", glPrincipal: "",
+    ...X,
   }];
   if (kind === "loan-register") return [
-    { id: uid(), sourceFile: sf, name: "Term Loan A", lender: "RBC Royal Bank", type: "Term", currency: "CAD", originalPrincipal: "5,000,000", currentBalance: "3,750,000", rate: "5.25", interestType: "Fixed", startDate: "2022-04-01", maturityDate: "2027-04-01", paymentFrequency: "Monthly", status: "Active" },
-    { id: uid(), sourceFile: sf, name: "Operating LOC", lender: "TD Bank", type: "LOC", currency: "CAD", originalPrincipal: "1,000,000", currentBalance: "875,000", rate: "7.45", interestType: "Variable", startDate: "2021-01-15", maturityDate: "", paymentFrequency: "Monthly", status: "Active" },
-    { id: uid(), sourceFile: sf, name: "Equipment Loan", lender: "HSBC", type: "Term", currency: "USD", originalPrincipal: "1,500,000", currentBalance: "1,125,000", rate: "", interestType: "Fixed", startDate: "2023-03-01", maturityDate: "2028-03-01", paymentFrequency: "Monthly", status: "Active" },
+    { id: uid(), sourceFile: sf, name: "Term Loan A",   lender: "RBC Royal Bank", type: "Term", currency: "CAD", originalPrincipal: "5,000,000", currentBalance: "3,750,000", rate: "5.25", interestType: "Fixed",    startDate: "2022-04-01", maturityDate: "2027-04-01", paymentFrequency: "Monthly", collateral: "Real property — 123 Main St.", status: "Active", glPrincipal: "2100", ...X, firstPaymentDate: "2022-05-01", monthlyPayment: "72,916" },
+    { id: uid(), sourceFile: sf, name: "Operating LOC", lender: "TD Bank",         type: "LOC",  currency: "CAD", originalPrincipal: "1,000,000", currentBalance: "875,000",   rate: "7.45", interestType: "Variable", startDate: "2021-01-15", maturityDate: "",           paymentFrequency: "Monthly", collateral: "Accounts receivable",         status: "Active", glPrincipal: "2110", ...X },
+    { id: uid(), sourceFile: sf, name: "Equipment Loan",lender: "HSBC",            type: "Term", currency: "USD", originalPrincipal: "1,500,000", currentBalance: "1,125,000", rate: "",     interestType: "Fixed",    startDate: "2023-03-01", maturityDate: "2028-03-01", paymentFrequency: "Monthly", collateral: "Manufacturing equipment",     status: "Active", glPrincipal: "",     ...X, fxRate: "1.3500" },
   ];
   if (kind === "continuity") return [
-    { id: uid(), sourceFile: sf, name: "Term Loan A", lender: "RBC Royal Bank", type: "Term", currency: "CAD", originalPrincipal: "5,000,000", currentBalance: "3,750,000", rate: "5.25", interestType: "Fixed", startDate: "2022-04-01", maturityDate: "2027-04-01", paymentFrequency: "Monthly", status: "Active" },
-    { id: uid(), sourceFile: sf, name: "Operating LOC", lender: "TD Bank", type: "LOC", currency: "CAD", originalPrincipal: "", currentBalance: "875,000", rate: "7.45", interestType: "Variable", startDate: "", maturityDate: "", paymentFrequency: "Monthly", status: "Active" },
+    { id: uid(), sourceFile: sf, name: "Term Loan A",   lender: "RBC Royal Bank", type: "Term", currency: "CAD", originalPrincipal: "5,000,000", currentBalance: "3,750,000", rate: "5.25", interestType: "Fixed",    startDate: "2022-04-01", maturityDate: "2027-04-01", paymentFrequency: "Monthly", collateral: "Real property",         status: "Active", glPrincipal: "2100", ...X },
+    { id: uid(), sourceFile: sf, name: "Operating LOC", lender: "TD Bank",         type: "LOC",  currency: "CAD", originalPrincipal: "",          currentBalance: "875,000",   rate: "7.45", interestType: "Variable", startDate: "",           maturityDate: "",           paymentFrequency: "Monthly", collateral: "",                      status: "Active", glPrincipal: "",     ...X },
   ];
   if (kind === "workpaper") return [
-    { id: uid(), sourceFile: sf, name: "Term Loan A", lender: "RBC Royal Bank", type: "Term", currency: "CAD", originalPrincipal: "5,000,000", currentBalance: "3,750,000", rate: "5.25", interestType: "Fixed", startDate: "2022-04-01", maturityDate: "2027-04-01", paymentFrequency: "Monthly", status: "Active" },
-    { id: uid(), sourceFile: sf, name: "Operating LOC", lender: "TD Bank", type: "LOC", currency: "CAD", originalPrincipal: "1,000,000", currentBalance: "875,000", rate: "7.45", interestType: "Variable", startDate: "2021-01-15", maturityDate: "2026-01-15", paymentFrequency: "Monthly", status: "Active" },
-    { id: uid(), sourceFile: sf, name: "Equipment Loan", lender: "HSBC", type: "Term", currency: "USD", originalPrincipal: "1,500,000", currentBalance: "1,125,000", rate: "6.10", interestType: "Fixed", startDate: "2023-03-01", maturityDate: "2028-03-01", paymentFrequency: "Monthly", status: "Active" },
+    { id: uid(), sourceFile: sf, name: "Term Loan A",   lender: "RBC Royal Bank", type: "Term", currency: "CAD", originalPrincipal: "5,000,000", currentBalance: "3,750,000", rate: "5.25", interestType: "Fixed",    startDate: "2022-04-01", maturityDate: "2027-04-01", paymentFrequency: "Monthly", collateral: "Real property — 123 Main St.", status: "Active", glPrincipal: "2100", ...X, firstPaymentDate: "2022-05-01" },
+    { id: uid(), sourceFile: sf, name: "Operating LOC", lender: "TD Bank",         type: "LOC",  currency: "CAD", originalPrincipal: "1,000,000", currentBalance: "875,000",   rate: "7.45", interestType: "Variable", startDate: "2021-01-15", maturityDate: "2026-01-15", paymentFrequency: "Monthly", collateral: "Accounts receivable",         status: "Active", glPrincipal: "2110", ...X },
+    { id: uid(), sourceFile: sf, name: "Equipment Loan",lender: "HSBC",            type: "Term", currency: "USD", originalPrincipal: "1,500,000", currentBalance: "1,125,000", rate: "6.10", interestType: "Fixed",    startDate: "2023-03-01", maturityDate: "2028-03-01", paymentFrequency: "Monthly", collateral: "Manufacturing equipment",     status: "Active", glPrincipal: "",     ...X, fxRate: "1.3500" },
   ];
   return [];
 }
@@ -2646,11 +2739,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                 <span className="text-[11px] font-semibold text-foreground">
                                                   {ltReviewRows.length} loan{ltReviewRows.length !== 1 ? "s" : ""} extracted — review and complete before submitting
                                                 </span>
-                                                {missingCount > 0 ? (
-                                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
-                                                    <AlertTriangle className="w-2.5 h-2.5" /> {missingCount} field{missingCount !== 1 ? "s" : ""} missing
-                                                  </span>
-                                                ) : (
+                                                {missingCount === 0 && (
                                                   <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">
                                                     <CheckCircle2 className="w-2.5 h-2.5" /> All complete
                                                   </span>
@@ -2660,11 +2749,15 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                               {/* Scrollable review table */}
                                               <div className="rounded-[8px] border border-border overflow-hidden">
                                                 <div className="overflow-x-auto">
-                                                  <table className="w-full text-[10px]" style={{ minWidth: 1080 }}>
+                                                  <table className="w-full text-[10px]" style={{ minWidth: 2400 }}>
                                                     <thead>
                                                       <tr className="bg-muted/30 border-b border-border">
-                                                        {["Loan Name *","Lender *","Type","CCY","Orig. Principal","Balance *","Rate % *","Int. Type","Start Date","Maturity *","Freq.","Status",""].map((h, i) => (
-                                                          <th key={i} className={`px-2 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i >= 4 && i <= 6 ? "text-right" : "text-left"}`}>{h}</th>
+                                                        {["Loan Name *","Lender *","Current Collateral","Type","Rate Type","Int. Rate % *","Start","Maturity *","First Payment","CCY","Mo. Payment","Orig. Loan Amt","FX Rate","Closing Bal. *","GL Principal *","Day Count","Payment Type","Freq.","Compounding","IO Period (mo.)","Balloon Amt","Status",""].map((h, i) => (
+                                                          <th key={i} className={`px-2 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${LT_RIGHT_COLS.has(h) ? "text-right" : "text-left"} ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10" : ""}`}>
+                                                            {h.endsWith(" *")
+                                                              ? <>{h.slice(0, -2)} <span className="text-red-500">*</span></>
+                                                              : h}
+                                                          </th>
                                                         ))}
                                                       </tr>
                                                     </thead>
@@ -2673,18 +2766,21 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                         const fc = (field: keyof LtDebtReviewRow, req: boolean) =>
                                                           cn("h-6 text-[10px] px-1.5 border rounded bg-background focus:outline-none w-full",
                                                             req && ltRowMissing(row, field)
-                                                              ? "border-amber-300 bg-amber-50/60 placeholder:text-amber-400 focus:border-amber-400"
+                                                              ? "border-red-400 bg-red-50/60 placeholder:text-red-400 text-red-600 focus:border-red-500"
                                                               : "border-border focus:border-primary/40");
                                                         return (
                                                           <tr key={row.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
                                                             {/* Loan Name */}
                                                             <td className="px-1.5 py-1 min-w-[130px]">
                                                               <input value={row.name} onChange={e => updateLtRow(row.id,"name",e.target.value)} className={cn(fc("name",true),"w-32")} placeholder="Loan name" />
-                                                              {row.sourceFile && <div className="text-[8px] text-muted-foreground mt-0.5 truncate max-w-[120px]">📄 {row.sourceFile}</div>}
                                                             </td>
                                                             {/* Lender */}
                                                             <td className="px-1.5 py-1 min-w-[110px]">
                                                               <input value={row.lender} onChange={e => updateLtRow(row.id,"lender",e.target.value)} className={cn(fc("lender",true),"w-28")} placeholder="Lender" />
+                                                            </td>
+                                                            {/* Current Collateral */}
+                                                            <td className="px-1.5 py-1 min-w-[120px]">
+                                                              <input value={row.collateral} onChange={e => updateLtRow(row.id,"collateral",e.target.value)} className={cn(fc("collateral",false),"w-28")} placeholder="e.g. Real property" />
                                                             </td>
                                                             {/* Type */}
                                                             <td className="px-1.5 py-1">
@@ -2692,31 +2788,17 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                                 {["Term","LOC","Revolver","Mortgage","Bridge"].map(t => <option key={t}>{t}</option>)}
                                                               </select>
                                                             </td>
-                                                            {/* CCY */}
+                                                            {/* Rate Type */}
                                                             <td className="px-1.5 py-1">
-                                                              <select value={row.currency} onChange={e => updateLtRow(row.id,"currency",e.target.value)} className={cn(SCR,"w-14")}>
-                                                                {["CAD","USD","EUR","GBP"].map(c => <option key={c}>{c}</option>)}
+                                                              <select value={row.interestType} onChange={e => updateLtRow(row.id,"interestType",e.target.value)} className={cn(SCR,"w-22")}>
+                                                                {["Fixed","Variable","Floating","Hybrid","Step Rate"].map(t => <option key={t}>{t}</option>)}
                                                               </select>
                                                             </td>
-                                                            {/* Orig. Principal */}
-                                                            <td className="px-1.5 py-1">
-                                                              <input value={row.originalPrincipal} onChange={e => updateLtRow(row.id,"originalPrincipal",e.target.value)} className={cn(fc("originalPrincipal",false),"w-24 text-right")} placeholder="0" />
-                                                            </td>
-                                                            {/* Current Balance * */}
-                                                            <td className="px-1.5 py-1">
-                                                              <input value={row.currentBalance} onChange={e => updateLtRow(row.id,"currentBalance",e.target.value)} className={cn(fc("currentBalance",true),"w-24 text-right")} placeholder="Balance" />
-                                                            </td>
-                                                            {/* Rate * */}
+                                                            {/* Int. Rate % * */}
                                                             <td className="px-1.5 py-1">
                                                               <input value={row.rate} onChange={e => updateLtRow(row.id,"rate",e.target.value)} className={cn(fc("rate",true),"w-14 text-right")} placeholder="%" />
                                                             </td>
-                                                            {/* Interest Type */}
-                                                            <td className="px-1.5 py-1">
-                                                              <select value={row.interestType} onChange={e => updateLtRow(row.id,"interestType",e.target.value)} className={cn(SCR,"w-20")}>
-                                                                {["Fixed","Variable","Floating","Hybrid"].map(t => <option key={t}>{t}</option>)}
-                                                              </select>
-                                                            </td>
-                                                            {/* Start Date */}
+                                                            {/* Start */}
                                                             <td className="px-1.5 py-1">
                                                               <input type="date" value={row.startDate} onChange={e => updateLtRow(row.id,"startDate",e.target.value)} className={cn(fc("startDate",false),"w-28")} />
                                                             </td>
@@ -2724,11 +2806,67 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                             <td className="px-1.5 py-1">
                                                               <input type="date" value={row.maturityDate} onChange={e => updateLtRow(row.id,"maturityDate",e.target.value)} className={cn(fc("maturityDate",true),"w-28")} />
                                                             </td>
-                                                            {/* Payment Frequency */}
+                                                            {/* First Payment */}
+                                                            <td className="px-1.5 py-1">
+                                                              <input type="date" value={row.firstPaymentDate} onChange={e => updateLtRow(row.id,"firstPaymentDate",e.target.value)} className={cn(fc("firstPaymentDate",false),"w-28")} />
+                                                            </td>
+                                                            {/* CCY */}
+                                                            <td className="px-1.5 py-1">
+                                                              <select value={row.currency} onChange={e => updateLtRow(row.id,"currency",e.target.value)} className={cn(SCR,"w-14")}>
+                                                                {["CAD","USD","EUR","GBP"].map(c => <option key={c}>{c}</option>)}
+                                                              </select>
+                                                            </td>
+                                                            {/* Mo. Payment */}
+                                                            <td className="px-1.5 py-1">
+                                                              <input value={row.monthlyPayment} onChange={e => updateLtRow(row.id,"monthlyPayment",e.target.value)} className={cn(fc("monthlyPayment",false),"w-24 text-right")} placeholder="auto" />
+                                                            </td>
+                                                            {/* Orig. Loan Amt */}
+                                                            <td className="px-1.5 py-1">
+                                                              <input value={row.originalPrincipal} onChange={e => updateLtRow(row.id,"originalPrincipal",e.target.value)} className={cn(fc("originalPrincipal",false),"w-24 text-right")} placeholder="0" />
+                                                            </td>
+                                                            {/* FX Rate */}
+                                                            <td className="px-1.5 py-1">
+                                                              <input value={row.fxRate} onChange={e => updateLtRow(row.id,"fxRate",e.target.value)} className={cn(fc("fxRate",false),"w-16 text-right font-mono")} placeholder="1.000" />
+                                                            </td>
+                                                            {/* Closing Bal. * */}
+                                                            <td className="px-1.5 py-1">
+                                                              <input value={row.currentBalance} onChange={e => updateLtRow(row.id,"currentBalance",e.target.value)} className={cn(fc("currentBalance",true),"w-24 text-right")} placeholder="Balance" />
+                                                            </td>
+                                                            {/* GL Principal * */}
+                                                            <td className="px-1.5 py-1 min-w-[160px]">
+                                                              <GLComboboxMini value={row.glPrincipal} onChange={v => updateLtRow(row.id,"glPrincipal",v)} required={ltRowMissing(row,"glPrincipal")} />
+                                                            </td>
+                                                            {/* Day Count */}
+                                                            <td className="px-1.5 py-1">
+                                                              <select value={row.dayCount} onChange={e => updateLtRow(row.id,"dayCount",e.target.value)} className={cn(SCR,"w-20")}>
+                                                                {["ACT/365","ACT/360","30/360"].map(d => <option key={d}>{d}</option>)}
+                                                              </select>
+                                                            </td>
+                                                            {/* Payment Type */}
+                                                            <td className="px-1.5 py-1">
+                                                              <select value={row.paymentType} onChange={e => updateLtRow(row.id,"paymentType",e.target.value)} className={cn(SCR,"w-24")}>
+                                                                {["P&I","Interest-only","Balloon"].map(p => <option key={p}>{p}</option>)}
+                                                              </select>
+                                                            </td>
+                                                            {/* Freq. */}
                                                             <td className="px-1.5 py-1">
                                                               <select value={row.paymentFrequency} onChange={e => updateLtRow(row.id,"paymentFrequency",e.target.value)} className={cn(SCR,"w-22")}>
                                                                 {["Monthly","Quarterly","Semi-annual","Annual"].map(f => <option key={f}>{f}</option>)}
                                                               </select>
+                                                            </td>
+                                                            {/* Compounding */}
+                                                            <td className="px-1.5 py-1">
+                                                              <select value={row.compounding} onChange={e => updateLtRow(row.id,"compounding",e.target.value)} className={cn(SCR,"w-22")}>
+                                                                {["Monthly","Quarterly","Semi-annual","Annual"].map(f => <option key={f}>{f}</option>)}
+                                                              </select>
+                                                            </td>
+                                                            {/* IO Period (mo.) */}
+                                                            <td className="px-1.5 py-1">
+                                                              <input value={row.ioPeriod} onChange={e => updateLtRow(row.id,"ioPeriod",e.target.value)} className={cn(fc("ioPeriod",false),"w-14 text-right")} placeholder="0" />
+                                                            </td>
+                                                            {/* Balloon Amt */}
+                                                            <td className="px-1.5 py-1">
+                                                              <input value={row.balloonAmt} onChange={e => updateLtRow(row.id,"balloonAmt",e.target.value)} className={cn(fc("balloonAmt",false),"w-24 text-right")} placeholder="0" />
                                                             </td>
                                                             {/* Status */}
                                                             <td className="px-1.5 py-1">
@@ -2737,7 +2875,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                               </select>
                                                             </td>
                                                             {/* Delete */}
-                                                            <td className="px-1.5 py-1">
+                                                            <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
                                                               <button onClick={() => deleteLtRow(row.id)} className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors">
                                                                 <X className="w-3 h-3" />
                                                               </button>
@@ -2757,15 +2895,17 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                             {/* Add Manual Entry */}
                                             <button
                                               onClick={() => setLtReviewRows(prev => [...prev, EMPTY_LT_ROW()])}
-                                              className="inline-flex items-center gap-1.5 h-7 px-3 text-xs font-medium rounded-[8px] border border-dashed border-primary/40 text-primary hover:bg-primary/5 transition-colors"
+                                              className="inline-flex items-center gap-1.5 h-9 px-4 text-sm font-medium rounded-[8px] border border-border bg-background text-foreground hover:bg-muted/60 transition-colors"
                                             >
-                                              <Plus className="w-3 h-3" /> Add Manual Entry
+                                              <Plus className="w-3.5 h-3.5" /> Add Manual Entry
                                             </button>
 
-                                            {/* Submit */}
-                                            {canSubmit && (
+                                            {/* Submit — always visible, disabled until all required fields filled */}
+                                            {(validFiles.length > 0 || ltReviewRows.length > 0) && ambigFiles.length === 0 && (
                                               <button
+                                                disabled={!canSubmit}
                                                 onClick={() => {
+                                                  if (!canSubmit) return;
                                                   const counts: Partial<Record<string, number>> = {};
                                                   validFiles.forEach(f => { const k = f.userKind ?? f.kind; counts[k] = (counts[k] ?? 0) + 1; });
                                                   const parts = Object.entries(counts).map(([k, n]) => `${n} ${LT_FILE_KIND_LABEL[k] ?? k}${n! > 1 ? "s" : ""}`);
@@ -2776,7 +2916,12 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                   setLtDebtGenerated(true);
                                                   setLtDebtPhase("done");
                                                 }}
-                                                className="inline-flex items-center gap-1.5 h-9 px-5 text-sm font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors"
+                                                className={cn(
+                                                  "inline-flex items-center gap-1.5 h-9 px-5 text-sm font-medium rounded-[8px] transition-colors",
+                                                  canSubmit
+                                                    ? "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                                                    : "bg-muted/60 text-muted-foreground/50 cursor-not-allowed border border-border/50 opacity-60"
+                                                )}
                                               >
                                                 Submit
                                               </button>
@@ -2784,7 +2929,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
 
                                             {/* Hint */}
                                             {missingCount > 0 && (
-                                              <span className="text-[10px] text-amber-600">
+                                              <span className="text-[10px] text-red-500">
                                                 Fill in the <strong>{missingCount}</strong> highlighted field{missingCount !== 1 ? "s" : ""} to continue
                                               </span>
                                             )}

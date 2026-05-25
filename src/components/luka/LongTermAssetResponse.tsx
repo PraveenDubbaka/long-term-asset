@@ -592,7 +592,6 @@ function LoansTab({ loans }: { loans: Loan[] }) {
                     className={`px-2.5 py-2 font-semibold text-muted-foreground uppercase tracking-wide text-[10px] whitespace-nowrap ${left ? "text-left" : "text-right"}`}
                   >{h}</th>
                 ))}
-                <th className="px-2.5 py-2 font-semibold text-muted-foreground uppercase tracking-wide text-[10px] text-right sticky right-0 z-10 bg-muted/30 whitespace-nowrap border-l border-border">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -727,20 +726,6 @@ function LoansTab({ loans }: { loans: Loan[] }) {
                           {!hid.has("Balloon Amt")      && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{l.balloonAmount ? fmt(l.balloonAmount) : "00"}</td>}
                           {!hid.has("Status")           && <td className="px-2.5 py-1.5 text-right"><StatusBadge status={l.status} /></td>}
                         </>}
-                        {/* Actions — always visible */}
-                        <td className="px-2 py-1.5 sticky right-0 z-10 border-l border-border bg-background">
-                          {isEditing ? (
-                            <div className="flex items-center gap-1 justify-end">
-                              <button onClick={saveEdit} title="Save changes" className={`${ACT_BTN} bg-primary text-primary-foreground hover:bg-primary/90`}><Check className="h-3 w-3" /></button>
-                              <button onClick={cancelEdit} title="Cancel" className={`${ACT_BTN} border border-border text-muted-foreground hover:bg-muted hover:text-foreground`}><X className="h-3 w-3" /></button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1 justify-end">
-                              <button onClick={() => { if (!addingNew) { setEditingId(l.id); setEditDraft({ ...l }); } }} title="Edit row" disabled={addingNew} className={`${ACT_BTN} text-muted-foreground hover:bg-primary/10 hover:text-primary disabled:opacity-30`}><Pencil className="h-3 w-3" /></button>
-                              <button onClick={() => handleDeleteLoan(l.id, l.name)} title="Delete loan" disabled={addingNew} className={`${ACT_BTN} text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 disabled:opacity-30`}><Trash2 className="h-3 w-3" /></button>
-                            </div>
-                          )}
-                        </td>
                       </tr>
                     );
                   })}
@@ -756,7 +741,6 @@ function LoansTab({ loans }: { loans: Loan[] }) {
                   if (h === "Closing Balance") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+toCAD(l.closingBalance??l.currentBalance,l.currency),0))}</td>;
                   return <td key={h} className="px-2.5 py-2" />;
                 })}
-                <td className="px-2.5 py-2 sticky right-0 z-10 bg-muted/50 border-l border-border" />
               </tr>
             </tfoot>
           </table>
