@@ -262,6 +262,58 @@ const LT_DEBT_DRIVE_FILES = [
   { id: "ltd-gd-3", name: "All Loan Agreements Package 2025.zip", folder: "Client Documents / Contracts",  size: "2.1 MB", ext: "zip"  },
 ];
 
+// ── LT Debt review row — extracted / manual loan entries ─────────────────
+interface LtDebtReviewRow {
+  id: string; sourceFile?: string;
+  name: string; lender: string; type: string; currency: string;
+  originalPrincipal: string; currentBalance: string; rate: string;
+  interestType: string; startDate: string; maturityDate: string;
+  paymentFrequency: string; status: string;
+}
+
+const EMPTY_LT_ROW = (): LtDebtReviewRow => ({
+  id: `ltr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+  name: "", lender: "", type: "Term", currency: "CAD",
+  originalPrincipal: "", currentBalance: "", rate: "",
+  interestType: "Fixed", startDate: "", maturityDate: "",
+  paymentFrequency: "Monthly", status: "Active",
+});
+
+const LT_REVIEW_REQUIRED: (keyof LtDebtReviewRow)[] = ["name", "lender", "currentBalance", "rate", "maturityDate"];
+
+function ltRowMissing(row: LtDebtReviewRow, field: keyof LtDebtReviewRow) {
+  return !String(row[field] ?? "").trim();
+}
+
+function mockLtRowsFromFile(file: LtDebtFile): LtDebtReviewRow[] {
+  const kind = file.userKind ?? file.kind;
+  const sf = file.name;
+  const uid = () => `ltr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  if (kind === "loan-agreement") return [{
+    id: uid(), sourceFile: sf,
+    name: file.name.replace(/\.(pdf|zip)$/i, "").replace(/[-_]/g, " "),
+    lender: "RBC Royal Bank", type: "Term", currency: "CAD",
+    originalPrincipal: "3,750,000", currentBalance: "", rate: "",
+    interestType: "Fixed", startDate: "2022-04-01", maturityDate: "2027-04-01",
+    paymentFrequency: "Monthly", status: "Active",
+  }];
+  if (kind === "loan-register") return [
+    { id: uid(), sourceFile: sf, name: "Term Loan A", lender: "RBC Royal Bank", type: "Term", currency: "CAD", originalPrincipal: "5,000,000", currentBalance: "3,750,000", rate: "5.25", interestType: "Fixed", startDate: "2022-04-01", maturityDate: "2027-04-01", paymentFrequency: "Monthly", status: "Active" },
+    { id: uid(), sourceFile: sf, name: "Operating LOC", lender: "TD Bank", type: "LOC", currency: "CAD", originalPrincipal: "1,000,000", currentBalance: "875,000", rate: "7.45", interestType: "Variable", startDate: "2021-01-15", maturityDate: "", paymentFrequency: "Monthly", status: "Active" },
+    { id: uid(), sourceFile: sf, name: "Equipment Loan", lender: "HSBC", type: "Term", currency: "USD", originalPrincipal: "1,500,000", currentBalance: "1,125,000", rate: "", interestType: "Fixed", startDate: "2023-03-01", maturityDate: "2028-03-01", paymentFrequency: "Monthly", status: "Active" },
+  ];
+  if (kind === "continuity") return [
+    { id: uid(), sourceFile: sf, name: "Term Loan A", lender: "RBC Royal Bank", type: "Term", currency: "CAD", originalPrincipal: "5,000,000", currentBalance: "3,750,000", rate: "5.25", interestType: "Fixed", startDate: "2022-04-01", maturityDate: "2027-04-01", paymentFrequency: "Monthly", status: "Active" },
+    { id: uid(), sourceFile: sf, name: "Operating LOC", lender: "TD Bank", type: "LOC", currency: "CAD", originalPrincipal: "", currentBalance: "875,000", rate: "7.45", interestType: "Variable", startDate: "", maturityDate: "", paymentFrequency: "Monthly", status: "Active" },
+  ];
+  if (kind === "workpaper") return [
+    { id: uid(), sourceFile: sf, name: "Term Loan A", lender: "RBC Royal Bank", type: "Term", currency: "CAD", originalPrincipal: "5,000,000", currentBalance: "3,750,000", rate: "5.25", interestType: "Fixed", startDate: "2022-04-01", maturityDate: "2027-04-01", paymentFrequency: "Monthly", status: "Active" },
+    { id: uid(), sourceFile: sf, name: "Operating LOC", lender: "TD Bank", type: "LOC", currency: "CAD", originalPrincipal: "1,000,000", currentBalance: "875,000", rate: "7.45", interestType: "Variable", startDate: "2021-01-15", maturityDate: "2026-01-15", paymentFrequency: "Monthly", status: "Active" },
+    { id: uid(), sourceFile: sf, name: "Equipment Loan", lender: "HSBC", type: "Term", currency: "USD", originalPrincipal: "1,500,000", currentBalance: "1,125,000", rate: "6.10", interestType: "Fixed", startDate: "2023-03-01", maturityDate: "2028-03-01", paymentFrequency: "Monthly", status: "Active" },
+  ];
+  return [];
+}
+
 // ── Investment Schedule — Plaid institutions ─────────────────────────────
 const INV_PLAID_INSTITUTIONS = [
   { id: 'td',           name: 'TD Direct Investing',   abbr: 'TD',  color: '#00883A' },
@@ -419,6 +471,8 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
   const [ltDebtUploadFiles, setLtDebtUploadFiles] = useState<LtDebtFile[]>([]);
   const [ltDebtGenerated,   setLtDebtGenerated]  = useState(false);
   const [ltDebtSrcLabel,    setLtDebtSrcLabel]   = useState<string|null>(null);
+  const [ltReviewRows,      setLtReviewRows]     = useState<LtDebtReviewRow[]>([]);
+  const [ltProcessedFileIds,setLtProcessedFileIds]= useState<Set<string>>(new Set());
   // ── Investment Schedule (chat-based) ──
   const [invSchedPhase, setInvSchedPhase] = useState<"idle"|"upload-prompt"|"done">("idle");
   const [invSchedGenerated, setInvSchedGenerated] = useState(false);
@@ -679,6 +733,12 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
     setAutomationElapsed(0);
     setAutomationLog([]);
   }, []);
+
+  // ── LT Debt review row helpers ──
+  const updateLtRow = useCallback((id: string, field: keyof LtDebtReviewRow, value: string) =>
+    setLtReviewRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r)), []);
+  const deleteLtRow = useCallback((id: string) =>
+    setLtReviewRows(prev => prev.filter(r => r.id !== id)), []);
 
   // ── Investment Plaid helpers ──
   const resetInvPlaid = useCallback(() => {
@@ -2473,23 +2533,42 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                       We'll accept <strong>loan agreements</strong> (PDF/ZIP), <strong>continuity schedules</strong>, <strong>loan registers</strong>, or <strong>prior-year workpapers</strong> (Excel · up to 15 documents · 25 MB total).
                                     </p>
 
-                                    {/* Drop zone */}
+                                    {/* Drop zone + review table */}
                                     {(() => {
                                       const addLtFiles = (rawFiles: FileList | null) => {
                                         if (!rawFiles) return;
                                         const classified = Array.from(rawFiles).map(classifyLtDebtFile);
                                         setLtDebtUploadFiles(prev => {
                                           const existing = new Set(prev.map(f => f.name));
-                                          return [...prev, ...classified.filter(f => !existing.has(f.name))].slice(0, 15);
+                                          const toAdd = classified.filter(f => !existing.has(f.name));
+                                          // Generate mock review rows for non-ambiguous valid files
+                                          const newValid = toAdd.filter(f => f.kind !== "unsupported" && f.kind !== "oversized" && f.kind !== "ambiguous");
+                                          if (newValid.length > 0) {
+                                            const newRows = newValid.flatMap(mockLtRowsFromFile);
+                                            if (newRows.length > 0) {
+                                              setLtReviewRows(rPrev => {
+                                                const existingKeys = new Set(rPrev.map(r => `${r.sourceFile}:${r.name}`));
+                                                return [...rPrev, ...newRows.filter(r => !existingKeys.has(`${r.sourceFile}:${r.name}`))];
+                                              });
+                                            }
+                                            setLtProcessedFileIds(s => { const n = new Set(s); newValid.forEach(f => n.add(f.id)); return n; });
+                                          }
+                                          return [...prev, ...toAdd].slice(0, 15);
                                         });
                                       };
                                       const validFiles = ltDebtUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
                                       const ambigFiles = ltDebtUploadFiles.filter(f => f.kind === "ambiguous" && !f.userKind);
+                                      const missingCount = ltReviewRows.reduce((sum, row) =>
+                                        sum + LT_REVIEW_REQUIRED.filter(f => ltRowMissing(row, f)).length, 0);
+                                      const canSubmit = (validFiles.length > 0 || ltReviewRows.length > 0) && ambigFiles.length === 0 && missingCount === 0;
+
+                                      const SCR = "h-6 text-[10px] px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer";
+
                                       return (
                                         <div className="space-y-3">
                                           {/* Upload box */}
                                           <div
-                                            className="flex flex-col items-center justify-center gap-2 rounded-[12px] border border-border bg-background cursor-pointer transition-colors py-6 hover:bg-muted/30"
+                                            className="flex flex-col items-center justify-center gap-2 rounded-[12px] border border-border bg-background cursor-pointer transition-colors py-5 hover:bg-muted/30"
                                             onClick={() => {
                                               const inp = document.createElement("input");
                                               inp.type = "file"; inp.accept = ".pdf,.xlsx,.xls,.zip"; inp.multiple = true;
@@ -2508,36 +2587,37 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                             <p className="text-xs text-muted-foreground">Max 15 docs with total size of 25MB</p>
                                           </div>
 
-                                          {/* File chips — flex wrap */}
+                                          {/* File chips */}
                                           {ltDebtUploadFiles.length > 0 && (
                                             <div className="flex flex-wrap gap-2">
                                               {ltDebtUploadFiles.map(f => {
                                                 const isError = f.kind === "unsupported" || f.kind === "oversized";
                                                 const isAmbig = f.kind === "ambiguous" && !f.userKind;
-                                                const resolvedKind = f.userKind ?? f.kind;
                                                 return (
                                                   <div key={f.id} className={cn(
                                                     "inline-flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-[10px] border bg-background text-xs max-w-[220px]",
                                                     isError ? "border-red-200" : isAmbig ? "border-amber-300" : "border-border"
                                                   )}>
-                                                    {/* File icon with coloured bg */}
-                                                    <div className={cn(
-                                                      "w-7 h-7 rounded-[6px] flex items-center justify-center shrink-0",
-                                                      isError ? "bg-red-50" : "bg-primary/10"
-                                                    )}>
-                                                      {f.ext === "pdf"
-                                                        ? <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
-                                                        : f.ext === "zip"
-                                                        ? <FolderOpen className="h-3.5 w-3.5 text-primary shrink-0" />
-                                                        : <FileSpreadsheet className="h-3.5 w-3.5 text-primary shrink-0" />}
+                                                    <div className={cn("w-7 h-7 rounded-[6px] flex items-center justify-center shrink-0", isError ? "bg-red-50" : "bg-primary/10")}>
+                                                      {f.ext === "pdf" ? <FileText className="h-3.5 w-3.5 text-primary shrink-0" /> : f.ext === "zip" ? <FolderOpen className="h-3.5 w-3.5 text-primary shrink-0" /> : <FileSpreadsheet className="h-3.5 w-3.5 text-primary shrink-0" />}
                                                     </div>
                                                     <span className="flex-1 min-w-0 truncate font-medium text-foreground">{f.name}</span>
-                                                    {/* Classify dropdown for ambiguous */}
                                                     {isAmbig && (
                                                       <select onClick={e => e.stopPropagation()} defaultValue=""
                                                         onChange={e => {
                                                           const v = e.target.value as Exclude<LtDebtFileKind, "unsupported" | "oversized" | "ambiguous">;
                                                           setLtDebtUploadFiles(prev => prev.map(x => x.id === f.id ? { ...x, userKind: v } : x));
+                                                          // Generate rows when ambiguous file gets classified
+                                                          if (!ltProcessedFileIds.has(f.id)) {
+                                                            const newRows = mockLtRowsFromFile({ ...f, userKind: v });
+                                                            if (newRows.length > 0) {
+                                                              setLtReviewRows(rPrev => {
+                                                                const existingKeys = new Set(rPrev.map(r => `${r.sourceFile}:${r.name}`));
+                                                                return [...rPrev, ...newRows.filter(r => !existingKeys.has(`${r.sourceFile}:${r.name}`))];
+                                                              });
+                                                              setLtProcessedFileIds(s => { const n = new Set(s); n.add(f.id); return n; });
+                                                            }
+                                                          }
                                                         }}
                                                         className="text-[10px] border border-amber-300 rounded-[6px] px-1 py-0.5 bg-background text-amber-700 focus:outline-none cursor-pointer shrink-0 max-w-[100px]"
                                                       >
@@ -2548,14 +2628,8 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                         <option value="workpaper">Prior Year WP</option>
                                                       </select>
                                                     )}
-                                                    {isError && (
-                                                      <span className="text-[10px] text-red-600 shrink-0">{f.kind === "unsupported" ? "Unsupported" : "Too large"}</span>
-                                                    )}
-                                                    {/* Remove */}
-                                                    <button
-                                                      onClick={e => { e.stopPropagation(); setLtDebtUploadFiles(prev => prev.filter(x => x.id !== f.id)); }}
-                                                      className="shrink-0 text-red-400 hover:text-red-600 transition-colors"
-                                                    >
+                                                    {isError && <span className="text-[10px] text-red-600 shrink-0">{f.kind === "unsupported" ? "Unsupported" : "Too large"}</span>}
+                                                    <button onClick={e => { e.stopPropagation(); setLtDebtUploadFiles(prev => prev.filter(x => x.id !== f.id)); }} className="shrink-0 text-red-400 hover:text-red-600 transition-colors">
                                                       <Trash2 className="h-3.5 w-3.5" />
                                                     </button>
                                                   </div>
@@ -2564,22 +2638,157 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                             </div>
                                           )}
 
-                                          {/* Submit button */}
-                                          {validFiles.length > 0 && ambigFiles.length === 0 && (
-                                            <button
-                                              onClick={() => {
-                                                const counts: Partial<Record<string, number>> = {};
-                                                validFiles.forEach(f => { const k = f.userKind ?? f.kind; counts[k] = (counts[k] ?? 0) + 1; });
-                                                const parts = Object.entries(counts).map(([k, n]) => `${n} ${LT_FILE_KIND_LABEL[k] ?? k}${n! > 1 ? "s" : ""}`);
-                                                setLtDebtSrcLabel(`${validFiles.length} uploaded document${validFiles.length !== 1 ? "s" : ""}${parts.length ? ` (${parts.join(", ")})` : ""}`);
-                                                setLtDebtGenerated(true);
-                                                setLtDebtPhase("done");
-                                              }}
-                                              className="inline-flex items-center gap-1.5 h-9 px-5 text-sm font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors"
-                                            >
-                                              Submit
-                                            </button>
+                                          {/* ── Review table ── */}
+                                          {ltReviewRows.length > 0 && (
+                                            <div className="space-y-2">
+                                              {/* Header bar */}
+                                              <div className="flex items-center justify-between">
+                                                <span className="text-[11px] font-semibold text-foreground">
+                                                  {ltReviewRows.length} loan{ltReviewRows.length !== 1 ? "s" : ""} extracted — review and complete before submitting
+                                                </span>
+                                                {missingCount > 0 ? (
+                                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                                                    <AlertTriangle className="w-2.5 h-2.5" /> {missingCount} field{missingCount !== 1 ? "s" : ""} missing
+                                                  </span>
+                                                ) : (
+                                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">
+                                                    <CheckCircle2 className="w-2.5 h-2.5" /> All complete
+                                                  </span>
+                                                )}
+                                              </div>
+
+                                              {/* Scrollable review table */}
+                                              <div className="rounded-[8px] border border-border overflow-hidden">
+                                                <div className="overflow-x-auto">
+                                                  <table className="w-full text-[10px]" style={{ minWidth: 1080 }}>
+                                                    <thead>
+                                                      <tr className="bg-muted/30 border-b border-border">
+                                                        {["Loan Name *","Lender *","Type","CCY","Orig. Principal","Balance *","Rate % *","Int. Type","Start Date","Maturity *","Freq.","Status",""].map((h, i) => (
+                                                          <th key={i} className={`px-2 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i >= 4 && i <= 6 ? "text-right" : "text-left"}`}>{h}</th>
+                                                        ))}
+                                                      </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                      {ltReviewRows.map((row, ri) => {
+                                                        const fc = (field: keyof LtDebtReviewRow, req: boolean) =>
+                                                          cn("h-6 text-[10px] px-1.5 border rounded bg-background focus:outline-none w-full",
+                                                            req && ltRowMissing(row, field)
+                                                              ? "border-amber-300 bg-amber-50/60 placeholder:text-amber-400 focus:border-amber-400"
+                                                              : "border-border focus:border-primary/40");
+                                                        return (
+                                                          <tr key={row.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
+                                                            {/* Loan Name */}
+                                                            <td className="px-1.5 py-1 min-w-[130px]">
+                                                              <input value={row.name} onChange={e => updateLtRow(row.id,"name",e.target.value)} className={cn(fc("name",true),"w-32")} placeholder="Loan name" />
+                                                              {row.sourceFile && <div className="text-[8px] text-muted-foreground mt-0.5 truncate max-w-[120px]">📄 {row.sourceFile}</div>}
+                                                            </td>
+                                                            {/* Lender */}
+                                                            <td className="px-1.5 py-1 min-w-[110px]">
+                                                              <input value={row.lender} onChange={e => updateLtRow(row.id,"lender",e.target.value)} className={cn(fc("lender",true),"w-28")} placeholder="Lender" />
+                                                            </td>
+                                                            {/* Type */}
+                                                            <td className="px-1.5 py-1">
+                                                              <select value={row.type} onChange={e => updateLtRow(row.id,"type",e.target.value)} className={cn(SCR,"w-20")}>
+                                                                {["Term","LOC","Revolver","Mortgage","Bridge"].map(t => <option key={t}>{t}</option>)}
+                                                              </select>
+                                                            </td>
+                                                            {/* CCY */}
+                                                            <td className="px-1.5 py-1">
+                                                              <select value={row.currency} onChange={e => updateLtRow(row.id,"currency",e.target.value)} className={cn(SCR,"w-14")}>
+                                                                {["CAD","USD","EUR","GBP"].map(c => <option key={c}>{c}</option>)}
+                                                              </select>
+                                                            </td>
+                                                            {/* Orig. Principal */}
+                                                            <td className="px-1.5 py-1">
+                                                              <input value={row.originalPrincipal} onChange={e => updateLtRow(row.id,"originalPrincipal",e.target.value)} className={cn(fc("originalPrincipal",false),"w-24 text-right")} placeholder="0" />
+                                                            </td>
+                                                            {/* Current Balance * */}
+                                                            <td className="px-1.5 py-1">
+                                                              <input value={row.currentBalance} onChange={e => updateLtRow(row.id,"currentBalance",e.target.value)} className={cn(fc("currentBalance",true),"w-24 text-right")} placeholder="Balance" />
+                                                            </td>
+                                                            {/* Rate * */}
+                                                            <td className="px-1.5 py-1">
+                                                              <input value={row.rate} onChange={e => updateLtRow(row.id,"rate",e.target.value)} className={cn(fc("rate",true),"w-14 text-right")} placeholder="%" />
+                                                            </td>
+                                                            {/* Interest Type */}
+                                                            <td className="px-1.5 py-1">
+                                                              <select value={row.interestType} onChange={e => updateLtRow(row.id,"interestType",e.target.value)} className={cn(SCR,"w-20")}>
+                                                                {["Fixed","Variable","Floating","Hybrid"].map(t => <option key={t}>{t}</option>)}
+                                                              </select>
+                                                            </td>
+                                                            {/* Start Date */}
+                                                            <td className="px-1.5 py-1">
+                                                              <input type="date" value={row.startDate} onChange={e => updateLtRow(row.id,"startDate",e.target.value)} className={cn(fc("startDate",false),"w-28")} />
+                                                            </td>
+                                                            {/* Maturity * */}
+                                                            <td className="px-1.5 py-1">
+                                                              <input type="date" value={row.maturityDate} onChange={e => updateLtRow(row.id,"maturityDate",e.target.value)} className={cn(fc("maturityDate",true),"w-28")} />
+                                                            </td>
+                                                            {/* Payment Frequency */}
+                                                            <td className="px-1.5 py-1">
+                                                              <select value={row.paymentFrequency} onChange={e => updateLtRow(row.id,"paymentFrequency",e.target.value)} className={cn(SCR,"w-22")}>
+                                                                {["Monthly","Quarterly","Semi-annual","Annual"].map(f => <option key={f}>{f}</option>)}
+                                                              </select>
+                                                            </td>
+                                                            {/* Status */}
+                                                            <td className="px-1.5 py-1">
+                                                              <select value={row.status} onChange={e => updateLtRow(row.id,"status",e.target.value)} className={cn(SCR,"w-20")}>
+                                                                {["Active","Closed","Replaced","Inactive"].map(s => <option key={s}>{s}</option>)}
+                                                              </select>
+                                                            </td>
+                                                            {/* Delete */}
+                                                            <td className="px-1.5 py-1">
+                                                              <button onClick={() => deleteLtRow(row.id)} className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors">
+                                                                <X className="w-3 h-3" />
+                                                              </button>
+                                                            </td>
+                                                          </tr>
+                                                        );
+                                                      })}
+                                                    </tbody>
+                                                  </table>
+                                                </div>
+                                              </div>
+                                            </div>
                                           )}
+
+                                          {/* Bottom actions */}
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            {/* Add Manual Entry */}
+                                            <button
+                                              onClick={() => setLtReviewRows(prev => [...prev, EMPTY_LT_ROW()])}
+                                              className="inline-flex items-center gap-1.5 h-7 px-3 text-xs font-medium rounded-[8px] border border-dashed border-primary/40 text-primary hover:bg-primary/5 transition-colors"
+                                            >
+                                              <Plus className="w-3 h-3" /> Add Manual Entry
+                                            </button>
+
+                                            {/* Submit */}
+                                            {canSubmit && (
+                                              <button
+                                                onClick={() => {
+                                                  const counts: Partial<Record<string, number>> = {};
+                                                  validFiles.forEach(f => { const k = f.userKind ?? f.kind; counts[k] = (counts[k] ?? 0) + 1; });
+                                                  const parts = Object.entries(counts).map(([k, n]) => `${n} ${LT_FILE_KIND_LABEL[k] ?? k}${n! > 1 ? "s" : ""}`);
+                                                  const docPart = validFiles.length > 0 ? `${validFiles.length} uploaded document${validFiles.length !== 1 ? "s" : ""}${parts.length ? ` (${parts.join(", ")})` : ""}` : "";
+                                                  const manualCount = ltReviewRows.filter(r => !r.sourceFile).length;
+                                                  const manualPart = manualCount > 0 ? `${manualCount} manual entr${manualCount !== 1 ? "ies" : "y"}` : "";
+                                                  setLtDebtSrcLabel([docPart, manualPart].filter(Boolean).join(" + ") || `${ltReviewRows.length} manual entries`);
+                                                  setLtDebtGenerated(true);
+                                                  setLtDebtPhase("done");
+                                                }}
+                                                className="inline-flex items-center gap-1.5 h-9 px-5 text-sm font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors"
+                                              >
+                                                Submit
+                                              </button>
+                                            )}
+
+                                            {/* Hint */}
+                                            {missingCount > 0 && (
+                                              <span className="text-[10px] text-amber-600">
+                                                Fill in the <strong>{missingCount}</strong> highlighted field{missingCount !== 1 ? "s" : ""} to continue
+                                              </span>
+                                            )}
+                                          </div>
                                         </div>
                                       );
                                     })()}
