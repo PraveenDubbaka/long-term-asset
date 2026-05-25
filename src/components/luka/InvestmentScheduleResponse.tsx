@@ -357,9 +357,14 @@ function TransactionsPanel({
             <input type="number" step="0.0001" value={d.fxRate || ""} onChange={e => setD("fxRate", parseFloat(e.target.value) || 1)} className={IC} placeholder="1.0000" />
           </div>
           {/* TB Account */}
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col gap-0.5 col-span-2">
             <span className="text-[9px] text-muted-foreground uppercase">TB Acct</span>
-            <input value={d.tbAccount} onChange={e => setD("tbAccount", e.target.value)} className={IC} placeholder="1500" />
+            <select value={d.tbAccount} onChange={e => setD("tbAccount", e.target.value)} className={SC}>
+              <option value="">— Select —</option>
+              {CHART_OF_ACCOUNTS.map(a => (
+                <option key={a.code} value={a.code}>{a.code} · {a.name}</option>
+              ))}
+            </select>
           </div>
           {/* Status */}
           <div className="flex flex-col gap-0.5">
@@ -444,9 +449,15 @@ function TransactionsPanel({
           </thead>
           <tbody>
             {adding && renderFormRow(draft, (k, v) => setDraft(p => ({ ...p, [k]: v })), saveAdd, () => setAdding(false))}
-            {visible.map((t, i) => (
-              <Fragment key={t.id}>
-                <tr className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
+            {visible.map((t, i) => {
+              const isEditing = editId === t.id;
+              const d = editDraft;
+              const setD = (k: keyof TxDraft, v: unknown) => setEditDraft(p => ({ ...p, [k]: v }));
+              return (
+                <tr
+                  key={t.id}
+                  className={`border-b border-border/40 ${isEditing ? "bg-primary/[0.04]" : i % 2 === 1 ? "bg-muted/10" : ""}`}
+                >
                   {/* Checkbox */}
                   <td className="px-3 py-1.5">
                     <input
@@ -456,47 +467,152 @@ function TransactionsPanel({
                       className="w-3.5 h-3.5 accent-primary rounded"
                     />
                   </td>
-                  <td className="px-3 py-1.5 whitespace-nowrap">{fmtDate(t.date)}</td>
-                  <td className="px-3 py-1.5 whitespace-nowrap text-muted-foreground">{t.settlementDate ? fmtDate(t.settlementDate) : "—"}</td>
-                  <td className="px-3 py-1.5 max-w-[90px] truncate">{brokerName(t)}</td>
-                  <td className="px-3 py-1.5 font-medium max-w-[110px] truncate">{t.security}</td>
-                  <td className="px-3 py-1.5 font-mono text-[10px]">{t.ticker}</td>
-                  <td className="px-3 py-1.5 text-center">
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border">{t.currency}</span>
+
+                  {/* Trade Date */}
+                  <td className="px-2 py-1">
+                    {isEditing
+                      ? <input type="date" value={d.date} onChange={e => setD("date", e.target.value)} className={`${IC} w-28`} />
+                      : <span className="whitespace-nowrap">{fmtDate(t.date)}</span>}
                   </td>
-                  <td className="px-3 py-1.5"><TxTypeBadge type={t.type} /></td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{fmt2(t.units)}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{fmt2(t.price)}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{t.currency === "CAD" ? "—" : fmt4(t.fxRate ?? 1)}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums font-medium">{fmt2(t.net * (t.fxRate ?? 1))}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground font-mono text-[10px]">{t.tbAccount ?? "—"}</td>
-                  <td className="px-3 py-1.5 text-right"><StatusBadge status={t.status ?? "pending"} /></td>
-                  {/* Actions — always visible */}
-                  <td className="px-3 py-1.5">
+
+                  {/* Settlement */}
+                  <td className="px-2 py-1">
+                    {isEditing
+                      ? <input type="date" value={d.settlement} onChange={e => setD("settlement", e.target.value)} className={`${IC} w-28`} />
+                      : <span className="whitespace-nowrap text-muted-foreground">{t.settlementDate ? fmtDate(t.settlementDate) : "—"}</span>}
+                  </td>
+
+                  {/* Source */}
+                  <td className="px-2 py-1 max-w-[90px]">
+                    {isEditing
+                      ? <input value={d.broker} onChange={e => setD("broker", e.target.value)} className={`${IC} w-24`} placeholder="Broker" />
+                      : <span className="truncate block">{brokerName(t)}</span>}
+                  </td>
+
+                  {/* Security */}
+                  <td className="px-2 py-1 max-w-[110px]">
+                    {isEditing
+                      ? <input value={d.security} onChange={e => setD("security", e.target.value)} className={`${IC} w-32`} placeholder="Security" />
+                      : <span className="font-medium truncate block">{t.security}</span>}
+                  </td>
+
+                  {/* Ticker */}
+                  <td className="px-2 py-1">
+                    {isEditing
+                      ? <input value={d.ticker} onChange={e => setD("ticker", e.target.value.toUpperCase())} className={`${IC} w-16`} placeholder="AAPL" />
+                      : <span className="font-mono text-[10px]">{t.ticker}</span>}
+                  </td>
+
+                  {/* CCY */}
+                  <td className="px-2 py-1 text-center">
+                    {isEditing
+                      ? <select value={d.ccy} onChange={e => setD("ccy", e.target.value)} className={`${SC} w-16`}>
+                          {["CAD","USD","EUR","GBP"].map(c => <option key={c}>{c}</option>)}
+                        </select>
+                      : <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border">{t.currency}</span>}
+                  </td>
+
+                  {/* Type */}
+                  <td className="px-2 py-1">
+                    {isEditing
+                      ? <select value={d.type} onChange={e => setD("type", e.target.value)} className={`${SC} w-32`}>
+                          {TX_TYPES.map(tp => <option key={tp} value={tp}>{tp}</option>)}
+                        </select>
+                      : <TxTypeBadge type={t.type} />}
+                  </td>
+
+                  {/* Units */}
+                  <td className="px-2 py-1 text-right">
+                    {isEditing
+                      ? <input type="number" value={d.qty || ""} onChange={e => setD("qty", parseFloat(e.target.value) || 0)} className={`${IC} w-20 text-right`} placeholder="0" />
+                      : <span className="tabular-nums">{fmt2(t.units)}</span>}
+                  </td>
+
+                  {/* Price */}
+                  <td className="px-2 py-1 text-right">
+                    {isEditing
+                      ? <input type="number" value={d.price || ""} onChange={e => setD("price", parseFloat(e.target.value) || 0)} className={`${IC} w-20 text-right`} placeholder="0.00" />
+                      : <span className="tabular-nums">{fmt2(t.price)}</span>}
+                  </td>
+
+                  {/* FX */}
+                  <td className="px-2 py-1 text-right">
+                    {isEditing
+                      ? <input type="number" step="0.0001" value={d.fxRate || ""} onChange={e => setD("fxRate", parseFloat(e.target.value) || 1)} className={`${IC} w-20 text-right`} placeholder="1.0000" />
+                      : <span className="tabular-nums text-muted-foreground">{t.currency === "CAD" ? "—" : fmt4(t.fxRate ?? 1)}</span>}
+                  </td>
+
+                  {/* Amount — always read-only (computed) */}
+                  <td className="px-2 py-1 text-right">
+                    <span className="tabular-nums font-medium">
+                      {isEditing ? fmt2(d.qty * d.price * d.fxRate) : fmt2(t.net * (t.fxRate ?? 1))}
+                    </span>
+                  </td>
+
+                  {/* TB Account */}
+                  <td className="px-2 py-1 text-right">
+                    {isEditing
+                      ? <select
+                          value={d.tbAccount}
+                          onChange={e => setD("tbAccount", e.target.value)}
+                          className={`${SC} w-44`}
+                        >
+                          <option value="">— Select —</option>
+                          {CHART_OF_ACCOUNTS.map(a => (
+                            <option key={a.code} value={a.code}>{a.code} · {a.name}</option>
+                          ))}
+                        </select>
+                      : <span className="tabular-nums text-muted-foreground font-mono text-[10px]">{t.tbAccount ?? "—"}</span>}
+                  </td>
+
+                  {/* Status */}
+                  <td className="px-2 py-1 text-right">
+                    {isEditing
+                      ? <select value={d.status} onChange={e => setD("status", e.target.value as TxDraft["status"])} className={`${SC} w-24`}>
+                          {["pending","approved","published"].map(s => <option key={s}>{s}</option>)}
+                        </select>
+                      : <StatusBadge status={t.status ?? "pending"} />}
+                  </td>
+
+                  {/* Actions */}
+                  <td className="px-2 py-1">
                     <div className="flex items-center gap-1 justify-end">
-                      <button
-                        onClick={() => startEdit(t)}
-                        className="inline-flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                      >
-                        <Pencil className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => setHiddenTxIds(prev => { const n = new Set(prev); n.add(t.id); return n; })}
-                        className="inline-flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                      {isEditing ? (
+                        <>
+                          <button
+                            onClick={saveEdit}
+                            className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                          >
+                            <Check className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={() => setEditId(null)}
+                            className="inline-flex items-center justify-center w-6 h-6 rounded-md border border-border text-muted-foreground hover:bg-muted transition-colors"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => startEdit(t)}
+                            className="inline-flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={() => setHiddenTxIds(prev => { const n = new Set(prev); n.add(t.id); return n; })}
+                            className="inline-flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
-                {editId === t.id && renderFormRow(
-                  editDraft,
-                  (k, v) => setEditDraft(p => ({ ...p, [k]: v })),
-                  saveEdit,
-                  () => setEditId(null),
-                )}
-              </Fragment>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
