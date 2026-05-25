@@ -371,16 +371,11 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
   const [amortDriveId,    setAmortDriveId]       = useState("gd-1");
   const [amortUploadFile, setAmortUploadFile]    = useState<string|null>(null);
   const [amortWizRect,    setAmortWizRect]       = useState<{left:number;right:number;bottom:number}|null>(null);
-  // ── Agentic Long-term Debt wizard ──
-  const [ltDebtPhase,       setLtDebtPhase]      = useState<"idle"|"search-wp"|"search-drives"|"found"|"wizard">("idle");
-  const [ltDebtWizStep,     setLtDebtWizStep]    = useState(1);
-  const [ltDebtSource,      setLtDebtSource]     = useState<AmortSource>("existing");
-  const [ltDebtSelDocId,    setLtDebtSelDocId]   = useState("ltd-1");
-  const [ltDebtDriveId,     setLtDebtDriveId]    = useState("ltd-gd-1");
+  // ── Agentic Long-term Debt (chat-based upload) ──
+  const [ltDebtPhase,       setLtDebtPhase]      = useState<"idle"|"upload-prompt"|"done">("idle");
   const [ltDebtUploadFiles, setLtDebtUploadFiles] = useState<LtDebtFile[]>([]);
   const [ltDebtGenerated,   setLtDebtGenerated]  = useState(false);
   const [ltDebtSrcLabel,    setLtDebtSrcLabel]   = useState<string|null>(null);
-  const [ltDebtWizRect,     setLtDebtWizRect]    = useState<{left:number;right:number;bottom:number}|null>(null);
   // ── Free-prompt follow-up turns (context-aware after lt-debt summary) ──
   const [followUpTurns, setFollowUpTurns] = useState<FollowUpTurn[]>([]);
   const [voiceOpen, setVoiceOpen] = useState(false);
@@ -432,14 +427,6 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
     setAmortWizRect({ left: r.left, right: window.innerWidth - r.right, bottom: window.innerHeight - r.top + 8 });
   }, [amortPhase]);
 
-  // Position agentic long-term debt wizard above the input bar
-  useLayoutEffect(() => {
-    if (ltDebtPhase !== "wizard") { setLtDebtWizRect(null); return; }
-    const el = document.querySelector(".luka-gradient-border") as HTMLElement | null;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    setLtDebtWizRect({ left: r.left, right: window.innerWidth - r.right, bottom: window.innerHeight - r.top + 8 });
-  }, [ltDebtPhase]);
 
   // Close filter dropdowns on outside click
   useEffect(() => {
@@ -721,7 +708,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
     setRichResponseType(null); setRevealStep(-1);
     setLoanAmortData(null); setLoanAmortStep("idle");
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
-    setLtDebtPhase("idle"); setLtDebtWizStep(1); setLtDebtSource("existing");
+    setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
     setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
@@ -733,11 +720,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
       setIsThinking(false);
       if (isLtDebt) {
         setRichResponseType("lt-debt"); setAiResponse("__rich__");
-        // Kick off agentic search sequence (same pattern as loan amortization)
-        setLtDebtPhase("search-wp");
-        setTimeout(() => setLtDebtPhase("search-drives"), 2200);
-        setTimeout(() => setLtDebtPhase("found"),         4200);
-        setTimeout(() => setLtDebtPhase("wizard"),        5400);
+        setLtDebtPhase("upload-prompt");
       } else if (isLoanAmort) {
         setRichResponseType("loan-amortization"); setAiResponse("__rich__");
         // Kick off agentic search sequence
@@ -2401,46 +2384,132 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                 </span>
                               </div>
                             ) : richResponseType === "lt-debt" ? (
-                              <div className="space-y-2.5 py-0.5">
-                                {/* Step 1: Searching engagement */}
-                                <div className="flex items-center gap-2">
-                                  {ltDebtPhase === "search-wp" ? (
-                                    <span className="flex gap-0.5 shrink-0">
-                                      <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-1" />
-                                      <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-2" />
-                                      <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-3" />
-                                    </span>
-                                  ) : (
-                                    <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                                  )}
-                                  <span className={cn("text-sm text-foreground", ltDebtPhase === "search-wp" && "luka-thinking-text")}>
-                                    Searching engagement for existing Long-term Debt workpapers
-                                  </span>
-                                </div>
-                                {/* Step 2: Checking drives */}
-                                {(ltDebtPhase === "search-drives" || ltDebtPhase === "found" || ltDebtPhase === "wizard" || ltDebtGenerated) && (
-                                  <div className="flex items-center gap-2">
-                                    {ltDebtPhase === "search-drives" ? (
-                                      <span className="flex gap-0.5 shrink-0">
-                                        <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-1" />
-                                        <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-2" />
-                                        <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-3" />
-                                      </span>
-                                    ) : (
-                                      <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                                    )}
-                                    <span className={cn("text-sm text-foreground", ltDebtPhase === "search-drives" && "luka-thinking-text")}>
-                                      Checking connected drives (Google Drive)
-                                    </span>
-                                  </div>
-                                )}
-                                {/* Found result */}
-                                {(ltDebtPhase === "found" || ltDebtPhase === "wizard" || ltDebtGenerated) && (
-                                  <div className="flex items-center gap-2 mt-0.5 pl-5">
-                                    <span className="text-sm text-foreground">
-                                      Found <strong>3 matching documents</strong> — {ltDebtGenerated ? "workpaper generated ✓" : "select how to proceed below ↓"}
-                                    </span>
-                                  </div>
+                              <div className="space-y-3 py-0.5 max-w-full">
+                                {!ltDebtGenerated ? (
+                                  <>
+                                    <p className="text-sm text-foreground leading-relaxed">
+                                      To generate your Long-term Debt workpaper, please upload your documents below.
+                                      I accept <strong>loan agreements</strong> (PDF/ZIP), <strong>continuity schedules</strong>, <strong>loan registers</strong>, or <strong>prior-year workpapers</strong> (Excel, max 2 MB each).
+                                    </p>
+
+                                    {/* Drop zone */}
+                                    {(() => {
+                                      const addLtFiles = (rawFiles: FileList | null) => {
+                                        if (!rawFiles) return;
+                                        const classified = Array.from(rawFiles).map(classifyLtDebtFile);
+                                        setLtDebtUploadFiles(prev => {
+                                          const existing = new Set(prev.map(f => f.name));
+                                          return [...prev, ...classified.filter(f => !existing.has(f.name))].slice(0, 10);
+                                        });
+                                      };
+                                      const validFiles = ltDebtUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
+                                      const ambigFiles = ltDebtUploadFiles.filter(f => f.kind === "ambiguous" && !f.userKind);
+                                      const errorFiles = ltDebtUploadFiles.filter(f => f.kind === "unsupported" || f.kind === "oversized");
+                                      return (
+                                        <div className="space-y-2">
+                                          <div
+                                            className={cn(
+                                              "flex flex-col items-center justify-center gap-1.5 rounded-[10px] border-2 border-dashed cursor-pointer transition-colors py-5",
+                                              ltDebtUploadFiles.length > 0 ? "border-primary/30 bg-primary/[0.02]" : "border-border/60 hover:border-primary/40 hover:bg-muted/30",
+                                            )}
+                                            onClick={() => {
+                                              const inp = document.createElement("input");
+                                              inp.type = "file"; inp.accept = ".pdf,.xlsx,.xls,.zip"; inp.multiple = true;
+                                              inp.onchange = e => addLtFiles((e.target as HTMLInputElement).files);
+                                              inp.click();
+                                            }}
+                                            onDragOver={e => e.preventDefault()}
+                                            onDrop={e => { e.preventDefault(); addLtFiles(e.dataTransfer.files); }}
+                                          >
+                                            <Upload className="h-4 w-4 text-muted-foreground" />
+                                            <p className="text-sm text-muted-foreground text-center">
+                                              <span className="text-primary font-medium">Click to upload</span> or drag and drop
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">PDF, Excel or ZIP · max 2 MB · up to 10 files</p>
+                                          </div>
+
+                                          {/* File list */}
+                                          {ltDebtUploadFiles.length > 0 && (
+                                            <div className="space-y-1.5">
+                                              <div className="flex items-center justify-between px-0.5">
+                                                <p className="text-xs font-medium text-foreground">
+                                                  {ltDebtUploadFiles.length} file{ltDebtUploadFiles.length !== 1 ? "s" : ""} added
+                                                  {errorFiles.length > 0 && <span className="text-red-600 ml-1.5">· {errorFiles.length} error{errorFiles.length !== 1 ? "s" : ""}</span>}
+                                                  {ambigFiles.length > 0 && <span className="text-amber-600 ml-1.5">· {ambigFiles.length} need{ambigFiles.length === 1 ? "s" : ""} classification</span>}
+                                                </p>
+                                                <button onClick={() => setLtDebtUploadFiles([])} className="text-[10px] text-muted-foreground hover:text-foreground">Clear all</button>
+                                              </div>
+                                              {ltDebtUploadFiles.map(f => {
+                                                const resolvedKind = f.userKind ?? f.kind;
+                                                const isError = f.kind === "unsupported" || f.kind === "oversized";
+                                                const isAmbig = f.kind === "ambiguous" && !f.userKind;
+                                                return (
+                                                  <div key={f.id} className={cn(
+                                                    "flex items-center gap-2 px-3 py-2 rounded-[8px] border text-xs",
+                                                    isError ? "border-red-200 bg-red-50/50" : isAmbig ? "border-amber-200 bg-amber-50/40" : "border-border bg-background"
+                                                  )}>
+                                                    {f.ext === "pdf" ? <FileText className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                                                      : f.ext === "zip" ? <FolderOpen className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                                                      : <FileSpreadsheet className="h-3.5 w-3.5 text-green-600 shrink-0" />}
+                                                    <span className="flex-1 min-w-0 truncate font-medium text-foreground">{f.name}</span>
+                                                    <span className="text-[10px] text-muted-foreground shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
+                                                    {isError ? (
+                                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-red-700 border border-red-200 whitespace-nowrap shrink-0">
+                                                        <AlertTriangle className="h-2.5 w-2.5" />{f.kind === "unsupported" ? "Unsupported" : "Too large"}
+                                                      </span>
+                                                    ) : isAmbig ? (
+                                                      <select onClick={e => e.stopPropagation()} defaultValue=""
+                                                        onChange={e => {
+                                                          const v = e.target.value as Exclude<LtDebtFileKind, "unsupported" | "oversized" | "ambiguous">;
+                                                          setLtDebtUploadFiles(prev => prev.map(x => x.id === f.id ? { ...x, userKind: v } : x));
+                                                        }}
+                                                        className="text-[10px] border border-amber-300 rounded-[6px] px-1.5 py-0.5 bg-background text-amber-700 focus:outline-none cursor-pointer shrink-0 max-w-[140px]"
+                                                      >
+                                                        <option value="" disabled>Classify…</option>
+                                                        <option value="loan-agreement">Loan Agreement</option>
+                                                        <option value="continuity">Continuity Schedule</option>
+                                                        <option value="loan-register">Loan Register</option>
+                                                        <option value="workpaper">Prior Year Workpaper</option>
+                                                      </select>
+                                                    ) : (
+                                                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap shrink-0 ${LT_FILE_KIND_COLOR[resolvedKind] ?? "bg-muted text-foreground border-border"}`}>
+                                                        {LT_FILE_KIND_LABEL[resolvedKind] ?? resolvedKind}
+                                                      </span>
+                                                    )}
+                                                    <button onClick={e => { e.stopPropagation(); setLtDebtUploadFiles(prev => prev.filter(x => x.id !== f.id)); }}
+                                                      className="shrink-0 text-muted-foreground hover:text-destructive transition-colors ml-0.5">
+                                                      <X className="h-3.5 w-3.5" />
+                                                    </button>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          )}
+
+                                          {/* Generate button */}
+                                          {validFiles.length > 0 && ambigFiles.length === 0 && (
+                                            <button
+                                              onClick={() => {
+                                                const counts: Partial<Record<string, number>> = {};
+                                                validFiles.forEach(f => { const k = f.userKind ?? f.kind; counts[k] = (counts[k] ?? 0) + 1; });
+                                                const parts = Object.entries(counts).map(([k, n]) => `${n} ${LT_FILE_KIND_LABEL[k] ?? k}${n! > 1 ? "s" : ""}`);
+                                                setLtDebtSrcLabel(`${validFiles.length} uploaded document${validFiles.length !== 1 ? "s" : ""}${parts.length ? ` (${parts.join(", ")})` : ""}`);
+                                                setLtDebtGenerated(true);
+                                                setLtDebtPhase("done");
+                                              }}
+                                              className="w-full inline-flex items-center justify-center gap-1.5 h-9 px-4 text-sm font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors"
+                                            >
+                                              <Sparkles className="h-3.5 w-3.5" /> Generate Workpaper
+                                            </button>
+                                          )}
+                                        </div>
+                                      );
+                                    })()}
+                                  </>
+                                ) : (
+                                  <p className="text-sm text-foreground">
+                                    Workpaper generated from <strong>{ltDebtSrcLabel}</strong> ✓
+                                  </p>
                                 )}
                               </div>
                             ) : richResponseType === "loan-amortization" ? (
@@ -3399,478 +3468,6 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
           </>
         )}
 
-        {/* ── Agentic Long-term Debt Wizard ── */}
-        {ltDebtPhase === "wizard" && (
-          <>
-            <div className="fixed inset-0 z-[59]" onClick={() => setLtDebtPhase("found")} />
-            <div
-              className="fixed z-[60] pointer-events-none"
-              style={ltDebtWizRect
-                ? { left: ltDebtWizRect.left, right: ltDebtWizRect.right, bottom: ltDebtWizRect.bottom }
-                : { left: 24, right: 24, bottom: 124 }}
-            >
-              <div className="w-full pointer-events-auto bg-background border border-border rounded-[12px] shadow-[0_2px_16px_rgba(0,0,0,0.09)] animate-in slide-in-from-bottom-4 fade-in duration-200 flex flex-col max-h-[72vh]">
-
-                {/* Header */}
-                <div className="flex items-start justify-between px-4 py-3 border-b border-border shrink-0">
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium mb-0.5">
-                      A few quick questions · Step {ltDebtWizStep} of {ltDebtSource === "manual" ? 2 : 3}
-                    </p>
-                    <p className="text-sm font-semibold text-foreground">
-                      {ltDebtWizStep === 1 && "How should I build the Long-term Debt workpaper?"}
-                      {ltDebtWizStep === 2 && ltDebtSource === "existing" && "Select an existing document"}
-                      {ltDebtWizStep === 2 && ltDebtSource === "upload"   && "Upload your loan document"}
-                      {ltDebtWizStep === 2 && ltDebtSource === "drive"    && "Select a file from Google Drive"}
-                      {ltDebtWizStep === 2 && ltDebtSource === "manual"   && "Generate from current workpaper data"}
-                      {ltDebtWizStep === 3 && "Review & approve"}
-                    </p>
-                  </div>
-                  <button onClick={() => setLtDebtPhase("found")} className="p-1 rounded-[6px] hover:bg-muted transition-colors text-muted-foreground mt-0.5 shrink-0">
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-
-                {/* Body */}
-                <div className="overflow-y-auto flex-1 px-4 py-4">
-
-                  {/* ── Step 1: Source selection ── */}
-                  {ltDebtWizStep === 1 && (
-                    <div className="space-y-2">
-                      {([
-                        { id: "existing" as AmortSource, label: "Use an existing document",    sub: "Found 3 matching workpapers in your engagement", Icon: BookOpen  },
-                        { id: "upload"   as AmortSource, label: "Upload a new document",        sub: "PDF or Excel schedule, max 2 MB",                Icon: Upload    },
-                        { id: "drive"    as AmortSource, label: "Import from Google Drive",     sub: "Browse your connected drive",                    Icon: HardDrive },
-                        { id: "manual"   as AmortSource, label: "Generate from current data",   sub: "Use loans already entered in the workpaper",     Icon: FileText  },
-                      ] as const).map(({ id, label, sub, Icon }) => (
-                        <button key={id} onClick={() => setLtDebtSource(id)}
-                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-[10px] border text-left transition-colors ${
-                            ltDebtSource === id ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40"
-                          }`}
-                        >
-                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${ltDebtSource === id ? "border-primary" : "border-muted-foreground/40"}`}>
-                            {ltDebtSource === id && <div className="w-2 h-2 rounded-full bg-primary" />}
-                          </div>
-                          <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground">{label}</p>
-                            <p className="text-xs text-muted-foreground">{sub}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* ── Step 2a: Existing document selection ── */}
-                  {ltDebtWizStep === 2 && ltDebtSource === "existing" && (
-                    <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground mb-3">Select a document from your engagement workpapers:</p>
-                      {LT_DEBT_ENG_DOCS.map(doc => (
-                        <button key={doc.id} onClick={() => setLtDebtSelDocId(doc.id)}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-[8px] border text-left transition-colors ${
-                            ltDebtSelDocId === doc.id ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40"
-                          }`}
-                        >
-                          {doc.ext === "pdf"
-                            ? <FileText        className="h-4 w-4 text-red-500 shrink-0" />
-                            : <FileSpreadsheet className="h-4 w-4 text-green-600 shrink-0" />}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate">{doc.name}</p>
-                            <p className="text-xs text-muted-foreground">{doc.path} · {doc.date} · {doc.size}</p>
-                          </div>
-                          {ltDebtSelDocId === doc.id && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* ── Step 2b: Upload (multi-file with smart classification) ── */}
-                  {ltDebtWizStep === 2 && ltDebtSource === "upload" && (() => {
-                    const addFiles = (rawFiles: FileList | null) => {
-                      if (!rawFiles) return;
-                      const classified = Array.from(rawFiles).map(classifyLtDebtFile);
-                      setLtDebtUploadFiles(prev => {
-                        const existing = new Set(prev.map(f => f.name));
-                        const next = [...prev, ...classified.filter(f => !existing.has(f.name))];
-                        return next.slice(0, 10);
-                      });
-                    };
-                    const validFiles = ltDebtUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
-                    const errorFiles = ltDebtUploadFiles.filter(f => f.kind === "unsupported" || f.kind === "oversized");
-                    const ambigFiles = ltDebtUploadFiles.filter(f => f.kind === "ambiguous" && !f.userKind);
-                    return (
-                      <div className="space-y-3">
-                        {/* Drop zone */}
-                        <div
-                          className={cn(
-                            "flex flex-col items-center justify-center gap-2 rounded-[10px] border-2 border-dashed cursor-pointer transition-colors py-6",
-                            ltDebtUploadFiles.length > 0 ? "border-primary/30 bg-primary/[0.02]" : "border-border/60 hover:border-primary/40 hover:bg-muted/30",
-                          )}
-                          onClick={() => {
-                            const inp = document.createElement("input");
-                            inp.type = "file"; inp.accept = ".pdf,.xlsx,.xls,.zip"; inp.multiple = true;
-                            inp.onchange = e => addFiles((e.target as HTMLInputElement).files);
-                            inp.click();
-                          }}
-                          onDragOver={e => e.preventDefault()}
-                          onDrop={e => { e.preventDefault(); addFiles(e.dataTransfer.files); }}
-                        >
-                          <Upload className="h-4 w-4 text-muted-foreground" />
-                          <p className="text-sm text-muted-foreground text-center">
-                            <span className="text-primary font-medium">Click to upload</span> or drag and drop
-                          </p>
-                          <p className="text-xs text-muted-foreground">PDF, Excel or ZIP · max 2 MB each · up to 10 files</p>
-                        </div>
-
-                        {/* File list */}
-                        {ltDebtUploadFiles.length > 0 && (
-                          <div className="space-y-1.5">
-                            {/* Summary bar */}
-                            <div className="flex items-center justify-between px-0.5">
-                              <p className="text-xs font-medium text-foreground">
-                                {ltDebtUploadFiles.length} file{ltDebtUploadFiles.length !== 1 ? "s" : ""} added
-                                {errorFiles.length > 0 && <span className="text-red-600 ml-1.5">· {errorFiles.length} with error{errorFiles.length !== 1 ? "s" : ""}</span>}
-                                {ambigFiles.length > 0 && <span className="text-amber-600 ml-1.5">· {ambigFiles.length} need{ambigFiles.length === 1 ? "s" : ""} classification</span>}
-                              </p>
-                              <button onClick={() => setLtDebtUploadFiles([])} className="text-[10px] text-muted-foreground hover:text-foreground transition-colors">
-                                Clear all
-                              </button>
-                            </div>
-
-                            {/* File cards */}
-                            {ltDebtUploadFiles.map(f => {
-                              const resolvedKind = f.userKind ?? f.kind;
-                              const isError   = f.kind === "unsupported" || f.kind === "oversized";
-                              const isAmbig   = f.kind === "ambiguous" && !f.userKind;
-                              return (
-                                <div key={f.id} className={cn(
-                                  "flex items-center gap-2 px-3 py-2 rounded-[8px] border text-xs transition-colors",
-                                  isError ? "border-red-200 bg-red-50/50 dark:bg-red-950/20" :
-                                  isAmbig ? "border-amber-200 bg-amber-50/40 dark:bg-amber-950/20" :
-                                  "border-border bg-background"
-                                )}>
-                                  {/* Icon */}
-                                  {f.ext === "pdf"
-                                    ? <FileText        className="h-3.5 w-3.5 text-red-500 shrink-0" />
-                                    : f.ext === "zip"
-                                    ? <FolderOpen      className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                                    : <FileSpreadsheet className="h-3.5 w-3.5 text-green-600 shrink-0" />}
-                                  {/* Name */}
-                                  <span className="flex-1 min-w-0 truncate font-medium text-foreground">{f.name}</span>
-                                  {/* Size */}
-                                  <span className="text-[10px] text-muted-foreground shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
-                                  {/* Badge / classify / error */}
-                                  {isError ? (
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-red-700 border border-red-200 whitespace-nowrap shrink-0">
-                                      <AlertTriangle className="h-2.5 w-2.5" />
-                                      {f.kind === "unsupported" ? "Unsupported type" : "File too large"}
-                                    </span>
-                                  ) : isAmbig ? (
-                                    <select
-                                      onClick={e => e.stopPropagation()}
-                                      defaultValue=""
-                                      onChange={e => {
-                                        const v = e.target.value as Exclude<LtDebtFileKind, "unsupported" | "oversized" | "ambiguous">;
-                                        setLtDebtUploadFiles(prev => prev.map(x => x.id === f.id ? { ...x, userKind: v } : x));
-                                      }}
-                                      className="text-[10px] border border-amber-300 rounded-[6px] px-1.5 py-0.5 bg-background text-amber-700 focus:outline-none cursor-pointer shrink-0 max-w-[140px]"
-                                    >
-                                      <option value="" disabled>Classify file…</option>
-                                      <option value="loan-agreement">Loan Agreement</option>
-                                      <option value="continuity">Continuity Schedule</option>
-                                      <option value="loan-register">Loan Register</option>
-                                      <option value="workpaper">Prior Year Workpaper</option>
-                                    </select>
-                                  ) : (
-                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap shrink-0 ${LT_FILE_KIND_COLOR[resolvedKind] ?? "bg-muted text-foreground border-border"}`}>
-                                      {LT_FILE_KIND_LABEL[resolvedKind] ?? resolvedKind}
-                                    </span>
-                                  )}
-                                  {/* Remove */}
-                                  <button
-                                    onClick={e => { e.stopPropagation(); setLtDebtUploadFiles(prev => prev.filter(x => x.id !== f.id)); }}
-                                    className="shrink-0 text-muted-foreground hover:text-destructive transition-colors ml-0.5"
-                                  >
-                                    <X className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
-                              );
-                            })}
-
-                            {/* ── Error tips (blocking) ── */}
-                            {errorFiles.some(f => f.kind === "unsupported") && (
-                              <div className="flex items-start gap-1.5 rounded-[7px] border border-red-200 bg-red-50 px-2.5 py-2">
-                                <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5 text-red-500" />
-                                <p className="text-[10px] text-red-700 leading-relaxed">
-                                  <span className="font-semibold">Unsupported file type</span> — these files will be ignored.
-                                  Luka only reads <span className="font-medium">PDF</span>, <span className="font-medium">Excel (.xlsx / .xls)</span>, or <span className="font-medium">ZIP</span> archives.
-                                  Remove them or re-export in a supported format.
-                                </p>
-                              </div>
-                            )}
-                            {errorFiles.some(f => f.kind === "oversized") && (
-                              <div className="flex items-start gap-1.5 rounded-[7px] border border-red-200 bg-red-50 px-2.5 py-2">
-                                <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5 text-red-500" />
-                                <p className="text-[10px] text-red-700 leading-relaxed">
-                                  <span className="font-semibold">File too large</span> — files over 2 MB will be skipped.
-                                  Compress, split, or export only the relevant sheets before re-uploading.
-                                </p>
-                              </div>
-                            )}
-                            {ambigFiles.length > 0 && (
-                              <div className="flex items-start gap-1.5 rounded-[7px] border border-amber-200 bg-amber-50 px-2.5 py-2">
-                                <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5 text-amber-500" />
-                                <p className="text-[10px] text-amber-800 leading-relaxed">
-                                  <span className="font-semibold">{ambigFiles.length} file{ambigFiles.length > 1 ? "s need" : " needs"} classification</span> — Luka can't tell what type {ambigFiles.length > 1 ? "these Excel files are" : "this Excel file is"} from the filename.
-                                  Use the dropdown on each highlighted row to tell Luka how to process {ambigFiles.length > 1 ? "them" : "it"}.
-                                </p>
-                              </div>
-                            )}
-
-                            {/* ── Sources breakdown — shown when ≥ 1 valid file ── */}
-                            {validFiles.length > 0 && (() => {
-                              // Build a map: kind → count
-                              const kindMap = new Map<string, number>();
-                              validFiles.forEach(f => {
-                                const k = f.userKind ?? f.kind;
-                                if (k !== "ambiguous") kindMap.set(k, (kindMap.get(k) ?? 0) + 1);
-                              });
-                              const kinds = [...kindMap.entries()]
-                                .sort((a, b) => (LT_SOURCE_INFO[a[0]]?.priority ?? 99) - (LT_SOURCE_INFO[b[0]]?.priority ?? 99));
-
-                              const hasAgreement  = kindMap.has("loan-agreement");
-                              const hasContinuity = kindMap.has("continuity");
-                              const hasRegister   = kindMap.has("loan-register");
-                              const mixedTypes    = kinds.length > 1;
-
-                              return (
-                                <div className="rounded-[8px] border border-border/70 bg-muted/20 overflow-hidden">
-                                  {/* Header */}
-                                  <div className="px-3 py-2 border-b border-border/50 bg-muted/30 flex items-center gap-1.5">
-                                    <span className="text-[10px] font-semibold text-foreground">What Luka will extract</span>
-                                    {mixedTypes && <span className="text-[9px] text-muted-foreground ml-auto">Merge priority: left → right</span>}
-                                  </div>
-
-                                  {/* Source rows */}
-                                  <div className="divide-y divide-border/40">
-                                    {kinds.map(([kind, count]) => {
-                                      const info = LT_SOURCE_INFO[kind];
-                                      if (!info) return null;
-                                      return (
-                                        <div key={kind} className="flex items-start gap-2.5 px-3 py-2">
-                                          <div className={`w-1.5 h-1.5 rounded-full ${info.dot} shrink-0 mt-1`} />
-                                          <div className="flex-1 min-w-0">
-                                            <p className={`text-[10px] font-semibold ${info.heading}`}>
-                                              {count > 1 ? `${count} × ` : ""}{LT_FILE_KIND_LABEL[kind]}
-                                            </p>
-                                            <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">{info.provides}</p>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-
-                                  {/* Conflict / merge rules — only shown when types are mixed */}
-                                  {mixedTypes && (
-                                    <div className="px-3 py-2 border-t border-border/50 bg-muted/10 space-y-1">
-                                      <p className="text-[10px] font-semibold text-foreground">How conflicts are resolved</p>
-                                      {hasAgreement && hasContinuity && (
-                                        <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                          <span className="font-medium text-blue-700">Loan agreement</span> terms (rate, dates, covenants) take priority.
-                                          The <span className="font-medium text-green-700">continuity schedule</span> fills in opening balances and roll-forward movements where the agreement is silent.
-                                        </p>
-                                      )}
-                                      {hasAgreement && hasRegister && (
-                                        <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                          <span className="font-medium text-blue-700">Loan agreements</span> override individual loan terms from the <span className="font-medium text-purple-700">loan register</span>. The register is used for any facilities not covered by an agreement.
-                                        </p>
-                                      )}
-                                      {!hasAgreement && hasContinuity && (
-                                        <p className="text-[10px] text-amber-700 leading-relaxed font-medium">
-                                          No loan agreements detected — Luka will derive loan terms from the continuity schedule. For more complete data (covenants, payment terms), add a loan agreement PDF.
-                                        </p>
-                                      )}
-                                      {!hasAgreement && !hasContinuity && hasRegister && (
-                                        <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                          Loan terms will come from the loan register. For richer extraction (payment schedules, covenant clauses), add loan agreement PDFs too.
-                                        </p>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* Tip: continuity-only, no agreement */}
-                                  {!mixedTypes && !hasAgreement && hasContinuity && (
-                                    <div className="px-3 py-2 border-t border-border/50 bg-amber-50/50">
-                                      <p className="text-[10px] text-amber-700 leading-relaxed">
-                                        <span className="font-semibold">Tip:</span> Continuity schedules provide balances and movements, but not full loan terms.
-                                        Add a <span className="font-medium">loan agreement PDF</span> to also populate rate, maturity, covenants and payment schedule.
-                                      </p>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-
-                  {/* ── Step 2c: Drive file picker ── */}
-                  {ltDebtWizStep === 2 && ltDebtSource === "drive" && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 mb-3 px-1">
-                        <HardDrive className="h-3.5 w-3.5 text-primary shrink-0" />
-                        <span className="text-xs font-medium text-foreground">Google Drive</span>
-                      </div>
-                      {LT_DEBT_DRIVE_FILES.map(f => (
-                        <button key={f.id} onClick={() => setLtDebtDriveId(f.id)}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-[8px] border text-left transition-colors ${
-                            ltDebtDriveId === f.id ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40"
-                          }`}
-                        >
-                          {f.ext === "pdf"
-                            ? <FileText        className="h-4 w-4 text-red-500 shrink-0" />
-                            : f.ext === "zip"
-                            ? <FolderOpen      className="h-4 w-4 text-amber-500 shrink-0" />
-                            : <FileSpreadsheet className="h-4 w-4 text-green-600 shrink-0" />}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate">{f.name}</p>
-                            <p className="text-xs text-muted-foreground">{f.folder} · {f.size}</p>
-                          </div>
-                          {ltDebtDriveId === f.id && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* ── Step 2d: Generate from current workpaper data ── */}
-                  {ltDebtWizStep === 2 && ltDebtSource === "manual" && (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 px-3 py-2.5 rounded-[10px] border border-green-200 bg-green-50/50 dark:bg-green-950/20 dark:border-green-900/30">
-                        <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                        <div>
-                          <p className="text-sm font-medium text-foreground">3 active loans found in your workpaper</p>
-                          <p className="text-xs text-muted-foreground">Term Loan A · Operating LOC · USD Equipment Loan</p>
-                        </div>
-                      </div>
-                      <div className="rounded-[10px] border border-border p-3 space-y-1 text-xs">
-                        {[
-                          { label: "Total facility balance", value: "$6,689,000 CAD" },
-                          { label: "Active loan facilities", value: "3 loans" },
-                          { label: "Covenant issues",        value: "2 items" },
-                          { label: "Fiscal year end",        value: "December 31, 2025" },
-                        ].map(row => (
-                          <div key={row.label} className="flex items-center justify-between py-0.5">
-                            <span className="text-muted-foreground">{row.label}</span>
-                            <span className="font-semibold text-foreground">{row.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <p className="text-xs text-muted-foreground">Luka will generate the full workpaper using this data. Click Approve to continue.</p>
-                    </div>
-                  )}
-
-                  {/* ── Step 3: Review & approve ── */}
-                  {ltDebtWizStep === 3 && (
-                    <div className="space-y-3">
-                      <p className="text-sm text-foreground leading-relaxed">Here's what I'll do — review and approve to continue.</p>
-                      <div className="rounded-[10px] border border-border p-3 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Question 1</p>
-                          <button onClick={() => setLtDebtWizStep(1)} className="text-[10px] text-primary hover:underline">Edit</button>
-                        </div>
-                        <p className="text-xs text-foreground">How should I build the Long-term Debt workpaper?</p>
-                        <span className="inline-flex items-center text-xs bg-muted text-foreground rounded-full px-2.5 py-0.5 font-medium">
-                          {ltDebtSource === "existing" && "Use an existing document"}
-                          {ltDebtSource === "upload"   && "Upload a new document"}
-                          {ltDebtSource === "drive"    && "Import from Google Drive"}
-                        </span>
-                      </div>
-                      <div className="rounded-[10px] border border-border p-3 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Question 2</p>
-                          <button onClick={() => setLtDebtWizStep(2)} className="text-[10px] text-primary hover:underline">Edit</button>
-                        </div>
-                        <p className="text-xs text-foreground">
-                          {ltDebtSource === "existing" && "Selected document"}
-                          {ltDebtSource === "upload"   && `${ltDebtUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized").length} document(s) uploaded`}
-                          {ltDebtSource === "drive"    && "Selected from Google Drive"}
-                        </p>
-                        <span className="inline-flex items-center gap-1.5 text-xs bg-muted text-foreground rounded-full px-2.5 py-0.5 font-medium max-w-full">
-                          {ltDebtSource === "existing" && <><FileText className="h-3 w-3 shrink-0" /><span className="truncate">{LT_DEBT_ENG_DOCS.find(d => d.id === ltDebtSelDocId)?.name}</span></>}
-                          {ltDebtSource === "upload"   && <><Upload className="h-3 w-3 shrink-0" /><span className="truncate">{ltDebtUploadFiles.filter(f=>f.kind!=="unsupported"&&f.kind!=="oversized").length} valid file{ltDebtUploadFiles.filter(f=>f.kind!=="unsupported"&&f.kind!=="oversized").length!==1?"s":""}</span></>}
-                          {ltDebtSource === "drive"    && <><HardDrive className="h-3 w-3 shrink-0" /><span className="truncate">{LT_DEBT_DRIVE_FILES.find(f => f.id === ltDebtDriveId)?.name}</span></>}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                </div>
-
-                {/* Footer */}
-                <div className="flex items-center px-4 py-3 border-t border-border bg-muted/20 shrink-0">
-                  {/* Left — Back */}
-                  <div className="flex-1 flex items-center">
-                    {ltDebtWizStep > 1 ? (
-                      <button onClick={() => setLtDebtWizStep(s => s - 1)}
-                        className="h-8 px-3 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-[8px] bg-background hover:bg-muted transition-colors">
-                        Back
-                      </button>
-                    ) : null}
-                  </div>
-                  {/* Center — step dots */}
-                  <div className="flex items-center gap-1.5">
-                    {Array.from({ length: ltDebtSource === "manual" ? 2 : 3 }).map((_, i) => (
-                      <div key={i} className={`rounded-full transition-all duration-200 ${
-                        i + 1 === ltDebtWizStep ? "w-4 h-2 bg-primary" : i + 1 < ltDebtWizStep ? "w-2 h-2 bg-primary/50" : "w-2 h-2 bg-muted-foreground/25"
-                      }`} />
-                    ))}
-                  </div>
-                  {/* Right — Next / Approve */}
-                  <div className="flex-1 flex items-center justify-end">
-                  {/* Last step for all sources — approve and generate */}
-                  {(ltDebtWizStep === 3 || (ltDebtWizStep === 2 && ltDebtSource === "manual")) ? (
-                    <button
-                      onClick={() => {
-                        const srcLabel =
-                          ltDebtSource === "existing" ? (LT_DEBT_ENG_DOCS.find(d => d.id === ltDebtSelDocId)?.name ?? "existing document") :
-                          ltDebtSource === "upload"   ? (() => {
-                            const vf = ltDebtUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
-                            const counts: Partial<Record<string, number>> = {};
-                            vf.forEach(f => { const k = f.userKind ?? f.kind; counts[k] = (counts[k] ?? 0) + 1; });
-                            const parts = Object.entries(counts).map(([k, n]) => `${n} ${LT_FILE_KIND_LABEL[k] ?? k}${n! > 1 ? "s" : ""}`);
-                            return `${vf.length} uploaded document${vf.length !== 1 ? "s" : ""}${parts.length ? ` (${parts.join(", ")})` : ""}`;
-                          })() :
-                          ltDebtSource === "drive"    ? (LT_DEBT_DRIVE_FILES.find(f => f.id === ltDebtDriveId)?.name ?? "Google Drive file") :
-                          "current workpaper data";
-                        setLtDebtSrcLabel(srcLabel);
-                        setLtDebtGenerated(true);
-                        setLtDebtPhase("idle");
-                      }}
-                      className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors"
-                    >
-                      Approve &amp; generate <ChevronRight className="h-3.5 w-3.5" />
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => setLtDebtWizStep(s => s + 1)}
-                      disabled={ltDebtWizStep === 2 && ltDebtSource === "upload" && (
-                        ltDebtUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized").length === 0 ||
-                        ltDebtUploadFiles.some(f => f.kind === "ambiguous" && !f.userKind)
-                      )}
-                      className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      Next <ChevronRight className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          </>
-        )}
 
         {/* ── Add New Workspace Modal ── */}
         {newWsModalOpen && (
