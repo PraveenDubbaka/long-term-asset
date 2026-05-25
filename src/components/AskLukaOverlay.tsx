@@ -265,6 +265,7 @@ const LT_DEBT_DRIVE_FILES = [
 ];
 
 const LT_RIGHT_COLS = new Set(["Int. Rate % *","Mo. Payment","Orig. Loan Amt","FX Rate","Closing Bal. *","IO Period (mo.)","Balloon Amt"]);
+const SCR = "h-6 text-[10px] px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer";
 
 // ── GL account combobox (compact, for review table) ─────────────────────────
 function GLComboboxMini({ value, onChange, required }: { value: string; onChange: (v: string) => void; required?: boolean }) {
@@ -566,6 +567,12 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
   const [ltDebtSrcLabel,    setLtDebtSrcLabel]   = useState<string|null>(null);
   const [ltReviewRows,      setLtReviewRows]     = useState<LtDebtReviewRow[]>([]);
   const [ltProcessedFileIds,setLtProcessedFileIds]= useState<Set<string>>(new Set());
+  // ── Add-more-loans turn ──
+  const [addMoreLoansActive,  setAddMoreLoansActive]  = useState(false);
+  const [addMoreLtFiles,      setAddMoreLtFiles]      = useState<LtDebtFile[]>([]);
+  const [addMoreLtRows,       setAddMoreLtRows]       = useState<LtDebtReviewRow[]>([]);
+  const [addMoreProcessedIds, setAddMoreProcessedIds] = useState<Set<string>>(new Set());
+  const [addMoreDone,         setAddMoreDone]         = useState(false);
   // ── Investment Schedule (chat-based) ──
   const [invSchedPhase, setInvSchedPhase] = useState<"idle"|"upload-prompt"|"done">("idle");
   const [invSchedGenerated, setInvSchedGenerated] = useState(false);
@@ -832,6 +839,10 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
     setLtReviewRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r)), []);
   const deleteLtRow = useCallback((id: string) =>
     setLtReviewRows(prev => prev.filter(r => r.id !== id)), []);
+  const updateAddMoreRow = useCallback((id: string, field: keyof LtDebtReviewRow, value: string) =>
+    setAddMoreLtRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r)), []);
+  const deleteAddMoreRow = useCallback((id: string) =>
+    setAddMoreLtRows(prev => prev.filter(r => r.id !== id)), []);
 
   // ── Investment Plaid helpers ──
   const resetInvPlaid = useCallback(() => {
@@ -2655,8 +2666,6 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                         sum + LT_REVIEW_REQUIRED.filter(f => ltRowMissing(row, f)).length, 0);
                                       const canSubmit = (validFiles.length > 0 || ltReviewRows.length > 0) && ambigFiles.length === 0 && missingCount === 0;
 
-                                      const SCR = "h-6 text-[10px] px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer";
-
                                       return (
                                         <div className="space-y-3">
                                           {/* Upload box */}
@@ -3417,7 +3426,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                             </div>
                             <div className="flex-1 pt-1.5 min-w-0 overflow-x-auto">
                               <LongTermAssetResponse />
-                              {followUpTurns.length === 0 && (
+                              {followUpTurns.length === 0 && !addMoreLoansActive && (
                                 <div className="mt-4 space-y-2">
                                   <p className="text-xs text-muted-foreground font-medium">What would you like to explore next?</p>
                                   <div className="flex flex-wrap gap-2">
@@ -3437,12 +3446,171 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                       </button>
                                     ))}
                                   </div>
+                                  <div className="pt-1 border-t border-border/40">
+                                    <button
+                                      onClick={() => { setAddMoreLtFiles([]); setAddMoreLtRows([]); setAddMoreProcessedIds(new Set()); setAddMoreDone(false); setAddMoreLoansActive(true); }}
+                                      className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-dashed border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
+                                    >
+                                      <Plus className="w-3.5 h-3.5" /> Add more loans
+                                    </button>
+                                  </div>
                                 </div>
                               )}
                             </div>
                           </div>
                         </>
                       )}
+
+                      {/* ── Add More Loans turn ── */}
+                      {addMoreLoansActive && (() => {
+                        const amValidFiles  = addMoreLtFiles.filter(f => f.kind !== "ambiguous" && f.kind !== "unsupported" && f.kind !== "oversized");
+                        const amAmbigFiles  = addMoreLtFiles.filter(f => f.kind === "ambiguous");
+                        const amMissingCount = addMoreLtRows.reduce((s, row) =>
+                          s + LT_REVIEW_REQUIRED.filter(f => ltRowMissing(row, f)).length, 0);
+                        const amCanSubmit = (amValidFiles.length > 0 || addMoreLtRows.length > 0) && amAmbigFiles.length === 0 && amMissingCount === 0;
+                        return (
+                          <>
+                            {/* User bubble */}
+                            <div className="flex justify-end">
+                              <div className="max-w-[80%] px-4 py-3 rounded-[12px] bg-primary text-primary-foreground text-sm leading-relaxed">
+                                Add more loans to the workpaper
+                              </div>
+                            </div>
+                            {/* Luka response */}
+                            <div className="flex items-start gap-3 min-w-0 max-w-full">
+                              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(265_80%_55%)] flex items-center justify-center shrink-0">
+                                <LukaIcon size={16} />
+                              </div>
+                              <div className="flex-1 pt-1.5 min-w-0 space-y-3">
+                                {!addMoreDone ? (
+                                  <>
+                                    <p className="text-sm text-foreground">Upload loan documents or add entries manually below, then click <strong>Submit</strong> to append to the workpaper.</p>
+
+                                    {/* Drop zone */}
+                                    <label className="flex flex-col items-center justify-center gap-2 h-20 rounded-[10px] border-2 border-dashed border-border bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors text-center px-4">
+                                      <input type="file" multiple accept=".pdf,.xlsx,.xls,.csv,.zip" className="hidden" onChange={e => {
+                                        const classified = Array.from(e.target.files ?? []).map(classifyLtDebtFile);
+                                        setAddMoreLtFiles(prev => {
+                                          const next = [...prev, ...classified];
+                                          const newValid = classified.filter(f => f.kind !== "ambiguous" && f.kind !== "unsupported" && f.kind !== "oversized");
+                                          const newValidNotYet = newValid.filter(f => !addMoreProcessedIds.has(f.id));
+                                          if (newValidNotYet.length > 0) {
+                                            setAddMoreLtRows(r => [...r, ...newValidNotYet.flatMap(mockLtRowsFromFile)]);
+                                            setAddMoreProcessedIds(ids => { const s = new Set(ids); newValidNotYet.forEach(f => s.add(f.id)); return s; });
+                                          }
+                                          return next;
+                                        });
+                                        e.target.value = "";
+                                      }} />
+                                      <Upload className="w-4 h-4 text-muted-foreground" />
+                                      <span className="text-xs text-muted-foreground">Drop files or <span className="text-primary font-medium">browse</span> · PDF, XLSX, CSV, ZIP · max 25 MB</span>
+                                    </label>
+
+                                    {/* File chips */}
+                                    {addMoreLtFiles.length > 0 && (
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {addMoreLtFiles.map(f => (
+                                          <span key={f.id} className={cn("inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border font-medium",
+                                            f.kind === "unsupported" || f.kind === "oversized" ? "bg-red-50 text-red-600 border-red-200"
+                                            : f.kind === "ambiguous" ? "bg-amber-50 text-amber-700 border-amber-200"
+                                            : "bg-primary/8 text-primary border-primary/25")}>
+                                            {f.name}
+                                            <button onClick={() => { setAddMoreLtFiles(p => p.filter(x => x.id !== f.id)); setAddMoreLtRows(p => p.filter(r => r.sourceFile !== f.name)); }} className="ml-0.5 hover:text-red-500"><X className="w-2.5 h-2.5" /></button>
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+
+                                    {/* Review table */}
+                                    {addMoreLtRows.length > 0 && (
+                                      <div className="rounded-[8px] border border-border overflow-hidden">
+                                        <div className="overflow-x-auto">
+                                          <table className="w-full text-[10px]" style={{ minWidth: 2400 }}>
+                                            <thead>
+                                              <tr className="bg-muted/30 border-b border-border">
+                                                {["Loan Name *","Lender *","Current Collateral","Type","Rate Type","Int. Rate % *","Start","Maturity *","First Payment","CCY","Mo. Payment","Orig. Loan Amt","FX Rate","Closing Bal. *","GL Principal *","Day Count","Payment Type","Freq.","Compounding","IO Period (mo.)","Balloon Amt","Status",""].map((h, i) => (
+                                                  <th key={i} className={`px-2 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${LT_RIGHT_COLS.has(h) ? "text-right" : "text-left"} ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10" : ""}`}>
+                                                    {h.endsWith(" *") ? <>{h.slice(0,-2)} <span className="text-red-500">*</span></> : h}
+                                                  </th>
+                                                ))}
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {addMoreLtRows.map((row, ri) => {
+                                                const fc2 = (field: keyof LtDebtReviewRow, req: boolean) =>
+                                                  cn("h-6 text-[10px] px-1.5 border rounded bg-background focus:outline-none w-full",
+                                                    req && ltRowMissing(row, field)
+                                                      ? "border-red-400 bg-red-50/60 placeholder:text-red-400 text-red-600 focus:border-red-500"
+                                                      : "border-border focus:border-primary/40");
+                                                return (
+                                                  <tr key={row.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
+                                                    <td className="px-1.5 py-1 min-w-[130px]"><input value={row.name} onChange={e => updateAddMoreRow(row.id,"name",e.target.value)} className={cn(fc2("name",true),"w-32")} placeholder="Loan name" /></td>
+                                                    <td className="px-1.5 py-1 min-w-[110px]"><input value={row.lender} onChange={e => updateAddMoreRow(row.id,"lender",e.target.value)} className={cn(fc2("lender",true),"w-28")} placeholder="Lender" /></td>
+                                                    <td className="px-1.5 py-1 min-w-[120px]"><input value={row.collateral} onChange={e => updateAddMoreRow(row.id,"collateral",e.target.value)} className={cn(fc2("collateral",false),"w-28")} placeholder="e.g. Real property" /></td>
+                                                    <td className="px-1.5 py-1"><select value={row.type} onChange={e => updateAddMoreRow(row.id,"type",e.target.value)} className={cn(SCR,"w-20")}>{["Term","LOC","Revolver","Mortgage","Bridge"].map(t=><option key={t}>{t}</option>)}</select></td>
+                                                    <td className="px-1.5 py-1"><select value={row.interestType} onChange={e => updateAddMoreRow(row.id,"interestType",e.target.value)} className={cn(SCR,"w-22")}>{["Fixed","Variable","Floating","Hybrid","Step Rate"].map(t=><option key={t}>{t}</option>)}</select></td>
+                                                    <td className="px-1.5 py-1"><input value={row.rate} onChange={e => updateAddMoreRow(row.id,"rate",e.target.value)} className={cn(fc2("rate",true),"w-14 text-right")} placeholder="%" /></td>
+                                                    <td className="px-1.5 py-1"><input type="date" value={row.startDate} onChange={e => updateAddMoreRow(row.id,"startDate",e.target.value)} className={cn(fc2("startDate",false),"w-28")} /></td>
+                                                    <td className="px-1.5 py-1"><input type="date" value={row.maturityDate} onChange={e => updateAddMoreRow(row.id,"maturityDate",e.target.value)} className={cn(fc2("maturityDate",true),"w-28")} /></td>
+                                                    <td className="px-1.5 py-1"><input type="date" value={row.firstPaymentDate} onChange={e => updateAddMoreRow(row.id,"firstPaymentDate",e.target.value)} className={cn(fc2("firstPaymentDate",false),"w-28")} /></td>
+                                                    <td className="px-1.5 py-1"><select value={row.currency} onChange={e => updateAddMoreRow(row.id,"currency",e.target.value)} className={cn(SCR,"w-14")}>{["CAD","USD","EUR","GBP"].map(c=><option key={c}>{c}</option>)}</select></td>
+                                                    <td className="px-1.5 py-1"><input value={row.monthlyPayment} onChange={e => updateAddMoreRow(row.id,"monthlyPayment",e.target.value)} className={cn(fc2("monthlyPayment",false),"w-24 text-right")} placeholder="auto" /></td>
+                                                    <td className="px-1.5 py-1"><input value={row.originalPrincipal} onChange={e => updateAddMoreRow(row.id,"originalPrincipal",e.target.value)} className={cn(fc2("originalPrincipal",false),"w-24 text-right")} placeholder="0" /></td>
+                                                    <td className="px-1.5 py-1"><input value={row.fxRate} onChange={e => updateAddMoreRow(row.id,"fxRate",e.target.value)} className={cn(fc2("fxRate",false),"w-16 text-right font-mono")} placeholder="1.000" /></td>
+                                                    <td className="px-1.5 py-1"><input value={row.currentBalance} onChange={e => updateAddMoreRow(row.id,"currentBalance",e.target.value)} className={cn(fc2("currentBalance",true),"w-24 text-right")} placeholder="Balance" /></td>
+                                                    <td className="px-1.5 py-1 min-w-[160px]"><GLComboboxMini value={row.glPrincipal} onChange={v => updateAddMoreRow(row.id,"glPrincipal",v)} required={ltRowMissing(row,"glPrincipal")} /></td>
+                                                    <td className="px-1.5 py-1"><select value={row.dayCount} onChange={e => updateAddMoreRow(row.id,"dayCount",e.target.value)} className={cn(SCR,"w-20")}>{["ACT/365","ACT/360","30/360"].map(d=><option key={d}>{d}</option>)}</select></td>
+                                                    <td className="px-1.5 py-1"><select value={row.paymentType} onChange={e => updateAddMoreRow(row.id,"paymentType",e.target.value)} className={cn(SCR,"w-24")}>{["P&I","Interest-only","Balloon"].map(p=><option key={p}>{p}</option>)}</select></td>
+                                                    <td className="px-1.5 py-1"><select value={row.paymentFrequency} onChange={e => updateAddMoreRow(row.id,"paymentFrequency",e.target.value)} className={cn(SCR,"w-22")}>{["Monthly","Quarterly","Semi-annual","Annual"].map(f=><option key={f}>{f}</option>)}</select></td>
+                                                    <td className="px-1.5 py-1"><select value={row.compounding} onChange={e => updateAddMoreRow(row.id,"compounding",e.target.value)} className={cn(SCR,"w-22")}>{["Monthly","Quarterly","Semi-annual","Annual"].map(f=><option key={f}>{f}</option>)}</select></td>
+                                                    <td className="px-1.5 py-1"><input value={row.ioPeriod} onChange={e => updateAddMoreRow(row.id,"ioPeriod",e.target.value)} className={cn(fc2("ioPeriod",false),"w-14 text-right")} placeholder="0" /></td>
+                                                    <td className="px-1.5 py-1"><input value={row.balloonAmt} onChange={e => updateAddMoreRow(row.id,"balloonAmt",e.target.value)} className={cn(fc2("balloonAmt",false),"w-24 text-right")} placeholder="0" /></td>
+                                                    <td className="px-1.5 py-1"><select value={row.status} onChange={e => updateAddMoreRow(row.id,"status",e.target.value)} className={cn(SCR,"w-20")}>{["Active","Closed","Replaced","Inactive"].map(s=><option key={s}>{s}</option>)}</select></td>
+                                                    <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
+                                                      <button onClick={() => deleteAddMoreRow(row.id)} className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors"><X className="w-3 h-3" /></button>
+                                                    </td>
+                                                  </tr>
+                                                );
+                                              })}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Bottom actions */}
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <button onClick={() => setAddMoreLtRows(prev => [...prev, EMPTY_LT_ROW()])} className="inline-flex items-center gap-1.5 h-9 px-4 text-sm font-medium rounded-[8px] border border-border bg-background text-foreground hover:bg-muted/60 transition-colors">
+                                        <Plus className="w-3.5 h-3.5" /> Add Manual Entry
+                                      </button>
+                                      <button
+                                        disabled={!amCanSubmit}
+                                        onClick={() => { if (amCanSubmit) setAddMoreDone(true); }}
+                                        className={cn("inline-flex items-center gap-1.5 h-9 px-5 text-sm font-medium rounded-[8px] transition-colors",
+                                          amCanSubmit ? "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer" : "bg-muted/60 text-muted-foreground/50 cursor-not-allowed border border-border/50 opacity-60")}
+                                      >
+                                        Submit
+                                      </button>
+                                      {amMissingCount > 0 && (
+                                        <span className="text-[10px] text-red-500">Fill in the <strong>{amMissingCount}</strong> highlighted field{amMissingCount !== 1 ? "s" : ""} to continue</span>
+                                      )}
+                                    </div>
+                                  </>
+                                ) : (
+                                  /* ── Done: show updated workpaper ── */
+                                  <>
+                                    <p className="text-sm text-foreground">
+                                      <CheckCircle2 className="inline w-4 h-4 text-green-600 mr-1" />
+                                      <strong>{addMoreLtRows.length} loan{addMoreLtRows.length !== 1 ? "s" : ""}</strong> added — here's the updated workpaper:
+                                    </p>
+                                    <LongTermAssetResponse />
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </>
+                        );
+                      })()}
 
                       {/* ── Free-prompt follow-up turns ── */}
                       {followUpTurns.map(turn => {
