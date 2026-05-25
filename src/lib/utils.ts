@@ -9,14 +9,13 @@ export function cn(...inputs: ClassValue[]) {
 
 // ─── FORMATTERS ───────────────────────────────────────────────────────────────
 export function fmtCurrency(value: number, currency: Currency = 'CAD', compact = false): string {
-  const prefix = currency === 'CAD' ? '$' : currency === 'USD' ? 'US$' : currency + '$';
   if (compact && Math.abs(value) >= 1_000_000) {
-    return `${prefix}${(value / 1_000_000).toFixed(2)}M`;
+    return `${(value / 1_000_000).toFixed(2)}M`;
   }
   if (compact && Math.abs(value) >= 1_000) {
-    return `${prefix}${(value / 1_000).toFixed(0)}K`;
+    return `${(value / 1_000).toFixed(0)}K`;
   }
-  return `${prefix}${value.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return value.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export function fmtPct(value: number, decimals = 2): string {

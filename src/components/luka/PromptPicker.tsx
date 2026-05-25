@@ -8,6 +8,7 @@ const prompts = [
   { id: "account-recon-perform", label: "Perform Account Reconciliation" },
   { id: "bank-recon", label: "Bank Reconciliation" },
   { id: "aged-ar", label: "Aged AR Analysis" },
+  { id: "investment-schedule", label: "Investment Schedule" },
   { id: "loan-amort", label: "Loan Amortization" },
   { id: "capital-asset", label: "Capital Asset Amortization" },
   { id: "trial-balance", label: "Generate Trial Balance" },

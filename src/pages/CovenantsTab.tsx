@@ -980,7 +980,7 @@ function FormulaLineRow({
   onUpdateDesc?: (id: string, glCode: string, desc: string) => void;
 }) {
   const IIC = 'input-double-border h-7 w-32 px-2 text-xs text-right tabular-nums border border-[#dcdfe4] rounded-[8px] bg-white text-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] focus:outline-none focus:ring-0 dark:bg-card dark:border-[hsl(220_15%_30%)]';
-  const fmtAmt = (v: number) => v === 0 ? '$0' : `$${v.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fmtAmt = (v: number) => v === 0 ? '0' : v.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const glName = GL_ACCOUNTS.find(a => a.code === l.glAccount)?.name ?? l.glAccount;
 
   // Local string state — user can type freely; only commits to parent on blur / Enter
@@ -1063,7 +1063,7 @@ function FormulaDisplay({
   const numTotal = numLines.reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
   const denTotal = denLines.reduce((s, l) => s + l.amount * l.multiplier * (l.sign === '+' ? 1 : -1), 0);
 
-  const fmtAmt = (v: number) => v === 0 ? '$0' : `$${v.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fmtAmt = (v: number) => v === 0 ? '0' : v.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   // Thin wrapper — actual rendering & local state lives in FormulaLineRow (stable component)
   const LineRows = ({
@@ -1495,7 +1495,7 @@ function FormulaBuilderTab({
   const fmtV = (v: number | undefined) => {
     if (v === undefined) return '—';
     if (form.isRatioCovenant) return `${v.toFixed(2)}x`;
-    return v >= 1000 ? `$${(v / 1000).toFixed(1)}K` : v.toFixed(2);
+    return v >= 1000 ? `${(v / 1000).toFixed(1)}K` : v.toFixed(2);
   };
 
   const statusFor = (v: number | undefined): CovenantStatus | null => {
@@ -1576,7 +1576,7 @@ function FormulaBuilderTab({
                 </td>
                 {/* Result */}
                 <td className={`px-2 py-1.5 text-right tabular-nums font-semibold ${result < 0 ? 'text-red-600' : 'text-foreground'}`}>
-                  {result >= 1000 ? `$${(result / 1000).toFixed(0)}K` : result.toFixed(2)}
+                  {result >= 1000 ? `${(result / 1000).toFixed(0)}K` : result.toFixed(2)}
                 </td>
                 {/* Delete */}
                 <td className="px-1 py-1.5 text-center">
@@ -1604,8 +1604,8 @@ function FormulaBuilderTab({
       <div className="flex items-center justify-between text-xs px-3 py-1.5 bg-muted/30 rounded-lg border border-border">
         <span className="text-foreground font-medium">{label} Total</span>
         <div className="flex items-center gap-4">
-          <span className="tabular-nums"><span className="text-foreground mr-1">Current:</span><span className="font-bold text-foreground">{total >= 1000 ? `$${(total / 1000).toFixed(0)}K` : total.toFixed(2)}</span></span>
-          <span className="tabular-nums"><span className="text-foreground mr-1">Projected:</span><span className="font-bold text-foreground">{projTotal >= 1000 ? `$${(projTotal / 1000).toFixed(0)}K` : projTotal.toFixed(2)}</span></span>
+          <span className="tabular-nums"><span className="text-foreground mr-1">Current:</span><span className="font-bold text-foreground">{total >= 1000 ? `${(total / 1000).toFixed(0)}K` : total.toFixed(2)}</span></span>
+          <span className="tabular-nums"><span className="text-foreground mr-1">Projected:</span><span className="font-bold text-foreground">{projTotal >= 1000 ? `${(projTotal / 1000).toFixed(0)}K` : projTotal.toFixed(2)}</span></span>
         </div>
       </div>
     );

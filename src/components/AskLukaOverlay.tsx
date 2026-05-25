@@ -6,10 +6,10 @@ import {
   ChevronLeft, ChevronRight, Clock, PanelLeftClose, MoreHorizontal,
   Zap, Building2, CheckCircle2, ChevronDown, SlidersHorizontal,
   Bell, Settings, ArrowLeft, Lock, Upload, FileText, Mail, Square,
-  FolderOpen, RotateCcw, Sparkles, Eye, Pin, LayoutList, CalendarDays, CalendarRange,
-  ArrowUpDown, Check, BookOpen, HardDrive, FileSpreadsheet,
+  FolderOpen, RotateCcw, Sparkles, Eye, EyeOff, Pin, LayoutList, CalendarDays, CalendarRange,
+  ArrowUpDown, Check, BookOpen, HardDrive, FileSpreadsheet, ShieldCheck,
   AlertTriangle, TrendingUp, TrendingDown, Info, Table2, RefreshCw,
-  Calendar, Receipt, Download,
+  Calendar, Receipt, Download, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/wp-ui/button";
 import { ScrollArea } from "@/components/wp-ui/scroll-area";
@@ -22,6 +22,7 @@ import { LoanAmortizationPrompt } from "@/components/luka/LoanAmortizationPrompt
 import { LoanAmortizationResponse } from "@/components/luka/LoanAmortizationResponse";
 import type { LoanAmortData } from "@/components/luka/LoanAmortizationPrompt";
 import { LongTermAssetResponse } from "@/components/luka/LongTermAssetResponse";
+import { InvestmentScheduleResponse } from "@/components/luka/InvestmentScheduleResponse";
 import { LukaResponseActions } from "@/components/luka/LukaResponseActions";
 import { useStore } from "@/store/useStore";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
@@ -76,6 +77,7 @@ const suggestions = [
   "#Capital Asset Amortization",
   "#Loan Amortization",
   "#Long-term Debt",
+  "#Investment Schedule",
 ];
 
 const WP_THREADS = [
@@ -183,7 +185,7 @@ function classifyLtDebtFile(file: File): LtDebtFile {
   const id  = `ltf-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   if (!["pdf", "xlsx", "xls", "zip"].includes(ext))
     return { id, name: file.name, size: file.size, ext, kind: "unsupported" };
-  if (file.size > 2 * 1024 * 1024)
+  if (file.size > 25 * 1024 * 1024)
     return { id, name: file.name, size: file.size, ext, kind: "oversized" };
   if (ext === "pdf" || ext === "zip")
     return { id, name: file.name, size: file.size, ext, kind: "loan-agreement" };
@@ -259,6 +261,47 @@ const LT_DEBT_DRIVE_FILES = [
   { id: "ltd-gd-2", name: "Term Loan Agreement — RBC.pdf",        folder: "Client Documents / Contracts",  size: "892 KB", ext: "pdf"  },
   { id: "ltd-gd-3", name: "All Loan Agreements Package 2025.zip", folder: "Client Documents / Contracts",  size: "2.1 MB", ext: "zip"  },
 ];
+
+// ── Investment Schedule — Plaid institutions ─────────────────────────────
+const INV_PLAID_INSTITUTIONS = [
+  { id: 'td',           name: 'TD Direct Investing',   abbr: 'TD',  color: '#00883A' },
+  { id: 'rbc',          name: 'RBC Direct Investing',  abbr: 'RBC', color: '#0051A5' },
+  { id: 'bmo',          name: 'BMO InvestorLine',       abbr: 'BMO', color: '#0079C1' },
+  { id: 'hsbc',         name: 'HSBC InvestDirect',      abbr: 'HSB', color: '#DB0011' },
+  { id: 'fidelity',     name: 'Fidelity Investments',   abbr: 'FID', color: '#538025' },
+  { id: 'scotia',       name: 'Scotiabank iTRADE',       abbr: 'BNS', color: '#EC111A' },
+  { id: 'cibc',         name: "CIBC Investor's Edge",   abbr: 'CM',  color: '#A41422' },
+  { id: 'national',     name: 'National Bank Direct',   abbr: 'NA',  color: '#EA1D2C' },
+  { id: 'questrade',    name: 'Questrade',              abbr: 'QT',  color: '#E8641C' },
+  { id: 'wealthsimple', name: 'Wealthsimple Trade',     abbr: 'WS',  color: '#1A1A1A' },
+];
+
+// ── Investment upload file types ─────────────────────────────────────────
+type InvFileKind = "statement" | "trade-confirm" | "account-summary" | "workpaper" | "ambiguous" | "unsupported" | "oversized";
+interface InvUploadFile {
+  id: string; name: string; size: number; ext: string;
+  kind: InvFileKind;
+  userKind?: Exclude<InvFileKind, "ambiguous" | "unsupported" | "oversized">;
+}
+
+function classifyInvFile(file: File): InvUploadFile {
+  const n   = file.name.toLowerCase();
+  const ext = (n.split(".").pop() ?? "").toLowerCase();
+  const id  = `invf-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  if (!["pdf", "xlsx", "xls", "csv", "zip"].includes(ext))
+    return { id, name: file.name, size: file.size, ext, kind: "unsupported" };
+  if (file.size > 25 * 1024 * 1024)
+    return { id, name: file.name, size: file.size, ext, kind: "oversized" };
+  if (ext === "pdf" || ext === "zip")
+    return { id, name: file.name, size: file.size, ext, kind: "statement" };
+  if (/trade|confirm|transaction/.test(n))
+    return { id, name: file.name, size: file.size, ext, kind: "trade-confirm" };
+  if (/statement|brokerage|account/.test(n))
+    return { id, name: file.name, size: file.size, ext, kind: "statement" };
+  if (/workpaper|work.?paper|\bwp\b|fy\d{2,4}|prior.?year/.test(n))
+    return { id, name: file.name, size: file.size, ext, kind: "workpaper" };
+  return { id, name: file.name, size: file.size, ext, kind: "ambiguous" };
+}
 
 // ── Free-prompt follow-up system ────────────────────────────────────────────
 type FreePromptIntent =
@@ -359,7 +402,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [displayedResponse, setDisplayedResponse] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [richResponseType, setRichResponseType] = useState<"gross-margin" | "loan-amortization" | "lt-debt" | null>(null);
+  const [richResponseType, setRichResponseType] = useState<"gross-margin" | "loan-amortization" | "lt-debt" | "investment" | null>(null);
   const [loanAmortData,   setLoanAmortData]     = useState<LoanAmortData | null>(null);
   const [loanAmortStep,   setLoanAmortStep]     = useState<"idle" | "thinking" | "done">("idle");
   const [revealStep, setRevealStep] = useState(-1);
@@ -376,6 +419,21 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
   const [ltDebtUploadFiles, setLtDebtUploadFiles] = useState<LtDebtFile[]>([]);
   const [ltDebtGenerated,   setLtDebtGenerated]  = useState(false);
   const [ltDebtSrcLabel,    setLtDebtSrcLabel]   = useState<string|null>(null);
+  // ── Investment Schedule (chat-based) ──
+  const [invSchedPhase, setInvSchedPhase] = useState<"idle"|"upload-prompt"|"done">("idle");
+  const [invSchedGenerated, setInvSchedGenerated] = useState(false);
+  const [invSchedSrcLabel, setInvSchedSrcLabel] = useState<string|null>(null);
+  // ── Investment — Plaid connect flow ──
+  const [invPlaidOpen, setInvPlaidOpen] = useState(false);
+  const [invPlaidStep, setInvPlaidStep] = useState<'select'|'login'|'verifying'|'success'>('select');
+  const [invPlaidInstitution, setInvPlaidInstitution] = useState<{id:string;name:string;abbr:string;color:string}|null>(null);
+  const [invPlaidSearch, setInvPlaidSearch] = useState('');
+  const [invPlaidUsername, setInvPlaidUsername] = useState('');
+  const [invPlaidPassword, setInvPlaidPassword] = useState('');
+  const [invPlaidShowPwd, setInvPlaidShowPwd] = useState(false);
+  // ── Investment — upload flow ──
+  const [invUploadOpen, setInvUploadOpen] = useState(false);
+  const [invUploadFiles, setInvUploadFiles] = useState<InvUploadFile[]>([]);
   // ── Free-prompt follow-up turns (context-aware after lt-debt summary) ──
   const [followUpTurns, setFollowUpTurns] = useState<FollowUpTurn[]>([]);
   const [voiceOpen, setVoiceOpen] = useState(false);
@@ -622,6 +680,24 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
     setAutomationLog([]);
   }, []);
 
+  // ── Investment Plaid helpers ──
+  const resetInvPlaid = useCallback(() => {
+    setInvPlaidOpen(false);
+    setInvPlaidStep('select');
+    setInvPlaidInstitution(null);
+    setInvPlaidSearch('');
+    setInvPlaidUsername('');
+    setInvPlaidPassword('');
+    setInvPlaidShowPwd(false);
+  }, []);
+
+  const handleInvPlaidVerify = useCallback(async () => {
+    if (!invPlaidUsername.trim() || !invPlaidPassword.trim()) return;
+    setInvPlaidStep('verifying');
+    await new Promise<void>(r => setTimeout(r, 2000));
+    setInvPlaidStep('success');
+  }, [invPlaidUsername, invPlaidPassword]);
+
   // Select a compilation workspace from the sidebar — goes straight to verification
   const selectCompWorkspace = useCallback((ws: { id: string; name: string; ref: string; active: boolean; pinned: boolean }) => {
     verifyTimeoutsRef.current.forEach(clearTimeout);
@@ -710,17 +786,22 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
     setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
+    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null);
     setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
     const isGrossMargin    = promptLabel.toLowerCase().includes("gross profit margin");
     const isLoanAmort      = promptLabel.toLowerCase().includes("loan amortization");
     const isLtDebt         = promptLabel.toLowerCase().includes("long-term debt") || promptLabel.toLowerCase().includes("long term debt") || promptLabel.toLowerCase().includes("long-term asset");
+    const isInvSched       = promptLabel.toLowerCase().includes("investment schedule");
     setTimeout(() => {
       setIsThinking(false);
       if (isLtDebt) {
         setRichResponseType("lt-debt"); setAiResponse("__rich__");
         setLtDebtPhase("upload-prompt");
+      } else if (isInvSched) {
+        setRichResponseType("investment"); setAiResponse("__rich__");
+        setInvSchedPhase("upload-prompt");
       } else if (isLoanAmort) {
         setRichResponseType("loan-amortization"); setAiResponse("__rich__");
         // Kick off agentic search sequence
@@ -2389,7 +2470,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                   <>
                                     <p className="text-sm text-foreground leading-relaxed">
                                       To generate your Long-term Debt workpaper, please upload your documents below.
-                                      I accept <strong>loan agreements</strong> (PDF/ZIP), <strong>continuity schedules</strong>, <strong>loan registers</strong>, or <strong>prior-year workpapers</strong> (Excel, max 2 MB each).
+                                      We'll accept <strong>loan agreements</strong> (PDF/ZIP), <strong>continuity schedules</strong>, <strong>loan registers</strong>, or <strong>prior-year workpapers</strong> (Excel · up to 15 documents · 25 MB total).
                                     </p>
 
                                     {/* Drop zone */}
@@ -2399,19 +2480,16 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                         const classified = Array.from(rawFiles).map(classifyLtDebtFile);
                                         setLtDebtUploadFiles(prev => {
                                           const existing = new Set(prev.map(f => f.name));
-                                          return [...prev, ...classified.filter(f => !existing.has(f.name))].slice(0, 10);
+                                          return [...prev, ...classified.filter(f => !existing.has(f.name))].slice(0, 15);
                                         });
                                       };
                                       const validFiles = ltDebtUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
                                       const ambigFiles = ltDebtUploadFiles.filter(f => f.kind === "ambiguous" && !f.userKind);
-                                      const errorFiles = ltDebtUploadFiles.filter(f => f.kind === "unsupported" || f.kind === "oversized");
                                       return (
-                                        <div className="space-y-2">
+                                        <div className="space-y-3">
+                                          {/* Upload box */}
                                           <div
-                                            className={cn(
-                                              "flex flex-col items-center justify-center gap-1.5 rounded-[10px] border-2 border-dashed cursor-pointer transition-colors py-5",
-                                              ltDebtUploadFiles.length > 0 ? "border-primary/30 bg-primary/[0.02]" : "border-border/60 hover:border-primary/40 hover:bg-muted/30",
-                                            )}
+                                            className="flex flex-col items-center justify-center gap-2 rounded-[12px] border border-border bg-background cursor-pointer transition-colors py-6 hover:bg-muted/30"
                                             onClick={() => {
                                               const inp = document.createElement("input");
                                               inp.type = "file"; inp.accept = ".pdf,.xlsx,.xls,.zip"; inp.multiple = true;
@@ -2421,64 +2499,64 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                             onDragOver={e => e.preventDefault()}
                                             onDrop={e => { e.preventDefault(); addLtFiles(e.dataTransfer.files); }}
                                           >
-                                            <Upload className="h-4 w-4 text-muted-foreground" />
+                                            <div className="w-9 h-9 rounded-full border border-border bg-muted/40 flex items-center justify-center">
+                                              <Upload className="h-4 w-4 text-muted-foreground" />
+                                            </div>
                                             <p className="text-sm text-muted-foreground text-center">
                                               <span className="text-primary font-medium">Click to upload</span> or drag and drop
                                             </p>
-                                            <p className="text-xs text-muted-foreground">PDF, Excel or ZIP · max 2 MB · up to 10 files</p>
+                                            <p className="text-xs text-muted-foreground">Max 15 docs with total size of 25MB</p>
                                           </div>
 
-                                          {/* File list */}
+                                          {/* File chips — flex wrap */}
                                           {ltDebtUploadFiles.length > 0 && (
-                                            <div className="space-y-1.5">
-                                              <div className="flex items-center justify-between px-0.5">
-                                                <p className="text-xs font-medium text-foreground">
-                                                  {ltDebtUploadFiles.length} file{ltDebtUploadFiles.length !== 1 ? "s" : ""} added
-                                                  {errorFiles.length > 0 && <span className="text-red-600 ml-1.5">· {errorFiles.length} error{errorFiles.length !== 1 ? "s" : ""}</span>}
-                                                  {ambigFiles.length > 0 && <span className="text-amber-600 ml-1.5">· {ambigFiles.length} need{ambigFiles.length === 1 ? "s" : ""} classification</span>}
-                                                </p>
-                                                <button onClick={() => setLtDebtUploadFiles([])} className="text-[10px] text-muted-foreground hover:text-foreground">Clear all</button>
-                                              </div>
+                                            <div className="flex flex-wrap gap-2">
                                               {ltDebtUploadFiles.map(f => {
-                                                const resolvedKind = f.userKind ?? f.kind;
                                                 const isError = f.kind === "unsupported" || f.kind === "oversized";
                                                 const isAmbig = f.kind === "ambiguous" && !f.userKind;
+                                                const resolvedKind = f.userKind ?? f.kind;
                                                 return (
                                                   <div key={f.id} className={cn(
-                                                    "flex items-center gap-2 px-3 py-2 rounded-[8px] border text-xs",
-                                                    isError ? "border-red-200 bg-red-50/50" : isAmbig ? "border-amber-200 bg-amber-50/40" : "border-border bg-background"
+                                                    "inline-flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-[10px] border bg-background text-xs max-w-[220px]",
+                                                    isError ? "border-red-200" : isAmbig ? "border-amber-300" : "border-border"
                                                   )}>
-                                                    {f.ext === "pdf" ? <FileText className="h-3.5 w-3.5 text-red-500 shrink-0" />
-                                                      : f.ext === "zip" ? <FolderOpen className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                                                      : <FileSpreadsheet className="h-3.5 w-3.5 text-green-600 shrink-0" />}
+                                                    {/* File icon with coloured bg */}
+                                                    <div className={cn(
+                                                      "w-7 h-7 rounded-[6px] flex items-center justify-center shrink-0",
+                                                      isError ? "bg-red-50" : "bg-primary/10"
+                                                    )}>
+                                                      {f.ext === "pdf"
+                                                        ? <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
+                                                        : f.ext === "zip"
+                                                        ? <FolderOpen className="h-3.5 w-3.5 text-primary shrink-0" />
+                                                        : <FileSpreadsheet className="h-3.5 w-3.5 text-primary shrink-0" />}
+                                                    </div>
                                                     <span className="flex-1 min-w-0 truncate font-medium text-foreground">{f.name}</span>
-                                                    <span className="text-[10px] text-muted-foreground shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
-                                                    {isError ? (
-                                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-red-700 border border-red-200 whitespace-nowrap shrink-0">
-                                                        <AlertTriangle className="h-2.5 w-2.5" />{f.kind === "unsupported" ? "Unsupported" : "Too large"}
-                                                      </span>
-                                                    ) : isAmbig ? (
+                                                    {/* Classify dropdown for ambiguous */}
+                                                    {isAmbig && (
                                                       <select onClick={e => e.stopPropagation()} defaultValue=""
                                                         onChange={e => {
                                                           const v = e.target.value as Exclude<LtDebtFileKind, "unsupported" | "oversized" | "ambiguous">;
                                                           setLtDebtUploadFiles(prev => prev.map(x => x.id === f.id ? { ...x, userKind: v } : x));
                                                         }}
-                                                        className="text-[10px] border border-amber-300 rounded-[6px] px-1.5 py-0.5 bg-background text-amber-700 focus:outline-none cursor-pointer shrink-0 max-w-[140px]"
+                                                        className="text-[10px] border border-amber-300 rounded-[6px] px-1 py-0.5 bg-background text-amber-700 focus:outline-none cursor-pointer shrink-0 max-w-[100px]"
                                                       >
                                                         <option value="" disabled>Classify…</option>
                                                         <option value="loan-agreement">Loan Agreement</option>
-                                                        <option value="continuity">Continuity Schedule</option>
+                                                        <option value="continuity">Continuity</option>
                                                         <option value="loan-register">Loan Register</option>
-                                                        <option value="workpaper">Prior Year Workpaper</option>
+                                                        <option value="workpaper">Prior Year WP</option>
                                                       </select>
-                                                    ) : (
-                                                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap shrink-0 ${LT_FILE_KIND_COLOR[resolvedKind] ?? "bg-muted text-foreground border-border"}`}>
-                                                        {LT_FILE_KIND_LABEL[resolvedKind] ?? resolvedKind}
-                                                      </span>
                                                     )}
-                                                    <button onClick={e => { e.stopPropagation(); setLtDebtUploadFiles(prev => prev.filter(x => x.id !== f.id)); }}
-                                                      className="shrink-0 text-muted-foreground hover:text-destructive transition-colors ml-0.5">
-                                                      <X className="h-3.5 w-3.5" />
+                                                    {isError && (
+                                                      <span className="text-[10px] text-red-600 shrink-0">{f.kind === "unsupported" ? "Unsupported" : "Too large"}</span>
+                                                    )}
+                                                    {/* Remove */}
+                                                    <button
+                                                      onClick={e => { e.stopPropagation(); setLtDebtUploadFiles(prev => prev.filter(x => x.id !== f.id)); }}
+                                                      className="shrink-0 text-red-400 hover:text-red-600 transition-colors"
+                                                    >
+                                                      <Trash2 className="h-3.5 w-3.5" />
                                                     </button>
                                                   </div>
                                                 );
@@ -2486,7 +2564,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                             </div>
                                           )}
 
-                                          {/* Generate button */}
+                                          {/* Submit button */}
                                           {validFiles.length > 0 && ambigFiles.length === 0 && (
                                             <button
                                               onClick={() => {
@@ -2497,9 +2575,9 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                 setLtDebtGenerated(true);
                                                 setLtDebtPhase("done");
                                               }}
-                                              className="w-full inline-flex items-center justify-center gap-1.5 h-9 px-4 text-sm font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors"
+                                              className="inline-flex items-center gap-1.5 h-9 px-5 text-sm font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors"
                                             >
-                                              <Sparkles className="h-3.5 w-3.5" /> Generate Workpaper
+                                              Submit
                                             </button>
                                           )}
                                         </div>
@@ -2510,6 +2588,360 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                   <p className="text-sm text-foreground">
                                     Workpaper generated from <strong>{ltDebtSrcLabel}</strong> ✓
                                   </p>
+                                )}
+                              </div>
+                            ) : richResponseType === "investment" ? (
+                              <div className="space-y-3 py-0.5 max-w-full">
+                                {!invSchedGenerated ? (
+                                  <>
+                                    <p className="text-sm text-foreground leading-relaxed">
+                                      To generate your <strong>Investment Schedule</strong> workpaper, connect your brokerage via <strong>Plaid Link</strong> or upload your documents below.
+                                      We accept <strong>brokerage statements</strong> (PDF/CSV), <strong>trade confirmations</strong>, or <strong>prior-year workpapers</strong> (Excel · up to 15 files · 25 MB total).
+                                    </p>
+
+                                    {/* ── PLAID FLOW ── */}
+                                    {invPlaidOpen ? (
+                                      <div className="rounded-[12px] border border-border bg-background overflow-hidden">
+                                        {/* Header */}
+                                        <div className="px-4 pt-4 pb-3 border-b border-border flex items-center gap-2">
+                                          {invPlaidStep === 'login' && (
+                                            <button onClick={() => setInvPlaidStep('select')} className="text-muted-foreground hover:text-foreground">
+                                              <ChevronLeft className="w-4 h-4" />
+                                            </button>
+                                          )}
+                                          {invPlaidStep === 'login' && invPlaidInstitution ? (
+                                            <>
+                                              <div className="w-5 h-5 rounded flex-shrink-0 text-white text-[9px] font-bold flex items-center justify-center"
+                                                style={{ backgroundColor: invPlaidInstitution.color }}>
+                                                {invPlaidInstitution.abbr.slice(0, 2)}
+                                              </div>
+                                              <h3 className="text-sm font-semibold text-foreground flex-1 truncate">Sign in to {invPlaidInstitution.name}</h3>
+                                            </>
+                                          ) : invPlaidStep === 'verifying' ? (
+                                            <h3 className="text-sm font-semibold text-foreground flex-1">Connecting…</h3>
+                                          ) : invPlaidStep === 'success' ? (
+                                            <h3 className="text-sm font-semibold text-foreground flex-1">Authorize Access</h3>
+                                          ) : (
+                                            <>
+                                              <div className="w-5 h-5 rounded-md bg-[#1A1A1A] flex items-center justify-center flex-shrink-0">
+                                                <span className="text-white text-[9px] font-bold tracking-tight">p</span>
+                                              </div>
+                                              <h3 className="text-sm font-semibold text-foreground flex-1">Connect to Plaid</h3>
+                                            </>
+                                          )}
+                                          <button onClick={resetInvPlaid} className="ml-auto text-muted-foreground hover:text-foreground">
+                                            <X className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+
+                                        {/* Body */}
+                                        <div className="px-4 py-4">
+                                          {invPlaidStep === 'select' && (
+                                            <div className="space-y-3">
+                                              <div className="relative">
+                                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+                                                <input
+                                                  className="w-full h-8 pl-7 pr-3 text-xs rounded-[8px] border border-border bg-muted/20 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
+                                                  placeholder="Search 12,000+ institutions…" value={invPlaidSearch}
+                                                  onChange={e => setInvPlaidSearch(e.target.value)} autoFocus />
+                                              </div>
+                                              <div className="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto pr-0.5">
+                                                {INV_PLAID_INSTITUTIONS
+                                                  .filter(i => !invPlaidSearch || i.name.toLowerCase().includes(invPlaidSearch.toLowerCase()))
+                                                  .map(inst => (
+                                                    <button key={inst.id}
+                                                      onClick={() => { setInvPlaidInstitution(inst); setInvPlaidStep('login'); }}
+                                                      className="flex items-center gap-2 px-2.5 py-2 rounded-[8px] border border-border hover:border-primary hover:bg-muted/40 transition-colors text-left">
+                                                      <div className="w-7 h-7 rounded-[6px] flex items-center justify-center flex-shrink-0 text-white text-[9px] font-bold"
+                                                        style={{ backgroundColor: inst.color }}>
+                                                        {inst.abbr.slice(0, 2)}
+                                                      </div>
+                                                      <span className="text-xs font-medium text-foreground leading-tight">{inst.name}</span>
+                                                    </button>
+                                                  ))}
+                                              </div>
+                                              <div className="flex items-center gap-1.5 justify-center pt-0.5">
+                                                <ShieldCheck className="w-3 h-3 text-muted-foreground" />
+                                                <span className="text-[10px] text-muted-foreground">256-bit encryption · read-only access</span>
+                                              </div>
+                                            </div>
+                                          )}
+
+                                          {invPlaidStep === 'login' && invPlaidInstitution && (
+                                            <div className="space-y-3">
+                                              <div className="h-0.5 rounded-full" style={{ backgroundColor: invPlaidInstitution.color }} />
+                                              <div className="space-y-2.5">
+                                                <div>
+                                                  <label className="block text-[11px] font-medium text-foreground mb-1">Username / Card Number</label>
+                                                  <input
+                                                    className="w-full h-8 px-2.5 text-xs rounded-[8px] border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
+                                                    placeholder="Enter username" value={invPlaidUsername}
+                                                    onChange={e => setInvPlaidUsername(e.target.value)} autoFocus />
+                                                </div>
+                                                <div>
+                                                  <label className="block text-[11px] font-medium text-foreground mb-1">Password</label>
+                                                  <div className="relative">
+                                                    <input
+                                                      className="w-full h-8 px-2.5 pr-8 text-xs rounded-[8px] border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
+                                                      type={invPlaidShowPwd ? 'text' : 'password'} placeholder="Enter password"
+                                                      value={invPlaidPassword} onChange={e => setInvPlaidPassword(e.target.value)}
+                                                      onKeyDown={e => { if (e.key === 'Enter') handleInvPlaidVerify(); }} />
+                                                    <button type="button" onClick={() => setInvPlaidShowPwd(p => !p)}
+                                                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                                                      {invPlaidShowPwd ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                                    </button>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                              <p className="text-[10px] text-muted-foreground leading-relaxed flex items-start gap-1">
+                                                <ShieldCheck className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                                                Your credentials are encrypted end-to-end and never stored. Plaid requests read-only access to transaction history only.
+                                              </p>
+                                            </div>
+                                          )}
+
+                                          {invPlaidStep === 'verifying' && (
+                                            <div className="flex flex-col items-center justify-center py-8 gap-4">
+                                              <div className="w-12 h-12 rounded-full border-[3px] border-primary/20 border-t-primary animate-spin" />
+                                              <div className="text-center">
+                                                <p className="text-xs font-semibold text-foreground">Verifying credentials…</p>
+                                                <p className="text-[10px] text-muted-foreground mt-0.5">Connecting to {invPlaidInstitution?.name}</p>
+                                              </div>
+                                            </div>
+                                          )}
+
+                                          {invPlaidStep === 'success' && invPlaidInstitution && (
+                                            <div className="space-y-3">
+                                              <div className="rounded-[10px] border border-green-200 bg-green-50 p-3 text-center">
+                                                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-1.5">
+                                                  <Check className="w-4 h-4 text-green-600" />
+                                                </div>
+                                                <p className="text-xs font-semibold text-green-800">{invPlaidInstitution.name}</p>
+                                                <p className="text-[10px] text-green-700 mt-0.5">2 accounts found · ready to link</p>
+                                              </div>
+                                              <div className="space-y-1.5">
+                                                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Select accounts to link</p>
+                                                {[
+                                                  { name: 'Investment Account',     acct: '···' + invPlaidInstitution.id.slice(0, 2).toUpperCase() + '01', ccy: 'CAD' },
+                                                  { name: 'USD Investment Account', acct: '···' + invPlaidInstitution.id.slice(0, 2).toUpperCase() + '02', ccy: 'USD' },
+                                                ].map(a => (
+                                                  <label key={a.acct} className="flex items-center gap-2.5 rounded-[8px] border border-border px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors">
+                                                    <input type="checkbox" defaultChecked className="rounded h-3 w-3 accent-primary" />
+                                                    <div>
+                                                      <div className="text-[11px] font-medium text-foreground">{a.name}</div>
+                                                      <div className="text-[10px] text-muted-foreground font-mono">{a.acct} · {a.ccy}</div>
+                                                    </div>
+                                                  </label>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        {/* Footer */}
+                                        <div className="px-4 pb-4 pt-3 flex justify-end gap-2 border-t border-border">
+                                          {invPlaidStep === 'select' && (
+                                            <button onClick={resetInvPlaid}
+                                              className="h-8 px-3 text-xs font-medium rounded-[8px] border border-border hover:bg-muted/40 transition-colors text-foreground">
+                                              Cancel
+                                            </button>
+                                          )}
+                                          {invPlaidStep === 'login' && (
+                                            <>
+                                              <button onClick={() => setInvPlaidStep('select')}
+                                                className="h-8 px-3 text-xs font-medium rounded-[8px] border border-border hover:bg-muted/40 transition-colors text-foreground">
+                                                Back
+                                              </button>
+                                              <button onClick={handleInvPlaidVerify}
+                                                className="h-8 px-4 text-xs font-medium rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                                                Continue
+                                              </button>
+                                            </>
+                                          )}
+                                          {invPlaidStep === 'success' && (
+                                            <>
+                                              <button onClick={resetInvPlaid}
+                                                className="h-8 px-3 text-xs font-medium rounded-[8px] border border-border hover:bg-muted/40 transition-colors text-foreground">
+                                                Cancel
+                                              </button>
+                                              <button
+                                                onClick={() => {
+                                                  setInvSchedGenerated(true);
+                                                  setInvSchedSrcLabel(`Plaid — ${invPlaidInstitution!.name}`);
+                                                  setInvSchedPhase("done");
+                                                  resetInvPlaid();
+                                                }}
+                                                className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                                                <ShieldCheck className="w-3 h-3" /> Allow Access
+                                              </button>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                    ) : invUploadOpen ? (
+                                      /* ── UPLOAD FLOW ── */
+                                      (() => {
+                                        const addInvFiles = (rawFiles: FileList | null) => {
+                                          if (!rawFiles) return;
+                                          const classified = Array.from(rawFiles).map(classifyInvFile);
+                                          setInvUploadFiles(prev => {
+                                            const existing = new Set(prev.map(f => f.name));
+                                            return [...prev, ...classified.filter(f => !existing.has(f.name))].slice(0, 15);
+                                          });
+                                        };
+                                        const validFiles = invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
+                                        const ambigFiles = invUploadFiles.filter(f => f.kind === "ambiguous" && !f.userKind);
+                                        return (
+                                          <div className="space-y-3">
+                                            {/* Drop zone */}
+                                            <div
+                                              className="flex flex-col items-center justify-center gap-2 rounded-[12px] border border-border bg-background cursor-pointer transition-colors py-6 hover:bg-muted/30"
+                                              onClick={() => {
+                                                const inp = document.createElement("input");
+                                                inp.type = "file"; inp.accept = ".pdf,.xlsx,.xls,.csv,.zip"; inp.multiple = true;
+                                                inp.onchange = e => addInvFiles((e.target as HTMLInputElement).files);
+                                                inp.click();
+                                              }}
+                                              onDragOver={e => e.preventDefault()}
+                                              onDrop={e => { e.preventDefault(); addInvFiles(e.dataTransfer.files); }}
+                                            >
+                                              <div className="w-9 h-9 rounded-full border border-border bg-muted/40 flex items-center justify-center">
+                                                <Upload className="h-4 w-4 text-muted-foreground" />
+                                              </div>
+                                              <p className="text-sm text-muted-foreground text-center">
+                                                <span className="text-primary font-medium">Click to upload</span> or drag and drop
+                                              </p>
+                                              <p className="text-xs text-muted-foreground">PDF · CSV · Excel · Max 15 files · 25 MB total</p>
+                                            </div>
+
+                                            {/* File chips */}
+                                            {invUploadFiles.length > 0 && (
+                                              <div className="flex flex-wrap gap-2">
+                                                {invUploadFiles.map(f => {
+                                                  const isError = f.kind === "unsupported" || f.kind === "oversized";
+                                                  const isAmbig = f.kind === "ambiguous" && !f.userKind;
+                                                  return (
+                                                    <div key={f.id} className={cn(
+                                                      "inline-flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-[10px] border bg-background text-xs max-w-[220px]",
+                                                      isError ? "border-red-200" : isAmbig ? "border-amber-300" : "border-border"
+                                                    )}>
+                                                      <div className={cn(
+                                                        "w-7 h-7 rounded-[6px] flex items-center justify-center shrink-0",
+                                                        isError ? "bg-red-50" : "bg-primary/10"
+                                                      )}>
+                                                        {f.ext === "pdf"
+                                                          ? <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
+                                                          : f.ext === "zip"
+                                                          ? <FolderOpen className="h-3.5 w-3.5 text-primary shrink-0" />
+                                                          : <FileSpreadsheet className="h-3.5 w-3.5 text-primary shrink-0" />}
+                                                      </div>
+                                                      <span className="flex-1 min-w-0 truncate font-medium text-foreground">{f.name}</span>
+                                                      {isAmbig && (
+                                                        <select onClick={e => e.stopPropagation()} defaultValue=""
+                                                          onChange={e => {
+                                                            const v = e.target.value as Exclude<InvFileKind, "ambiguous"|"unsupported"|"oversized">;
+                                                            setInvUploadFiles(prev => prev.map(x => x.id === f.id ? { ...x, userKind: v } : x));
+                                                          }}
+                                                          className="text-[10px] border border-amber-300 rounded-[6px] px-1 py-0.5 bg-background text-amber-700 focus:outline-none cursor-pointer shrink-0 max-w-[110px]"
+                                                        >
+                                                          <option value="" disabled>Classify…</option>
+                                                          <option value="statement">Statement</option>
+                                                          <option value="trade-confirm">Trade Confirm</option>
+                                                          <option value="account-summary">Account Summary</option>
+                                                          <option value="workpaper">Prior Year WP</option>
+                                                        </select>
+                                                      )}
+                                                      {isError && (
+                                                        <span className="text-[10px] text-red-600 shrink-0">{f.kind === "unsupported" ? "Unsupported" : "Too large"}</span>
+                                                      )}
+                                                      <button
+                                                        onClick={e => { e.stopPropagation(); setInvUploadFiles(prev => prev.filter(x => x.id !== f.id)); }}
+                                                        className="shrink-0 text-red-400 hover:text-red-600 transition-colors"
+                                                      >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                      </button>
+                                                    </div>
+                                                  );
+                                                })}
+                                              </div>
+                                            )}
+
+                                            {/* Actions row */}
+                                            <div className="flex items-center gap-2">
+                                              <button
+                                                onClick={() => { setInvUploadOpen(false); setInvUploadFiles([]); }}
+                                                className="h-9 px-3 text-xs font-medium rounded-[8px] border border-border hover:bg-muted/40 transition-colors text-foreground"
+                                              >
+                                                Cancel
+                                              </button>
+                                              {validFiles.length > 0 && ambigFiles.length === 0 && (
+                                                <button
+                                                  onClick={() => {
+                                                    setInvSchedSrcLabel(`${validFiles.length} uploaded document${validFiles.length !== 1 ? "s" : ""}`);
+                                                    setInvSchedGenerated(true);
+                                                    setInvSchedPhase("done");
+                                                  }}
+                                                  className="inline-flex items-center gap-1.5 h-9 px-5 text-sm font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors"
+                                                >
+                                                  Submit
+                                                </button>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })()
+
+                                    ) : (
+                                      /* ── INITIAL TWO-BUTTON STATE ── */
+                                      <>
+                                        <div className="flex flex-col gap-2 sm:flex-row">
+                                          <button
+                                            onClick={() => setInvPlaidOpen(true)}
+                                            className="flex-1 flex items-center gap-2 px-4 py-3 rounded-[10px] border-2 border-primary/30 bg-primary/5 hover:border-primary hover:bg-primary/10 transition-all text-sm font-medium text-foreground"
+                                          >
+                                            <span className="w-7 h-7 rounded-full bg-primary flex items-center justify-center shrink-0"><Zap className="h-3.5 w-3.5 text-white" /></span>
+                                            <div className="text-left">
+                                              <p className="font-semibold text-sm text-foreground">Connect via Plaid</p>
+                                              <p className="text-[11px] text-muted-foreground">Auto-sync transactions from TD, RBC, BMO, Fidelity</p>
+                                            </div>
+                                          </button>
+                                          <button
+                                            onClick={() => setInvUploadOpen(true)}
+                                            className="flex-1 flex items-center gap-2 px-4 py-3 rounded-[10px] border border-border bg-background hover:bg-muted/40 transition-all text-sm font-medium text-foreground"
+                                          >
+                                            <span className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0"><Upload className="h-3.5 w-3.5 text-foreground" /></span>
+                                            <div className="text-left">
+                                              <p className="font-semibold text-sm text-foreground">Upload Documents</p>
+                                              <p className="text-[11px] text-muted-foreground">PDF statements, CSV trade files, Excel workpaper</p>
+                                            </div>
+                                          </button>
+                                        </div>
+                                        <p className="text-[11px] text-muted-foreground">
+                                          Or{" "}
+                                          <button className="text-primary underline hover:no-underline" onClick={() => { setInvSchedGenerated(true); setInvSchedSrcLabel("sample data (Countable Holdings Corp.)"); setInvSchedPhase("done"); }}>
+                                            use sample investment data
+                                          </button>{" "}
+                                          to explore the workpaper.
+                                        </p>
+                                      </>
+                                    )}
+                                  </>
+                                ) : (
+                                  <>
+                                    <p className="text-sm text-foreground leading-relaxed">
+                                      Investment Schedule workpaper generated from <strong>{invSchedSrcLabel}</strong> ✓
+                                    </p>
+                                    <InvestmentScheduleResponse />
+                                    {/* Follow-up chips */}
+                                    <div className="flex flex-wrap gap-2 pt-1">
+                                      {["Export to Excel", "Show unrealized G/L note", "Reconcile to broker statements", "Generate AJEs"].map(chip => (
+                                        <button key={chip} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-primary/25 bg-primary/6 text-xs font-medium text-primary hover:bg-primary/15 transition-colors">
+                                          {chip}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </>
                                 )}
                               </div>
                             ) : richResponseType === "loan-amortization" ? (

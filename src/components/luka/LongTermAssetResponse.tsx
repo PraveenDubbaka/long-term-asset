@@ -1,4 +1,4 @@
-import { useMemo, useState, useLayoutEffect, useRef, useEffect } from "react";
+import { useMemo, useState, useLayoutEffect, useRef, useEffect, Fragment } from "react";
 import ReactDOM from "react-dom";
 import {
   AlertTriangle, Calendar, DollarSign, BarChart2,
@@ -6,7 +6,7 @@ import {
   ShieldAlert, ShieldCheck, Activity, CreditCard,
   Building2, FileText, BookOpen, Receipt, Layers, FileCheck, Send, TrendingUp,
   Download, Copy, RotateCcw, X, Trash2, Search, Check, Pencil, Folder,
-  Upload, Loader2, Maximize2, Minimize2,
+  Upload, Loader2, Maximize2, Minimize2, SlidersHorizontal,
 } from "lucide-react";
 import { COVENANT_TEMPLATES, GL_ACCOUNTS, GL_CATEGORY_ORDER, GL_CATEGORY_LABELS } from "@/lib/covenantTemplates";
 import type { GlCategory } from "@/lib/covenantTemplates";
@@ -20,7 +20,7 @@ const toCAD = (n: number, ccy: string) => ccy === "USD" ? n * USD_FX : ccy === "
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 const fmt = (n: number) =>
-  n.toLocaleString("en-CA", { style: "currency", currency: "CAD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  n.toLocaleString("en-CA", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 const fmtNum = (n: number) =>
   n === 0 ? "00" : n.toLocaleString("en-CA", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -376,140 +376,48 @@ function generateMockDetectedLoans(fileNames: string[]): DetectedLoan[] {
 }
 
 function LoansTab({ loans }: { loans: Loan[] }) {
-  const { accountMappings, reconciliation, updateLoan, addLoan } = useStore(s => ({
+  const { accountMappings, reconciliation, updateLoan, addLoan, deleteLoan } = useStore(s => ({
     accountMappings: s.accountMappings,
     reconciliation:  s.reconciliation,
     updateLoan:      s.updateLoan,
     addLoan:         s.addLoan,
+    deleteLoan:      s.deleteLoan,
   }));
 
-  const [newLoanOpen,  setNewLoanOpen]  = useState(false);
-  const [newLoan,      setNewLoan]      = useState<Partial<Loan>>(EMPTY_LOAN_DRAFT);
-  const [panelRect,    setPanelRect]    = useState<{ left: number; right: number; bottom: number } | null>(null);
-
-  // Upload-mode state for Add New Loan panel
-  const [newLoanMode,     setNewLoanMode]     = useState<"manual" | "upload" | "review">("manual");
-  const [uploadLoanState, setUploadLoanState] = useState<"idle" | "extracting">("idle");
-  const [uploadLoanFile,  setUploadLoanFile]  = useState<string | null>(null);
-  const [uploadDragging,  setUploadDragging]  = useState(false);
-  const [detectedLoans,   setDetectedLoans]   = useState<DetectedLoan[]>([]);
-  const uploadFileRef = useRef<HTMLInputElement>(null);
   const [tableExpanded,   setTableExpanded]   = useState(false);
+  const [hiddenCols,      setHiddenCols]      = useState<Set<string>>(new Set());
+  const [colMenuOpen,     setColMenuOpen]     = useState(false);
+  const [colMenuPos,      setColMenuPos]      = useState<{ top: number; left: number } | null>(null);
+  const colBtnRef = useRef<HTMLButtonElement>(null);
+  const [editingId,       setEditingId]       = useState<string | null>(null);
+  const [editDraft,       setEditDraft]       = useState<Partial<Loan>>({});
+  const [addingNew,       setAddingNew]       = useState(false);
+  const [newRowDraft,     setNewRowDraft]     = useState<Partial<Loan>>(EMPTY_LOAN_DRAFT);
 
-  const closeNewLoanPanel = () => {
-    setNewLoanOpen(false);
-    setNewLoan(EMPTY_LOAN_DRAFT());
-    setNewLoanMode("manual");
-    setUploadLoanState("idle");
-    setUploadLoanFile(null);
-    setDetectedLoans([]);
+  const cancelEdit = () => { setEditingId(null); setEditDraft({}); };
+  const saveEdit = () => {
+    if (!editDraft.name?.trim() || !editDraft.lender?.trim()) { toast.error("Loan name and lender are required"); return; }
+    updateLoan(editingId!, editDraft as Partial<Loan>);
+    toast.success("Loan updated");
+    cancelEdit();
   };
-
-  const handleUploadLoanFiles = (fileList: FileList | null) => {
-    if (!fileList || fileList.length === 0) return;
-    const valid: File[] = [];
-    Array.from(fileList).forEach(f => {
-      const ext = (f.name.split(".").pop() ?? "").toLowerCase();
-      if (!["pdf", "xlsx", "xls"].includes(ext)) {
-        toast.error(`"${f.name}" skipped — only PDF or Excel accepted`);
-        return;
-      }
-      if (f.size > 5 * 1024 * 1024) {
-        toast.error(`"${f.name}" skipped — must be under 5 MB`);
-        return;
-      }
-      valid.push(f);
-    });
-    if (valid.length === 0) return;
-    const label = valid.length === 1
-      ? valid[0].name
-      : `${valid[0].name} +${valid.length - 1} more`;
-    setUploadLoanFile(label);
-    setUploadLoanState("extracting");
-    toast.success(`${valid.length} file${valid.length !== 1 ? "s" : ""} uploaded — extracting loan details…`);
-    setTimeout(() => {
-      const fileNames = valid.map(f => f.name);
-      const mock = generateMockDetectedLoans(fileNames);
-      const withDupes = mock.map(dl => {
-        const existing = loans.find(l => l.name.toLowerCase() === dl.name.toLowerCase());
-        return { ...dl, isDuplicate: !!existing, duplicateId: existing?.id };
-      });
-      setDetectedLoans(withDupes);
-      setUploadLoanState("idle");
-      setUploadLoanFile(null);
-      setNewLoanMode("review");
-      const dc = withDupes.filter(dl => dl.isDuplicate).length;
-      toast.success(
-        `${withDupes.length} loan${withDupes.length !== 1 ? "s" : ""} detected` +
-        (dc > 0 ? ` · ${dc} duplicate${dc !== 1 ? "s" : ""} flagged — choose an action` : "")
-      );
-    }, 2000);
-  };
-
-  const handleImportDetected = () => {
-    const toImport = detectedLoans.filter(dl => dl.selected && !(dl.isDuplicate && dl.duplicateAction === "skip"));
-    if (toImport.length === 0) { toast.error("No loans selected for import — un-skip at least one loan"); return; }
-    toImport.forEach((dl, i) => {
-      const isOverwrite = dl.isDuplicate && dl.duplicateAction === "overwrite" && !!dl.duplicateId;
-      const loan: Loan = {
-        ...(EMPTY_LOAN_DRAFT() as Loan),
-        id: isOverwrite ? dl.duplicateId! : `loan-${Date.now()}-${i}`,
-        name: dl.duplicateAction === "keep-both" ? `${dl.name} (Imported)` : dl.name,
-        lender: dl.lender,
-        type: dl.type as Loan["type"],
-        currency: dl.currency as Loan["currency"],
-        interestType: dl.interestType as Loan["interestType"],
-        rate: dl.rate,
-        originalPrincipal: dl.originalPrincipal,
-        currentBalance: dl.currentBalance,
-        startDate: dl.startDate, maturityDate: dl.maturityDate,
-        firstPaymentDate: dl.firstPaymentDate,
-        paymentFrequency: dl.paymentFrequency as Loan["paymentFrequency"],
-        paymentType: dl.paymentType as Loan["paymentType"],
-        dayCountBasis: dl.dayCountBasis as Loan["dayCountBasis"],
-        securityDescription: dl.securityDescription,
-        status: "Active", refNumber: `REF-${Date.now()}-${i}`,
-      };
-      if (isOverwrite) { updateLoan(dl.duplicateId!, loan); }
-      else             { addLoan(loan); }
-    });
-    const skipped = detectedLoans.length - toImport.length;
-    toast.success(
-      `${toImport.length} loan${toImport.length !== 1 ? "s" : ""} imported — generating amortization schedules…` +
-      (skipped > 0 ? ` (${skipped} skipped)` : "")
-    );
-    closeNewLoanPanel();
-  };
-
-  useLayoutEffect(() => {
-    if (!newLoanOpen) { setPanelRect(null); return; }
-    const measure = () => {
-      const inputBox = document.querySelector<HTMLElement>(".luka-gradient-border");
-      if (!inputBox) return;
-      const r = inputBox.getBoundingClientRect();
-      setPanelRect({ left: r.left, right: window.innerWidth - r.right, bottom: window.innerHeight - r.top + 5 });
-    };
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [newLoanOpen]);
-
-  const setF = (k: keyof Loan, v: unknown) => setNewLoan(p => ({ ...p, [k]: v }));
-
-  const handleSaveLoan = () => {
-    if (!newLoan.name?.trim() || !newLoan.lender?.trim()) {
-      toast.error("Loan name and lender are required");
-      return;
-    }
+  const cancelAdd = () => { setAddingNew(false); setNewRowDraft(EMPTY_LOAN_DRAFT()); };
+  const saveAdd = () => {
+    if (!newRowDraft.name?.trim() || !newRowDraft.lender?.trim()) { toast.error("Loan name and lender are required"); return; }
     const loan: Loan = {
       ...(EMPTY_LOAN_DRAFT() as Loan),
-      ...newLoan,
+      ...newRowDraft,
       id: `loan-${Date.now()}`,
-      refNumber: newLoan.refNumber || `REF-${Date.now()}`,
+      refNumber: (newRowDraft.refNumber as string) || `REF-${Date.now()}`,
     } as Loan;
     addLoan(loan);
     toast.success("Loan added — generating amortization schedule…");
-    closeNewLoanPanel();
+    cancelAdd();
+  };
+  const handleDeleteLoan = (id: string, name: string) => {
+    if (!window.confirm(`Delete "${name}"?\n\nThis removes the loan and all associated data (amortization, covenants, activities, reconciliation).`)) return;
+    deleteLoan(id);
+    toast.success(`"${name}" deleted`);
   };
 
   const principalAccts = accountMappings.filter(a => a.type === "Principal");
@@ -587,7 +495,7 @@ function LoansTab({ loans }: { loans: Loan[] }) {
     <div className="space-y-3">
       <div className="rounded-[8px] border border-border overflow-hidden">
         <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
-          <span className="text-[11px] font-semibold text-foreground">Loan Register</span>
+          <span className="text-sm font-semibold text-foreground">Loan Register</span>
           <div className="flex items-center gap-3">
             <span className="text-[10px] text-muted-foreground">Manage facilities, terms, and GL mappings</span>
             <button
@@ -600,13 +508,76 @@ function LoansTab({ loans }: { loans: Loan[] }) {
                 : <Maximize2 className="h-3.5 w-3.5" />}
             </button>
             <button
-              onClick={() => { setNewLoan(EMPTY_LOAN_DRAFT()); setNewLoanOpen(true); }}
-              className="inline-flex items-center gap-1 h-7 px-2.5 text-[11px] font-medium bg-primary text-primary-foreground rounded-[7px] hover:bg-primary/90 transition-colors shrink-0"
+              ref={colBtnRef}
+              type="button"
+              title="Show / hide columns"
+              onClick={() => {
+                if (colMenuOpen) { setColMenuOpen(false); setColMenuPos(null); return; }
+                if (!colBtnRef.current) return;
+                const r = colBtnRef.current.getBoundingClientRect();
+                setColMenuPos({ top: r.bottom + 4, left: r.right - 224 });
+                setColMenuOpen(true);
+              }}
+              className={`inline-flex items-center justify-center h-7 w-7 rounded-[7px] border border-border bg-background hover:bg-muted/60 transition-colors shrink-0 ${colMenuOpen ? 'text-primary border-primary/50' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => { if (!editingId) { setNewRowDraft(EMPTY_LOAN_DRAFT()); setAddingNew(true); } }}
+              disabled={addingNew || !!editingId}
+              className="inline-flex items-center gap-1 h-7 px-2.5 text-[11px] font-medium bg-primary text-primary-foreground rounded-[7px] hover:bg-primary/90 transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus className="h-3 w-3" /> New Loan
             </button>
           </div>
         </div>
+        {/* Column visibility portal */}
+        {colMenuOpen && colMenuPos && ReactDOM.createPortal(
+          <>
+            <div className="fixed inset-0 z-[299]" onClick={() => { setColMenuOpen(false); setColMenuPos(null); }} />
+            <div
+              className="fixed z-[300] w-56 bg-popover border border-border rounded-xl shadow-2xl overflow-hidden"
+              style={{ top: colMenuPos.top, left: colMenuPos.left }}
+            >
+              <div className="px-3 py-2 border-b border-border flex items-center justify-between">
+                <span className="text-xs font-semibold text-foreground">Columns</span>
+                {hiddenCols.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setHiddenCols(new Set())}
+                    className="text-[10px] text-primary hover:underline"
+                  >
+                    Show all
+                  </button>
+                )}
+              </div>
+              <div className="max-h-72 overflow-y-auto py-1">
+                {HEADERS.map(({ h }) => {
+                  const visible = !hiddenCols.has(h);
+                  return (
+                    <button
+                      key={h}
+                      type="button"
+                      onClick={() => setHiddenCols(prev => {
+                        const next = new Set(prev);
+                        if (next.has(h)) next.delete(h); else next.add(h);
+                        return next;
+                      })}
+                      className="w-full flex items-center gap-2.5 px-3 py-1.5 hover:bg-muted/60 transition-colors"
+                    >
+                      <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${visible ? 'bg-primary border-primary' : 'border-border bg-background'}`}>
+                        {visible && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                      </div>
+                      <span className={`text-left text-xs ${visible ? 'text-foreground' : 'text-muted-foreground'}`}>{h}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>,
+          document.body
+        )}
+
         {/* Both modes scroll — compact uses narrower text cols; numbers always fully visible */}
         <div className="overflow-x-auto">
           <table
@@ -615,123 +586,177 @@ function LoansTab({ loans }: { loans: Loan[] }) {
           >
             <thead>
               <tr className="bg-muted/30 border-b border-border">
-                {HEADERS.map(({ h, left }) => (
+                {HEADERS.filter(({ h }) => !hiddenCols.has(h)).map(({ h, left }) => (
                   <th
                     key={h}
                     className={`px-2.5 py-2 font-semibold text-muted-foreground uppercase tracking-wide text-[10px] whitespace-nowrap ${left ? "text-left" : "text-right"}`}
                   >{h}</th>
                 ))}
+                <th className="px-2.5 py-2 font-semibold text-muted-foreground uppercase tracking-wide text-[10px] text-right sticky right-0 z-10 bg-muted/30 whitespace-nowrap border-l border-border">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {loans.map((l, i) => {
-                const fx         = getFxRate(l);
-                const pmt        = calcMonthlyPmt(l);
-                const pmtCAD     = pmt !== null ? pmt * fx : null;
-                const convAmt    = l.originalPrincipal * fx;
-                const closingCAD = (l.closingBalance ?? l.currentBalance) * fx;
-                return (
-                  <tr key={l.id} className="border-b border-border transition-colors hover:bg-muted/30 cursor-pointer">
-                    {/* Loan Name — text constrained in compact */}
-                    <td className="px-2.5 py-1.5">
-                      <div className={fit ? "max-w-[110px] truncate font-medium text-foreground" : "font-medium text-foreground whitespace-nowrap min-w-[140px]"} title={l.name}>
-                        {l.name}
-                      </div>
-                    </td>
-                    {/* Lender — text constrained in compact */}
-                    <td className="px-2.5 py-1.5 text-foreground">
-                      <div className={fit ? "max-w-[95px] truncate" : "whitespace-nowrap min-w-[130px]"} title={l.lender}>
-                        {l.lender}
-                      </div>
-                    </td>
-                    {/* Current Collateral — text constrained in compact */}
-                    <td className="px-2.5 py-1.5 text-foreground" title={l.securityDescription ?? "—"}>
-                      <div className={`text-[10px] ${fit ? "max-w-[80px] truncate" : "max-w-[140px] line-clamp-2"}`}>
-                        {l.securityDescription ?? "—"}
-                      </div>
-                    </td>
-                    {/* Type */}
-                    <td className="px-2.5 py-1.5 text-right">
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">{l.type}</span>
-                    </td>
-                    {/* Rate Type */}
-                    <td className="px-2.5 py-1.5 text-right">
-                      {l.interestType === "Variable"  && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">Variable</span>}
-                      {l.interestType === "Floating"  && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 whitespace-nowrap">Floating</span>}
-                      {l.interestType === "Hybrid"    && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap">Hybrid</span>}
-                      {l.interestType === "Step Rate" && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-teal-50 text-teal-700 border border-teal-200 whitespace-nowrap">Step Rate</span>}
-                      {(l.interestType === "Fixed" || (l.interestType !== "Variable" && l.interestType !== "Floating" && l.interestType !== "Hybrid" && l.interestType !== "Step Rate")) && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">{l.interestType ?? "Fixed"}</span>
-                      )}
-                    </td>
-                    {/* Int. Rate — number, never truncate */}
-                    <td className="px-2.5 py-1.5 text-right tabular-nums font-medium whitespace-nowrap">{l.rate.toFixed(2)}%</td>
-                    {/* Start */}
-                    <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{fmtDate(l.startDate)}</td>
-                    {/* Maturity */}
-                    <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{fmtDate(l.maturityDate)}</td>
-                    {/* Tenure */}
-                    <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{getTenure(l)}</td>
-                    {/* First Payment */}
-                    <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">
-                      {l.firstPaymentDate ? fmtDate(l.firstPaymentDate) : "—"}
-                    </td>
-                    {/* CCY */}
-                    <td className="px-2.5 py-1.5 text-right">
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">{l.currency}</span>
-                    </td>
-                    {/* Mo. Payment */}
-                    <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap">
-                      {pmtCAD !== null
-                        ? <span className="font-mono text-foreground">{fmt(pmtCAD)}{!l.monthlyPayment && <span className="text-muted-foreground text-[9px] ml-0.5" title="Auto-calculated">~</span>}</span>
-                        : <span className="text-muted-foreground">—</span>}
-                    </td>
-                    {/* Orig. Loan Amt */}
-                    <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{fmt(l.originalPrincipal)}</td>
-                    {/* FX Rate */}
-                    <td className="px-2.5 py-1.5 text-right">
-                      {l.currency === "CAD"
-                        ? <span className="text-muted-foreground whitespace-nowrap">—</span>
-                        : <div className="flex flex-col items-end gap-0.5">
-                            <span className="font-mono text-[10px] text-foreground tabular-nums whitespace-nowrap">{fx.toFixed(4)}</span>
-                            {!fit && <span className="text-[9px] text-muted-foreground">{l.fxRateType ?? "Closing"}</span>}
-                          </div>}
-                    </td>
-                    {/* Converted Amt */}
-                    <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold whitespace-nowrap text-foreground">{fmt(convAmt)}</td>
-                    {/* Closing Balance */}
-                    <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold whitespace-nowrap text-foreground">{fmt(closingCAD)}</td>
-                    {/* GL Principal */}
-                    <td className="px-2.5 py-1.5 text-right">
-                      <GLSelect loanId={l.id} value={l.glPrincipalAccount} options={principalAccts} field="glPrincipalAccount" onSave={handleGLSave} />
-                    </td>
-                    {/* Day Count */}
-                    <td className="px-2.5 py-1.5 text-right font-mono whitespace-nowrap text-foreground">{l.dayCountBasis}</td>
-                    {/* Payment Type */}
-                    <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{l.paymentType}</td>
-                    {/* Compounding */}
-                    <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{l.compoundingFrequency ?? "Monthly"}</td>
-                    {/* IO Period */}
-                    <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{l.interestOnlyPeriodMonths ?? "—"}</td>
-                    {/* Balloon Amt */}
-                    <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">
-                      {l.balloonAmount ? fmt(l.balloonAmount) : "—"}
-                    </td>
-                    {/* Status */}
-                    <td className="px-2.5 py-1.5 text-right"><StatusBadge status={l.status} /></td>
-                  </tr>
-                );
-              })}
+              {(() => {
+                const IC  = "h-6 w-full min-w-[52px] text-[11px] px-1.5 border border-primary/40 rounded-[5px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30";
+                const ICS = "h-6 w-full min-w-[52px] text-[11px] px-1 border border-primary/40 rounded-[5px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer";
+                const hid = hiddenCols;
+
+                const ACT_BTN = "inline-flex items-center justify-center w-6 h-6 rounded-[5px] transition-colors";
+
+                const newRowCells = (draft: Partial<Loan>, setD: (k: keyof Loan, v: unknown) => void) => <>
+                  {!hid.has("Loan Name")          && <td className="px-1.5 py-1"><input autoFocus value={draft.name??""} onChange={e=>setD("name",e.target.value)} className={IC} placeholder="Name *" /></td>}
+                  {!hid.has("Lender")              && <td className="px-1.5 py-1"><input value={draft.lender??""} onChange={e=>setD("lender",e.target.value)} className={IC} placeholder="Lender *" /></td>}
+                  {!hid.has("Current Collateral")  && <td className="px-1.5 py-1"><input value={draft.securityDescription??""} onChange={e=>setD("securityDescription",e.target.value)} className={IC} placeholder="Collateral" /></td>}
+                  {!hid.has("Type")                && <td className="px-1.5 py-1"><select value={draft.type??"Term"} onChange={e=>setD("type",e.target.value)} className={ICS}>{["Term","LOC","Revolver","Mortgage","Bridge"].map(t=><option key={t}>{t}</option>)}</select></td>}
+                  {!hid.has("Rate Type")           && <td className="px-1.5 py-1"><select value={draft.interestType??"Fixed"} onChange={e=>setD("interestType",e.target.value)} className={ICS}>{["Fixed","Variable","Floating","Hybrid","Step Rate"].map(t=><option key={t}>{t}</option>)}</select></td>}
+                  {!hid.has("Int. Rate (%)")       && <td className="px-1.5 py-1"><input type="number" step="0.01" value={draft.rate||""} onChange={e=>setD("rate",parseFloat(e.target.value)||0)} className={IC} placeholder="0.00" /></td>}
+                  {!hid.has("Start")               && <td className="px-1.5 py-1"><input type="date" value={draft.startDate??""} onChange={e=>setD("startDate",e.target.value)} className={IC} /></td>}
+                  {!hid.has("Maturity")            && <td className="px-1.5 py-1"><input type="date" value={draft.maturityDate??""} onChange={e=>setD("maturityDate",e.target.value)} className={IC} /></td>}
+                  {!hid.has("Tenure (Mo.)")        && <td className="px-1.5 py-1 text-right text-muted-foreground text-[11px]">—</td>}
+                  {!hid.has("First Payment")       && <td className="px-1.5 py-1"><input type="date" value={draft.firstPaymentDate??""} onChange={e=>setD("firstPaymentDate",e.target.value)} className={IC} /></td>}
+                  {!hid.has("CCY")                 && <td className="px-1.5 py-1"><select value={draft.currency??"CAD"} onChange={e=>setD("currency",e.target.value)} className={ICS}>{["CAD","USD","EUR","GBP"].map(c=><option key={c}>{c}</option>)}</select></td>}
+                  {!hid.has("Mo. Payment")         && <td className="px-1.5 py-1"><input type="number" step="100" value={draft.monthlyPayment||""} onChange={e=>setD("monthlyPayment",parseFloat(e.target.value)||undefined)} className={IC} placeholder="auto" /></td>}
+                  {!hid.has("Orig. Loan Amt")      && <td className="px-1.5 py-1"><input type="number" step="1000" value={draft.originalPrincipal||""} onChange={e=>setD("originalPrincipal",parseFloat(e.target.value)||0)} className={IC} placeholder="0" /></td>}
+                  {!hid.has("FX Rate")             && <td className="px-1.5 py-1"><input type="number" step="0.0001" value={draft.fxRateToCAD||""} onChange={e=>setD("fxRateToCAD",parseFloat(e.target.value)||undefined)} className={IC} placeholder="1.000" /></td>}
+                  {!hid.has("Converted Amt")       && <td className="px-1.5 py-1 text-right text-muted-foreground text-[11px]">—</td>}
+                  {!hid.has("Closing Balance")     && <td className="px-1.5 py-1"><input type="number" step="1000" value={draft.currentBalance||""} onChange={e=>setD("currentBalance",parseFloat(e.target.value)||0)} className={IC} placeholder="0" /></td>}
+                  {!hid.has("GL Principal")        && <td className="px-1.5 py-1"><GLSelect loanId="new-row" value={draft.glPrincipalAccount??""} options={principalAccts} field="glPrincipalAccount" onSave={(_,__,code)=>setD("glPrincipalAccount",code)} /></td>}
+                  {!hid.has("Day Count")           && <td className="px-1.5 py-1"><select value={draft.dayCountBasis??"ACT/365"} onChange={e=>setD("dayCountBasis",e.target.value)} className={ICS}>{["ACT/365","ACT/360","30/360"].map(d=><option key={d}>{d}</option>)}</select></td>}
+                  {!hid.has("Payment Type")        && <td className="px-1.5 py-1"><select value={draft.paymentType??"P&I"} onChange={e=>setD("paymentType",e.target.value)} className={ICS}>{["P&I","Interest-only","Balloon"].map(t=><option key={t}>{t}</option>)}</select></td>}
+                  {!hid.has("Compounding")         && <td className="px-1.5 py-1"><select value={draft.compoundingFrequency??"Monthly"} onChange={e=>setD("compoundingFrequency",e.target.value)} className={ICS}>{["Monthly","Quarterly","Semi-annual","Annual"].map(f=><option key={f}>{f}</option>)}</select></td>}
+                  {!hid.has("IO Period (mo.)")     && <td className="px-1.5 py-1"><input type="number" step="1" value={draft.interestOnlyPeriodMonths||""} onChange={e=>setD("interestOnlyPeriodMonths",parseInt(e.target.value)||undefined)} className={IC} placeholder="00" /></td>}
+                  {!hid.has("Balloon Amt")         && <td className="px-1.5 py-1"><input type="number" step="1000" value={draft.balloonAmount||""} onChange={e=>setD("balloonAmount",parseFloat(e.target.value)||undefined)} className={IC} placeholder="00" /></td>}
+                  {!hid.has("Status")              && <td className="px-1.5 py-1"><select value={draft.status??"Active"} onChange={e=>setD("status",e.target.value as Loan["status"])} className={ICS}>{["Active","Paid Off","Refinanced","Defaulted"].map(s=><option key={s}>{s}</option>)}</select></td>}
+                </>;
+
+                return <>
+                  {/* ── New inline row ── */}
+                  {addingNew && (
+                    <tr className="border-b border-primary/30 bg-primary/[0.04]">
+                      {newRowCells(newRowDraft, (k, v) => setNewRowDraft(p => ({ ...p, [k]: v })))}
+                      <td className="px-2 py-1 sticky right-0 z-10 bg-background border-l border-border">
+                        <div className="flex items-center gap-1 justify-end">
+                          <button onClick={saveAdd} title="Save new loan" className={`${ACT_BTN} bg-primary text-primary-foreground hover:bg-primary/90`}><Check className="h-3 w-3" /></button>
+                          <button onClick={cancelAdd} title="Cancel" className={`${ACT_BTN} border border-border text-muted-foreground hover:bg-muted hover:text-foreground`}><X className="h-3 w-3" /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+
+                  {/* ── Existing rows ── */}
+                  {loans.map((l) => {
+                    const isEditing = editingId === l.id;
+                    const fx         = getFxRate(l);
+                    const pmt        = calcMonthlyPmt(l);
+                    const pmtCAD     = pmt !== null ? pmt * fx : null;
+                    const convAmt    = l.originalPrincipal * fx;
+                    const closingCAD = (l.closingBalance ?? l.currentBalance) * fx;
+                    return (
+                      <tr key={l.id} className={`group border-b border-border transition-colors ${isEditing ? "bg-primary/[0.04]" : "hover:bg-muted/30 cursor-pointer"}`}>
+                        {isEditing ? newRowCells(editDraft, (k, v) => setEditDraft(p => ({ ...p, [k]: v }))) : <>
+                          {!hid.has("Loan Name") && (
+                            <td className="px-2.5 py-1.5">
+                              <div className={fit ? "max-w-[110px] truncate font-medium text-foreground" : "font-medium text-foreground whitespace-nowrap min-w-[140px]"} title={l.name}>{l.name}</div>
+                            </td>
+                          )}
+                          {!hid.has("Lender") && (
+                            <td className="px-2.5 py-1.5 text-foreground">
+                              <div className={fit ? "max-w-[95px] truncate" : "whitespace-nowrap min-w-[130px]"} title={l.lender}>{l.lender}</div>
+                            </td>
+                          )}
+                          {!hid.has("Current Collateral") && (
+                            <td className="px-2.5 py-1.5 text-foreground" title={l.securityDescription ?? "—"}>
+                              <div className={`text-[10px] ${fit ? "max-w-[80px] truncate" : "max-w-[140px] line-clamp-2"}`}>{l.securityDescription ?? "—"}</div>
+                            </td>
+                          )}
+                          {!hid.has("Type") && (
+                            <td className="px-2.5 py-1.5 text-right">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">{l.type}</span>
+                            </td>
+                          )}
+                          {!hid.has("Rate Type") && (
+                            <td className="px-2.5 py-1.5 text-right">
+                              {l.interestType === "Variable"  && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">Variable</span>}
+                              {l.interestType === "Floating"  && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 whitespace-nowrap">Floating</span>}
+                              {l.interestType === "Hybrid"    && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap">Hybrid</span>}
+                              {l.interestType === "Step Rate" && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-teal-50 text-teal-700 border border-teal-200 whitespace-nowrap">Step Rate</span>}
+                              {(l.interestType === "Fixed" || (l.interestType !== "Variable" && l.interestType !== "Floating" && l.interestType !== "Hybrid" && l.interestType !== "Step Rate")) && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">{l.interestType ?? "Fixed"}</span>
+                              )}
+                            </td>
+                          )}
+                          {!hid.has("Int. Rate (%)") && <td className="px-2.5 py-1.5 text-right tabular-nums font-medium whitespace-nowrap">{l.rate.toFixed(2)}%</td>}
+                          {!hid.has("Start")         && <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{fmtDate(l.startDate)}</td>}
+                          {!hid.has("Maturity")      && <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{fmtDate(l.maturityDate)}</td>}
+                          {!hid.has("Tenure (Mo.)")  && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{getTenure(l)}</td>}
+                          {!hid.has("First Payment") && <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{l.firstPaymentDate ? fmtDate(l.firstPaymentDate) : "—"}</td>}
+                          {!hid.has("CCY") && (
+                            <td className="px-2.5 py-1.5 text-right">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">{l.currency}</span>
+                            </td>
+                          )}
+                          {!hid.has("Mo. Payment") && (
+                            <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap">
+                              {pmtCAD !== null
+                                ? <span className="font-mono text-foreground">{fmt(pmtCAD)}{!l.monthlyPayment && <span className="text-muted-foreground text-[9px] ml-0.5" title="Auto-calculated">~</span>}</span>
+                                : <span className="text-muted-foreground">00</span>}
+                            </td>
+                          )}
+                          {!hid.has("Orig. Loan Amt")   && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{fmt(l.originalPrincipal)}</td>}
+                          {!hid.has("FX Rate") && (
+                            <td className="px-2.5 py-1.5 text-right">
+                              {l.currency === "CAD"
+                                ? <span className="text-muted-foreground whitespace-nowrap">—</span>
+                                : <div className="flex flex-col items-end gap-0.5">
+                                    <span className="font-mono text-[10px] text-foreground tabular-nums whitespace-nowrap">{fx.toFixed(4)}</span>
+                                    {!fit && <span className="text-[9px] text-muted-foreground">{l.fxRateType ?? "Closing"}</span>}
+                                  </div>}
+                            </td>
+                          )}
+                          {!hid.has("Converted Amt")    && <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold whitespace-nowrap text-foreground">{fmt(convAmt)}</td>}
+                          {!hid.has("Closing Balance")  && <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold whitespace-nowrap text-foreground">{fmt(closingCAD)}</td>}
+                          {!hid.has("GL Principal") && (
+                            <td className="px-2.5 py-1.5 text-right">
+                              <GLSelect loanId={l.id} value={l.glPrincipalAccount} options={principalAccts} field="glPrincipalAccount" onSave={handleGLSave} />
+                            </td>
+                          )}
+                          {!hid.has("Day Count")        && <td className="px-2.5 py-1.5 text-right font-mono whitespace-nowrap text-foreground">{l.dayCountBasis}</td>}
+                          {!hid.has("Payment Type")     && <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{l.paymentType}</td>}
+                          {!hid.has("Compounding")      && <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{l.compoundingFrequency ?? "Monthly"}</td>}
+                          {!hid.has("IO Period (mo.)")  && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{l.interestOnlyPeriodMonths ?? "00"}</td>}
+                          {!hid.has("Balloon Amt")      && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{l.balloonAmount ? fmt(l.balloonAmount) : "00"}</td>}
+                          {!hid.has("Status")           && <td className="px-2.5 py-1.5 text-right"><StatusBadge status={l.status} /></td>}
+                        </>}
+                        {/* Actions — always visible */}
+                        <td className="px-2 py-1.5 sticky right-0 z-10 border-l border-border bg-background">
+                          {isEditing ? (
+                            <div className="flex items-center gap-1 justify-end">
+                              <button onClick={saveEdit} title="Save changes" className={`${ACT_BTN} bg-primary text-primary-foreground hover:bg-primary/90`}><Check className="h-3 w-3" /></button>
+                              <button onClick={cancelEdit} title="Cancel" className={`${ACT_BTN} border border-border text-muted-foreground hover:bg-muted hover:text-foreground`}><X className="h-3 w-3" /></button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 justify-end">
+                              <button onClick={() => { if (!addingNew) { setEditingId(l.id); setEditDraft({ ...l }); } }} title="Edit row" disabled={addingNew} className={`${ACT_BTN} text-muted-foreground hover:bg-primary/10 hover:text-primary disabled:opacity-30`}><Pencil className="h-3 w-3" /></button>
+                              <button onClick={() => handleDeleteLoan(l.id, l.name)} title="Delete loan" disabled={addingNew} className={`${ACT_BTN} text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 disabled:opacity-30`}><Trash2 className="h-3 w-3" /></button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </>;
+              })()}
             </tbody>
             <tfoot className="sticky bottom-0 z-10">
-              {/* 23 cols: Name(1)…MoPmt(12) | OrigAmt(13) | FX(14) | ConvAmt(15) | Closing(16) | GL…Status×7 */}
               <tr className="bg-muted/50 border-t-2 border-border font-semibold">
-                <td className="px-2.5 py-2" colSpan={12} />
-                <td className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+l.originalPrincipal,0))}</td>
-                <td className="px-2.5 py-2" />
-                <td className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+l.originalPrincipal*getFxRate(l),0))}</td>
-                <td className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+toCAD(l.closingBalance??l.currentBalance,l.currency),0))}</td>
-                <td colSpan={7} />
+                {HEADERS.map(({ h }) => {
+                  if (hiddenCols.has(h)) return null;
+                  if (h === "Orig. Loan Amt") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+l.originalPrincipal,0))}</td>;
+                  if (h === "Converted Amt")  return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+l.originalPrincipal*getFxRate(l),0))}</td>;
+                  if (h === "Closing Balance") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+toCAD(l.closingBalance??l.currentBalance,l.currency),0))}</td>;
+                  return <td key={h} className="px-2.5 py-2" />;
+                })}
+                <td className="px-2.5 py-2 sticky right-0 z-10 bg-muted/50 border-l border-border" />
               </tr>
             </tfoot>
           </table>
@@ -742,7 +767,7 @@ function LoansTab({ loans }: { loans: Loan[] }) {
       <div className="rounded-[8px] border border-border overflow-hidden">
         <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-semibold text-foreground">GL Account Summary</span>
+            <span className="text-sm font-semibold text-foreground">GL Account Summary</span>
             <span className="text-[10px] text-muted-foreground">— principal balance by account · CAD equiv. (USD × 1.353)</span>
           </div>
         </div>
@@ -765,7 +790,7 @@ function LoansTab({ loans }: { loans: Loan[] }) {
                   <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{fmt(origBal)}</td>
                   <td className="px-3 py-1.5 text-right tabular-nums font-medium">{fmt(g.bal)}</td>
                   <td className={`px-3 py-1.5 text-right tabular-nums font-medium ${diff > 1 ? "text-red-600" : "text-green-700"}`}>
-                    {g.glBal > 0 ? fmt(g.glBal) : "—"}
+                    {g.glBal > 0 ? fmt(g.glBal) : "00"}
                   </td>
                 </tr>
               );
@@ -783,349 +808,6 @@ function LoansTab({ loans }: { loans: Loan[] }) {
         </table>
       </div>
 
-      {/* ── Add New Loan slide-up panel ── */}
-      {newLoanOpen && (() => {
-        const LF = "h-8 w-full text-sm px-2.5 border border-border rounded-[8px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40";
-        const isFormReady = !!(newLoan.name?.trim() && newLoan.lender?.trim());
-        const importCount = detectedLoans.filter(dl => dl.selected && !(dl.isDuplicate && dl.duplicateAction === "skip")).length;
-        const dupeCount   = detectedLoans.filter(dl => dl.isDuplicate).length;
-        return (
-          <>
-            <div className="fixed inset-0 z-[59]" onClick={closeNewLoanPanel} />
-            <div
-              className="fixed z-[60] pointer-events-none"
-              style={panelRect
-                ? { left: panelRect.left, right: panelRect.right, bottom: panelRect.bottom }
-                : { left: 24, right: 24, bottom: 124 }}
-            >
-              <div className="w-full pointer-events-auto bg-background border border-border rounded-[12px] shadow-[0_2px_16px_rgba(0,0,0,0.09)] animate-in slide-in-from-bottom-4 fade-in duration-200 max-h-[62vh] flex flex-col">
-
-                {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-semibold text-foreground">Add New Loan</span>
-                    {/* Mode tabs */}
-                    <div className="flex items-center gap-0.5 bg-muted/60 rounded-[8px] p-0.5">
-                      <button
-                        onClick={() => setNewLoanMode("manual")}
-                        className={`h-6 px-2.5 text-xs font-medium rounded-[6px] transition-colors ${newLoanMode === "manual" ? "bg-background border border-border/60 shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                      >
-                        Manual Entry
-                      </button>
-                      <button
-                        onClick={() => { setNewLoanMode("upload"); setUploadLoanState("idle"); setUploadLoanFile(null); setDetectedLoans([]); }}
-                        className={`h-6 px-2.5 text-xs font-medium rounded-[6px] transition-colors flex items-center gap-1 ${newLoanMode === "upload" || newLoanMode === "review" ? "bg-background border border-border/60 shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                      >
-                        <Upload className="h-2.5 w-2.5" />
-                        {newLoanMode === "review" ? "Review" : "Upload Doc"}
-                      </button>
-                    </div>
-                    {/* Review badge */}
-                    {newLoanMode === "review" && (
-                      <span className="text-[10px] text-muted-foreground">
-                        {detectedLoans.length} loan{detectedLoans.length !== 1 ? "s" : ""} detected
-                        {dupeCount > 0 && <span className="ml-1 text-amber-600 font-medium">· {dupeCount} duplicate{dupeCount !== 1 ? "s" : ""}</span>}
-                      </span>
-                    )}
-                  </div>
-                  <button onClick={closeNewLoanPanel} className="p-1 rounded-[6px] hover:bg-muted transition-colors text-muted-foreground">
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-
-                {/* ── Upload mode ── */}
-                {newLoanMode === "upload" && (
-                  <div className="overflow-y-auto flex-1 p-4 space-y-3">
-                    {/* Drop zone */}
-                    {uploadLoanState === "idle" && (
-                      <div
-                        onDragOver={e => { e.preventDefault(); setUploadDragging(true); }}
-                        onDragLeave={() => setUploadDragging(false)}
-                        onDrop={e => { e.preventDefault(); setUploadDragging(false); handleUploadLoanFiles(e.dataTransfer.files); }}
-                        onClick={() => uploadFileRef.current?.click()}
-                        className={`flex flex-col items-center justify-center gap-3 rounded-[10px] border-2 border-dashed cursor-pointer transition-colors py-9 ${uploadDragging ? "border-primary bg-primary/5" : "border-border/60 hover:border-primary/40 hover:bg-muted/30"}`}
-                      >
-                        <input ref={uploadFileRef} type="file" accept=".pdf,.xlsx,.xls" multiple className="hidden"
-                          onChange={e => handleUploadLoanFiles(e.target.files)} />
-                        <div className="w-11 h-11 rounded-full bg-muted flex items-center justify-center">
-                          <Upload className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                        <div className="text-center">
-                          <p className="text-sm font-medium text-foreground">
-                            <span className="text-primary">Click to upload</span> or drag and drop
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">PDF or Excel · multiple files supported · max 5 MB each</p>
-                        </div>
-                      </div>
-                    )}
-                    {/* Extracting spinner */}
-                    {uploadLoanState === "extracting" && (
-                      <div className="flex flex-col items-center justify-center gap-3 py-9">
-                        <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Loader2 className="h-5 w-5 text-primary animate-spin" />
-                        </div>
-                        <div className="text-center">
-                          <p className="text-sm font-medium text-foreground">{uploadLoanFile}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">Extracting all loans — this takes a moment…</p>
-                        </div>
-                      </div>
-                    )}
-                    {/* Accepted docs hint */}
-                    {uploadLoanState === "idle" && (
-                      <div className="rounded-[8px] bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3">
-                        <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1.5">Accepted documents</p>
-                        <ul className="space-y-1">
-                          {[
-                            ["Loan agreements or credit facility letters", "Each loan extracted individually"],
-                            ["Term sheets or commitment letters",           "Principal, rate, dates populated"],
-                            ["Prior year workpaper (Excel)",                "All tabs detected and imported"],
-                          ].map(([doc, note]) => (
-                            <li key={doc} className="flex items-start gap-1.5">
-                              <Check className="h-3 w-3 text-blue-500 mt-0.5 shrink-0" />
-                              <span className="text-[11px] text-blue-700 dark:text-blue-300">
-                                <span className="font-medium">{doc}</span>
-                                <span className="text-blue-500 dark:text-blue-400"> — {note}</span>
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* ── Review mode ── */}
-                {newLoanMode === "review" && (
-                  <div className="flex flex-col flex-1 min-h-0">
-                    {/* Toolbar */}
-                    <div className="px-4 py-2 border-b border-border bg-muted/10 shrink-0 flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <button onClick={() => { setNewLoanMode("upload"); setDetectedLoans([]); }}
-                          className="text-[11px] text-primary hover:underline flex items-center gap-1">
-                          ← Re-upload
-                        </button>
-                        {dupeCount > 0 && (
-                          <span className="inline-flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 font-medium">
-                            <AlertTriangle className="h-2.5 w-2.5" />
-                            {dupeCount} duplicate{dupeCount !== 1 ? "s" : ""} — set an action below
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => setDetectedLoans(d => d.map(l => ({ ...l, selected: true })))}
-                          className="text-[10px] text-muted-foreground hover:text-foreground">Select all</button>
-                        <span className="text-muted-foreground text-[10px]">·</span>
-                        <button onClick={() => setDetectedLoans(d => d.map(l => ({ ...l, selected: false })))}
-                          className="text-[10px] text-muted-foreground hover:text-foreground">Deselect all</button>
-                      </div>
-                    </div>
-
-                    {/* Table */}
-                    <div className="overflow-auto flex-1 min-h-0">
-                      <table className="w-full text-[11px]" style={{ minWidth: 780 }}>
-                        <thead className="sticky top-0 z-10">
-                          <tr className="bg-muted/40 border-b border-border">
-                            {["","Loan Name","Lender","Type","CCY","Principal","Rate","Maturity","Status","Action"].map(h => (
-                              <th key={h} className={`px-2.5 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h === "" ? "w-8" : h === "Loan Name" || h === "Lender" ? "text-left" : "text-right"}`}>{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {detectedLoans.map((dl, i) => {
-                            const isSkipped = dl.isDuplicate && dl.duplicateAction === "skip";
-                            // Dim only the data cells, never status/action
-                            const dataDim = isSkipped ? "opacity-40" : "";
-                            return (
-                              <tr key={dl.id} className={`border-b border-border transition-colors ${dl.isDuplicate && !isSkipped ? "bg-amber-50/50 dark:bg-amber-950/10 hover:bg-amber-50 dark:hover:bg-amber-950/20" : isSkipped ? "bg-muted/5" : "hover:bg-muted/20"}`}>
-                                {/* Checkbox */}
-                                <td className={`px-2.5 py-2 text-center ${dataDim}`}>
-                                  <input type="checkbox" checked={dl.selected && !isSkipped} disabled={isSkipped}
-                                    onChange={e => setDetectedLoans(prev => prev.map((d, j) => j === i ? { ...d, selected: e.target.checked } : d))}
-                                    className="h-3.5 w-3.5 accent-primary cursor-pointer disabled:cursor-not-allowed" />
-                                </td>
-                                {/* Loan Name */}
-                                <td className={`px-2.5 py-2 ${dataDim}`}>
-                                  <p className={`font-medium whitespace-nowrap ${isSkipped ? "text-muted-foreground line-through" : "text-foreground"}`}>{dl.name}</p>
-                                  <p className="text-[9px] text-muted-foreground mt-0.5 truncate max-w-[150px]" title={dl.sourceFile}>{dl.sourceFile}</p>
-                                </td>
-                                {/* Lender */}
-                                <td className={`px-2.5 py-2 text-foreground whitespace-nowrap ${dataDim}`}>{dl.lender}</td>
-                                {/* Type */}
-                                <td className={`px-2.5 py-2 text-right ${dataDim}`}>
-                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border">{dl.type}</span>
-                                </td>
-                                {/* CCY */}
-                                <td className={`px-2.5 py-2 text-right ${dataDim}`}>
-                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border">{dl.currency}</span>
-                                </td>
-                                {/* Principal */}
-                                <td className={`px-2.5 py-2 text-right tabular-nums font-medium text-foreground whitespace-nowrap ${dataDim}`}>{fmt(dl.originalPrincipal)}</td>
-                                {/* Rate */}
-                                <td className={`px-2.5 py-2 text-right tabular-nums text-foreground ${dataDim}`}>{dl.rate.toFixed(2)}%</td>
-                                {/* Maturity */}
-                                <td className={`px-2.5 py-2 text-right whitespace-nowrap text-foreground ${dataDim}`}>{fmtDate(dl.maturityDate)}</td>
-                                {/* Status — always full opacity */}
-                                <td className="px-2.5 py-2 text-right">
-                                  {dl.isDuplicate
-                                    ? <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap"><AlertTriangle className="h-2.5 w-2.5" />Duplicate</span>
-                                    : <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-green-50 text-green-700 border border-green-200 whitespace-nowrap"><CheckCircle2 className="h-2.5 w-2.5" />New</span>
-                                  }
-                                </td>
-                                {/* Action — always full opacity */}
-                                <td className="px-2.5 py-2 text-right">
-                                  {dl.isDuplicate ? (
-                                    <select value={dl.duplicateAction}
-                                      onChange={e => setDetectedLoans(prev => prev.map((d, j) => j === i ? { ...d, duplicateAction: e.target.value as DuplicateAction } : d))}
-                                      className={`h-6 text-[10px] px-1.5 border rounded-[5px] focus:outline-none focus:ring-1 cursor-pointer font-medium transition-colors ${
-                                        isSkipped
-                                          ? "border-border bg-muted text-muted-foreground focus:ring-primary/30"
-                                          : "border-amber-300 bg-amber-50 text-amber-800 focus:ring-amber-400"
-                                      }`}
-                                    >
-                                      <option value="skip">Skip</option>
-                                      <option value="overwrite">Overwrite existing</option>
-                                      <option value="keep-both">Keep both</option>
-                                    </select>
-                                  ) : (
-                                    <span className="text-[10px] text-muted-foreground">—</span>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Duplicate legend */}
-                    {dupeCount > 0 && (
-                      <div className="px-4 py-2 border-t border-amber-200/60 bg-amber-50/60 dark:bg-amber-950/10 shrink-0">
-                        <p className="text-[10px] text-amber-700 dark:text-amber-400 leading-relaxed">
-                          <span className="font-semibold">Duplicate actions:</span>{" "}
-                          <span className="font-medium">Skip</span> — don't import · {" "}
-                          <span className="font-medium">Overwrite existing</span> — replace the existing loan's data · {" "}
-                          <span className="font-medium">Keep both</span> — import with "(Imported)" suffix
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* ── Manual entry mode ── */}
-                {newLoanMode === "manual" && (
-                  <div className="overflow-y-auto flex-1 px-4 py-4">
-                    <div className="flex flex-wrap gap-x-3 gap-y-3">
-                      <div style={{ flex: "3 1 180px", minWidth: 0 }}>
-                        <label className="block text-xs text-muted-foreground mb-1">Loan Name <span className="text-red-500">*</span></label>
-                        <input className={LF} placeholder="e.g. Term Loan A" value={newLoan.name ?? ""} onChange={e => setF("name", e.target.value)} />
-                      </div>
-                      <div style={{ flex: "2 1 140px", minWidth: 0 }}>
-                        <label className="block text-xs text-muted-foreground mb-1">Lender <span className="text-red-500">*</span></label>
-                        <input className={LF} placeholder="e.g. Royal Bank of Canada" value={newLoan.lender ?? ""} onChange={e => setF("lender", e.target.value)} />
-                      </div>
-                      <div style={{ flex: "1 1 100px", minWidth: 0 }}>
-                        <label className="block text-xs text-muted-foreground mb-1">Type</label>
-                        <select className={LF} value={newLoan.type ?? "Term"} onChange={e => setF("type", e.target.value)}>
-                          {["Term","LOC","Revolver","Mortgage","Bridge"].map(t => <option key={t}>{t}</option>)}
-                        </select>
-                      </div>
-                      <div style={{ flex: "1 1 80px", minWidth: 0 }}>
-                        <label className="block text-xs text-muted-foreground mb-1">Currency</label>
-                        <select className={LF} value={newLoan.currency ?? "CAD"} onChange={e => setF("currency", e.target.value)}>
-                          {["CAD","USD","EUR","GBP"].map(c => <option key={c}>{c}</option>)}
-                        </select>
-                      </div>
-                      <div style={{ flex: "1 1 110px", minWidth: 0 }}>
-                        <label className="block text-xs text-muted-foreground mb-1">Interest Type</label>
-                        <select className={LF} value={newLoan.interestType ?? "Fixed"} onChange={e => setF("interestType", e.target.value)}>
-                          {["Fixed","Variable","Floating","Hybrid","Step Rate"].map(t => <option key={t}>{t}</option>)}
-                        </select>
-                      </div>
-                      <div style={{ flex: "1 1 100px", minWidth: 0 }}>
-                        <label className="block text-xs text-muted-foreground mb-1">Day Count</label>
-                        <select className={LF} value={newLoan.dayCountBasis ?? "ACT/365"} onChange={e => setF("dayCountBasis", e.target.value)}>
-                          {["ACT/365","ACT/360","30/360"].map(d => <option key={d}>{d}</option>)}
-                        </select>
-                      </div>
-                      <div style={{ flex: "1 1 80px", minWidth: 0 }}>
-                        <label className="block text-xs text-muted-foreground mb-1">Rate (%) <span className="text-red-500">*</span></label>
-                        <input type="number" step="0.01" className={LF} placeholder="5.25" value={newLoan.rate || ""} onChange={e => setF("rate", parseFloat(e.target.value) || 0)} />
-                      </div>
-                      <div style={{ flex: "1 1 120px", minWidth: 0 }}>
-                        <label className="block text-xs text-muted-foreground mb-1">Original Principal <span className="text-red-500">*</span></label>
-                        <input type="number" step="1000" className={LF} placeholder="1,000,000" value={newLoan.originalPrincipal || ""} onChange={e => setF("originalPrincipal", parseFloat(e.target.value) || 0)} />
-                      </div>
-                      <div style={{ flex: "1 1 120px", minWidth: 0 }}>
-                        <label className="block text-xs text-muted-foreground mb-1">Current Balance</label>
-                        <input type="number" step="1000" className={LF} placeholder="Same as original" value={newLoan.currentBalance || ""} onChange={e => setF("currentBalance", parseFloat(e.target.value) || 0)} />
-                      </div>
-                      <div style={{ flex: "1 1 120px", minWidth: 0 }}>
-                        <label className="block text-xs text-muted-foreground mb-1">Start Date <span className="text-red-500">*</span></label>
-                        <input type="date" className={LF} value={newLoan.startDate ?? ""} onChange={e => setF("startDate", e.target.value)} />
-                      </div>
-                      <div style={{ flex: "1 1 120px", minWidth: 0 }}>
-                        <label className="block text-xs text-muted-foreground mb-1">Maturity Date <span className="text-red-500">*</span></label>
-                        <input type="date" className={LF} value={newLoan.maturityDate ?? ""} onChange={e => setF("maturityDate", e.target.value)} />
-                      </div>
-                      <div style={{ flex: "1 1 120px", minWidth: 0 }}>
-                        <label className="block text-xs text-muted-foreground mb-1">First Payment Date</label>
-                        <input type="date" className={LF} value={newLoan.firstPaymentDate ?? ""} onChange={e => setF("firstPaymentDate", e.target.value)} />
-                      </div>
-                      <div style={{ flex: "1 1 110px", minWidth: 0 }}>
-                        <label className="block text-xs text-muted-foreground mb-1">Payment Frequency</label>
-                        <select className={LF} value={newLoan.paymentFrequency ?? "Monthly"} onChange={e => setF("paymentFrequency", e.target.value)}>
-                          {["Monthly","Quarterly","Semi-annual","Annual"].map(f => <option key={f}>{f}</option>)}
-                        </select>
-                      </div>
-                      <div style={{ flex: "1 1 110px", minWidth: 0 }}>
-                        <label className="block text-xs text-muted-foreground mb-1">Payment Type</label>
-                        <select className={LF} value={newLoan.paymentType ?? "P&I"} onChange={e => setF("paymentType", e.target.value)}>
-                          {["P&I","Interest-only","Balloon"].map(t => <option key={t}>{t}</option>)}
-                        </select>
-                      </div>
-                      <div style={{ flex: "1 0 100%", minWidth: 0 }}>
-                        <label className="block text-xs text-muted-foreground mb-1">Security / Collateral Description</label>
-                        <input className={LF} placeholder="e.g. General Security Agreement over all assets" value={newLoan.securityDescription ?? ""} onChange={e => setF("securityDescription", e.target.value)} />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* ── Footer ── */}
-                <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20 shrink-0">
-                  <button onClick={closeNewLoanPanel}
-                    className="h-8 px-4 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-[8px] bg-background hover:bg-muted transition-colors">
-                    Cancel
-                  </button>
-
-                  {/* Upload mode hint */}
-                  {newLoanMode === "upload" && (
-                    <p className="text-xs text-muted-foreground">Upload documents to detect loans automatically</p>
-                  )}
-
-                  {/* Review mode — import button */}
-                  {newLoanMode === "review" && (
-                    <button onClick={handleImportDetected} disabled={importCount === 0}
-                      className={`inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium rounded-[8px] transition-colors ${importCount > 0 ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"}`}>
-                      <Download className="h-3 w-3" />
-                      Import {importCount > 0 ? importCount : ""} Loan{importCount !== 1 ? "s" : ""} &amp; Run Amortization
-                    </button>
-                  )}
-
-                  {/* Manual mode — save button */}
-                  {newLoanMode === "manual" && (
-                    <button onClick={handleSaveLoan} disabled={!isFormReady}
-                      className={`inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium rounded-[8px] transition-colors ${isFormReady ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"}`}>
-                      <Plus className="h-3 w-3" /> Add Loan &amp; Run Amortization
-                    </button>
-                  )}
-                </div>
-
-              </div>
-            </div>
-          </>
-        );
-      })()}
     </div>
   );
 }
@@ -1242,7 +924,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
           {/* Roll-Forward table */}
           <div className="rounded-[8px] border border-border overflow-hidden">
             <div className="px-3 py-2 bg-muted/40 border-b border-border">
-              <span className="text-[11px] font-semibold text-foreground">Continuity Roll-Forward</span>
+              <span className="text-sm font-semibold text-foreground">Continuity Roll-Forward</span>
               <span className="text-[10px] text-muted-foreground ml-2">Opening → movements → closing by period</span>
             </div>
             <div className="overflow-x-auto">
@@ -1263,7 +945,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                           <p className="font-medium text-foreground">{loan.name}</p>
                           <p className="text-[10px] text-muted-foreground">{loan.lender} · {loan.currency}</p>
                         </td>
-                        {Array(7).fill(0).map((_,j)=><td key={j} className="px-2.5 py-1.5 text-right text-muted-foreground">—</td>)}
+                        {Array(7).fill(0).map((_,j)=><td key={j} className="px-2.5 py-1.5 text-right text-muted-foreground">00</td>)}
                         <td />
                       </tr>
                     );
@@ -1279,7 +961,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                         <td className="px-2.5 py-1.5 text-right tabular-nums text-green-700">{row.newBorrowings > 0 ? fmtNum(row.newBorrowings * fx) : "00"}</td>
                         <td className="px-2.5 py-1.5 text-right tabular-nums text-red-600">{prin > 0 ? fmtParen(prin * fx) : "00"}</td>
                         <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{int > 0 ? fmtParen(int * fx) : "00"}</td>
-                        <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{row.fxTranslation !== 0 ? fmtParen(Math.abs(row.fxTranslation * fx)) : "—"}</td>
+                        <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{row.fxTranslation !== 0 ? fmtParen(Math.abs(row.fxTranslation * fx)) : "00"}</td>
                         <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold">{fmtNum(row.closingBalance * fx)}</td>
                         <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{fmtNum(row.accruedInterest * fx)}</td>
                         <td className="px-2.5 py-1.5 text-right">
@@ -1307,7 +989,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                     <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-green-700">{rfTotals.borrows > 0 ? fmtNum(rfTotals.borrows) : "00"}</td>
                     <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-red-600">{rfTotals.principal > 0 ? fmtParen(rfTotals.principal) : "00"}</td>
                     <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-muted-foreground">{rfTotals.interest > 0 ? fmtParen(rfTotals.interest) : "00"}</td>
-                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-muted-foreground">—</td>
+                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-muted-foreground">00</td>
                     <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmtNum(rfTotals.closing)}</td>
                     <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmtNum(rfTotals.accrued)}</td>
                     <td />
@@ -1320,7 +1002,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
           {/* Balance Sheet Classification — maturity ladder */}
           <div className="rounded-[8px] border border-border overflow-hidden">
             <div className="px-3 py-2 bg-muted/40 border-b border-border">
-              <span className="text-[11px] font-semibold text-foreground">Balance Sheet Classification</span>
+              <span className="text-sm font-semibold text-foreground">Balance Sheet Classification</span>
               <span className="text-[10px] text-muted-foreground ml-2">Current portion + maturity ladder by year (CAD equiv.)</span>
             </div>
             <div className="overflow-x-auto">
@@ -1378,7 +1060,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
       {contView === "repayment" && (
         <div className="rounded-[8px] border border-border overflow-hidden">
           <div className="px-3 py-2 bg-muted/40 border-b border-border">
-            <span className="text-[11px] font-semibold text-foreground">Repayment Schedule</span>
+            <span className="text-sm font-semibold text-foreground">Repayment Schedule</span>
             <span className="text-[10px] text-muted-foreground ml-2">Scheduled principal repayments by year (CAD equiv.)</span>
           </div>
           <div className="overflow-x-auto">
@@ -1478,7 +1160,7 @@ function AmortizationTabPanel({ loans, amortization }: { loans: Loan[]; amortiza
       {/* Schedule table */}
       <div className="rounded-[8px] border border-border overflow-hidden">
         <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
-          <span className="text-[11px] font-semibold text-foreground">{loan?.name} — Amortization Schedule</span>
+          <span className="text-sm font-semibold text-foreground">{loan?.name} — Amortization Schedule</span>
           <span className="text-[10px] text-muted-foreground">{rows.length} periods</span>
         </div>
         <table className="w-full text-[11px]">
@@ -1618,50 +1300,26 @@ function CovNameSelect({ value, onChange }: { value: string; onChange: (v: strin
 }
 
 function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Covenant[] }) {
-  const updateCovenant = useStore(s => s.updateCovenant);
-  const addCovenant    = useStore(s => s.addCovenant);
-  const deleteCovenant = useStore(s => s.deleteCovenant);
+  const { updateCovenant, addCovenant, deleteCovenant } = useStore(s => ({
+    updateCovenant: s.updateCovenant, addCovenant: s.addCovenant, deleteCovenant: s.deleteCovenant,
+  }));
   const [selectedLoanId, setSelectedLoanId] = useState(loans[0]?.id ?? "");
   const [editingCovId, setEditingCovId] = useState<string | null>(null);
-  const [isNewCov, setIsNewCov] = useState(false);
+  const [addingNew, setAddingNew]         = useState(false);
   const [draft, setDraft] = useState<Partial<Covenant>>({});
 
-  const loan = loans.find(l => l.id === selectedLoanId);
+  const loan     = loans.find(l => l.id === selectedLoanId);
   const loanCovs = covenants.filter(c => c.loanId === selectedLoanId);
   const breached = covenants.filter(c => c.status === "Breached").length;
   const atRisk   = covenants.filter(c => c.status === "At Risk").length;
-  const editingCov = covenants.find(c => c.id === editingCovId);
 
-  const openEdit = (cov: Covenant) => {
-    setDraft({ ...cov });
-    setIsNewCov(false);
-    setEditingCovId(cov.id);
-  };
-
+  const openEdit = (cov: Covenant) => { setAddingNew(false); setDraft({ ...cov }); setEditingCovId(cov.id); };
   const handleNew = () => {
-    const newCov: Covenant = {
-      id:        `cov-${Date.now()}`,
-      loanId:    selectedLoanId,
-      name:      "",
-      type:      "Quantitative",
-      status:    "OK",
-      frequency: "Annual",
-      description: "",
-      operator:  ">=",
-      threshold: undefined,
-      currentValue: undefined,
-      projectedValue: undefined,
-      formulaLines: [],
-      denominatorLines: [],
-      useFormulaBuilder: true,
-      isRatioCovenant: true,
-    };
-    addCovenant(newCov);
-    setDraft({ ...newCov });
-    setIsNewCov(true);
-    setEditingCovId(newCov.id);
+    setEditingCovId(null);
+    setDraft({ loanId: selectedLoanId, name: "", type: "Quantitative", status: "OK", frequency: "Annual", description: "", operator: ">=", threshold: undefined, currentValue: undefined, projectedValue: undefined, formulaLines: [], denominatorLines: [], useFormulaBuilder: true, isRatioCovenant: true });
+    setAddingNew(true);
   };
-
+  const cancelEdit = () => { setEditingCovId(null); setAddingNew(false); setDraft({}); };
   const setD = (k: keyof Covenant, v: unknown) => setDraft(p => ({ ...p, [k]: v }));
 
   const computeStatus = (cur: number | undefined, thr: number | undefined, op: string | undefined) => {
@@ -1673,429 +1331,249 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
   };
 
   const handleSave = () => {
-    if (!editingCovId) return;
-    updateCovenant(editingCovId, draft);
-    toast.success("Covenant saved");
-    setEditingCovId(null);
-  };
-
-  const handleRerun = () => {
-    if (!editingCovId) return;
     const newStatus = computeStatus(draft.currentValue, draft.threshold, draft.operator);
-    const updated = { ...draft, status: newStatus };
-    setDraft(updated);
-    updateCovenant(editingCovId, updated);
-    toast.success(`Rerun complete — status: ${newStatus}`);
-    setEditingCovId(null);
+    const withStatus = { ...draft, status: newStatus };
+    if (addingNew) {
+      addCovenant({ ...withStatus, id: `cov-${Date.now()}` } as Covenant);
+      toast.success("Covenant added"); cancelEdit(); return;
+    }
+    if (!editingCovId) return;
+    updateCovenant(editingCovId, withStatus);
+    toast.success("Covenant saved"); cancelEdit();
   };
-
-  // ── Measure prompt-input position so the panel aligns exactly ────────────
-  const [panelRect, setPanelRect] = useState<{ left: number; right: number; bottom: number } | null>(null);
-
-  useLayoutEffect(() => {
-    if (!editingCovId) { setPanelRect(null); return; }
-    const measure = () => {
-      const inputBox = document.querySelector<HTMLElement>(".luka-gradient-border");
-      if (!inputBox) return;
-      const r = inputBox.getBoundingClientRect();
-      setPanelRect({
-        left:   r.left,
-        right:  window.innerWidth - r.right,
-        bottom: window.innerHeight - r.top + 5,
-      });
-    };
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [editingCovId]);
 
   // ── Formula-line helpers ──────────────────────────────────────────────────
-  const getNumLines  = () => (draft.formulaLines     ?? editingCov?.formulaLines     ?? []) as CovenantFormulaLine[];
-  const getDenLines  = () => (draft.denominatorLines ?? editingCov?.denominatorLines ?? []) as CovenantFormulaLine[];
-
   const addFormLine = (kind: "num" | "den") => {
-    const key  = kind === "num" ? "formulaLines" : "denominatorLines";
-    const cur  = (draft[key] ?? editingCov?.[key] ?? []) as CovenantFormulaLine[];
-    const line: CovenantFormulaLine = { id: `fl-${Date.now()}`, sign: "+", description: "", glAccount: "", amount: 0, projectedAmount: 0, multiplier: 1 };
-    setDraft(p => ({ ...p, [key]: [...cur, line] }));
+    const key = kind === "num" ? "formulaLines" : "denominatorLines";
+    const cur = (draft[key] ?? []) as CovenantFormulaLine[];
+    setDraft(p => ({ ...p, [key]: [...cur, { id: `fl-${Date.now()}`, sign: "+", description: "", glAccount: "", amount: 0, projectedAmount: 0, multiplier: 1 }] }));
   };
-
   const removeFormLine = (kind: "num" | "den", id: string) => {
     const key = kind === "num" ? "formulaLines" : "denominatorLines";
-    const cur = (draft[key] ?? editingCov?.[key] ?? []) as CovenantFormulaLine[];
-    setDraft(p => ({ ...p, [key]: cur.filter(l => l.id !== id) }));
+    setDraft(p => ({ ...p, [key]: ((p[key] ?? []) as CovenantFormulaLine[]).filter(l => l.id !== id) }));
   };
-
   const updateFormLine = (kind: "num" | "den", id: string, field: keyof CovenantFormulaLine, value: unknown) => {
     const key = kind === "num" ? "formulaLines" : "denominatorLines";
-    const cur = (draft[key] ?? editingCov?.[key] ?? []) as CovenantFormulaLine[];
-    setDraft(p => ({ ...p, [key]: cur.map(l => l.id === id ? { ...l, [field]: value } : l) }));
+    setDraft(p => ({ ...p, [key]: ((p[key] ?? []) as CovenantFormulaLine[]).map(l => l.id === id ? { ...l, [field]: value } : l) }));
   };
-
   const updateFormLineAccount = (kind: "num" | "den", id: string, code: string, name: string) => {
     const key = kind === "num" ? "formulaLines" : "denominatorLines";
-    const cur = (draft[key] ?? editingCov?.[key] ?? []) as CovenantFormulaLine[];
-    setDraft(p => ({ ...p, [key]: cur.map(l => l.id === id ? { ...l, glAccount: code, description: name } : l) }));
+    setDraft(p => ({ ...p, [key]: ((p[key] ?? []) as CovenantFormulaLine[]).map(l => l.id === id ? { ...l, glAccount: code, description: name } : l) }));
   };
 
   const FIELD = "h-8 w-full text-sm px-2.5 border border-border rounded-[8px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40";
   const LINE_INPUT = "h-7 text-sm px-2 border border-border rounded-[6px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40";
 
+  const numLines = (draft.formulaLines     ?? []) as CovenantFormulaLine[];
+  const denLines = (draft.denominatorLines ?? []) as CovenantFormulaLine[];
+  const numTotal = numLines.reduce((s, l) => s + (l.sign === "+" ? 1 : -1) * l.amount, 0);
+  const denTotal = denLines.reduce((s, l) => s + (l.sign === "+" ? 1 : -1) * l.amount, 0);
+  const computed = denTotal !== 0 ? numTotal / denTotal : null;
+
+  const renderFormula = (kind: "num" | "den", lines: CovenantFormulaLine[], total: number) => (
+    <div className="rounded-[8px] border border-border overflow-hidden">
+      <div className="px-2.5 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
+        <span className="text-[10px] font-semibold text-foreground">{kind === "num" ? "Numerator" : "Denominator"}</span>
+        <button onClick={() => addFormLine(kind)} className="inline-flex items-center gap-1 text-[10px] text-primary hover:bg-primary/10 rounded-[4px] px-1.5 py-0.5 transition-colors">
+          <Plus className="h-3 w-3" /> Add Row
+        </button>
+      </div>
+      {lines.length === 0 ? (
+        <p className="px-3 py-2.5 text-[11px] text-muted-foreground italic">No lines yet — click Add Row</p>
+      ) : (
+        <>
+          <div className="divide-y divide-border/40">
+            {lines.map(line => (
+              <div key={line.id} className="flex items-center gap-1.5 px-2.5 py-1.5">
+                <select value={line.sign} onChange={e => updateFormLine(kind, line.id, "sign", e.target.value as "+" | "-")} className={`w-10 ${LINE_INPUT} text-center cursor-pointer`}>
+                  <option value="+">+</option>
+                  <option value="-">−</option>
+                </select>
+                <CovAccountSelect value={line.glAccount ?? ""} onChange={(code, name) => updateFormLineAccount(kind, line.id, code, name)} />
+                <input type="number" value={line.amount || ""} onChange={e => updateFormLine(kind, line.id, "amount", parseFloat(e.target.value) || 0)} placeholder="0" className={`w-20 ${LINE_INPUT} text-right tabular-nums`} />
+                <button onClick={() => removeFormLine(kind, line.id)} className="p-1 text-muted-foreground/50 hover:text-destructive transition-colors rounded-[4px] shrink-0"><Trash2 className="h-3 w-3" /></button>
+              </div>
+            ))}
+          </div>
+          <div className="px-2.5 py-1.5 bg-muted/30 flex items-center justify-end gap-2 border-t border-border/40">
+            <span className="text-[10px] text-muted-foreground">Subtotal:</span>
+            <span className="text-[11px] font-semibold tabular-nums">{total.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  const inlineForm = (
+    <td colSpan={9} className="px-4 py-4 border-b border-primary/20 bg-primary/[0.02]">
+      <div className="space-y-4">
+        {/* Fields */}
+        <div className="flex flex-wrap gap-x-3 gap-y-3">
+          <div style={{ flex: "2 1 200px", minWidth: 0 }}>
+            <label className="block text-xs text-muted-foreground mb-1">Name</label>
+            <CovNameSelect value={draft.name ?? ""} onChange={v => {
+              const tmpl = COVENANT_TEMPLATES.find(t => t.id === v);
+              if (tmpl) {
+                setDraft(p => ({ ...p, name: v, operator: tmpl.operator, threshold: tmpl.threshold, isRatioCovenant: tmpl.isRatio, useFormulaBuilder: true, formulaLines: tmpl.numeratorLines.map((l, i) => ({ ...l, id: `fl-num-${Date.now()}-${i}` })), denominatorLines: (tmpl.denominatorLines ?? []).map((l, i) => ({ ...l, id: `fl-den-${Date.now()}-${i}` })) }));
+              } else { setD("name", v); }
+            }} />
+          </div>
+          <div style={{ flex: "1 1 120px", minWidth: 0 }}>
+            <label className="block text-xs text-muted-foreground mb-1">Type</label>
+            <select value={draft.type ?? "Quantitative"} onChange={e => setD("type", e.target.value)} className={FIELD}>
+              <option value="Quantitative">Quantitative</option>
+              <option value="Qualitative">Qualitative</option>
+            </select>
+          </div>
+          <div style={{ flex: "1 1 90px", minWidth: 0 }}>
+            <label className="block text-xs text-muted-foreground mb-1">Current Value</label>
+            <input type="number" step="0.01" value={draft.currentValue ?? ""} onChange={e => setD("currentValue", parseFloat(e.target.value) || 0)} className={FIELD} placeholder="e.g. 1.12" />
+          </div>
+          <div style={{ flex: "1 1 90px", minWidth: 0 }}>
+            <label className="block text-xs text-muted-foreground mb-1">Projected Value</label>
+            <input type="number" step="0.01" value={draft.projectedValue ?? ""} onChange={e => setD("projectedValue", parseFloat(e.target.value) || 0)} className={FIELD} placeholder="e.g. 0.96" />
+          </div>
+          <div style={{ flex: "1 1 90px", minWidth: 0 }}>
+            <label className="block text-xs text-muted-foreground mb-1">Threshold</label>
+            <input type="number" step="0.01" value={draft.threshold ?? ""} onChange={e => setD("threshold", parseFloat(e.target.value) || 0)} className={FIELD} placeholder="e.g. 1.25" />
+          </div>
+          <div style={{ flex: "1 1 140px", minWidth: 0 }}>
+            <label className="block text-xs text-muted-foreground mb-1">Operator</label>
+            <select value={draft.operator ?? ">="} onChange={e => setD("operator", e.target.value)} className={FIELD}>
+              <option value=">=">≥ greater or equal</option>
+              <option value="<=">≤ less or equal</option>
+              <option value=">">&gt; greater than</option>
+              <option value="<">&lt; less than</option>
+            </select>
+          </div>
+          <div style={{ flex: "1 1 110px", minWidth: 0 }}>
+            <label className="block text-xs text-muted-foreground mb-1">Frequency</label>
+            <select value={draft.frequency ?? "Annual"} onChange={e => setD("frequency", e.target.value)} className={FIELD}>
+              {["Annual","Semi-annual","Quarterly","Monthly"].map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+          <div style={{ flex: "1 1 120px", minWidth: 0 }}>
+            <label className="block text-xs text-muted-foreground mb-1">Last Tested</label>
+            <input type="date" value={draft.lastTested?.slice(0,10) ?? ""} onChange={e => setD("lastTested", e.target.value)} className={FIELD} />
+          </div>
+        </div>
+
+        {/* Formula / Method */}
+        <div>
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Formula / Method</p>
+          <div className="space-y-2">
+            {renderFormula("num", numLines, numTotal)}
+            {renderFormula("den", denLines, denTotal)}
+          </div>
+          {computed !== null && (
+            <div className="mt-2.5 flex items-center justify-end gap-2 rounded-[8px] bg-primary/5 border border-primary/15 px-3 py-2">
+              <span className="text-[11px] text-muted-foreground tabular-nums">{numTotal.toLocaleString("en-CA", { maximumFractionDigits: 2 })} ÷ {denTotal.toLocaleString("en-CA", { maximumFractionDigits: 2 })}</span>
+              <span className="text-[12px] font-bold text-primary tabular-nums">= {computed.toFixed(2)}x</span>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between">
+          <button onClick={cancelEdit} className="h-8 px-4 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-[8px] bg-background hover:bg-muted transition-colors">Cancel</button>
+          <button onClick={handleSave} className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors">
+            <RotateCcw className="h-3 w-3" /> Save &amp; Rerun
+          </button>
+        </div>
+      </div>
+    </td>
+  );
+
+  const COL_HDRS = [
+    { h: "Covenant", align: "left" }, { h: "Type", align: "left" }, { h: "Status", align: "left" },
+    { h: "Current", align: "right" }, { h: "Projected", align: "right" }, { h: "Threshold", align: "right" },
+    { h: "Frequency", align: "left" }, { h: "Last Tested", align: "left" }, { h: "", align: "right" },
+  ];
+
   return (
     <div className="space-y-3">
       {/* Summary chips */}
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-red-700 bg-red-50 border border-red-200 px-2 py-1 rounded-[6px]">
-          <AlertTriangle className="h-3 w-3" /> {breached} Breached
-        </span>
-        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-[6px]">
-          <AlertTriangle className="h-3 w-3" /> {atRisk} At Risk
-        </span>
-        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded-[6px]">
-          <CheckCircle2 className="h-3 w-3" /> {covenants.filter(c=>c.status==="OK").length} OK
-        </span>
+        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-red-700 bg-red-50 border border-red-200 px-2 py-1 rounded-[6px]"><AlertTriangle className="h-3 w-3" /> {breached} Breached</span>
+        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-[6px]"><AlertTriangle className="h-3 w-3" /> {atRisk} At Risk</span>
+        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded-[6px]"><CheckCircle2 className="h-3 w-3" /> {covenants.filter(c=>c.status==="OK").length} OK</span>
       </div>
 
       {/* Loan selector + New button */}
       <div className="flex items-center gap-2">
         <span className="text-[11px] text-muted-foreground whitespace-nowrap">Loan:</span>
-        <select value={selectedLoanId} onChange={e => setSelectedLoanId(e.target.value)}
+        <select value={selectedLoanId} onChange={e => { setSelectedLoanId(e.target.value); cancelEdit(); }}
           className="flex-1 h-8 text-[11px] px-2 border border-border rounded-[8px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40">
           {loans.map(l => <option key={l.id} value={l.id}>{l.name} · {l.lender} · {l.refNumber}</option>)}
         </select>
         {loan && <span className="text-[10px] font-semibold text-muted-foreground bg-muted px-2 py-1 rounded-[4px]">{loan.currency}</span>}
         <span className="text-[10px] text-muted-foreground">{loanCovs.length} covenants</span>
-        <button
-          onClick={handleNew}
-          className="inline-flex items-center gap-1 h-8 px-3 text-[11px] font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors shrink-0"
-        >
+        <button onClick={handleNew} disabled={addingNew || !!editingCovId}
+          className="inline-flex items-center gap-1 h-8 px-3 text-[11px] font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
           <Plus className="h-3 w-3" /> New
         </button>
       </div>
 
-      {loanCovs.length === 0 ? (
+      {loanCovs.length === 0 && !addingNew ? (
         <p className="text-[11px] text-muted-foreground italic px-1">No covenants for this loan.</p>
       ) : (
         <div className="rounded-[8px] border border-border overflow-hidden">
           <table className="w-full text-[11px]">
             <thead>
               <tr className="bg-muted/20 border-b border-border">
-                {[
-                  { h: "Covenant",    align: "left"  },
-                  { h: "Type",        align: "left"  },
-                  { h: "Status",      align: "left"  },
-                  { h: "Current",     align: "right" },
-                  { h: "Projected",   align: "right" },
-                  { h: "Threshold",   align: "right" },
-                  { h: "Frequency",   align: "left"  },
-                  { h: "Last Tested", align: "left"  },
-                  { h: "",            align: "right" },
-                ].map(({ h, align }) => (
+                {COL_HDRS.map(({ h, align }) => (
                   <th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-${align} whitespace-nowrap`}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
+              {/* New covenant inline row */}
+              {addingNew && <tr className="border-b border-primary/30 bg-primary/[0.02]">{inlineForm}</tr>}
+
               {loanCovs.map((cov, i) => {
-                // Operator-aware projected fail/warn detection
-                const projFails = cov.projectedValue !== undefined && cov.threshold !== undefined && (() => {
-                  const { projectedValue: p, threshold: t, operator: op } = cov;
-                  if (op === ">=") return p! < t!;
-                  if (op === "<=") return p! > t!;
-                  if (op === ">")  return p! <= t!;
-                  if (op === "<")  return p! >= t!;
-                  return false;
-                })();
-                const projWarn = !projFails && cov.projectedValue !== undefined && cov.threshold !== undefined && (() => {
-                  const margin = cov.threshold !== 0 ? Math.abs(cov.projectedValue! - cov.threshold!) / Math.abs(cov.threshold!) : 1;
-                  return margin < 0.1;
-                })();
+                const isEditing = editingCovId === cov.id;
                 const fmtRatio = (v: number) => v.toFixed(2);
                 const fmtThreshold = (op: string | undefined, v: number) => `${op ?? ""} ${v % 1 === 0 ? v.toFixed(0) : v.toFixed(2)}`.trim();
-
                 return (
-                  <tr key={cov.id} className={`border-b border-border/40 ${i % 2 === 0 ? "" : "bg-muted/10"}`}>
-                    {/* Covenant name with dot */}
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${cov.status === "Breached" ? "bg-red-500" : cov.status === "At Risk" ? "bg-amber-500" : "bg-green-500"}`} />
-                        <span className="font-semibold text-foreground whitespace-nowrap">{cov.name}</span>
-                      </div>
-                    </td>
-                    {/* Type */}
-                    <td className="px-3 py-2.5 text-foreground whitespace-nowrap">{cov.type}</td>
-                    {/* Status */}
-                    <td className="px-3 py-2.5"><StatusBadge status={cov.status} /></td>
-                    {/* Current */}
-                    <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-foreground">
-                      {cov.currentValue !== undefined ? fmtRatio(cov.currentValue) : "—"}
-                    </td>
-                    {/* Projected — trend arrow */}
-                    <td className="px-3 py-2.5 text-right tabular-nums text-foreground">
-                      {cov.projectedValue !== undefined && cov.currentValue !== undefined
-                        ? <span className="inline-flex items-center justify-end gap-0.5">
-                            <span className="text-[9px] opacity-50">{cov.projectedValue > cov.currentValue ? "↑" : "↓"}</span>
-                            {fmtRatio(cov.projectedValue)}
-                          </span>
-                        : "—"}
-                    </td>
-                    {/* Threshold */}
-                    <td className="px-3 py-2.5 text-right tabular-nums text-foreground font-mono text-[10px]">
-                      {cov.threshold !== undefined ? fmtThreshold(cov.operator, cov.threshold) : "—"}
-                    </td>
-                    {/* Frequency */}
-                    <td className="px-3 py-2.5 text-foreground">{cov.frequency}</td>
-                    {/* Last Tested */}
-                    <td className="px-3 py-2.5 text-foreground whitespace-nowrap">{cov.lastTested ? fmtDate(cov.lastTested) : "—"}</td>
-                    {/* Actions */}
-                    <td className="px-3 py-2.5 text-right">
-                      <div className="inline-flex items-center gap-1">
-                        <button onClick={() => openEdit(cov)} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors" title="Edit">
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => { if (editingCovId === cov.id) setEditingCovId(null); deleteCovenant(cov.id); toast.success("Covenant deleted"); }}
-                          className="p-1.5 hover:bg-destructive/10 rounded-lg text-muted-foreground hover:text-destructive transition-colors" title="Delete"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  <Fragment key={cov.id}>
+                    <tr className={`border-b border-border/40 ${isEditing ? "bg-primary/[0.04]" : i % 2 === 0 ? "" : "bg-muted/10"}`}>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${cov.status === "Breached" ? "bg-red-500" : cov.status === "At Risk" ? "bg-amber-500" : "bg-green-500"}`} />
+                          <span className="font-semibold text-foreground whitespace-nowrap">{cov.name || "—"}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5 text-foreground whitespace-nowrap">{cov.type}</td>
+                      <td className="px-3 py-2.5"><StatusBadge status={cov.status} /></td>
+                      <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-foreground">{cov.currentValue !== undefined ? fmtRatio(cov.currentValue) : "00"}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-foreground">
+                        {cov.projectedValue !== undefined && cov.currentValue !== undefined
+                          ? <span className="inline-flex items-center justify-end gap-0.5"><span className="text-[9px] opacity-50">{cov.projectedValue > cov.currentValue ? "↑" : "↓"}</span>{fmtRatio(cov.projectedValue)}</span>
+                          : "00"}
+                      </td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-foreground font-mono text-[10px]">{cov.threshold !== undefined ? fmtThreshold(cov.operator, cov.threshold) : "00"}</td>
+                      <td className="px-3 py-2.5 text-foreground">{cov.frequency}</td>
+                      <td className="px-3 py-2.5 text-foreground whitespace-nowrap">{cov.lastTested ? fmtDate(cov.lastTested) : "—"}</td>
+                      <td className="px-3 py-2.5 text-right">
+                        <div className="inline-flex items-center gap-1">
+                          <button onClick={() => isEditing ? cancelEdit() : openEdit(cov)} className={`p-1.5 rounded-lg transition-colors ${isEditing ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground hover:text-foreground"}`} title={isEditing ? "Collapse" : "Edit"}>
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => { if (isEditing) cancelEdit(); deleteCovenant(cov.id); toast.success("Covenant deleted"); }} className="p-1.5 hover:bg-destructive/10 rounded-lg text-muted-foreground hover:text-destructive transition-colors" title="Delete">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {/* Inline edit expansion */}
+                    {isEditing && <tr className="border-b border-primary/20">{inlineForm}</tr>}
+                  </Fragment>
                 );
               })}
             </tbody>
           </table>
         </div>
       )}
-
-      {/* ── Edit covenant — slide-up panel ── */}
-      {editingCovId && editingCov && (() => {
-        const numLines  = getNumLines();
-        const denLines  = getDenLines();
-        const numTotal  = numLines.reduce((s, l) => s + (l.sign === "+" ? 1 : -1) * l.amount, 0);
-        const denTotal  = denLines.reduce((s, l) => s + (l.sign === "+" ? 1 : -1) * l.amount, 0);
-        const computed  = denTotal !== 0 ? numTotal / denTotal : null;
-
-        const FormulaSection = ({ kind, lines, total }: { kind: "num" | "den"; lines: CovenantFormulaLine[]; total: number }) => (
-          <div className="rounded-[8px] border border-border overflow-hidden">
-            <div className="px-2.5 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
-              <span className="text-[10px] font-semibold text-foreground">{kind === "num" ? "Numerator" : "Denominator"}</span>
-              <button
-                onClick={() => addFormLine(kind)}
-                className="inline-flex items-center gap-1 text-[10px] text-primary hover:bg-primary/10 rounded-[4px] px-1.5 py-0.5 transition-colors"
-              >
-                <Plus className="h-3 w-3" /> Add Row
-              </button>
-            </div>
-            {lines.length === 0 ? (
-              <p className="px-3 py-2.5 text-[11px] text-muted-foreground italic">No lines yet — click Add Row</p>
-            ) : (
-              <>
-                <div className="divide-y divide-border/40">
-                  {lines.map(line => (
-                    <div key={line.id} className="flex items-center gap-1.5 px-2.5 py-1.5">
-                      <select
-                        value={line.sign}
-                        onChange={e => updateFormLine(kind, line.id, "sign", e.target.value as "+" | "-")}
-                        className={`w-10 ${LINE_INPUT} text-center cursor-pointer`}
-                      >
-                        <option value="+">+</option>
-                        <option value="-">−</option>
-                      </select>
-                      <CovAccountSelect
-                        value={line.glAccount ?? ""}
-                        onChange={(code, name) => updateFormLineAccount(kind, line.id, code, name)}
-                      />
-                      <input
-                        type="number"
-                        value={line.amount || ""}
-                        onChange={e => updateFormLine(kind, line.id, "amount", parseFloat(e.target.value) || 0)}
-                        placeholder="0"
-                        className={`w-20 ${LINE_INPUT} text-right tabular-nums`}
-                      />
-                      <button
-                        onClick={() => removeFormLine(kind, line.id)}
-                        className="p-1 text-muted-foreground/50 hover:text-destructive transition-colors rounded-[4px] shrink-0"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div className="px-2.5 py-1.5 bg-muted/30 flex items-center justify-end gap-2 border-t border-border/40">
-                  <span className="text-[10px] text-muted-foreground">Subtotal:</span>
-                  <span className="text-[11px] font-semibold tabular-nums">{total.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </div>
-              </>
-            )}
-          </div>
-        );
-
-        return (
-          <>
-            {/* Transparent click-outside backdrop — no color, no blur */}
-            <div className="fixed inset-0 z-[59]" onClick={() => setEditingCovId(null)} />
-
-            {/* Panel — positioned to exactly match the prompt-input width + 5px gap above it */}
-            <div
-              className="fixed z-[60] pointer-events-none"
-              style={panelRect
-                ? { left: panelRect.left, right: panelRect.right, bottom: panelRect.bottom }
-                : { left: 24, right: 24, bottom: 124 }  /* fallback before first measure */
-              }
-            >
-              <div className="w-full pointer-events-auto bg-background border border-border rounded-[12px] shadow-[0_2px_16px_rgba(0,0,0,0.09)] animate-in slide-in-from-bottom-4 fade-in duration-200 max-h-[58vh] flex flex-col">
-
-              {/* Header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${
-                    editingCov.status === "Breached" ? "bg-red-500"
-                    : editingCov.status === "At Risk" ? "bg-amber-500"
-                    : "bg-green-500"
-                  }`} />
-                  <span className="text-sm font-semibold text-foreground truncate">
-                    {isNewCov
-                      ? "Add New Covenant"
-                      : (COV_NAME_OPTIONS.find(o => o.value === (draft.name ?? editingCov.name))?.label
-                          ?? (draft.name ?? editingCov.name)) || "Edit Covenant"}
-                  </span>
-                  <StatusBadge status={draft.status ?? editingCov.status} />
-                </div>
-                <button
-                  onClick={() => setEditingCovId(null)}
-                  className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-[6px] hover:bg-muted shrink-0"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              {/* Scrollable body */}
-              <div className="overflow-y-auto flex-1 px-4 py-4 space-y-4">
-
-                {/* All identity + value + schedule fields — single inline wrap row */}
-                <div className="flex flex-wrap gap-x-3 gap-y-3">
-                  {/* Name — widest field, takes priority */}
-                  <div style={{ flex: "2 1 200px", minWidth: 0 }}>
-                    <label className="block text-xs text-muted-foreground mb-1">Name</label>
-                    <CovNameSelect
-                      value={draft.name ?? editingCov.name}
-                      onChange={v => {
-                        const tmpl = COVENANT_TEMPLATES.find(t => t.id === v);
-                        if (tmpl) {
-                          setDraft(p => ({
-                            ...p,
-                            name:             v,
-                            operator:         tmpl.operator,
-                            threshold:        tmpl.threshold,
-                            isRatioCovenant:  tmpl.isRatio,
-                            useFormulaBuilder: true,
-                            formulaLines:     tmpl.numeratorLines.map((l, i) => ({ ...l, id: `fl-num-${Date.now()}-${i}` })),
-                            denominatorLines: (tmpl.denominatorLines ?? []).map((l, i) => ({ ...l, id: `fl-den-${Date.now()}-${i}` })),
-                          }));
-                        } else {
-                          setD("name", v);
-                        }
-                      }}
-                    />
-                  </div>
-                  {/* Type */}
-                  <div style={{ flex: "1 1 120px", minWidth: 0 }}>
-                    <label className="block text-xs text-muted-foreground mb-1">Type</label>
-                    <select value={draft.type ?? editingCov.type} onChange={e => setD("type", e.target.value)} className={FIELD}>
-                      <option value="Quantitative">Quantitative</option>
-                      <option value="Qualitative">Qualitative</option>
-                    </select>
-                  </div>
-                  {/* Current Value */}
-                  <div style={{ flex: "1 1 90px", minWidth: 0 }}>
-                    <label className="block text-xs text-muted-foreground mb-1">Current Value</label>
-                    <input type="number" step="0.01" value={draft.currentValue ?? ""}
-                      onChange={e => setD("currentValue", parseFloat(e.target.value) || 0)}
-                      className={FIELD} placeholder="e.g. 1.12" />
-                  </div>
-                  {/* Projected Value */}
-                  <div style={{ flex: "1 1 90px", minWidth: 0 }}>
-                    <label className="block text-xs text-muted-foreground mb-1">Projected Value</label>
-                    <input type="number" step="0.01" value={draft.projectedValue ?? ""}
-                      onChange={e => setD("projectedValue", parseFloat(e.target.value) || 0)}
-                      className={FIELD} placeholder="e.g. 0.96" />
-                  </div>
-                  {/* Threshold */}
-                  <div style={{ flex: "1 1 90px", minWidth: 0 }}>
-                    <label className="block text-xs text-muted-foreground mb-1">Threshold</label>
-                    <input type="number" step="0.01" value={draft.threshold ?? ""}
-                      onChange={e => setD("threshold", parseFloat(e.target.value) || 0)}
-                      className={FIELD} placeholder="e.g. 1.25" />
-                  </div>
-                  {/* Operator */}
-                  <div style={{ flex: "1 1 140px", minWidth: 0 }}>
-                    <label className="block text-xs text-muted-foreground mb-1">Operator</label>
-                    <select value={draft.operator ?? ">="} onChange={e => setD("operator", e.target.value)} className={FIELD}>
-                      <option value=">=">≥ greater or equal</option>
-                      <option value="<=">≤ less or equal</option>
-                      <option value=">">&gt; greater than</option>
-                      <option value="<">&lt; less than</option>
-                    </select>
-                  </div>
-                  {/* Frequency */}
-                  <div style={{ flex: "1 1 110px", minWidth: 0 }}>
-                    <label className="block text-xs text-muted-foreground mb-1">Frequency</label>
-                    <select value={draft.frequency ?? "Annual"} onChange={e => setD("frequency", e.target.value)} className={FIELD}>
-                      {["Annual","Semi-annual","Quarterly","Monthly"].map(f => <option key={f} value={f}>{f}</option>)}
-                    </select>
-                  </div>
-                  {/* Last Tested */}
-                  <div style={{ flex: "1 1 120px", minWidth: 0 }}>
-                    <label className="block text-xs text-muted-foreground mb-1">Last Tested</label>
-                    <input type="date" value={draft.lastTested?.slice(0,10) ?? ""}
-                      onChange={e => setD("lastTested", e.target.value)} className={FIELD} />
-                  </div>
-                </div>
-
-                {/* Formula / Method */}
-                <div>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Formula / Method</p>
-                  <div className="space-y-2">
-                    <FormulaSection kind="num" lines={numLines} total={numTotal} />
-                    <FormulaSection kind="den" lines={denLines} total={denTotal} />
-                  </div>
-
-                  {/* Computed ratio */}
-                  {computed !== null && (
-                    <div className="mt-2.5 flex items-center justify-end gap-2 rounded-[8px] bg-primary/5 border border-primary/15 px-3 py-2">
-                      <span className="text-[11px] text-muted-foreground tabular-nums">
-                        {numTotal.toLocaleString("en-CA", { maximumFractionDigits: 2 })} ÷ {denTotal.toLocaleString("en-CA", { maximumFractionDigits: 2 })}
-                      </span>
-                      <span className="text-[12px] font-bold text-primary tabular-nums">= {computed.toFixed(2)}x</span>
-                    </div>
-                  )}
-                </div>
-
-              </div>
-
-              {/* Footer */}
-              <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20 shrink-0">
-                <button
-                  onClick={() => setEditingCovId(null)}
-                  className="h-8 px-4 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-[8px] bg-background hover:bg-muted transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleRerun}
-                  className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors"
-                >
-                  <RotateCcw className="h-3 w-3" /> Save &amp; Rerun
-                </button>
-              </div>
-
-              </div>{/* end inner panel */}
-            </div>{/* end px-6 outer */}
-          </>
-        );
-      })()}
     </div>
   );
 }
@@ -2163,21 +1641,24 @@ function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
   return (
     <div className="space-y-3">
 
-      {/* Filter pills */}
-      <div className="flex gap-1 flex-wrap">
-        {(["All", "Draft", "Approved", "Posted", "Exported"] as const).map(s => (
-          <button key={s} onClick={() => setFilterStatus(s)}
-            className={`px-2.5 py-1 text-[11px] rounded-full font-medium transition-all ${filterStatus === s ? "bg-primary text-primary-foreground" : "bg-muted text-foreground hover:bg-muted/80"}`}>
-            {s}
-          </button>
-        ))}
-        <button onClick={() => setFilterStatus("Deleted")}
-          className={`flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-full font-medium transition-all ${filterStatus === "Deleted" ? "bg-red-500 text-white" : "bg-muted text-foreground hover:bg-muted/80"}`}>
-          <Trash2 className="w-2.5 h-2.5" /> Deleted
-          {deletedJes.length > 0 && (
-            <span className={`ml-0.5 min-w-[14px] h-3.5 flex items-center justify-center rounded-full text-[9px] font-bold px-1 ${filterStatus === "Deleted" ? "bg-white/20" : "bg-red-100 text-red-600"}`}>{deletedJes.length}</span>
-          )}
-        </button>
+      {/* Filter dropdown */}
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] text-muted-foreground shrink-0">View:</span>
+        <div className="relative">
+          <select
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value)}
+            className="h-7 pl-2.5 pr-7 text-[11px] font-medium border border-border rounded-[7px] bg-background text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 hover:border-primary/40 transition-colors"
+          >
+            <option value="All">All ({activeJes.length})</option>
+            <option value="Draft">Draft ({draft})</option>
+            <option value="Approved">Approved ({approved})</option>
+            <option value="Posted">Posted ({posted})</option>
+            <option value="Exported">Exported</option>
+            <option value="Deleted">Deleted ({deletedJes.length})</option>
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+        </div>
       </div>
 
       {/* JE list */}
@@ -2364,6 +1845,26 @@ function NotesTabPanel({ loans, continuity, reconciliation, settings }: {
   settings: EngagementSettings;
 }) {
   const yearEnd = settings.fiscalYearEnd;
+  const priorYearEnd = yearEnd
+    ? (() => { const d = new Date(yearEnd.slice(0,10) + "T00:00:00"); d.setFullYear(d.getFullYear() - 1); return d.toISOString().slice(0,10); })()
+    : null;
+
+  const repayBuckets = useMemo(() => {
+    const yr = yearEnd ? new Date(yearEnd.slice(0,10) + "T00:00:00").getFullYear() : new Date().getFullYear();
+    const term = loans.filter(l => l.type !== "LOC" && l.type !== "Revolver");
+    const b: Record<string, number> = {};
+    for (let i = 1; i <= 5; i++) b[String(yr + i)] = 0;
+    b["thereafter"] = 0;
+    term.forEach(l => {
+      const matYear = l.maturityDate ? new Date(l.maturityDate + "T00:00:00").getFullYear() : null;
+      if (!matYear) return;
+      const key = matYear > yr + 5 ? "thereafter" : String(matYear);
+      b[key] = (b[key] ?? 0) + toCAD(l.currentPortion || l.currentBalance || 0, l.currency);
+    });
+    const cols = [...Array(5).keys()].map(i => String(yr + i + 1));
+    const total = cols.reduce((s, y) => s + (b[y] || 0), 0) + (b["thereafter"] || 0);
+    return { b, cols, total };
+  }, [loans, yearEnd]);
   const rows = useMemo(() => loans.map(loan => {
     const recon = reconciliation.find(r => r.loanId === loan.id && r.accountType === "Principal");
     const tbBal = recon?.tbBalance ?? loan.currentBalance;
@@ -2383,8 +1884,7 @@ function NotesTabPanel({ loans, continuity, reconciliation, settings }: {
       <div className="rounded-[8px] border border-border overflow-hidden">
         <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-semibold text-foreground uppercase tracking-wide">Long-term Debt</span>
-            <span className="text-[10px] text-muted-foreground bg-muted rounded-full px-2 py-0.5">{loans.length} active facilities</span>
+            <span className="text-sm font-semibold text-foreground">Long-term Debt</span>
           </div>
           <span className="text-[10px] text-muted-foreground">Auto-populated from Loan Register & Continuity</span>
         </div>
@@ -2392,8 +1892,8 @@ function NotesTabPanel({ loans, continuity, reconciliation, settings }: {
           <thead>
             <tr className="bg-muted/20 border-b border-border">
               <th className="text-left px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-[55%]"></th>
-              <th className="text-right px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{yearEnd?.slice(0,10).replace(/-/g, "-")}</th>
-              <th className="text-right px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Prior Year</th>
+              <th className="text-right px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{yearEnd ? fmtDate(yearEnd.slice(0,10)) : "—"}</th>
+              <th className="text-right px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{priorYearEnd ? fmtDate(priorYearEnd) : "Prior Year"}</th>
             </tr>
           </thead>
           <tbody>
@@ -2414,27 +1914,58 @@ function NotesTabPanel({ loans, continuity, reconciliation, settings }: {
             <tr className="border-t border-border/40">
               <td className="px-3 py-1.5 text-[11px] text-foreground"></td>
               <td className="px-3 py-1.5 text-right tabular-nums text-[11px] font-semibold border-t border-border">{fmtNum(totalCY)}</td>
-              <td className="px-3 py-1.5 text-right tabular-nums text-[11px] text-muted-foreground border-t border-border">—</td>
+              <td className="px-3 py-1.5 text-right tabular-nums text-[11px] text-muted-foreground border-t border-border">00</td>
             </tr>
             <tr className="border-t border-border/40">
               <td className="px-3 py-1 text-[11px] text-muted-foreground italic">Less: current portion</td>
               <td className="px-3 py-1 text-right tabular-nums text-[11px] text-red-600">{fmtParen(totalCurr)}</td>
-              <td className="px-3 py-1 text-right tabular-nums text-[11px] text-muted-foreground">—</td>
+              <td className="px-3 py-1 text-right tabular-nums text-[11px] text-muted-foreground">00</td>
             </tr>
             <tr className="border-t border-border font-bold">
               <td className="px-3 py-2 text-[11px] text-foreground">Total</td>
               <td className="px-3 py-2 text-right tabular-nums text-[11px] border-t-2 border-foreground">{fmtNum(totalCY - totalCurr)}</td>
-              <td className="px-3 py-2 text-right tabular-nums text-[11px] border-t-2 border-muted-foreground text-muted-foreground">—</td>
+              <td className="px-3 py-2 text-right tabular-nums text-[11px] border-t-2 border-muted-foreground text-muted-foreground">00</td>
             </tr>
           </tfoot>
         </table>
       </div>
 
+      {/* Principal Repayment Schedule */}
+      <div className="rounded-[8px] border border-border overflow-hidden">
+        <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
+          <span className="text-sm font-semibold text-foreground">Principal Repayment Schedule — Next Five Fiscal Years</span>
+          <span className="text-[10px] text-muted-foreground">Derived from maturity dates in loan register</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-[11px]">
+            <thead>
+              <tr className="bg-muted/20 border-b border-border">
+                <th className="text-left px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap w-[30%]">
+                  {yearEnd ? `Year ending ${new Date(yearEnd.slice(0,10)+"T00:00:00").toLocaleString("en-CA",{month:"long"})} ${new Date(yearEnd.slice(0,10)+"T00:00:00").getDate()}` : "Year ending December 31"}
+                </th>
+                {repayBuckets.cols.map(y => (
+                  <th key={y} className="text-right px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{y}</th>
+                ))}
+                <th className="text-right px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Thereafter</th>
+                <th className="text-right px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-border/40 hover:bg-muted/20">
+                <td className="px-3 py-2 text-[11px] text-foreground">Principal repayments</td>
+                {repayBuckets.cols.map(y => (
+                  <td key={y} className="px-3 py-2 text-right tabular-nums text-[11px] text-foreground">{fmtNum(repayBuckets.b[y] || 0)}</td>
+                ))}
+                <td className="px-3 py-2 text-right tabular-nums text-[11px] text-foreground">{fmtNum(repayBuckets.b["thereafter"] || 0)}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-[11px] font-semibold text-foreground border-t border-border">{fmtNum(repayBuckets.total)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Post to Notes action */}
-      <div className="flex items-center justify-between pt-1">
-        <p className="text-[10px] text-muted-foreground leading-relaxed">
-          Review balances above, then post to lock the note into the workpaper.
-        </p>
+      <div className="flex items-center justify-end pt-1">
         <button
           onClick={() => toast.success("Long-term Debt note posted to workpaper")}
           className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors shrink-0 ml-3"
@@ -2503,32 +2034,26 @@ export function LongTermAssetResponse() {
       <p className="text-sm text-foreground leading-relaxed">
         Here's a full summary of your <strong>Long-term Debt workpaper</strong> for{" "}
         <span className="font-medium text-primary">{settings.client || "this engagement"}</span> as at{" "}
-        <span className="font-medium">{settings.fiscalYearEnd?.slice(0,10).replace(/-/g, "-")}</span>:
+        <span className="font-medium">{settings.fiscalYearEnd ? fmtDate(settings.fiscalYearEnd.slice(0,10)) : "—"}</span>:
       </p>
 
 
       {/* Tab bar */}
       <div className="flex items-center gap-0 border-b border-border -mx-0 overflow-x-auto">
-        {TABS.map(({ id, label, Icon }) => {
+        {TABS.map(({ id, label }) => {
           const isActive = activeTab === id;
           const hasBadge = id === "covenants" && covenantAlert > 0;
           return (
             <button
               key={id}
               onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-1 px-3 py-2 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap shrink-0 ${
+              className={`flex items-center gap-1 px-3 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap shrink-0 ${
                 isActive
                   ? "border-primary text-primary bg-primary/5"
                   : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
               }`}
             >
-              <Icon className="h-3 w-3 shrink-0" />
               {label}
-              {hasBadge && (
-                <span className="ml-1 text-[9px] font-bold text-red-700 bg-red-100 border border-red-200 rounded-full px-1 py-0.5 leading-none">
-                  {covenantAlert}
-                </span>
-              )}
             </button>
           );
         })}
