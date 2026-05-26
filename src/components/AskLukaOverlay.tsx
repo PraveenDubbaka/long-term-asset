@@ -2928,7 +2928,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                             </td>
                                                             {/* Add + Delete */}
                                                             <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
-                                                              <div className="flex items-center gap-0.5">
+                                                              <div className="flex items-center justify-end gap-0.5">
                                                                 {ri === ltReviewRows.length - 1 && (
                                                                   <button onClick={() => setLtReviewRows(prev => [...prev, EMPTY_LT_ROW()])} className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors">
                                                                     <Plus className="w-3 h-3" />
