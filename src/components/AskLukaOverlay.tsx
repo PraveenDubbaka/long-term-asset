@@ -2926,11 +2926,18 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                                 {["Active","Closed","Replaced","Inactive"].map(s => <option key={s}>{s}</option>)}
                                                               </select>
                                                             </td>
-                                                            {/* Delete */}
+                                                            {/* Add + Delete */}
                                                             <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
-                                                              <button onClick={() => deleteLtRow(row.id)} className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors">
-                                                                <Trash2 className="w-3 h-3" />
-                                                              </button>
+                                                              <div className="flex items-center gap-0.5">
+                                                                {ri === ltReviewRows.length - 1 && (
+                                                                  <button onClick={() => setLtReviewRows(prev => [...prev, EMPTY_LT_ROW()])} className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors">
+                                                                    <Plus className="w-3 h-3" />
+                                                                  </button>
+                                                                )}
+                                                                <button onClick={() => deleteLtRow(row.id)} className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors">
+                                                                  <Trash2 className="w-3 h-3" />
+                                                                </button>
+                                                              </div>
                                                             </td>
                                                           </tr>
                                                         );
@@ -2944,13 +2951,15 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
 
                                           {/* Bottom actions */}
                                           <div className="flex items-center gap-2 flex-wrap">
-                                            {/* Add Manual Entry */}
-                                            <button
-                                              onClick={() => setLtReviewRows(prev => [...prev, EMPTY_LT_ROW()])}
-                                              className="inline-flex items-center gap-1.5 h-9 px-4 text-sm font-medium rounded-[8px] border border-border bg-background text-foreground hover:bg-muted/60 transition-colors"
-                                            >
-                                              <Plus className="w-3.5 h-3.5" /> Add Manual Entry
-                                            </button>
+                                            {/* Add Manual Entry — only shown when table is empty */}
+                                            {ltReviewRows.length === 0 && (
+                                              <button
+                                                onClick={() => setLtReviewRows(prev => [...prev, EMPTY_LT_ROW()])}
+                                                className="inline-flex items-center gap-1.5 h-9 px-4 text-sm font-medium rounded-[8px] border border-border bg-background text-foreground hover:bg-muted/60 transition-colors"
+                                              >
+                                                <Plus className="w-3.5 h-3.5" /> Add Manual Entry
+                                              </button>
+                                            )}
 
                                             {/* Submit — always visible, disabled until all required fields filled */}
                                             {(validFiles.length > 0 || ltReviewRows.length > 0) && ambigFiles.length === 0 && (
