@@ -2726,8 +2726,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                           {ltDebtUploadFiles.length === 0 && ltReviewRows.length === 0 ? (
                                             /* ── Empty state: two-option cards ── */
                                             <div className="rounded-[12px] border border-border bg-muted/20 px-6 py-8">
-                                              <div className="text-center mb-6 space-y-1">
-                                                <p className="text-sm font-semibold text-foreground">No Loans Data Found</p>
+                                              <div className="text-center mb-6">
                                                 <p className="text-xs text-muted-foreground">Please retrieve data using one of the options below</p>
                                               </div>
                                               <div className="flex items-stretch gap-4">
@@ -2999,14 +2998,9 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                                 {["Active","Closed","Replaced","Inactive"].map(s => <option key={s}>{s}</option>)}
                                                               </select>
                                                             </td>
-                                                            {/* Add + Delete */}
+                                                            {/* Delete */}
                                                             <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
-                                                              <div className="flex items-center justify-end gap-0.5">
-                                                                {ri === ltReviewRows.length - 1 && (
-                                                                  <button onClick={() => setLtReviewRows(prev => [...prev, EMPTY_LT_ROW()])} className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors">
-                                                                    <Plus className="w-3 h-3" />
-                                                                  </button>
-                                                                )}
+                                                              <div className="flex items-center justify-end">
                                                                 <button onClick={() => deleteLtRow(row.id)} className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors">
                                                                   <Trash2 className="w-3 h-3" />
                                                                 </button>
@@ -3023,50 +3017,52 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                           )}
 
                                           {/* Bottom actions */}
-                                          <div className="flex items-center gap-2 flex-wrap">
-                                            {/* Add Manual Entry — only shown when table is empty */}
-                                            {ltReviewRows.length === 0 && (
-                                              <button
-                                                onClick={() => setLtReviewRows(prev => [...prev, EMPTY_LT_ROW()])}
-                                                className="inline-flex items-center gap-1.5 h-9 px-4 text-sm font-medium rounded-[8px] border border-border bg-background text-foreground hover:bg-muted/60 transition-colors"
-                                              >
-                                                <Plus className="w-3.5 h-3.5" /> Add Manual Entry
-                                              </button>
-                                            )}
+                                          <div className="flex items-center justify-between gap-2">
+                                            {/* Left: Add Manual Entry */}
+                                            <div>
+                                              {ltReviewRows.length > 0 && (
+                                                <button
+                                                  onClick={() => setLtReviewRows(prev => [...prev, EMPTY_LT_ROW()])}
+                                                  className="inline-flex items-center gap-1.5 h-9 px-4 text-sm font-medium rounded-[8px] border border-border bg-background text-foreground hover:bg-muted/60 transition-colors"
+                                                >
+                                                  <Plus className="w-3.5 h-3.5" /> Add Manual Entry
+                                                </button>
+                                              )}
+                                            </div>
 
-                                            {/* Submit — always visible, disabled until all required fields filled */}
-                                            {(validFiles.length > 0 || ltReviewRows.length > 0) && ambigFiles.length === 0 && (
-                                              <button
-                                                disabled={!canSubmit}
-                                                onClick={() => {
-                                                  if (!canSubmit) return;
-                                                  const counts: Partial<Record<string, number>> = {};
-                                                  validFiles.forEach(f => { const k = f.userKind ?? f.kind; counts[k] = (counts[k] ?? 0) + 1; });
-                                                  const parts = Object.entries(counts).map(([k, n]) => `${n} ${LT_FILE_KIND_LABEL[k] ?? k}${n! > 1 ? "s" : ""}`);
-                                                  const docPart = validFiles.length > 0 ? `${validFiles.length} uploaded document${validFiles.length !== 1 ? "s" : ""}${parts.length ? ` (${parts.join(", ")})` : ""}` : "";
-                                                  const manualCount = ltReviewRows.filter(r => !r.sourceFile).length;
-                                                  const manualPart = manualCount > 0 ? `${manualCount} manual entr${manualCount !== 1 ? "ies" : "y"}` : "";
-                                                  setLtDebtSrcLabel([docPart, manualPart].filter(Boolean).join(" + ") || `${ltReviewRows.length} manual entries`);
-                                                  setLtDebtGenerated(true);
-                                                  setLtDebtPhase("done");
-                                                }}
-                                                className={cn(
-                                                  "inline-flex items-center gap-1.5 h-9 px-5 text-sm font-medium rounded-[8px] transition-colors",
-                                                  canSubmit
-                                                    ? "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
-                                                    : "bg-muted/60 text-muted-foreground/50 cursor-not-allowed border border-border/50 opacity-60"
-                                                )}
-                                              >
-                                                Submit
-                                              </button>
-                                            )}
-
-                                            {/* Hint */}
-                                            {missingCount > 0 && (
-                                              <span className="text-[10px] text-red-500">
-                                                Fill in the <strong>{missingCount}</strong> highlighted field{missingCount !== 1 ? "s" : ""} to continue
-                                              </span>
-                                            )}
+                                            {/* Right: hint + Submit */}
+                                            <div className="flex items-center gap-2">
+                                              {missingCount > 0 && (
+                                                <span className="text-[10px] text-red-500">
+                                                  Fill in the <strong>{missingCount}</strong> highlighted field{missingCount !== 1 ? "s" : ""} to continue
+                                                </span>
+                                              )}
+                                              {(validFiles.length > 0 || ltReviewRows.length > 0) && ambigFiles.length === 0 && (
+                                                <button
+                                                  disabled={!canSubmit}
+                                                  onClick={() => {
+                                                    if (!canSubmit) return;
+                                                    const counts: Partial<Record<string, number>> = {};
+                                                    validFiles.forEach(f => { const k = f.userKind ?? f.kind; counts[k] = (counts[k] ?? 0) + 1; });
+                                                    const parts = Object.entries(counts).map(([k, n]) => `${n} ${LT_FILE_KIND_LABEL[k] ?? k}${n! > 1 ? "s" : ""}`);
+                                                    const docPart = validFiles.length > 0 ? `${validFiles.length} uploaded document${validFiles.length !== 1 ? "s" : ""}${parts.length ? ` (${parts.join(", ")})` : ""}` : "";
+                                                    const manualCount = ltReviewRows.filter(r => !r.sourceFile).length;
+                                                    const manualPart = manualCount > 0 ? `${manualCount} manual entr${manualCount !== 1 ? "ies" : "y"}` : "";
+                                                    setLtDebtSrcLabel([docPart, manualPart].filter(Boolean).join(" + ") || `${ltReviewRows.length} manual entries`);
+                                                    setLtDebtGenerated(true);
+                                                    setLtDebtPhase("done");
+                                                  }}
+                                                  className={cn(
+                                                    "inline-flex items-center gap-1.5 h-9 px-5 text-sm font-medium rounded-[8px] transition-colors",
+                                                    canSubmit
+                                                      ? "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                                                      : "bg-muted/60 text-muted-foreground/50 cursor-not-allowed border border-border/50 opacity-60"
+                                                  )}
+                                                >
+                                                  Submit
+                                                </button>
+                                              )}
+                                            </div>
                                           </div>
                                         </div>
                                       );
