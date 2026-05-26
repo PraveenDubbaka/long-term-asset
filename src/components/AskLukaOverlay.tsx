@@ -172,7 +172,7 @@ type AmortSource = "existing" | "upload" | "drive" | "manual";
 
 // ── LT Debt multi-file upload — types & classifier ─────────────────────────
 type LtDebtFileKind =
-  | "loan-agreement" | "continuity" | "loan-register" | "workpaper"
+  | "loan-agreement" | "continuity" | "loan-register" | "workpaper" | "debt-schedule"
   | "ambiguous" | "unsupported" | "oversized";
 
 interface LtDebtFile {
@@ -189,6 +189,9 @@ function classifyLtDebtFile(file: File): LtDebtFile {
     return { id, name: file.name, size: file.size, ext, kind: "unsupported" };
   if (file.size > 25 * 1024 * 1024)
     return { id, name: file.name, size: file.size, ext, kind: "oversized" };
+  // Accounting-software debt schedule PDFs (CaseWare, QuickBooks, Sage, etc.)
+  if (ext === "pdf" && /debt.*(amortiz|schedul|statement|continu)|amortiz.*\bdebt\b|loan.*schedul|schedul.*loan/.test(n))
+    return { id, name: file.name, size: file.size, ext, kind: "debt-schedule" };
   if (ext === "pdf" || ext === "zip")
     return { id, name: file.name, size: file.size, ext, kind: "loan-agreement" };
   // Excel — name-based detection
@@ -206,12 +209,14 @@ const LT_FILE_KIND_LABEL: Record<string, string> = {
   "continuity":     "Continuity Schedule",
   "loan-register":  "Loan Register",
   "workpaper":      "Prior Year Workpaper",
+  "debt-schedule":  "Debt Schedule (AI)",
 };
 const LT_FILE_KIND_COLOR: Record<string, string> = {
   "loan-agreement": "bg-blue-50 text-blue-700 border-blue-200",
   "continuity":     "bg-green-50 text-green-700 border-green-200",
   "loan-register":  "bg-purple-50 text-purple-700 border-purple-200",
   "workpaper":      "bg-amber-50 text-amber-700 border-amber-200",
+  "debt-schedule":  "bg-violet-50 text-violet-700 border-violet-200",
 };
 
 // What each file type contributes to the workpaper
@@ -250,6 +255,13 @@ const LT_SOURCE_INFO: Record<string, {
     provides: "Prior-year comparatives, existing GL mappings, posted notes, and covenant history",
     priority: 4,
   },
+  "debt-schedule": {
+    dot:      "bg-violet-500",
+    border:   "border-violet-200 bg-violet-50/60",
+    heading:  "text-violet-800",
+    provides: "AI-extracted loan data — rate, payments, balances, and amortization schedule from accounting software exports",
+    priority: 2,
+  },
 };
 
 // ── Agentic Long-term Debt wizard — mock discovery data ───────────────────
@@ -264,7 +276,14 @@ const LT_DEBT_DRIVE_FILES = [
   { id: "ltd-gd-3", name: "All Loan Agreements Package 2025.zip", folder: "Client Documents / Contracts",  size: "2.1 MB", ext: "zip"  },
 ];
 
-const LT_RIGHT_COLS = new Set(["Int. Rate % *","Mo. Payment","Orig. Loan Amt","FX Rate","Closing Bal. *","IO Period (mo.)","Balloon Amt"]);
+const LT_RIGHT_COLS = new Set(["Int. Rate % *","Mo. Payment","Orig. Loan Amt","FX Rate","Opening Bal. *","IO Period (mo.)","Balloon Amt"]);
+
+/** Default GL Principal account based on loan type and currency. */
+function defaultGLPrincipal(type: string, currency: string): string {
+  if (type === "LOC" || type === "Revolver") return "2200"; // Line of Credit
+  if (currency === "USD") return "2110";                    // LTD – USD
+  return "2100";                                            // LTD – CAD (default)
+}
 const SCR = "h-6 text-[10px] px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer";
 
 // ── GL account combobox (compact, for review table) ─────────────────────────
@@ -368,10 +387,10 @@ const EMPTY_LT_ROW = (): LtDebtReviewRow => ({
   dayCount: "ACT/365", compounding: "Monthly",
   ioPeriod: "", balloonAmt: "",
   collateral: "", status: "Active",
-  glPrincipal: "",
+  glPrincipal: "2100",
 });
 
-const LT_REVIEW_REQUIRED: (keyof LtDebtReviewRow)[] = ["name", "lender", "currentBalance", "rate", "maturityDate", "glPrincipal"];
+const LT_REVIEW_REQUIRED: (keyof LtDebtReviewRow)[] = ["name", "lender", "currentBalance", "rate", "startDate", "maturityDate", "glPrincipal"];
 
 function ltRowMissing(row: LtDebtReviewRow, field: keyof LtDebtReviewRow) {
   return !String(row[field] ?? "").trim();
@@ -382,28 +401,56 @@ function mockLtRowsFromFile(file: LtDebtFile): LtDebtReviewRow[] {
   const sf = file.name;
   const uid = () => `ltr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   const X = { firstPaymentDate: "", monthlyPayment: "", fxRate: "", paymentType: "P&I", dayCount: "ACT/365", compounding: "Monthly", ioPeriod: "", balloonAmt: "" };
+  // ── Real CaseWare extraction — The Fishin' Hole (1982) Ltd., YE Sep 30, 2025 ──
+  if (kind === "debt-schedule") return [
+    {
+      id: uid(), sourceFile: sf,
+      name: "Promissory Note 1", lender: "", type: "Term", currency: "CAD",
+      originalPrincipal: "400,000", currentBalance: "400,000", rate: "4.000",
+      interestType: "Fixed", startDate: "2024-10-01", maturityDate: "2032-09-30",
+      firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "",
+      paymentFrequency: "Monthly", paymentType: "P&I",
+      dayCount: "ACT/365", compounding: "Monthly",
+      ioPeriod: "", balloonAmt: "",
+      collateral: "", status: "Active",
+      glPrincipal: defaultGLPrincipal("Term", "CAD"),
+    },
+    {
+      id: uid(), sourceFile: sf,
+      name: "Promissory Note 2", lender: "", type: "Term", currency: "CAD",
+      originalPrincipal: "400,000", currentBalance: "400,000", rate: "4.000",
+      interestType: "Fixed", startDate: "2024-10-01", maturityDate: "2032-09-30",
+      firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "",
+      paymentFrequency: "Monthly", paymentType: "P&I",
+      dayCount: "ACT/365", compounding: "Monthly",
+      ioPeriod: "", balloonAmt: "",
+      collateral: "", status: "Active",
+      glPrincipal: defaultGLPrincipal("Term", "CAD"),
+    },
+  ];
   if (kind === "loan-agreement") return [{
     id: uid(), sourceFile: sf,
     name: file.name.replace(/\.(pdf|zip)$/i, "").replace(/[-_]/g, " "),
     lender: "RBC Royal Bank", type: "Term", currency: "CAD",
     originalPrincipal: "3,750,000", currentBalance: "", rate: "",
     interestType: "Fixed", startDate: "2022-04-01", maturityDate: "2027-04-01",
-    paymentFrequency: "Monthly", collateral: "", status: "Active", glPrincipal: "",
+    paymentFrequency: "Monthly", collateral: "", status: "Active",
+    glPrincipal: defaultGLPrincipal("Term", "CAD"),
     ...X,
   }];
   if (kind === "loan-register") return [
-    { id: uid(), sourceFile: sf, name: "Term Loan A",   lender: "RBC Royal Bank", type: "Term", currency: "CAD", originalPrincipal: "5,000,000", currentBalance: "3,750,000", rate: "5.25", interestType: "Fixed",    startDate: "2022-04-01", maturityDate: "2027-04-01", paymentFrequency: "Monthly", collateral: "Real property — 123 Main St.", status: "Active", glPrincipal: "2100", ...X, firstPaymentDate: "2022-05-01", monthlyPayment: "72,916" },
-    { id: uid(), sourceFile: sf, name: "Operating LOC", lender: "TD Bank",         type: "LOC",  currency: "CAD", originalPrincipal: "1,000,000", currentBalance: "875,000",   rate: "7.45", interestType: "Variable", startDate: "2021-01-15", maturityDate: "",           paymentFrequency: "Monthly", collateral: "Accounts receivable",         status: "Active", glPrincipal: "2110", ...X },
-    { id: uid(), sourceFile: sf, name: "Equipment Loan",lender: "HSBC",            type: "Term", currency: "USD", originalPrincipal: "1,500,000", currentBalance: "1,125,000", rate: "",     interestType: "Fixed",    startDate: "2023-03-01", maturityDate: "2028-03-01", paymentFrequency: "Monthly", collateral: "Manufacturing equipment",     status: "Active", glPrincipal: "",     ...X, fxRate: "1.3500" },
+    { id: uid(), sourceFile: sf, name: "Term Loan A",   lender: "RBC Royal Bank", type: "Term", currency: "CAD", originalPrincipal: "5,000,000", currentBalance: "3,750,000", rate: "5.25", interestType: "Fixed",    startDate: "2022-04-01", maturityDate: "2027-04-01", paymentFrequency: "Monthly", collateral: "Real property — 123 Main St.", status: "Active", glPrincipal: defaultGLPrincipal("Term","CAD"), ...X, firstPaymentDate: "2022-05-01", monthlyPayment: "72,916" },
+    { id: uid(), sourceFile: sf, name: "Operating LOC", lender: "TD Bank",         type: "LOC",  currency: "CAD", originalPrincipal: "1,000,000", currentBalance: "875,000",   rate: "7.45", interestType: "Variable", startDate: "2021-01-15", maturityDate: "",           paymentFrequency: "Monthly", collateral: "Accounts receivable",         status: "Active", glPrincipal: defaultGLPrincipal("LOC","CAD"),  ...X },
+    { id: uid(), sourceFile: sf, name: "Equipment Loan",lender: "HSBC",            type: "Term", currency: "USD", originalPrincipal: "1,500,000", currentBalance: "1,125,000", rate: "",     interestType: "Fixed",    startDate: "2023-03-01", maturityDate: "2028-03-01", paymentFrequency: "Monthly", collateral: "Manufacturing equipment",     status: "Active", glPrincipal: defaultGLPrincipal("Term","USD"), ...X, fxRate: "1.3500" },
   ];
   if (kind === "continuity") return [
-    { id: uid(), sourceFile: sf, name: "Term Loan A",   lender: "RBC Royal Bank", type: "Term", currency: "CAD", originalPrincipal: "5,000,000", currentBalance: "3,750,000", rate: "5.25", interestType: "Fixed",    startDate: "2022-04-01", maturityDate: "2027-04-01", paymentFrequency: "Monthly", collateral: "Real property",         status: "Active", glPrincipal: "2100", ...X },
-    { id: uid(), sourceFile: sf, name: "Operating LOC", lender: "TD Bank",         type: "LOC",  currency: "CAD", originalPrincipal: "",          currentBalance: "875,000",   rate: "7.45", interestType: "Variable", startDate: "",           maturityDate: "",           paymentFrequency: "Monthly", collateral: "",                      status: "Active", glPrincipal: "",     ...X },
+    { id: uid(), sourceFile: sf, name: "Term Loan A",   lender: "RBC Royal Bank", type: "Term", currency: "CAD", originalPrincipal: "5,000,000", currentBalance: "3,750,000", rate: "5.25", interestType: "Fixed",    startDate: "2022-04-01", maturityDate: "2027-04-01", paymentFrequency: "Monthly", collateral: "Real property",         status: "Active", glPrincipal: defaultGLPrincipal("Term","CAD"), ...X },
+    { id: uid(), sourceFile: sf, name: "Operating LOC", lender: "TD Bank",         type: "LOC",  currency: "CAD", originalPrincipal: "",          currentBalance: "875,000",   rate: "7.45", interestType: "Variable", startDate: "",           maturityDate: "",           paymentFrequency: "Monthly", collateral: "",                      status: "Active", glPrincipal: defaultGLPrincipal("LOC","CAD"),  ...X },
   ];
   if (kind === "workpaper") return [
-    { id: uid(), sourceFile: sf, name: "Term Loan A",   lender: "RBC Royal Bank", type: "Term", currency: "CAD", originalPrincipal: "5,000,000", currentBalance: "3,750,000", rate: "5.25", interestType: "Fixed",    startDate: "2022-04-01", maturityDate: "2027-04-01", paymentFrequency: "Monthly", collateral: "Real property — 123 Main St.", status: "Active", glPrincipal: "2100", ...X, firstPaymentDate: "2022-05-01" },
-    { id: uid(), sourceFile: sf, name: "Operating LOC", lender: "TD Bank",         type: "LOC",  currency: "CAD", originalPrincipal: "1,000,000", currentBalance: "875,000",   rate: "7.45", interestType: "Variable", startDate: "2021-01-15", maturityDate: "2026-01-15", paymentFrequency: "Monthly", collateral: "Accounts receivable",         status: "Active", glPrincipal: "2110", ...X },
-    { id: uid(), sourceFile: sf, name: "Equipment Loan",lender: "HSBC",            type: "Term", currency: "USD", originalPrincipal: "1,500,000", currentBalance: "1,125,000", rate: "6.10", interestType: "Fixed",    startDate: "2023-03-01", maturityDate: "2028-03-01", paymentFrequency: "Monthly", collateral: "Manufacturing equipment",     status: "Active", glPrincipal: "",     ...X, fxRate: "1.3500" },
+    { id: uid(), sourceFile: sf, name: "Term Loan A",   lender: "RBC Royal Bank", type: "Term", currency: "CAD", originalPrincipal: "5,000,000", currentBalance: "3,750,000", rate: "5.25", interestType: "Fixed",    startDate: "2022-04-01", maturityDate: "2027-04-01", paymentFrequency: "Monthly", collateral: "Real property — 123 Main St.", status: "Active", glPrincipal: defaultGLPrincipal("Term","CAD"), ...X, firstPaymentDate: "2022-05-01" },
+    { id: uid(), sourceFile: sf, name: "Operating LOC", lender: "TD Bank",         type: "LOC",  currency: "CAD", originalPrincipal: "1,000,000", currentBalance: "875,000",   rate: "7.45", interestType: "Variable", startDate: "2021-01-15", maturityDate: "2026-01-15", paymentFrequency: "Monthly", collateral: "Accounts receivable",         status: "Active", glPrincipal: defaultGLPrincipal("LOC","CAD"),  ...X },
+    { id: uid(), sourceFile: sf, name: "Equipment Loan",lender: "HSBC",            type: "Term", currency: "USD", originalPrincipal: "1,500,000", currentBalance: "1,125,000", rate: "6.10", interestType: "Fixed",    startDate: "2023-03-01", maturityDate: "2028-03-01", paymentFrequency: "Monthly", collateral: "Manufacturing equipment",     status: "Active", glPrincipal: defaultGLPrincipal("Term","USD"), ...X, fxRate: "1.3500" },
   ];
   return [];
 }
@@ -2725,6 +2772,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                       >
                                                         <option value="" disabled>Classify…</option>
                                                         <option value="loan-agreement">Loan Agreement</option>
+                                                        <option value="debt-schedule">Debt Schedule</option>
                                                         <option value="continuity">Continuity</option>
                                                         <option value="loan-register">Loan Register</option>
                                                         <option value="workpaper">Prior Year WP</option>
@@ -2743,6 +2791,44 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                           {/* ── Review table ── */}
                                           {ltReviewRows.length > 0 && (
                                             <div className="space-y-2">
+                                              {/* AI Extraction banner — shown when debt-schedule files are present */}
+                                              {ltDebtUploadFiles.some(f => (f.userKind ?? f.kind) === "debt-schedule") && (() => {
+                                                const dsCount = ltDebtUploadFiles.filter(f => (f.userKind ?? f.kind) === "debt-schedule").length;
+                                                return (
+                                                  <div className="rounded-[8px] border border-violet-200 bg-violet-50/50 p-3 space-y-2">
+                                                    <div className="flex items-center gap-2">
+                                                      <div className="w-5 h-5 rounded-full bg-violet-500 flex items-center justify-center shrink-0">
+                                                        <Sparkles className="w-3 h-3 text-white" />
+                                                      </div>
+                                                      <span className="text-[11px] font-semibold text-violet-800">AI Extraction Complete</span>
+                                                      <span className="ml-auto text-[10px] text-violet-600 font-medium bg-violet-100 border border-violet-200 rounded-full px-2 py-0.5">
+                                                        {dsCount} document{dsCount !== 1 ? "s" : ""} scanned
+                                                      </span>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-x-6 gap-y-1 pl-7">
+                                                      {([
+                                                        { label: "Interest rate",   value: "4.000% fixed",        ok: true  },
+                                                        { label: "Monthly payment", value: "$4,875.49 blended P&I", ok: true  },
+                                                        { label: "Start date",      value: "Oct 1, 2024",         ok: true  },
+                                                        { label: "Maturity date",   value: "Sep 30, 2032",        ok: true  },
+                                                        { label: "Opening balance", value: "$400,000 per note",   ok: true  },
+                                                        { label: "Compounding",     value: "Monthly",             ok: true  },
+                                                        { label: "Lender name",     value: "Not found — fill in", ok: false },
+                                                        { label: "Collateral",      value: "Not found — fill in", ok: false },
+                                                      ] as { label: string; value: string; ok: boolean }[]).map(item => (
+                                                        <div key={item.label} className="flex items-center gap-1.5 text-[10px]">
+                                                          {item.ok
+                                                            ? <CheckCircle2 className="w-2.5 h-2.5 text-green-500 shrink-0" />
+                                                            : <AlertTriangle className="w-2.5 h-2.5 text-amber-500 shrink-0" />}
+                                                          <span className="text-muted-foreground">{item.label}:</span>
+                                                          <span className={item.ok ? "text-foreground font-medium" : "text-amber-700 font-medium"}>{item.value}</span>
+                                                        </div>
+                                                      ))}
+                                                    </div>
+                                                  </div>
+                                                );
+                                              })()}
+
                                               {/* Header bar */}
                                               <div className="flex items-center justify-between">
                                                 <span className="text-[11px] font-semibold text-foreground">
@@ -2761,7 +2847,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                   <table className="w-full text-[10px]" style={{ minWidth: 2400 }}>
                                                     <thead>
                                                       <tr className="bg-muted/30 border-b border-border">
-                                                        {["Loan Name *","Lender *","Current Collateral","Type","Rate Type","Int. Rate % *","Start","Maturity *","First Payment","CCY","Mo. Payment","Orig. Loan Amt","FX Rate","Closing Bal. *","GL Principal *","Day Count","Payment Type","Freq.","Compounding","IO Period (mo.)","Balloon Amt","Status",""].map((h, i) => (
+                                                        {["Loan Name *","Lender *","Current Collateral","Type","Rate Type","Int. Rate % *","Start *","Maturity *","First Payment","CCY","Mo. Payment","Orig. Loan Amt","FX Rate","Opening Bal. *","GL Principal *","Day Count","Payment Type","Freq.","Compounding","IO Period (mo.)","Balloon Amt","Status",""].map((h, i) => (
                                                           <th key={i} className={`px-2 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${LT_RIGHT_COLS.has(h) ? "text-right" : "text-left"} ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10" : ""}`}>
                                                             {h.endsWith(" *")
                                                               ? <>{h.slice(0, -2)} <span className="text-red-500">*</span></>
@@ -2809,7 +2895,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                             </td>
                                                             {/* Start */}
                                                             <td className="px-1.5 py-1">
-                                                              <input type="date" value={row.startDate} onChange={e => updateLtRow(row.id,"startDate",e.target.value)} className={cn(fc("startDate",false),"w-28")} />
+                                                              <input type="date" value={row.startDate} onChange={e => updateLtRow(row.id,"startDate",e.target.value)} className={cn(fc("startDate",true),"w-28")} />
                                                             </td>
                                                             {/* Maturity * */}
                                                             <td className="px-1.5 py-1">
@@ -2837,7 +2923,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                             <td className="px-1.5 py-1">
                                                               <input value={row.fxRate} onChange={e => updateLtRow(row.id,"fxRate",e.target.value)} className={cn(fc("fxRate",false),"w-16 text-right font-mono")} placeholder="1.000" />
                                                             </td>
-                                                            {/* Closing Bal. * */}
+                                                            {/* Opening Bal. * */}
                                                             <td className="px-1.5 py-1">
                                                               <input value={row.currentBalance} onChange={e => updateLtRow(row.id,"currentBalance",e.target.value)} className={cn(fc("currentBalance",true),"w-24 text-right")} placeholder="Balance" />
                                                             </td>
@@ -2886,7 +2972,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                             {/* Delete */}
                                                             <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
                                                               <button onClick={() => deleteLtRow(row.id)} className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors">
-                                                                <X className="w-3 h-3" />
+                                                                <Trash2 className="w-3 h-3" />
                                                               </button>
                                                             </td>
                                                           </tr>
@@ -3528,7 +3614,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                           <table className="w-full text-[10px]" style={{ minWidth: 2400 }}>
                                             <thead>
                                               <tr className="bg-muted/30 border-b border-border">
-                                                {["Loan Name *","Lender *","Current Collateral","Type","Rate Type","Int. Rate % *","Start","Maturity *","First Payment","CCY","Mo. Payment","Orig. Loan Amt","FX Rate","Closing Bal. *","GL Principal *","Day Count","Payment Type","Freq.","Compounding","IO Period (mo.)","Balloon Amt","Status",""].map((h, i) => (
+                                                {["Loan Name *","Lender *","Current Collateral","Type","Rate Type","Int. Rate % *","Start *","Maturity *","First Payment","CCY","Mo. Payment","Orig. Loan Amt","FX Rate","Opening Bal. *","GL Principal *","Day Count","Payment Type","Freq.","Compounding","IO Period (mo.)","Balloon Amt","Status",""].map((h, i) => (
                                                   <th key={i} className={`px-2 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${LT_RIGHT_COLS.has(h) ? "text-right" : "text-left"} ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10" : ""}`}>
                                                     {h.endsWith(" *") ? <>{h.slice(0,-2)} <span className="text-red-500">*</span></> : h}
                                                   </th>
@@ -3550,7 +3636,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                     <td className="px-1.5 py-1"><select value={row.type} onChange={e => updateAddMoreRow(row.id,"type",e.target.value)} className={cn(SCR,"w-20")}>{["Term","LOC","Revolver","Mortgage","Bridge"].map(t=><option key={t}>{t}</option>)}</select></td>
                                                     <td className="px-1.5 py-1"><select value={row.interestType} onChange={e => updateAddMoreRow(row.id,"interestType",e.target.value)} className={cn(SCR,"w-22")}>{["Fixed","Variable","Floating","Hybrid","Step Rate"].map(t=><option key={t}>{t}</option>)}</select></td>
                                                     <td className="px-1.5 py-1"><input value={row.rate} onChange={e => updateAddMoreRow(row.id,"rate",e.target.value)} className={cn(fc2("rate",true),"w-14 text-right")} placeholder="%" /></td>
-                                                    <td className="px-1.5 py-1"><input type="date" value={row.startDate} onChange={e => updateAddMoreRow(row.id,"startDate",e.target.value)} className={cn(fc2("startDate",false),"w-28")} /></td>
+                                                    <td className="px-1.5 py-1"><input type="date" value={row.startDate} onChange={e => updateAddMoreRow(row.id,"startDate",e.target.value)} className={cn(fc2("startDate",true),"w-28")} /></td>
                                                     <td className="px-1.5 py-1"><input type="date" value={row.maturityDate} onChange={e => updateAddMoreRow(row.id,"maturityDate",e.target.value)} className={cn(fc2("maturityDate",true),"w-28")} /></td>
                                                     <td className="px-1.5 py-1"><input type="date" value={row.firstPaymentDate} onChange={e => updateAddMoreRow(row.id,"firstPaymentDate",e.target.value)} className={cn(fc2("firstPaymentDate",false),"w-28")} /></td>
                                                     <td className="px-1.5 py-1"><select value={row.currency} onChange={e => updateAddMoreRow(row.id,"currency",e.target.value)} className={cn(SCR,"w-14")}>{["CAD","USD","EUR","GBP"].map(c=><option key={c}>{c}</option>)}</select></td>
@@ -3567,7 +3653,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                     <td className="px-1.5 py-1"><input value={row.balloonAmt} onChange={e => updateAddMoreRow(row.id,"balloonAmt",e.target.value)} className={cn(fc2("balloonAmt",false),"w-24 text-right")} placeholder="0" /></td>
                                                     <td className="px-1.5 py-1"><select value={row.status} onChange={e => updateAddMoreRow(row.id,"status",e.target.value)} className={cn(SCR,"w-20")}>{["Active","Closed","Replaced","Inactive"].map(s=><option key={s}>{s}</option>)}</select></td>
                                                     <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
-                                                      <button onClick={() => deleteAddMoreRow(row.id)} className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors"><X className="w-3 h-3" /></button>
+                                                      <button onClick={() => deleteAddMoreRow(row.id)} className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors"><Trash2 className="w-3 h-3" /></button>
                                                     </td>
                                                   </tr>
                                                 );
