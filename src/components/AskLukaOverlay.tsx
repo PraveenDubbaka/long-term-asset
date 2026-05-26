@@ -2723,78 +2723,10 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                       return (
                                         <div className="space-y-3">
                                           {/* Upload section — empty state vs compact */}
-                                          {ltDebtUploadFiles.length === 0 && ltReviewRows.length === 0 ? (
-                                            /* ── Empty state: two-option cards ── */
-                                            <div className="rounded-[12px] border border-border bg-muted/20 px-6 py-8">
-                                              <div className="text-center mb-6">
-                                                <p className="text-xs text-muted-foreground">Please retrieve data using one of the options below</p>
-                                              </div>
-                                              <div className="flex items-stretch gap-4">
-                                                {/* Import option */}
-                                                <div
-                                                  className="flex-1 flex flex-col items-center text-center rounded-[10px] border border-border bg-background p-5 gap-3 cursor-pointer hover:border-primary/40 hover:bg-primary/[0.02] transition-colors"
-                                                  onClick={triggerUpload}
-                                                  onDragOver={e => e.preventDefault()}
-                                                  onDrop={e => { e.preventDefault(); addLtFiles(e.dataTransfer.files); }}
-                                                >
-                                                  {/* Illustration */}
-                                                  <div className="relative w-20 h-20 flex items-center justify-center shrink-0">
-                                                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-100 to-violet-100 opacity-80" />
-                                                    <div className="absolute top-0.5 right-2 w-2 h-2 rounded-full bg-blue-300/70" />
-                                                    <div className="absolute bottom-1 left-1.5 w-1.5 h-1.5 rounded-full bg-violet-300/60" />
-                                                    <div className="absolute top-3 left-0 w-1 h-1 rounded-full bg-blue-400/50" />
-                                                    <div className="relative z-10 w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shadow-md">
-                                                      <Upload className="w-4.5 h-4.5 text-white w-[18px] h-[18px]" />
-                                                    </div>
-                                                  </div>
-                                                  <div className="space-y-1">
-                                                    <p className="text-sm font-semibold text-foreground">Import Data from CSV/Excel/PDF</p>
-                                                    <p className="text-xs text-muted-foreground leading-relaxed">Choose and import the respective file to effortlessly bring in all data with a single click</p>
-                                                  </div>
-                                                  <button
-                                                    onClick={e => { e.stopPropagation(); triggerUpload(); }}
-                                                    className="mt-auto inline-flex items-center gap-1.5 h-8 px-4 rounded-[8px] bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
-                                                  >
-                                                    <Upload className="w-3 h-3" /> Import
-                                                  </button>
-                                                </div>
-
-                                                {/* OR divider */}
-                                                <div className="flex items-center shrink-0">
-                                                  <span className="text-xs font-bold text-muted-foreground">OR</span>
-                                                </div>
-
-                                                {/* Manual option */}
-                                                <div className="flex-1 flex flex-col items-center text-center rounded-[10px] border border-border bg-background p-5 gap-3 cursor-pointer hover:border-primary/40 hover:bg-primary/[0.02] transition-colors"
-                                                  onClick={() => setLtReviewRows(prev => [...prev, EMPTY_LT_ROW()])}
-                                                >
-                                                  {/* Illustration */}
-                                                  <div className="relative w-20 h-20 flex items-center justify-center shrink-0">
-                                                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-violet-100 to-blue-100 opacity-80" />
-                                                    <div className="absolute top-1 left-3 w-2 h-2 rounded-full bg-violet-300/70" />
-                                                    <div className="absolute bottom-0.5 right-2 w-1.5 h-1.5 rounded-full bg-blue-300/60" />
-                                                    <div className="absolute top-3 right-0.5 w-1 h-1 rounded-full bg-violet-400/50" />
-                                                    <div className="relative z-10 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center shadow-md">
-                                                      <Plus className="w-[18px] h-[18px] text-white" />
-                                                    </div>
-                                                  </div>
-                                                  <div className="space-y-1">
-                                                    <p className="text-sm font-semibold text-foreground">Enter Loan details Manually</p>
-                                                    <p className="text-xs text-muted-foreground leading-relaxed">Add a new row and enter loan details directly in the table</p>
-                                                  </div>
-                                                  <button
-                                                    onClick={e => { e.stopPropagation(); setLtReviewRows(prev => [...prev, EMPTY_LT_ROW()]); }}
-                                                    className="mt-auto inline-flex items-center gap-1.5 h-8 px-4 rounded-[8px] bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
-                                                  >
-                                                    <Plus className="w-3 h-3" /> Add manually
-                                                  </button>
-                                                </div>
-                                              </div>
-                                            </div>
-                                          ) : (
-                                            /* ── Compact upload zone (files or rows already exist) ── */
+                                          {/* Upload strip — always shown */}
+                                          <div className="flex items-center gap-3 px-4 py-3 rounded-[10px] border border-dashed border-border bg-background hover:bg-muted/30 transition-colors">
                                             <div
-                                              className="flex items-center gap-3 px-4 py-3 rounded-[10px] border border-dashed border-border bg-background cursor-pointer hover:bg-muted/30 transition-colors"
+                                              className="flex items-center gap-3 flex-1 cursor-pointer"
                                               onClick={triggerUpload}
                                               onDragOver={e => e.preventDefault()}
                                               onDrop={e => { e.preventDefault(); addLtFiles(e.dataTransfer.files); }}
@@ -2803,10 +2735,19 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                 <Upload className="h-3.5 w-3.5 text-muted-foreground" />
                                               </div>
                                               <p className="text-xs text-muted-foreground">
-                                                <span className="text-primary font-medium">Click to upload more</span> or drag and drop · PDF, XLSX, ZIP
+                                                <span className="text-primary font-medium">Click to upload</span> or drag and drop · PDF, XLSX, ZIP
                                               </p>
                                             </div>
-                                          )}
+                                            <div className="flex items-center gap-2 shrink-0">
+                                              <span className="text-[10px] text-muted-foreground/50">or</span>
+                                              <button
+                                                onClick={() => setLtReviewRows(prev => [...prev, EMPTY_LT_ROW()])}
+                                                className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[7px] border border-border bg-background text-[11px] font-medium text-foreground hover:bg-muted/60 transition-colors"
+                                              >
+                                                <Plus className="w-3 h-3" /> Add manually
+                                              </button>
+                                            </div>
+                                          </div>
 
                                           {/* File chips */}
                                           {ltDebtUploadFiles.length > 0 && (
@@ -3018,17 +2959,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
 
                                           {/* Bottom actions */}
                                           <div className="flex items-center justify-between gap-2">
-                                            {/* Left: Add Manual Entry */}
-                                            <div>
-                                              {ltReviewRows.length > 0 && (
-                                                <button
-                                                  onClick={() => setLtReviewRows(prev => [...prev, EMPTY_LT_ROW()])}
-                                                  className="inline-flex items-center gap-1.5 h-9 px-4 text-sm font-medium rounded-[8px] border border-border bg-background text-foreground hover:bg-muted/60 transition-colors"
-                                                >
-                                                  <Plus className="w-3.5 h-3.5" /> Add Manual Entry
-                                                </button>
-                                              )}
-                                            </div>
+                                            <div />
 
                                             {/* Right: hint + Submit */}
                                             <div className="flex items-center gap-2">
