@@ -2043,9 +2043,9 @@ export function LongTermAssetResponse({ onEditLoans }: { onEditLoans?: () => voi
         {onEditLoans && (
           <button
             onClick={onEditLoans}
-            className="shrink-0 ml-2 mb-px inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[7px] border border-dashed border-border text-[11px] font-medium text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
+            className="shrink-0 ml-2 mb-px inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[7px] border border-border bg-background text-[11px] font-medium text-foreground hover:bg-muted/60 transition-colors"
           >
-            <Plus className="w-3 h-3" /> Add more loans
+            <Plus className="w-3 h-3" /> Add/Edit Loans
           </button>
         )}
       </div>
