@@ -1966,7 +1966,7 @@ const TABS = [
 
 type TabId = typeof TABS[number]["id"];
 
-export function LongTermAssetResponse() {
+export function LongTermAssetResponse({ onEditLoans }: { onEditLoans?: () => void } = {}) {
   const { loans, covenants, amortization, continuity, jes, reconciliation, settings } = useStore(s => ({
     loans:          s.loans.filter(l => l.status === "Active"),
     covenants:      s.covenants,
@@ -2021,24 +2021,33 @@ export function LongTermAssetResponse() {
 
 
       {/* Tab bar */}
-      <div className="flex items-center gap-0 border-b border-border -mx-0 overflow-x-auto">
-        {TABS.map(({ id, label }) => {
-          const isActive = activeTab === id;
-          const hasBadge = id === "covenants" && covenantAlert > 0;
-          return (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-1 px-3 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap shrink-0 ${
-                isActive
-                  ? "border-primary text-primary bg-primary/5"
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
-              }`}
-            >
-              {label}
-            </button>
-          );
-        })}
+      <div className="flex items-center border-b border-border -mx-0">
+        <div className="flex items-center gap-0 overflow-x-auto flex-1 min-w-0">
+          {TABS.map(({ id, label }) => {
+            const isActive = activeTab === id;
+            return (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={`flex items-center gap-1 px-3 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap shrink-0 ${
+                  isActive
+                    ? "border-primary text-primary bg-primary/5"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        {onEditLoans && (
+          <button
+            onClick={onEditLoans}
+            className="shrink-0 ml-2 mb-px inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[7px] border border-dashed border-border text-[11px] font-medium text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
+          >
+            <Plus className="w-3 h-3" /> Add more loans
+          </button>
+        )}
       </div>
 
       {/* Tab content */}

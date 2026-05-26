@@ -2791,54 +2791,11 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                           {/* ── Review table ── */}
                                           {ltReviewRows.length > 0 && (
                                             <div className="space-y-2">
-                                              {/* AI Extraction banner — shown when debt-schedule files are present */}
-                                              {ltDebtUploadFiles.some(f => (f.userKind ?? f.kind) === "debt-schedule") && (() => {
-                                                const dsCount = ltDebtUploadFiles.filter(f => (f.userKind ?? f.kind) === "debt-schedule").length;
-                                                return (
-                                                  <div className="rounded-[8px] border border-violet-200 bg-violet-50/50 p-3 space-y-2">
-                                                    <div className="flex items-center gap-2">
-                                                      <div className="w-5 h-5 rounded-full bg-violet-500 flex items-center justify-center shrink-0">
-                                                        <Sparkles className="w-3 h-3 text-white" />
-                                                      </div>
-                                                      <span className="text-[11px] font-semibold text-violet-800">AI Extraction Complete</span>
-                                                      <span className="ml-auto text-[10px] text-violet-600 font-medium bg-violet-100 border border-violet-200 rounded-full px-2 py-0.5">
-                                                        {dsCount} document{dsCount !== 1 ? "s" : ""} scanned
-                                                      </span>
-                                                    </div>
-                                                    <div className="grid grid-cols-2 gap-x-6 gap-y-1 pl-7">
-                                                      {([
-                                                        { label: "Interest rate",   value: "4.000% fixed",        ok: true  },
-                                                        { label: "Monthly payment", value: "$4,875.49 blended P&I", ok: true  },
-                                                        { label: "Start date",      value: "Oct 1, 2024",         ok: true  },
-                                                        { label: "Maturity date",   value: "Sep 30, 2032",        ok: true  },
-                                                        { label: "Opening balance", value: "$400,000 per note",   ok: true  },
-                                                        { label: "Compounding",     value: "Monthly",             ok: true  },
-                                                        { label: "Lender name",     value: "Not found — fill in", ok: false },
-                                                        { label: "Collateral",      value: "Not found — fill in", ok: false },
-                                                      ] as { label: string; value: string; ok: boolean }[]).map(item => (
-                                                        <div key={item.label} className="flex items-center gap-1.5 text-[10px]">
-                                                          {item.ok
-                                                            ? <CheckCircle2 className="w-2.5 h-2.5 text-green-500 shrink-0" />
-                                                            : <AlertTriangle className="w-2.5 h-2.5 text-amber-500 shrink-0" />}
-                                                          <span className="text-muted-foreground">{item.label}:</span>
-                                                          <span className={item.ok ? "text-foreground font-medium" : "text-amber-700 font-medium"}>{item.value}</span>
-                                                        </div>
-                                                      ))}
-                                                    </div>
-                                                  </div>
-                                                );
-                                              })()}
-
                                               {/* Header bar */}
                                               <div className="flex items-center justify-between">
                                                 <span className="text-[11px] font-semibold text-foreground">
                                                   {ltReviewRows.length} loan{ltReviewRows.length !== 1 ? "s" : ""} extracted — review and complete before submitting
                                                 </span>
-                                                {missingCount === 0 && (
-                                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">
-                                                    <CheckCircle2 className="w-2.5 h-2.5" /> All complete
-                                                  </span>
-                                                )}
                                               </div>
 
                                               {/* Scrollable review table */}
@@ -3488,7 +3445,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                   </span>
                                 </div>
                               ) : (
-                                <LongTermAssetResponse />
+                                <LongTermAssetResponse onEditLoans={() => { setLtDebtGenerated(false); setLtDebtPhase("upload-prompt"); }} />
                               )}
                             </div>
                           </div>
@@ -3511,7 +3468,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                               <LukaIcon size={16} />
                             </div>
                             <div className="flex-1 pt-1.5 min-w-0 overflow-x-auto">
-                              <LongTermAssetResponse />
+                              <LongTermAssetResponse onEditLoans={() => { setLtDebtGenerated(false); setLtDebtPhase("upload-prompt"); }} />
                               {followUpTurns.length === 0 && !addMoreLoansActive && (
                                 <div className="mt-4 space-y-2">
                                   <p className="text-xs text-muted-foreground font-medium">What would you like to explore next?</p>
@@ -3531,14 +3488,6 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                         {chip}
                                       </button>
                                     ))}
-                                  </div>
-                                  <div className="pt-1 border-t border-border/40">
-                                    <button
-                                      onClick={() => { setAddMoreLtFiles([]); setAddMoreLtRows([]); setAddMoreProcessedIds(new Set()); setAddMoreDone(false); setAddMoreLoansActive(true); }}
-                                      className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-dashed border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
-                                    >
-                                      <Plus className="w-3.5 h-3.5" /> Add more loans
-                                    </button>
                                   </div>
                                 </div>
                               )}
@@ -3689,7 +3638,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                       <CheckCircle2 className="inline w-4 h-4 text-green-600 mr-1" />
                                       <strong>{addMoreLtRows.length} loan{addMoreLtRows.length !== 1 ? "s" : ""}</strong> added — here's the updated workpaper:
                                     </p>
-                                    <LongTermAssetResponse />
+                                    <LongTermAssetResponse onEditLoans={() => { setLtDebtGenerated(false); setLtDebtPhase("upload-prompt"); }} />
                                   </>
                                 )}
                               </div>
