@@ -1959,7 +1959,7 @@ const TABS = [
   { id: "loans",        label: "Loans",        Icon: Building2  },
   { id: "continuity",   label: "Continuity",   Icon: Layers     },
   { id: "amortization", label: "Amortization", Icon: BarChart2  },
-  { id: "covenants",    label: "Covenants",    Icon: ShieldCheck},
+  // { id: "covenants", label: "Covenants", Icon: ShieldCheck }, // hidden — removed from scope (2026-05-26)
   { id: "ajes",         label: "AJEs",         Icon: Receipt    },
   { id: "notes",        label: "Notes",        Icon: BookOpen   },
 ] as const;
@@ -2055,7 +2055,7 @@ export function LongTermAssetResponse({ onEditLoans }: { onEditLoans?: () => voi
         {activeTab === "loans"        && <LoansTab loans={loans} />}
         {activeTab === "continuity"   && <ContinuityTabPanel loans={loans} continuity={continuity} />}
         {activeTab === "amortization" && <AmortizationTabPanel loans={loans} amortization={amortization} />}
-        {activeTab === "covenants"    && <CovenantsTabPanel loans={loans} covenants={covenants} />}
+        {/* Covenants tab hidden — removed from scope 2026-05-26 */}
         {activeTab === "ajes"         && <AJEsTabPanel jes={jes} loans={loans} />}
         {activeTab === "notes"        && <NotesTabPanel loans={loans} continuity={continuity} reconciliation={reconciliation} settings={settings} />}
       </div>
