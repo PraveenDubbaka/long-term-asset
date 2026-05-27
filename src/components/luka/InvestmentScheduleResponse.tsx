@@ -10,7 +10,7 @@ import {
 import { sources as baseSources, priorYearLots, currentYearTransactions } from "@/lib/luka/mockData";
 import type { Source, Transaction, PriorYearLot } from "@/lib/luka/types";
 import { defaultTbAccount } from "@/lib/luka/coa";
-import { Pencil, Trash2, Plus, Check, X, CheckCircle2, AlertTriangle, ChevronDown, ChevronRight, Send, RotateCcw, FileDown } from "lucide-react";
+import { Pencil, Trash2, Plus, Check, X, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, ChevronRight, Send, RotateCcw, FileDown } from "lucide-react";
 import { CHART_OF_ACCOUNTS } from "@/lib/luka/coa";
 
 // ─── LocalInvJE type (inline, not imported from page) ─────────────────────────
@@ -1268,11 +1268,6 @@ function AJEsPanel({ ajes, ajeQueue, clearAjeQueue }: {
 
   return (
     <div className="space-y-3">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-foreground">Adjusting Journal Entries</span>
-      </div>
-
 
       {/* Filter dropdown */}
       <div className="flex items-center gap-2">
@@ -1283,148 +1278,120 @@ function AJEsPanel({ ajes, ajeQueue, clearAjeQueue }: {
             onChange={e => setFilterStatus(e.target.value as typeof filterStatus)}
             className="h-7 pl-2.5 pr-7 text-[11px] font-medium border border-border rounded-[7px] bg-background text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 hover:border-primary/40 transition-colors"
           >
-            <option value="All">All</option>
-            <option value="Draft">Draft</option>
-            <option value="Approved">Approved</option>
-            <option value="Posted">Posted</option>
+            <option value="All">All ({active.length})</option>
+            <option value="Draft">Draft ({draftCnt})</option>
+            <option value="Posted">Posted ({postedCnt})</option>
             <option value="Deleted">Deleted ({deleted.length})</option>
           </select>
           <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
         </div>
       </div>
 
-      {/* Add card */}
-      {addOpen && (
-        <AddJECard
-          onSave={je => { setLocalJEs(prev => [...prev, je]); setExpandedIds(prev => new Set([...prev, je._id])); setAddOpen(false); }}
-          onCancel={() => setAddOpen(false)}
-        />
-      )}
-
-      {/* JE Cards */}
+      {/* JE list */}
       <div className="space-y-2">
         {filtered.map(je => {
           const isExpanded = expandedIds.has(je._id);
-          const cfg = JE_STATUS_CFG[je.status];
+          const statusCls =
+            je.status === "Posted" ? "bg-green-50 text-green-700 border-green-200" :
+            "bg-muted text-muted-foreground border-border";
+
           return (
             <div key={je._id} className={`rounded-[8px] border border-border overflow-hidden ${je.deleted ? "opacity-60" : ""}`}>
-              {/* Card header */}
-              <div
-                className="flex items-center gap-3 px-4 py-3 bg-card hover:bg-muted/30 cursor-pointer transition-colors"
+              {/* Header */}
+              <button
                 onClick={() => toggleExpand(je._id)}
+                className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-muted/30 transition-colors text-left"
               >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                    <span className="text-[11px] font-mono font-semibold text-foreground">{je.ref.toUpperCase()}</span>
-                    <span className="inline-flex px-1.5 py-0.5 rounded-full text-[10px] font-medium border border-border bg-muted text-foreground">{je.type}</span>
-                    <span className={`inline-flex px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${
-                      je.confidence === "High" ? "bg-green-50 text-green-700 border-green-200" :
-                      je.confidence === "Medium" ? "bg-blue-50 text-blue-700 border-blue-200" :
-                      "bg-red-50 text-red-700 border-red-200"
-                    }`}>{je.confidence}</span>
-                  </div>
-                  <p className="text-xs font-medium text-foreground truncate">{je.description}</p>
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">{je.ref.toUpperCase()}</span>
+                  <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold text-foreground shrink-0">{je.type}</span>
+                  <span className="text-[10px] text-muted-foreground truncate">{je.description}</span>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs font-semibold tabular-nums text-foreground">{fmt2(je.amount)}</span>
-                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${cfg.cls}`}>{cfg.label}</span>
-                  {isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
+                <div className="flex items-center gap-2 shrink-0 ml-2">
+                  <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${statusCls}`}>
+                    {je.status === "Posted" && <CheckCircle2 className="h-2.5 w-2.5" />}
+                    {je.status}
+                  </span>
+                  {isExpanded ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
                 </div>
-              </div>
+              </button>
 
               {/* Expanded body */}
               {isExpanded && (
                 <div className="border-t border-border">
-                  {/* DR/CR lines table */}
+                  {/* Lines table */}
                   <table className="w-full text-[11px] border-collapse">
                     <thead>
-                      <tr className="bg-muted/40 border-b border-border">
-                        <th className="py-2 px-3 text-left text-[9px] font-semibold text-muted-foreground uppercase tracking-wider w-36">Acc No.</th>
-                        <th className="py-2 px-3 text-left text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Description</th>
-                        <th className="py-2 px-3 text-right text-[9px] font-semibold text-muted-foreground uppercase tracking-wider w-28">Debit</th>
-                        <th className="py-2 px-3 text-right text-[9px] font-semibold text-muted-foreground uppercase tracking-wider w-28">Credit</th>
+                      <tr className="border-b border-border bg-muted/50">
+                        <th className="py-2 px-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-left whitespace-nowrap">Acc No.</th>
+                        <th className="py-2 px-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-left">Description</th>
+                        <th className="py-2 px-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-right">Debit</th>
+                        <th className="py-2 px-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-right">Credit</th>
                       </tr>
                     </thead>
                     <tbody>
                       {/* DR line */}
-                      <tr className="border-b border-border/40 hover:bg-muted/20">
-                        <td className="py-2 px-3"><JEAccountSelect value={je.drAccount} disabled={je.deleted} onChange={v => updateJE(je._id, { drAccount: v })} /></td>
-                        <td className="py-2 px-3"><input className={IC} value={je.drDescription} disabled={je.deleted} onChange={e => updateJE(je._id, { drDescription: e.target.value })} placeholder="Line description…" /></td>
-                        <td className="py-2 px-3">
+                      <tr className="border-b border-border hover:bg-muted/20">
+                        <td className="py-1.5 px-3 min-w-[100px] w-[130px]"><JEAccountSelect value={je.drAccount} disabled={je.deleted} onChange={v => updateJE(je._id, { drAccount: v })} /></td>
+                        <td className="py-1.5 px-3"><input className={IC} value={je.drDescription} disabled={je.deleted} onChange={e => updateJE(je._id, { drDescription: e.target.value })} placeholder="Line description…" /></td>
+                        <td className="py-1.5 px-3 w-24">
                           <input type="number" step="0.01" className={`${IC} text-right`} value={je.amount || ""} disabled={je.deleted}
                             onChange={e => updateJE(je._id, { amount: parseFloat(e.target.value) || 0 })} placeholder="0.00" />
                         </td>
-                        <td className="py-2 px-3"><div className="h-7 flex items-center justify-end px-2 rounded-md border border-border/40 bg-muted/30 text-[11px] text-muted-foreground">0.00</div></td>
+                        <td className="py-1.5 px-3 w-24"><div className="h-7 flex items-center justify-end px-2 rounded-[6px] border border-border/40 bg-muted/30 text-[11px] text-muted-foreground">0.00</div></td>
                       </tr>
                       {/* CR line */}
                       <tr className="hover:bg-muted/20">
-                        <td className="py-2 px-3"><JEAccountSelect value={je.crAccount} disabled={je.deleted} onChange={v => updateJE(je._id, { crAccount: v })} /></td>
-                        <td className="py-2 px-3"><input className={IC} value={je.crDescription} disabled={je.deleted} onChange={e => updateJE(je._id, { crDescription: e.target.value })} placeholder="Line description…" /></td>
-                        <td className="py-2 px-3"><div className="h-7 flex items-center justify-end px-2 rounded-md border border-border/40 bg-muted/30 text-[11px] text-muted-foreground">0.00</div></td>
-                        <td className="py-2 px-3"><div className="h-7 flex items-center justify-end px-2 rounded-md border border-[#dcdfe4] bg-muted/20 text-[11px] tabular-nums text-foreground">{fmt2(je.amount)}</div></td>
+                        <td className="py-1.5 px-3"><JEAccountSelect value={je.crAccount} disabled={je.deleted} onChange={v => updateJE(je._id, { crAccount: v })} /></td>
+                        <td className="py-1.5 px-3"><input className={IC} value={je.crDescription} disabled={je.deleted} onChange={e => updateJE(je._id, { crDescription: e.target.value })} placeholder="Line description…" /></td>
+                        <td className="py-1.5 px-3"><div className="h-7 flex items-center justify-end px-2 rounded-[6px] border border-border/40 bg-muted/30 text-[11px] text-muted-foreground">0.00</div></td>
+                        <td className="py-1.5 px-3"><div className="h-7 flex items-center justify-end px-2 rounded-[6px] border border-[#dcdfe4] bg-muted/20 text-[11px] tabular-nums text-foreground">{fmt2(je.amount)}</div></td>
                       </tr>
                     </tbody>
                     <tfoot>
-                      <tr className="border-t border-border bg-muted/30 font-semibold text-[10px]">
+                      <tr className="border-t border-border bg-muted/30 font-semibold text-[11px]">
                         <td className="py-2 px-3 text-foreground" colSpan={2}>Total</td>
-                        <td className="py-2 px-3 text-right tabular-nums text-foreground">{fmt2(je.amount)}</td>
-                        <td className="py-2 px-3 text-right tabular-nums text-foreground">{fmt2(je.amount)}</td>
+                        <td className="py-2 px-3 text-right tabular-nums">{fmt2(je.amount)}</td>
+                        <td className="py-2 px-3 text-right tabular-nums">{fmt2(je.amount)}</td>
                       </tr>
                     </tfoot>
                   </table>
 
                   {/* Notes */}
-                  <div className="px-4 py-3 border-t border-border">
-                    <label className="block text-[9px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Notes</label>
-                    <textarea
-                      rows={2}
-                      className="w-full text-xs px-2 py-1.5 border border-border rounded-md bg-background resize-none focus:outline-none"
+                  <div className="px-3 py-2.5 border-t border-border bg-background">
+                    <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Notes</label>
+                    <textarea rows={2} className="w-full text-[11px] px-2.5 py-2 rounded-[6px] border border-[#dcdfe4] bg-background text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary/40"
                       placeholder="Add a note for this entry…"
                       value={je.notes}
                       disabled={je.deleted}
-                      onChange={e => updateJE(je._id, { notes: e.target.value })}
-                    />
+                      onChange={e => updateJE(je._id, { notes: e.target.value })} />
                   </div>
 
-                  {/* Action footer */}
-                  <div className="flex items-center gap-2 px-4 py-2.5 border-t border-border bg-muted/20">
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 px-3 py-2.5 border-t border-border bg-muted/20">
                     {je.deleted ? (
                       <>
-                        <span className="text-[11px] text-muted-foreground italic flex-1">
-                          Deleted{je.deletedAt ? ` on ${fmtDate(je.deletedAt.slice(0, 10))}` : ""}
-                        </span>
+                        <span className="text-[11px] text-muted-foreground italic flex-1">Deleted</span>
                         <button onClick={() => restoreJE(je._id)}
-                          className="inline-flex items-center gap-1 h-7 px-2.5 text-[11px] border border-border rounded-[7px] hover:bg-muted transition-colors">
-                          <RotateCcw className="w-3 h-3" />Restore
+                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] border border-border bg-background text-[11px] font-medium text-foreground hover:bg-muted transition-colors">
+                          <RotateCcw className="h-3 w-3" /> Restore
                         </button>
                         <button onClick={() => purgeJE(je._id)}
-                          className="inline-flex items-center gap-1 h-7 px-2.5 text-[11px] border border-red-200 text-red-600 rounded-[7px] hover:bg-red-50 transition-colors">
-                          <Trash2 className="w-3 h-3" />Delete Permanently
+                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] border border-red-200 bg-background text-[11px] font-medium text-red-500 hover:text-red-700 hover:border-red-300 transition-colors">
+                          <Trash2 className="h-3 w-3" /> Delete Permanently
                         </button>
                       </>
                     ) : (
                       <>
-                        {je.status === "Draft" && (
-                          <button onClick={() => updateJE(je._id, { status: "Approved" })}
-                            className="inline-flex items-center gap-1 h-7 px-2.5 text-[11px] bg-emerald-600 text-white rounded-[7px] hover:bg-emerald-700 transition-colors">
-                            <Check className="w-3 h-3" />Approve
-                          </button>
-                        )}
-                        {je.status === "Approved" && (
+                        {je.status !== "Posted" && (
                           <button onClick={() => updateJE(je._id, { status: "Posted" })}
-                            className="inline-flex items-center gap-1 h-7 px-2.5 text-[11px] bg-primary text-primary-foreground rounded-[7px] hover:bg-primary/90 transition-colors">
-                            <Send className="w-3 h-3" />Post
-                          </button>
-                        )}
-                        {(je.status === "Draft" || je.status === "Approved") && (
-                          <button onClick={() => updateJE(je._id, { status: "Draft" })}
-                            className="inline-flex items-center gap-1 h-7 px-2.5 text-[11px] border border-border rounded-[7px] hover:bg-muted transition-colors text-muted-foreground">
-                            Revert to Draft
+                            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors">
+                            <Send className="h-3 w-3" /> Post
                           </button>
                         )}
                         <button onClick={() => softDelete(je._id)}
-                          className="inline-flex items-center gap-1 h-7 px-2.5 text-[11px] border border-red-200 text-red-600 rounded-[7px] hover:bg-red-50 transition-colors ml-auto">
-                          <Trash2 className="w-3 h-3" />Delete
+                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] border border-red-200 bg-background text-[11px] font-medium text-red-500 hover:text-red-700 hover:border-red-300 transition-colors">
+                          <Trash2 className="h-3 w-3" /> Delete
                         </button>
                       </>
                     )}
@@ -1434,11 +1401,8 @@ function AJEsPanel({ ajes, ajeQueue, clearAjeQueue }: {
             </div>
           );
         })}
-
         {filtered.length === 0 && (
-          <div className="text-center py-10 text-[11px] text-muted-foreground">
-            {filterStatus === "Deleted" ? "No deleted entries." : filterStatus === "All" ? "No AJEs — publish transactions to generate entries." : `No ${filterStatus} entries.`}
-          </div>
+          <p className="text-center py-8 text-[11px] text-muted-foreground">No journal entries match the filter</p>
         )}
       </div>
     </div>
