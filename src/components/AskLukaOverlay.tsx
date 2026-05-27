@@ -3120,23 +3120,6 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                               <div className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full bg-primary/10 blur-3xl" />
                                               <div className="pointer-events-none absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-violet-400/10 blur-3xl" />
 
-                                              {/* Connected banner */}
-                                              {invSchedSrcLabel?.startsWith("Plaid") && (
-                                                <div className="relative z-10 mx-4 mt-3 flex items-center gap-2.5 px-3 py-2 rounded-[10px] border border-green-200 bg-green-50">
-                                                  <Check className="w-3.5 h-3.5 text-green-600 shrink-0" />
-                                                  <div className="flex-1 min-w-0">
-                                                    <p className="text-[11px] font-semibold text-green-800 truncate">Connected — {invSchedSrcLabel.replace("Plaid — ","")}</p>
-                                                    <p className="text-[10px] text-green-700">Transactions synced · read-only access</p>
-                                                  </div>
-                                                  <button
-                                                    onClick={() => { setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); resetInvPlaid(); }}
-                                                    className="inline-flex items-center gap-1 h-6 px-2 rounded-[6px] border border-green-300 bg-white text-[10px] font-medium text-red-500 hover:border-red-300 hover:bg-red-50 transition-colors shrink-0"
-                                                  >
-                                                    <X className="w-2.5 h-2.5" /> Disconnect
-                                                  </button>
-                                                </div>
-                                              )}
-
                                               <div className="relative z-10 px-5 pt-4 pb-3 text-center space-y-0.5">
                                                 <p className="text-xs font-semibold text-foreground">How would you like to add investments?</p>
                                                 <p className="text-[10px] text-muted-foreground">Luka will auto-extract and fill all fields from your brokerage documents</p>
@@ -3177,8 +3160,46 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                   <div className="w-px flex-1 bg-gradient-to-b from-transparent via-border to-transparent" />
                                                 </div>
 
-                                                {/* Plaid card — or inline Plaid flow when open */}
-                                                {invPlaidOpen ? (
+                                                {/* Plaid card — connected state — or inline Plaid flow */}
+                                                {invSchedSrcLabel?.startsWith("Plaid") ? (
+                                                  /* ── Connected state ── */
+                                                  <div className="flex-1 flex flex-col rounded-[10px] border border-green-200 bg-green-50 overflow-hidden">
+                                                    {/* Top: institution + check */}
+                                                    <div className="flex-1 flex flex-col items-center justify-center gap-2 px-4 py-4 text-center">
+                                                      <div className="relative">
+                                                        <div className="absolute inset-0 rounded-full bg-green-300/30 blur-md" />
+                                                        <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-sm">
+                                                          <Check className="w-4 h-4 text-white" />
+                                                        </div>
+                                                      </div>
+                                                      <div>
+                                                        <p className="text-[11px] font-semibold text-green-800">Connected</p>
+                                                        <p className="text-[10px] font-medium text-green-700 mt-0.5">{invSchedSrcLabel.replace("Plaid — ","")}</p>
+                                                        <p className="text-[10px] text-green-600 mt-0.5">Transactions synced · read-only</p>
+                                                      </div>
+                                                    </div>
+                                                    {/* Bottom: action buttons */}
+                                                    <div className="border-t border-green-200 px-3 py-2 flex items-center justify-center gap-2">
+                                                      <button
+                                                        onClick={() => {
+                                                          setInvSchedSrcLabel(null);
+                                                          setInvReviewRows([]);
+                                                          setInvMissingMonthsPrompt(null);
+                                                          resetInvPlaid();
+                                                        }}
+                                                        className="inline-flex items-center gap-1 h-6 px-2.5 rounded-[6px] border border-green-300 bg-white text-[10px] font-medium text-red-500 hover:border-red-300 hover:bg-red-50 transition-colors"
+                                                      >
+                                                        <X className="w-2.5 h-2.5" /> Disconnect
+                                                      </button>
+                                                      <button
+                                                        onClick={() => setInvReviewRows(INV_MOCK_ROWS)}
+                                                        className="inline-flex items-center gap-1 h-6 px-2.5 rounded-[6px] border border-green-300 bg-white text-[10px] font-medium text-green-700 hover:border-green-400 hover:bg-green-100 transition-colors"
+                                                      >
+                                                        <RefreshCw className="w-2.5 h-2.5" /> Refresh
+                                                      </button>
+                                                    </div>
+                                                  </div>
+                                                ) : invPlaidOpen ? (
                                                   /* ── Inline Plaid flow ── */
                                                   <div className="flex-1 flex flex-col rounded-[10px] border border-violet-300/50 bg-background overflow-hidden min-h-[200px]">
                                                     {/* Header */}
