@@ -1282,23 +1282,23 @@ function AJEsPanel({ ajes, ajeQueue, clearAjeQueue }: {
       </div>
 
 
-      {/* Filter pills */}
-      <div className="flex items-center gap-1 flex-wrap">
-        {(["All","Draft","Approved","Posted"] as const).map(s => (
-          <button
-            key={s}
-            onClick={() => setFilterStatus(s)}
-            className={`px-3 py-1 text-[11px] rounded-full font-medium transition-colors ${filterStatus === s ? "bg-primary text-primary-foreground" : "bg-muted text-foreground hover:bg-muted/80"}`}
+      {/* Filter dropdown */}
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] text-muted-foreground shrink-0">View:</span>
+        <div className="relative">
+          <select
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value as typeof filterStatus)}
+            className="h-7 pl-2.5 pr-7 text-[11px] font-medium border border-border rounded-[7px] bg-background text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 hover:border-primary/40 transition-colors"
           >
-            {s}
-          </button>
-        ))}
-        <button
-          onClick={() => setFilterStatus("Deleted")}
-          className={`flex items-center gap-1 px-3 py-1 text-[11px] rounded-full font-medium transition-colors ${filterStatus === "Deleted" ? "bg-red-500 text-white" : "bg-muted text-foreground hover:bg-muted/80"}`}
-        >
-          <Trash2 className="w-2.5 h-2.5" />Deleted{deleted.length > 0 && <span className="ml-0.5 text-[9px]">({deleted.length})</span>}
-        </button>
+            <option value="All">All</option>
+            <option value="Draft">Draft</option>
+            <option value="Approved">Approved</option>
+            <option value="Posted">Posted</option>
+            <option value="Deleted">Deleted ({deleted.length})</option>
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+        </div>
       </div>
 
       {/* Add card */}
