@@ -2856,7 +2856,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                   <button
                                                     className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-semibold bg-background text-foreground shadow-sm border border-border/60 transition-all"
                                                   >
-                                                    <Pencil className="w-3 h-3" /> Edit
+                                                    <Pencil className="w-3 h-3" /> Add/Edit
                                                   </button>
                                                 </div>
                                               </div>

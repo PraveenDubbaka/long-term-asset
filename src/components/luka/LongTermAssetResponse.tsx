@@ -2051,7 +2051,7 @@ export function LongTermAssetResponse({ onEditLoans }: { onEditLoans?: () => voi
               onClick={onEditLoans}
               className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-medium text-muted-foreground hover:text-foreground transition-all"
             >
-              <Pencil className="w-3 h-3" /> Edit
+              <Pencil className="w-3 h-3" /> Add/Edit
             </button>
           </div>
         )}
