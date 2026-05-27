@@ -3443,6 +3443,65 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                     <p className="text-sm text-foreground leading-relaxed">
                                       Review and edit the extracted transactions below, then click <strong>Submit</strong> to generate the Investment Schedule.
                                     </p>
+
+                                    {/* ── Source section ── */}
+                                    {invSchedSrcLabel?.startsWith("Plaid") ? (
+                                      /* Connected via Plaid */
+                                      <div className="flex items-center gap-3 px-3 py-2.5 rounded-[10px] border border-green-200 bg-green-50">
+                                        <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                                          <Check className="w-3.5 h-3.5 text-green-600" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-[11px] font-semibold text-green-800">Connected — {invSchedSrcLabel?.replace("Plaid — ","")}</p>
+                                          <p className="text-[10px] text-green-700">Transactions synced · read-only access</p>
+                                        </div>
+                                        <button
+                                          onClick={() => { setInvSchedPhase("upload-prompt"); setInvSchedSrcLabel(null); setInvReviewRows([]); resetInvPlaid(); }}
+                                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] border border-green-300 bg-white text-[11px] font-medium text-red-500 hover:border-red-300 hover:bg-red-50 transition-colors shrink-0"
+                                        >
+                                          <X className="w-3 h-3" /> Disconnect
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      /* Uploaded files */
+                                      <div className="space-y-2">
+                                        <div className="flex flex-wrap gap-2">
+                                          {invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized").map(f => (
+                                            <div key={f.id} className="inline-flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-[10px] border border-border bg-background text-xs max-w-[220px]">
+                                              <div className="w-7 h-7 rounded-[6px] flex items-center justify-center shrink-0 bg-primary/10">
+                                                {f.ext === "pdf" ? <FileText className="h-3.5 w-3.5 text-primary" /> : <FileSpreadsheet className="h-3.5 w-3.5 text-primary" />}
+                                              </div>
+                                              <span className="flex-1 min-w-0 truncate font-medium text-foreground">{f.name}</span>
+                                              <button onClick={() => setInvUploadFiles(prev => prev.filter(x => x.id !== f.id))} className="shrink-0 text-red-400 hover:text-red-600 transition-colors">
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                              </button>
+                                            </div>
+                                          ))}
+                                          {/* Add more */}
+                                          <button
+                                            onClick={() => {
+                                              const inp = document.createElement("input");
+                                              inp.type = "file"; inp.accept = ".pdf,.xlsx,.xls,.csv,.zip"; inp.multiple = true;
+                                              inp.onchange = e => {
+                                                const files = (e.target as HTMLInputElement).files;
+                                                if (!files) return;
+                                                const classified = Array.from(files).map(classifyInvFile);
+                                                setInvUploadFiles(prev => {
+                                                  const existing = new Set(prev.map(f => f.name));
+                                                  return [...prev, ...classified.filter(f => !existing.has(f.name))].slice(0, 15);
+                                                });
+                                              };
+                                              inp.click();
+                                            }}
+                                            className="inline-flex items-center gap-1.5 pl-2 pr-3 py-1.5 rounded-[10px] border border-dashed border-border bg-background hover:bg-muted/40 text-xs font-medium text-muted-foreground transition-colors"
+                                          >
+                                            <div className="w-7 h-7 rounded-[6px] flex items-center justify-center bg-muted/50"><Plus className="h-3.5 w-3.5" /></div>
+                                            Add more
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+
                                     {invReviewRows.length > 0 && (
                                       <div className="space-y-2">
                                         {/* Header bar with toggle */}
