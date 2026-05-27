@@ -1281,30 +1281,6 @@ function AJEsPanel({ ajes, ajeQueue, clearAjeQueue }: {
         </div>
       </div>
 
-      {/* KPI stat tiles */}
-      <div className="grid grid-cols-3 gap-2">
-        {[
-          { label: "Draft",    count: draftCnt,    sub: "Require review",  cls: "border-amber-200 bg-amber-50"   },
-          { label: "Approved", count: approvedCnt, sub: "Ready to post",   cls: "border-blue-200 bg-blue-50"     },
-          { label: "Posted",   count: postedCnt,   sub: "Complete",        cls: "border-green-200 bg-green-50"   },
-        ].map(s => (
-          <div key={s.label} className={`rounded-[8px] border ${s.cls} px-3 py-2.5 flex items-center gap-3`}>
-            <span className="text-2xl font-bold text-foreground">{s.count}</span>
-            <div>
-              <div className="text-[11px] font-semibold text-foreground">{s.label}</div>
-              <div className="text-[10px] text-muted-foreground">{s.sub}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Warning banner */}
-      {draftCnt > 0 && (
-        <div className="flex items-start gap-2 px-3 py-2 rounded-[8px] border border-amber-200 bg-amber-50 text-amber-800 text-[11px]">
-          <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-          <span><strong>{draftCnt} AJE{draftCnt > 1 ? "s" : ""}</strong> require review. Approve each entry before posting.</span>
-        </div>
-      )}
 
       {/* Filter pills */}
       <div className="flex items-center gap-1 flex-wrap">
