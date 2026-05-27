@@ -667,6 +667,8 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
   // ── Investment — upload flow ──
   const [invUploadOpen, setInvUploadOpen] = useState(false);
   const [invUploadFiles, setInvUploadFiles] = useState<InvUploadFile[]>([]);
+  // null = no prompt; string[] = months missing (shown before review table)
+  const [invMissingMonthsPrompt, setInvMissingMonthsPrompt] = useState<string[]|null>(null);
   // ── Free-prompt follow-up turns (context-aware after lt-debt summary) ──
   const [followUpTurns, setFollowUpTurns] = useState<FollowUpTurn[]>([]);
   const [voiceOpen, setVoiceOpen] = useState(false);
@@ -1029,7 +1031,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
     setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
-    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]);
+    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null);
     setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
@@ -3282,8 +3284,12 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                             return [...prev, ...classified.filter(f => !existing.has(f.name))].slice(0, 15);
                                           });
                                           const valid = classified.filter(f => f.kind !== "unsupported" && f.kind !== "oversized" && f.kind !== "ambiguous");
-                                          if (valid.length > 0 && invReviewRows.length === 0) {
-                                            setInvReviewRows(INV_MOCK_ROWS);
+                                          if (valid.length > 0 && invMissingMonthsPrompt === null) {
+                                            // Mock: detect "missing" months based on file name containing just one month
+                                            const allMonths = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+                                            const covered = new Set(valid.flatMap(f => allMonths.filter(m => f.name.toLowerCase().includes(m.toLowerCase().slice(0,3)))));
+                                            const missing = allMonths.slice(0, 10).filter(m => !covered.has(m));
+                                            setInvMissingMonthsPrompt(missing.length >= 3 ? missing : []);
                                           }
                                         };
                                         const validFiles = invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
@@ -3304,7 +3310,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                     <p className="text-[10px] text-green-700">Transactions synced · read-only access</p>
                                                   </div>
                                                   <button
-                                                    onClick={() => { setInvSchedSrcLabel(null); setInvReviewRows([]); resetInvPlaid(); }}
+                                                    onClick={() => { setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); resetInvPlaid(); }}
                                                     className="inline-flex items-center gap-1 h-6 px-2 rounded-[6px] border border-green-300 bg-white text-[10px] font-medium text-red-500 hover:border-red-300 hover:bg-red-50 transition-colors shrink-0"
                                                   >
                                                     <X className="w-2.5 h-2.5" /> Disconnect
@@ -3414,6 +3420,43 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                               </div>
                                             )}
 
+                                            {/* ── Missing months prompt ── */}
+                                            {invMissingMonthsPrompt !== null && invMissingMonthsPrompt.length > 0 && invReviewRows.length === 0 && (
+                                              <div className="flex items-start gap-3">
+                                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shrink-0 mt-0.5">
+                                                  <Zap className="w-3.5 h-3.5 text-white" />
+                                                </div>
+                                                <div className="flex-1 space-y-3">
+                                                  <div className="rounded-[12px] border border-amber-200 bg-amber-50 px-4 py-3">
+                                                    <p className="text-xs text-amber-900 leading-relaxed">
+                                                      I've found the following months missing from the data you've uploaded:{" "}
+                                                      <strong>{invMissingMonthsPrompt.join(", ")}</strong>.
+                                                      Would you like me to create the schedule with the current data, or re-upload all files including the missing months?
+                                                    </p>
+                                                  </div>
+                                                  <div className="flex items-center gap-2">
+                                                    <button
+                                                      onClick={() => { setInvMissingMonthsPrompt([]); setInvReviewRows(INV_MOCK_ROWS); }}
+                                                      className="h-8 px-4 text-xs font-medium rounded-[8px] border border-primary text-primary bg-background hover:bg-primary/5 transition-colors"
+                                                    >
+                                                      Continue
+                                                    </button>
+                                                    <button
+                                                      onClick={() => {
+                                                        const inp = document.createElement("input");
+                                                        inp.type = "file"; inp.accept = ".pdf,.xlsx,.xls,.csv,.zip"; inp.multiple = true;
+                                                        inp.onchange = e => addInvFiles((e.target as HTMLInputElement).files);
+                                                        inp.click();
+                                                      }}
+                                                      className="h-8 px-4 text-xs font-semibold rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                                                    >
+                                                      Upload
+                                                    </button>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            )}
+
                                             {/* ── Review table ── */}
                                             {invReviewRows.length > 0 && (
                                               <div className="space-y-2">
@@ -3488,7 +3531,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                             )}
 
                                             {/* ── Bottom actions ── */}
-                                            {(invReviewRows.length > 0 || validFiles.length > 0) && (
+                                            {(invReviewRows.length > 0 || validFiles.length > 0) && !(invMissingMonthsPrompt !== null && invMissingMonthsPrompt.length > 0 && invReviewRows.length === 0) && (
                                               <div className="flex items-center justify-between gap-2 pt-1">
                                                 <button
                                                   onClick={() => setInvReviewRows(prev => [...prev, { id: `ir-new-${Date.now()}`, date: "", security: "", ticker: "", type: "Purchase", units: "", price: "", currency: "CAD", account: "", source: "" }])}
