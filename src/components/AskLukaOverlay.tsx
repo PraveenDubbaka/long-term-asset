@@ -3093,189 +3093,8 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                               <div className="space-y-3 py-0.5 max-w-full">
                                 {invSchedPhase !== "done" ? (
                                   <>
-                                    {/* ── PLAID MODAL (replaces gradient container while open) ── */}
-                                    {invPlaidOpen ? (
-                                      <div className="rounded-[12px] border border-border bg-background overflow-hidden">
-                                        {/* Header */}
-                                        <div className="px-4 pt-4 pb-3 border-b border-border flex items-center gap-2">
-                                          {invPlaidStep === 'login' && (
-                                            <button onClick={() => setInvPlaidStep('select')} className="text-muted-foreground hover:text-foreground">
-                                              <ChevronLeft className="w-4 h-4" />
-                                            </button>
-                                          )}
-                                          {invPlaidStep === 'login' && invPlaidInstitution ? (
-                                            <>
-                                              <div className="w-5 h-5 rounded flex-shrink-0 text-white text-[9px] font-bold flex items-center justify-center"
-                                                style={{ backgroundColor: invPlaidInstitution.color }}>
-                                                {invPlaidInstitution.abbr.slice(0, 2)}
-                                              </div>
-                                              <h3 className="text-sm font-semibold text-foreground flex-1 truncate">Sign in to {invPlaidInstitution.name}</h3>
-                                            </>
-                                          ) : invPlaidStep === 'verifying' ? (
-                                            <h3 className="text-sm font-semibold text-foreground flex-1">Connecting…</h3>
-                                          ) : invPlaidStep === 'success' ? (
-                                            <h3 className="text-sm font-semibold text-foreground flex-1">Authorize Access</h3>
-                                          ) : (
-                                            <>
-                                              <div className="w-5 h-5 rounded-md bg-[#1A1A1A] flex items-center justify-center flex-shrink-0">
-                                                <span className="text-white text-[9px] font-bold tracking-tight">p</span>
-                                              </div>
-                                              <h3 className="text-sm font-semibold text-foreground flex-1">Connect to Plaid</h3>
-                                            </>
-                                          )}
-                                          <button onClick={resetInvPlaid} className="ml-auto text-muted-foreground hover:text-foreground">
-                                            <X className="w-3.5 h-3.5" />
-                                          </button>
-                                        </div>
-
-                                        {/* Body */}
-                                        <div className="px-4 py-4">
-                                          {invPlaidStep === 'select' && (
-                                            <div className="space-y-3">
-                                              <div className="relative">
-                                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
-                                                <input
-                                                  className="w-full h-8 pl-7 pr-3 text-xs rounded-[8px] border border-border bg-muted/20 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
-                                                  placeholder="Search 12,000+ institutions…" value={invPlaidSearch}
-                                                  onChange={e => setInvPlaidSearch(e.target.value)} autoFocus />
-                                              </div>
-                                              <div className="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto pr-0.5">
-                                                {INV_PLAID_INSTITUTIONS
-                                                  .filter(i => !invPlaidSearch || i.name.toLowerCase().includes(invPlaidSearch.toLowerCase()))
-                                                  .map(inst => (
-                                                    <button key={inst.id}
-                                                      onClick={() => { setInvPlaidInstitution(inst); setInvPlaidStep('login'); }}
-                                                      className="flex items-center gap-2 px-2.5 py-2 rounded-[8px] border border-border hover:border-primary hover:bg-muted/40 transition-colors text-left">
-                                                      <div className="w-7 h-7 rounded-[6px] flex items-center justify-center flex-shrink-0 text-white text-[9px] font-bold"
-                                                        style={{ backgroundColor: inst.color }}>
-                                                        {inst.abbr.slice(0, 2)}
-                                                      </div>
-                                                      <span className="text-xs font-medium text-foreground leading-tight">{inst.name}</span>
-                                                    </button>
-                                                  ))}
-                                              </div>
-                                              <div className="flex items-center gap-1.5 justify-center pt-0.5">
-                                                <ShieldCheck className="w-3 h-3 text-muted-foreground" />
-                                                <span className="text-[10px] text-muted-foreground">256-bit encryption · read-only access</span>
-                                              </div>
-                                            </div>
-                                          )}
-
-                                          {invPlaidStep === 'login' && invPlaidInstitution && (
-                                            <div className="space-y-3">
-                                              <div className="h-0.5 rounded-full" style={{ backgroundColor: invPlaidInstitution.color }} />
-                                              <div className="space-y-2.5">
-                                                <div>
-                                                  <label className="block text-[11px] font-medium text-foreground mb-1">Username / Card Number</label>
-                                                  <input
-                                                    className="w-full h-8 px-2.5 text-xs rounded-[8px] border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
-                                                    placeholder="Enter username" value={invPlaidUsername}
-                                                    onChange={e => setInvPlaidUsername(e.target.value)} autoFocus />
-                                                </div>
-                                                <div>
-                                                  <label className="block text-[11px] font-medium text-foreground mb-1">Password</label>
-                                                  <div className="relative">
-                                                    <input
-                                                      className="w-full h-8 px-2.5 pr-8 text-xs rounded-[8px] border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
-                                                      type={invPlaidShowPwd ? 'text' : 'password'} placeholder="Enter password"
-                                                      value={invPlaidPassword} onChange={e => setInvPlaidPassword(e.target.value)}
-                                                      onKeyDown={e => { if (e.key === 'Enter') handleInvPlaidVerify(); }} />
-                                                    <button type="button" onClick={() => setInvPlaidShowPwd(p => !p)}
-                                                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                                                      {invPlaidShowPwd ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                                    </button>
-                                                  </div>
-                                                </div>
-                                              </div>
-                                              <p className="text-[10px] text-muted-foreground leading-relaxed flex items-start gap-1">
-                                                <ShieldCheck className="w-3 h-3 flex-shrink-0 mt-0.5" />
-                                                Your credentials are encrypted end-to-end and never stored. Plaid requests read-only access to transaction history only.
-                                              </p>
-                                            </div>
-                                          )}
-
-                                          {invPlaidStep === 'verifying' && (
-                                            <div className="flex flex-col items-center justify-center py-8 gap-4">
-                                              <div className="w-12 h-12 rounded-full border-[3px] border-primary/20 border-t-primary animate-spin" />
-                                              <div className="text-center">
-                                                <p className="text-xs font-semibold text-foreground">Verifying credentials…</p>
-                                                <p className="text-[10px] text-muted-foreground mt-0.5">Connecting to {invPlaidInstitution?.name}</p>
-                                              </div>
-                                            </div>
-                                          )}
-
-                                          {invPlaidStep === 'success' && invPlaidInstitution && (
-                                            <div className="space-y-3">
-                                              <div className="rounded-[10px] border border-green-200 bg-green-50 p-3 text-center">
-                                                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-1.5">
-                                                  <Check className="w-4 h-4 text-green-600" />
-                                                </div>
-                                                <p className="text-xs font-semibold text-green-800">{invPlaidInstitution.name}</p>
-                                                <p className="text-[10px] text-green-700 mt-0.5">2 accounts found · ready to link</p>
-                                              </div>
-                                              <div className="space-y-1.5">
-                                                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Select accounts to link</p>
-                                                {[
-                                                  { name: 'Investment Account',     acct: '···' + invPlaidInstitution.id.slice(0, 2).toUpperCase() + '01', ccy: 'CAD' },
-                                                  { name: 'USD Investment Account', acct: '···' + invPlaidInstitution.id.slice(0, 2).toUpperCase() + '02', ccy: 'USD' },
-                                                ].map(a => (
-                                                  <label key={a.acct} className="flex items-center gap-2.5 rounded-[8px] border border-border px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors">
-                                                    <input type="checkbox" defaultChecked className="rounded h-3 w-3 accent-primary" />
-                                                    <div>
-                                                      <div className="text-[11px] font-medium text-foreground">{a.name}</div>
-                                                      <div className="text-[10px] text-muted-foreground font-mono">{a.acct} · {a.ccy}</div>
-                                                    </div>
-                                                  </label>
-                                                ))}
-                                              </div>
-                                            </div>
-                                          )}
-                                        </div>
-
-                                        {/* Footer */}
-                                        <div className="px-4 pb-4 pt-3 flex justify-end gap-2 border-t border-border">
-                                          {invPlaidStep === 'select' && (
-                                            <button onClick={resetInvPlaid}
-                                              className="h-8 px-3 text-xs font-medium rounded-[8px] border border-border hover:bg-muted/40 transition-colors text-foreground">
-                                              Cancel
-                                            </button>
-                                          )}
-                                          {invPlaidStep === 'login' && (
-                                            <>
-                                              <button onClick={() => setInvPlaidStep('select')}
-                                                className="h-8 px-3 text-xs font-medium rounded-[8px] border border-border hover:bg-muted/40 transition-colors text-foreground">
-                                                Back
-                                              </button>
-                                              <button onClick={handleInvPlaidVerify}
-                                                className="h-8 px-4 text-xs font-medium rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-                                                Continue
-                                              </button>
-                                            </>
-                                          )}
-                                          {invPlaidStep === 'success' && (
-                                            <>
-                                              <button onClick={resetInvPlaid}
-                                                className="h-8 px-3 text-xs font-medium rounded-[8px] border border-border hover:bg-muted/40 transition-colors text-foreground">
-                                                Cancel
-                                              </button>
-                                              <button
-                                                onClick={() => {
-                                                  setInvSchedSrcLabel(`Plaid — ${invPlaidInstitution!.name}`);
-                                                  setInvReviewRows(INV_MOCK_ROWS);
-                                                  setInvSchedPhase("upload-prompt");
-                                                  resetInvPlaid();
-                                                }}
-                                                className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-                                                <ShieldCheck className="w-3 h-3" /> Allow Access
-                                              </button>
-                                            </>
-                                          )}
-                                        </div>
-                                      </div>
-
-                                    ) : (
-                                      /* ── GRADIENT CONTAINER + CHIPS + REVIEW TABLE ── */
-                                      (() => {
+                                    {/* ── GRADIENT CONTAINER + CHIPS + REVIEW TABLE ── */}
+                                    {(() => {
                                         const addInvFiles = (rawFiles: FileList | null) => {
                                           if (!rawFiles) return;
                                           const classified = Array.from(rawFiles).map(classifyInvFile);
@@ -3358,25 +3177,203 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                   <div className="w-px flex-1 bg-gradient-to-b from-transparent via-border to-transparent" />
                                                 </div>
 
-                                                {/* Plaid card */}
-                                                <div
-                                                  className="flex-1 flex flex-col items-center gap-2.5 p-4 rounded-[10px] border border-dashed border-violet-300/40 bg-violet-50/20 cursor-pointer hover:bg-violet-50/50 hover:border-violet-400/50 transition-all group text-center"
-                                                  onClick={() => setInvPlaidOpen(true)}
-                                                >
-                                                  <div className="relative">
-                                                    <div className="absolute inset-0 rounded-full bg-violet-400/20 blur-md group-hover:bg-violet-400/30 transition-all" />
-                                                    <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shadow-sm">
-                                                      <Zap className="w-4 h-4 text-white" />
+                                                {/* Plaid card — or inline Plaid flow when open */}
+                                                {invPlaidOpen ? (
+                                                  /* ── Inline Plaid flow ── */
+                                                  <div className="flex-1 flex flex-col rounded-[10px] border border-violet-300/50 bg-background overflow-hidden min-h-[200px]">
+                                                    {/* Header */}
+                                                    <div className="px-3 pt-2.5 pb-2 border-b border-border flex items-center gap-1.5 shrink-0">
+                                                      {invPlaidStep === 'login' && (
+                                                        <button onClick={() => setInvPlaidStep('select')} className="text-muted-foreground hover:text-foreground">
+                                                          <ChevronLeft className="w-3.5 h-3.5" />
+                                                        </button>
+                                                      )}
+                                                      {invPlaidStep === 'login' && invPlaidInstitution ? (
+                                                        <>
+                                                          <div className="w-4 h-4 rounded shrink-0 text-white text-[8px] font-bold flex items-center justify-center"
+                                                            style={{ backgroundColor: invPlaidInstitution.color }}>
+                                                            {invPlaidInstitution.abbr.slice(0, 2)}
+                                                          </div>
+                                                          <span className="text-[11px] font-semibold text-foreground flex-1 truncate">Sign in to {invPlaidInstitution.name}</span>
+                                                        </>
+                                                      ) : invPlaidStep === 'verifying' ? (
+                                                        <span className="text-[11px] font-semibold text-foreground flex-1">Connecting…</span>
+                                                      ) : invPlaidStep === 'success' ? (
+                                                        <span className="text-[11px] font-semibold text-foreground flex-1">Authorize Access</span>
+                                                      ) : (
+                                                        <>
+                                                          <div className="w-4 h-4 rounded-[4px] bg-[#1A1A1A] flex items-center justify-center shrink-0">
+                                                            <span className="text-white text-[8px] font-bold tracking-tight">p</span>
+                                                          </div>
+                                                          <span className="text-[11px] font-semibold text-foreground flex-1">Connect to Plaid</span>
+                                                        </>
+                                                      )}
+                                                      <button onClick={resetInvPlaid} className="ml-auto text-muted-foreground hover:text-foreground shrink-0">
+                                                        <X className="w-3 h-3" />
+                                                      </button>
+                                                    </div>
+
+                                                    {/* Body */}
+                                                    <div className="flex-1 px-3 py-2.5 overflow-y-auto">
+                                                      {invPlaidStep === 'select' && (
+                                                        <div className="space-y-2">
+                                                          <div className="relative">
+                                                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+                                                            <input
+                                                              className="w-full h-7 pl-6 pr-2.5 text-[11px] rounded-[6px] border border-border bg-muted/20 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
+                                                              placeholder="Search 12,000+ institutions…" value={invPlaidSearch}
+                                                              onChange={e => setInvPlaidSearch(e.target.value)} autoFocus />
+                                                          </div>
+                                                          <div className="grid grid-cols-1 gap-1 max-h-40 overflow-y-auto">
+                                                            {INV_PLAID_INSTITUTIONS
+                                                              .filter(i => !invPlaidSearch || i.name.toLowerCase().includes(invPlaidSearch.toLowerCase()))
+                                                              .map(inst => (
+                                                                <button key={inst.id}
+                                                                  onClick={() => { setInvPlaidInstitution(inst); setInvPlaidStep('login'); }}
+                                                                  className="flex items-center gap-2 px-2 py-1.5 rounded-[6px] border border-border hover:border-primary hover:bg-muted/40 transition-colors text-left">
+                                                                  <div className="w-5 h-5 rounded-[4px] flex items-center justify-center flex-shrink-0 text-white text-[8px] font-bold"
+                                                                    style={{ backgroundColor: inst.color }}>
+                                                                    {inst.abbr.slice(0, 2)}
+                                                                  </div>
+                                                                  <span className="text-[11px] font-medium text-foreground leading-tight truncate">{inst.name}</span>
+                                                                </button>
+                                                              ))}
+                                                          </div>
+                                                          <div className="flex items-center gap-1 justify-center pt-0.5">
+                                                            <ShieldCheck className="w-3 h-3 text-muted-foreground" />
+                                                            <span className="text-[10px] text-muted-foreground">256-bit encryption · read-only</span>
+                                                          </div>
+                                                        </div>
+                                                      )}
+
+                                                      {invPlaidStep === 'login' && invPlaidInstitution && (
+                                                        <div className="space-y-2.5">
+                                                          <div className="h-0.5 rounded-full" style={{ backgroundColor: invPlaidInstitution.color }} />
+                                                          <div>
+                                                            <label className="block text-[10px] font-medium text-foreground mb-1">Username / Card Number</label>
+                                                            <input
+                                                              className="w-full h-7 px-2.5 text-[11px] rounded-[6px] border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
+                                                              placeholder="Enter username" value={invPlaidUsername}
+                                                              onChange={e => setInvPlaidUsername(e.target.value)} autoFocus />
+                                                          </div>
+                                                          <div>
+                                                            <label className="block text-[10px] font-medium text-foreground mb-1">Password</label>
+                                                            <div className="relative">
+                                                              <input
+                                                                className="w-full h-7 px-2.5 pr-7 text-[11px] rounded-[6px] border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
+                                                                type={invPlaidShowPwd ? 'text' : 'password'} placeholder="Enter password"
+                                                                value={invPlaidPassword} onChange={e => setInvPlaidPassword(e.target.value)}
+                                                                onKeyDown={e => { if (e.key === 'Enter') handleInvPlaidVerify(); }} />
+                                                              <button type="button" onClick={() => setInvPlaidShowPwd(p => !p)}
+                                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                                                                {invPlaidShowPwd ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                                              </button>
+                                                            </div>
+                                                          </div>
+                                                          <p className="text-[10px] text-muted-foreground leading-relaxed flex items-start gap-1">
+                                                            <ShieldCheck className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                                                            Encrypted end-to-end · read-only access · never stored
+                                                          </p>
+                                                        </div>
+                                                      )}
+
+                                                      {invPlaidStep === 'verifying' && (
+                                                        <div className="flex flex-col items-center justify-center py-6 gap-3">
+                                                          <div className="w-9 h-9 rounded-full border-[3px] border-primary/20 border-t-primary animate-spin" />
+                                                          <div className="text-center">
+                                                            <p className="text-[11px] font-semibold text-foreground">Verifying credentials…</p>
+                                                            <p className="text-[10px] text-muted-foreground mt-0.5">Connecting to {invPlaidInstitution?.name}</p>
+                                                          </div>
+                                                        </div>
+                                                      )}
+
+                                                      {invPlaidStep === 'success' && invPlaidInstitution && (
+                                                        <div className="space-y-2">
+                                                          <div className="rounded-[8px] border border-green-200 bg-green-50 p-2.5 text-center">
+                                                            <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-1">
+                                                              <Check className="w-3.5 h-3.5 text-green-600" />
+                                                            </div>
+                                                            <p className="text-[11px] font-semibold text-green-800">{invPlaidInstitution.name}</p>
+                                                            <p className="text-[10px] text-green-700 mt-0.5">2 accounts found · ready to link</p>
+                                                          </div>
+                                                          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Select accounts</p>
+                                                          {[
+                                                            { name: 'Investment Account', acct: '···' + invPlaidInstitution.id.slice(0, 2).toUpperCase() + '01', ccy: 'CAD' },
+                                                            { name: 'USD Investment Account', acct: '···' + invPlaidInstitution.id.slice(0, 2).toUpperCase() + '02', ccy: 'USD' },
+                                                          ].map(a => (
+                                                            <label key={a.acct} className="flex items-center gap-2 rounded-[6px] border border-border px-2.5 py-1.5 cursor-pointer hover:bg-muted/30 transition-colors">
+                                                              <input type="checkbox" defaultChecked className="rounded h-3 w-3 accent-primary" />
+                                                              <div>
+                                                                <div className="text-[10px] font-medium text-foreground">{a.name}</div>
+                                                                <div className="text-[9px] text-muted-foreground font-mono">{a.acct} · {a.ccy}</div>
+                                                              </div>
+                                                            </label>
+                                                          ))}
+                                                        </div>
+                                                      )}
+                                                    </div>
+
+                                                    {/* Footer */}
+                                                    <div className="px-3 pb-2.5 pt-2 flex justify-end gap-1.5 border-t border-border shrink-0">
+                                                      {invPlaidStep === 'select' && (
+                                                        <button onClick={resetInvPlaid}
+                                                          className="h-7 px-3 text-[11px] font-medium rounded-[6px] border border-border hover:bg-muted/40 transition-colors text-foreground">
+                                                          Cancel
+                                                        </button>
+                                                      )}
+                                                      {invPlaidStep === 'login' && (
+                                                        <>
+                                                          <button onClick={() => setInvPlaidStep('select')}
+                                                            className="h-7 px-3 text-[11px] font-medium rounded-[6px] border border-border hover:bg-muted/40 transition-colors text-foreground">
+                                                            Back
+                                                          </button>
+                                                          <button onClick={handleInvPlaidVerify}
+                                                            className="h-7 px-3 text-[11px] font-medium rounded-[6px] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                                                            Continue
+                                                          </button>
+                                                        </>
+                                                      )}
+                                                      {invPlaidStep === 'success' && (
+                                                        <>
+                                                          <button onClick={resetInvPlaid}
+                                                            className="h-7 px-3 text-[11px] font-medium rounded-[6px] border border-border hover:bg-muted/40 transition-colors text-foreground">
+                                                            Cancel
+                                                          </button>
+                                                          <button
+                                                            onClick={() => {
+                                                              setInvSchedSrcLabel(`Plaid — ${invPlaidInstitution!.name}`);
+                                                              setInvReviewRows(INV_MOCK_ROWS);
+                                                              setInvSchedPhase("upload-prompt");
+                                                              resetInvPlaid();
+                                                            }}
+                                                            className="inline-flex items-center gap-1 h-7 px-3 text-[11px] font-medium rounded-[6px] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                                                            <ShieldCheck className="w-3 h-3" /> Allow Access
+                                                          </button>
+                                                        </>
+                                                      )}
                                                     </div>
                                                   </div>
-                                                  <div>
-                                                    <p className="text-[11px] font-semibold text-foreground">Connect via Plaid</p>
-                                                    <p className="text-[10px] text-muted-foreground mt-0.5">Auto-sync from TD, RBC, BMO<br />Fidelity &amp; 12,000+ institutions</p>
+                                                ) : (
+                                                  /* Static Plaid card */
+                                                  <div
+                                                    className="flex-1 flex flex-col items-center gap-2.5 p-4 rounded-[10px] border border-dashed border-violet-300/40 bg-violet-50/20 cursor-pointer hover:bg-violet-50/50 hover:border-violet-400/50 transition-all group text-center"
+                                                    onClick={() => setInvPlaidOpen(true)}
+                                                  >
+                                                    <div className="relative">
+                                                      <div className="absolute inset-0 rounded-full bg-violet-400/20 blur-md group-hover:bg-violet-400/30 transition-all" />
+                                                      <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shadow-sm">
+                                                        <Zap className="w-4 h-4 text-white" />
+                                                      </div>
+                                                    </div>
+                                                    <div>
+                                                      <p className="text-[11px] font-semibold text-foreground">Connect via Plaid</p>
+                                                      <p className="text-[10px] text-muted-foreground mt-0.5">Auto-sync from TD, RBC, BMO<br />Fidelity &amp; 12,000+ institutions</p>
+                                                    </div>
+                                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-violet-600 group-hover:underline">
+                                                      Select your institution
+                                                    </span>
                                                   </div>
-                                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-violet-600 group-hover:underline">
-                                                    Select your institution
-                                                  </span>
-                                                </div>
+                                                )}
                                               </div>
                                             </div>
 
@@ -3553,8 +3550,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                             )}
                                           </>
                                         );
-                                      })()
-                                    )}
+                                      })()}
                                   </>
                                 ) : (
                                   /* ── DONE / SCHEDULE VIEW ── */
