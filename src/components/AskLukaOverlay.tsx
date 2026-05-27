@@ -3379,6 +3379,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                             <div className="text-left">
                                               <p className="font-semibold text-sm text-foreground">Upload Documents</p>
                                               <p className="text-[11px] text-muted-foreground">PDF statements, CSV trade files, Excel workpaper</p>
+                                              <p className="text-[10px] text-muted-foreground/70 mt-0.5">Max 15 docs · 25 MB total</p>
                                             </div>
                                           </button>
                                         </div>
