@@ -3404,7 +3404,26 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                             </div>
                                           </button>
                                           <button
-                                            onClick={() => setInvUploadOpen(true)}
+                                            onClick={() => {
+                                              const inp = document.createElement("input");
+                                              inp.type = "file"; inp.accept = ".pdf,.xlsx,.xls,.csv,.zip"; inp.multiple = true;
+                                              inp.onchange = e => {
+                                                const files = (e.target as HTMLInputElement).files;
+                                                if (!files || files.length === 0) return;
+                                                const classified = Array.from(files).map(classifyInvFile);
+                                                const valid = classified.filter(f => f.kind !== "unsupported" && f.kind !== "oversized" && f.kind !== "ambiguous");
+                                                if (valid.length > 0) {
+                                                  setInvUploadFiles(classified.slice(0, 15));
+                                                  setInvSchedSrcLabel(`${valid.length} uploaded document${valid.length !== 1 ? "s" : ""}`);
+                                                  setInvReviewRows(INV_MOCK_ROWS);
+                                                  setInvSchedPhase("review");
+                                                } else {
+                                                  setInvUploadFiles(classified.slice(0, 15));
+                                                  setInvUploadOpen(true);
+                                                }
+                                              };
+                                              inp.click();
+                                            }}
                                             className="flex-1 flex items-center gap-2 px-4 py-3 rounded-[10px] border border-border bg-background hover:bg-muted/40 transition-all text-sm font-medium text-foreground"
                                           >
                                             <span className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0"><Upload className="h-3.5 w-3.5 text-foreground" /></span>
