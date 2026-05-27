@@ -167,8 +167,8 @@ const EMPTY_TX_DRAFT = (): TxDraft => ({
   qty: 0, price: 0, ccy: "CAD", fxRate: 1, tbAccount: "", status: "pending",
 });
 
-// 15 columns: ☐ | Trade Date | Settlement | Source | Security | Ticker | CCY | Type | Units | Price | FX | Amount | TB Account | Status | Actions
-const TX_COLS = ["","Trade Date","Settlement","Source","Security","Ticker","CCY","Type","Units","Price","FX","Amount","TB Account","Status","Actions"];
+// 14 columns: ☐ | Trade Date | Settlement | Source | Security | Ticker | CCY | Type | Units | Price | FX | Amount | TB Account | Status
+const TX_COLS = ["","Trade Date","Settlement","Source","Security","Ticker","CCY","Type","Units","Price","FX","Amount","TB Account","Status"];
 const TX_LEFT = new Set([0,1,2,3,4,5]);          // left-aligned column indices
 const COL_SPAN = TX_COLS.length;
 
@@ -568,17 +568,6 @@ function TransactionsPanel({
                       : <StatusBadge status={t.status ?? "pending"} />}
                   </td>
 
-                  {/* Actions */}
-                  <td className="px-2 py-1">
-                    <div className="flex items-center gap-1 justify-end">
-                      <button
-                        onClick={() => setHiddenTxIds(prev => { const n = new Set(prev); n.add(t.id); return n; })}
-                        className="inline-flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </td>
                 </tr>
               );
             })}
