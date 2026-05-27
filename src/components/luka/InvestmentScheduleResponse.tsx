@@ -414,12 +414,6 @@ function TransactionsPanel({
               <button onClick={() => bulkSetStatus("published")} className="inline-flex items-center h-7 px-2.5 text-[11px] font-medium rounded-[7px] border border-green-200 bg-green-50 text-green-700 hover:bg-green-100 transition-colors">Publish</button>
             </>
           )}
-          <button
-            onClick={() => { setAdding(true); setDraft(EMPTY_TX_DRAFT()); }}
-            className="inline-flex items-center gap-1 h-7 px-2.5 text-[11px] font-medium bg-primary text-primary-foreground rounded-[7px] hover:bg-primary/90 transition-colors shrink-0"
-          >
-            <Plus className="w-3 h-3" />Add
-          </button>
         </div>
       </div>
 
@@ -577,37 +571,12 @@ function TransactionsPanel({
                   {/* Actions */}
                   <td className="px-2 py-1">
                     <div className="flex items-center gap-1 justify-end">
-                      {isEditing ? (
-                        <>
-                          <button
-                            onClick={saveEdit}
-                            className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                          >
-                            <Check className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={() => setEditId(null)}
-                            className="inline-flex items-center justify-center w-6 h-6 rounded-md border border-border text-muted-foreground hover:bg-muted transition-colors"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => startEdit(t)}
-                            className="inline-flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                          >
-                            <Pencil className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={() => setHiddenTxIds(prev => { const n = new Set(prev); n.add(t.id); return n; })}
-                            className="inline-flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </>
-                      )}
+                      <button
+                        onClick={() => setHiddenTxIds(prev => { const n = new Set(prev); n.add(t.id); return n; })}
+                        className="inline-flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
                     </div>
                   </td>
                 </tr>
