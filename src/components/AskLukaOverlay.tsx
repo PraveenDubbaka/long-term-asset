@@ -3383,13 +3383,6 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                             </div>
                                           </button>
                                         </div>
-                                        <p className="text-[11px] text-muted-foreground">
-                                          Or{" "}
-                                          <button className="text-primary underline hover:no-underline" onClick={() => { setInvSchedGenerated(true); setInvSchedSrcLabel("sample data (Countable Holdings Corp.)"); setInvSchedPhase("done"); }}>
-                                            use sample investment data
-                                          </button>{" "}
-                                          to explore the workpaper.
-                                        </p>
                                       </>
                                     )}
                                   </>
