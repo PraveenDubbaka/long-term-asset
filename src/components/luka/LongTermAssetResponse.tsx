@@ -2041,12 +2041,19 @@ export function LongTermAssetResponse({ onEditLoans }: { onEditLoans?: () => voi
           })}
         </div>
         {onEditLoans && (
-          <button
-            onClick={onEditLoans}
-            className="shrink-0 ml-2 mb-px inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[7px] border border-border bg-background text-[11px] font-medium text-foreground hover:bg-muted/60 transition-colors"
-          >
-            <Plus className="w-3 h-3" /> Add/Edit Loans
-          </button>
+          <div className="shrink-0 ml-3 mb-px flex items-center gap-0 rounded-[8px] border border-border bg-muted/40 p-0.5">
+            <button
+              className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-semibold bg-background text-foreground shadow-sm border border-border/60 transition-all"
+            >
+              <BarChart2 className="w-3 h-3" /> Schedule
+            </button>
+            <button
+              onClick={onEditLoans}
+              className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-medium text-muted-foreground hover:text-foreground transition-all"
+            >
+              <Pencil className="w-3 h-3" /> Edit
+            </button>
+          </div>
         )}
       </div>
 

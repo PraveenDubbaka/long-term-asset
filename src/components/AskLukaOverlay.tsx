@@ -11,7 +11,7 @@ import {
   FolderOpen, RotateCcw, Sparkles, Eye, EyeOff, Pin, LayoutList, CalendarDays, CalendarRange,
   ArrowUpDown, Check, BookOpen, HardDrive, FileSpreadsheet, ShieldCheck,
   AlertTriangle, TrendingUp, TrendingDown, Info, Table2, RefreshCw,
-  Calendar, Receipt, Download, Trash2,
+  Calendar, Receipt, Download, Trash2, BarChart2, Pencil,
 } from "lucide-react";
 import { Button } from "@/components/wp-ui/button";
 import { ScrollArea } from "@/components/wp-ui/scroll-area";
@@ -2679,10 +2679,26 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                               <div className="space-y-3 py-0.5 max-w-full">
                                 {!ltDebtGenerated ? (
                                   <>
-                                    <p className="text-sm text-foreground leading-relaxed">
-                                      To generate your Long-term Debt workpaper, please upload your documents below.
-                                      We'll accept <strong>loan agreements</strong> (PDF/ZIP), <strong>continuity schedules</strong>, <strong>loan registers</strong>, or <strong>prior-year workpapers</strong> (Excel · up to 15 documents · 25 MB total).
-                                    </p>
+                                    {/* Mode toggle — Edit active */}
+                                    <div className="flex items-center justify-between">
+                                      <p className="text-sm text-foreground leading-relaxed">
+                                        Upload or enter your loan data below, then click <strong>Generate Schedule</strong>.
+                                      </p>
+                                      <div className="shrink-0 ml-3 flex items-center gap-0 rounded-[8px] border border-border bg-muted/40 p-0.5">
+                                        <button
+                                          disabled={!ltDebtGenerated}
+                                          onClick={() => setLtDebtGenerated(true)}
+                                          className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-medium text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                        >
+                                          <BarChart2 className="w-3 h-3" /> Schedule
+                                        </button>
+                                        <button
+                                          className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-semibold bg-background text-foreground shadow-sm border border-border/60 transition-all"
+                                        >
+                                          <Pencil className="w-3 h-3" /> Edit
+                                        </button>
+                                      </div>
+                                    </div>
 
                                     {/* Drop zone + review table */}
                                     {(() => {
@@ -2729,9 +2745,6 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                             <div className="pointer-events-none absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-violet-400/10 blur-3xl" />
 
                                             <div className="relative z-10 px-5 pt-4 pb-3 text-center space-y-0.5">
-                                              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-semibold text-primary mb-1">
-                                                <Sparkles className="w-2.5 h-2.5" /> AI-Powered Extraction
-                                              </div>
                                               <p className="text-xs font-semibold text-foreground">How would you like to add loans?</p>
                                               <p className="text-[10px] text-muted-foreground">Luka will auto-extract and fill all fields from your documents</p>
                                             </div>
@@ -3029,7 +3042,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                       : "bg-muted/60 text-muted-foreground/50 cursor-not-allowed border border-border/50 opacity-60"
                                                   )}
                                                 >
-                                                  Submit
+                                                  <BarChart2 className="w-3.5 h-3.5" /> Generate Schedule
                                                 </button>
                                               )}
                                             </div>
