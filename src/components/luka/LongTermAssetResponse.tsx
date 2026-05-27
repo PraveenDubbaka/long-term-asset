@@ -908,7 +908,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
               <table className="w-full text-[11px]">
                 <thead>
                   <tr className="bg-muted/20 border-b border-border">
-                    {["Loan","Opening Bal.","+New Borr.","-Principal","-Interest","±FX","Closing Bal.","Accrued Int.",""].map(h=>(
+                    {["Loan","Opening Bal.","+New Borr.","-Principal","-Interest","±FX","Closing Bal."].map(h=>(
                       <th key={h} className={`px-2.5 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h==="Loan"?"text-left":"text-right"}`}>{h}</th>
                     ))}
                   </tr>
@@ -940,21 +940,6 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                         <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{int > 0 ? fmtParen(int * fx) : "00"}</td>
                         <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{row.fxTranslation !== 0 ? fmtParen(Math.abs(row.fxTranslation * fx)) : "00"}</td>
                         <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold">{fmtNum(row.closingBalance * fx)}</td>
-                        <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{fmtNum(row.accruedInterest * fx)}</td>
-                        <td className="px-2.5 py-1.5 text-right">
-                          <button
-                            onClick={() => postAJE(loan, row.accruedInterest)}
-                            disabled={row.accruedInterest <= 0}
-                            title="Post accrued interest AJE to AJEs tab"
-                            className={`p-1 rounded-[5px] transition-colors ${
-                              row.accruedInterest <= 0
-                                ? "text-muted-foreground/40 cursor-not-allowed"
-                                : "text-primary hover:bg-primary/10 cursor-pointer"
-                            }`}
-                          >
-                            <Send className="h-3 w-3" />
-                          </button>
-                        </td>
                       </tr>
                     );
                   })}
@@ -968,8 +953,6 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                     <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-muted-foreground">{rfTotals.interest > 0 ? fmtParen(rfTotals.interest) : "00"}</td>
                     <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-muted-foreground">00</td>
                     <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmtNum(rfTotals.closing)}</td>
-                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmtNum(rfTotals.accrued)}</td>
-                    <td />
                   </tr>
                 </tfoot>
               </table>
