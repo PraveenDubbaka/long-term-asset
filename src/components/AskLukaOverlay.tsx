@@ -3089,7 +3089,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                               </div>
                             ) : richResponseType === "investment" ? (
                               <div className="space-y-3 py-0.5 max-w-full">
-                                {!invSchedGenerated ? (
+                                {invSchedPhase !== "review" && invSchedPhase !== "done" ? (
                                   <>
                                     <p className="text-sm text-foreground leading-relaxed">
                                       To generate your <strong>Investment Schedule</strong> workpaper, connect your brokerage via <strong>Plaid Link</strong> or upload your documents below.
