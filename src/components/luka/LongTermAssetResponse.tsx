@@ -1612,7 +1612,6 @@ function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
           >
             <option value="All">All ({activeJes.length})</option>
             <option value="Draft">Draft ({draft})</option>
-            <option value="Approved">Approved ({approved})</option>
             <option value="Posted">Posted ({posted})</option>
             <option value="Exported">Exported</option>
             <option value="Deleted">Deleted ({deletedJes.length})</option>
@@ -1760,22 +1759,10 @@ function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
                       </>
                     ) : (
                       <>
-                        {je.status === "Draft" && (
-                          <button onClick={() => { advanceJEStatus(je.id, "Approved", "K. Chen"); toast.success("JE approved"); }}
-                            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] bg-emerald-600 text-white text-[11px] font-medium hover:bg-emerald-700 transition-colors">
-                            <Check className="h-3 w-3" /> Approve
-                          </button>
-                        )}
-                        {je.status === "Approved" && (
+                        {je.status !== "Posted" && je.status !== "Exported" && (
                           <button onClick={() => { advanceJEStatus(je.id, "Posted", "K. Chen"); toast.success("JE posted"); }}
                             className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors">
                             <Send className="h-3 w-3" /> Post
-                          </button>
-                        )}
-                        {(je.status === "Draft" || je.status === "Approved") && (
-                          <button onClick={() => advanceJEStatus(je.id, "Draft", "")}
-                            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] border border-border bg-background text-[11px] font-medium text-foreground hover:bg-muted transition-colors">
-                            Revert to Draft
                           </button>
                         )}
                         <button onClick={() => { deleteJE(je.id); toast("JE moved to Deleted", { icon: "🗑️" }); }}
