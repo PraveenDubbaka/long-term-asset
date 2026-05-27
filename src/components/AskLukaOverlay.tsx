@@ -2679,26 +2679,10 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                               <div className="space-y-3 py-0.5 max-w-full">
                                 {!ltDebtGenerated ? (
                                   <>
-                                    {/* Mode toggle — Edit active */}
-                                    <div className="flex items-center justify-between">
-                                      <p className="text-sm text-foreground leading-relaxed">
-                                        Upload or enter your loan data below, then click <strong>Generate Schedule</strong>.
-                                      </p>
-                                      <div className="shrink-0 ml-3 flex items-center gap-0 rounded-[8px] border border-border bg-muted/40 p-0.5">
-                                        <button
-                                          disabled={!ltDebtGenerated}
-                                          onClick={() => setLtDebtGenerated(true)}
-                                          className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-medium text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                                        >
-                                          <BarChart2 className="w-3 h-3" /> Schedule
-                                        </button>
-                                        <button
-                                          className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-semibold bg-background text-foreground shadow-sm border border-border/60 transition-all"
-                                        >
-                                          <Pencil className="w-3 h-3" /> Edit
-                                        </button>
-                                      </div>
-                                    </div>
+                                    {/* Intro text */}
+                                    <p className="text-sm text-foreground leading-relaxed">
+                                      Upload or enter your loan data below, then click <strong>Submit</strong>.
+                                    </p>
 
                                     {/* Drop zone + review table */}
                                     {(() => {
@@ -2856,11 +2840,25 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                           {/* ── Review table ── */}
                                           {ltReviewRows.length > 0 && (
                                             <div className="space-y-2">
-                                              {/* Header bar */}
+                                              {/* Mode toggle — Edit active */}
                                               <div className="flex items-center justify-between">
                                                 <span className="text-[11px] font-semibold text-foreground">
                                                   {ltReviewRows.length} loan{ltReviewRows.length !== 1 ? "s" : ""} extracted — review and complete before submitting
                                                 </span>
+                                                <div className="shrink-0 ml-3 flex items-center gap-0 rounded-[8px] border border-border bg-muted/40 p-0.5">
+                                                  <button
+                                                    disabled={!ltDebtGenerated}
+                                                    onClick={() => setLtDebtGenerated(true)}
+                                                    className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-medium text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                                  >
+                                                    <BarChart2 className="w-3 h-3" /> Schedule
+                                                  </button>
+                                                  <button
+                                                    className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-semibold bg-background text-foreground shadow-sm border border-border/60 transition-all"
+                                                  >
+                                                    <Pencil className="w-3 h-3" /> Edit
+                                                  </button>
+                                                </div>
                                               </div>
 
                                               {/* Scrollable review table */}
@@ -3042,7 +3040,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                       : "bg-muted/60 text-muted-foreground/50 cursor-not-allowed border border-border/50 opacity-60"
                                                   )}
                                                 >
-                                                  <BarChart2 className="w-3.5 h-3.5" /> Generate Schedule
+                                                  Submit
                                                 </button>
                                               )}
                                             </div>
