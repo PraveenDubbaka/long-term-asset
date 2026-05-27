@@ -3089,14 +3089,9 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                               </div>
                             ) : richResponseType === "investment" ? (
                               <div className="space-y-3 py-0.5 max-w-full">
-                                {invSchedPhase !== "review" && invSchedPhase !== "done" ? (
+                                {invSchedPhase !== "done" ? (
                                   <>
-                                    <p className="text-sm text-foreground leading-relaxed">
-                                      To generate your <strong>Investment Schedule</strong> workpaper, connect your brokerage via <strong>Plaid Link</strong> or upload your documents below.
-                                      We accept <strong>brokerage statements</strong> (PDF/CSV), <strong>trade confirmations</strong>, or <strong>prior-year workpapers</strong> (Excel · up to 15 files · 25 MB total).
-                                    </p>
-
-                                    {/* ── PLAID FLOW ── */}
+                                    {/* ── PLAID MODAL (replaces gradient container while open) ── */}
                                     {invPlaidOpen ? (
                                       <div className="rounded-[12px] border border-border bg-background overflow-hidden">
                                         {/* Header */}
@@ -3265,7 +3260,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                 onClick={() => {
                                                   setInvSchedSrcLabel(`Plaid — ${invPlaidInstitution!.name}`);
                                                   setInvReviewRows(INV_MOCK_ROWS);
-                                                  setInvSchedPhase("review");
+                                                  setInvSchedPhase("upload-prompt");
                                                   resetInvPlaid();
                                                 }}
                                                 className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
@@ -3276,8 +3271,8 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                         </div>
                                       </div>
 
-                                    ) : invUploadOpen ? (
-                                      /* ── UPLOAD FLOW ── */
+                                    ) : (
+                                      /* ── GRADIENT CONTAINER + CHIPS + REVIEW TABLE ── */
                                       (() => {
                                         const addInvFiles = (rawFiles: FileList | null) => {
                                           if (!rawFiles) return;
@@ -3286,33 +3281,100 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                             const existing = new Set(prev.map(f => f.name));
                                             return [...prev, ...classified.filter(f => !existing.has(f.name))].slice(0, 15);
                                           });
+                                          const valid = classified.filter(f => f.kind !== "unsupported" && f.kind !== "oversized" && f.kind !== "ambiguous");
+                                          if (valid.length > 0 && invReviewRows.length === 0) {
+                                            setInvReviewRows(INV_MOCK_ROWS);
+                                          }
                                         };
                                         const validFiles = invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
-                                        const ambigFiles = invUploadFiles.filter(f => f.kind === "ambiguous" && !f.userKind);
                                         return (
-                                          <div className="space-y-3">
-                                            {/* Drop zone */}
-                                            <div
-                                              className="flex flex-col items-center justify-center gap-2 rounded-[12px] border border-border bg-background cursor-pointer transition-colors py-6 hover:bg-muted/30"
-                                              onClick={() => {
-                                                const inp = document.createElement("input");
-                                                inp.type = "file"; inp.accept = ".pdf,.xlsx,.xls,.csv,.zip"; inp.multiple = true;
-                                                inp.onchange = e => addInvFiles((e.target as HTMLInputElement).files);
-                                                inp.click();
-                                              }}
-                                              onDragOver={e => e.preventDefault()}
-                                              onDrop={e => { e.preventDefault(); addInvFiles(e.dataTransfer.files); }}
-                                            >
-                                              <div className="w-9 h-9 rounded-full border border-border bg-muted/40 flex items-center justify-center">
-                                                <Upload className="h-4 w-4 text-muted-foreground" />
+                                          <>
+                                            {/* ── AI-style upload section ── */}
+                                            <div className="relative rounded-[14px] overflow-hidden border border-primary/20 bg-gradient-to-br from-primary/[0.04] via-background to-violet-50/30">
+                                              {/* Ambient blobs */}
+                                              <div className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full bg-primary/10 blur-3xl" />
+                                              <div className="pointer-events-none absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-violet-400/10 blur-3xl" />
+
+                                              {/* Connected banner */}
+                                              {invSchedSrcLabel?.startsWith("Plaid") && (
+                                                <div className="relative z-10 mx-4 mt-3 flex items-center gap-2.5 px-3 py-2 rounded-[10px] border border-green-200 bg-green-50">
+                                                  <Check className="w-3.5 h-3.5 text-green-600 shrink-0" />
+                                                  <div className="flex-1 min-w-0">
+                                                    <p className="text-[11px] font-semibold text-green-800 truncate">Connected — {invSchedSrcLabel.replace("Plaid — ","")}</p>
+                                                    <p className="text-[10px] text-green-700">Transactions synced · read-only access</p>
+                                                  </div>
+                                                  <button
+                                                    onClick={() => { setInvSchedSrcLabel(null); setInvReviewRows([]); resetInvPlaid(); }}
+                                                    className="inline-flex items-center gap-1 h-6 px-2 rounded-[6px] border border-green-300 bg-white text-[10px] font-medium text-red-500 hover:border-red-300 hover:bg-red-50 transition-colors shrink-0"
+                                                  >
+                                                    <X className="w-2.5 h-2.5" /> Disconnect
+                                                  </button>
+                                                </div>
+                                              )}
+
+                                              <div className="relative z-10 px-5 pt-4 pb-3 text-center space-y-0.5">
+                                                <p className="text-xs font-semibold text-foreground">How would you like to add investments?</p>
+                                                <p className="text-[10px] text-muted-foreground">Luka will auto-extract and fill all fields from your brokerage documents</p>
                                               </div>
-                                              <p className="text-sm text-muted-foreground text-center">
-                                                <span className="text-primary font-medium">Click to upload</span> or drag and drop
-                                              </p>
-                                              <p className="text-xs text-muted-foreground">PDF · CSV · Excel · Max 15 files · 25 MB total</p>
+
+                                              <div className="relative z-10 flex items-stretch gap-0 px-4 pb-4 pt-2">
+                                                {/* Upload card */}
+                                                <div
+                                                  className="flex-1 flex flex-col items-center gap-2.5 p-4 rounded-[10px] border border-dashed border-primary/25 bg-primary/[0.03] cursor-pointer hover:bg-primary/[0.07] hover:border-primary/45 transition-all group text-center"
+                                                  onClick={() => {
+                                                    const inp = document.createElement("input");
+                                                    inp.type = "file"; inp.accept = ".pdf,.xlsx,.xls,.csv,.zip"; inp.multiple = true;
+                                                    inp.onchange = e => addInvFiles((e.target as HTMLInputElement).files);
+                                                    inp.click();
+                                                  }}
+                                                  onDragOver={e => e.preventDefault()}
+                                                  onDrop={e => { e.preventDefault(); addInvFiles(e.dataTransfer.files); }}
+                                                >
+                                                  <div className="relative">
+                                                    <div className="absolute inset-0 rounded-full bg-primary/20 blur-md group-hover:bg-primary/30 transition-all" />
+                                                    <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shadow-sm">
+                                                      <Upload className="w-4 h-4 text-white" />
+                                                    </div>
+                                                  </div>
+                                                  <div>
+                                                    <p className="text-[11px] font-semibold text-foreground">Import documents</p>
+                                                    <p className="text-[10px] text-muted-foreground mt-0.5">Brokerage statements · Trade confirms<br />Statements · PDF · XLSX · CSV</p>
+                                                  </div>
+                                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary group-hover:underline">
+                                                    Click to browse or drag &amp; drop
+                                                  </span>
+                                                </div>
+
+                                                {/* OR */}
+                                                <div className="flex flex-col items-center justify-center px-3 gap-1.5">
+                                                  <div className="w-px flex-1 bg-gradient-to-b from-transparent via-border to-transparent" />
+                                                  <span className="text-[10px] font-bold text-muted-foreground/50">or</span>
+                                                  <div className="w-px flex-1 bg-gradient-to-b from-transparent via-border to-transparent" />
+                                                </div>
+
+                                                {/* Plaid card */}
+                                                <div
+                                                  className="flex-1 flex flex-col items-center gap-2.5 p-4 rounded-[10px] border border-dashed border-violet-300/40 bg-violet-50/20 cursor-pointer hover:bg-violet-50/50 hover:border-violet-400/50 transition-all group text-center"
+                                                  onClick={() => setInvPlaidOpen(true)}
+                                                >
+                                                  <div className="relative">
+                                                    <div className="absolute inset-0 rounded-full bg-violet-400/20 blur-md group-hover:bg-violet-400/30 transition-all" />
+                                                    <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shadow-sm">
+                                                      <Zap className="w-4 h-4 text-white" />
+                                                    </div>
+                                                  </div>
+                                                  <div>
+                                                    <p className="text-[11px] font-semibold text-foreground">Connect via Plaid</p>
+                                                    <p className="text-[10px] text-muted-foreground mt-0.5">Auto-sync from TD, RBC, BMO<br />Fidelity &amp; 12,000+ institutions</p>
+                                                  </div>
+                                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-violet-600 group-hover:underline">
+                                                    Select your institution
+                                                  </span>
+                                                </div>
+                                              </div>
                                             </div>
 
-                                            {/* File chips */}
+                                            {/* ── File chips ── */}
                                             {invUploadFiles.length > 0 && (
                                               <div className="flex flex-wrap gap-2">
                                                 {invUploadFiles.map(f => {
@@ -3323,15 +3385,8 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                       "inline-flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-[10px] border bg-background text-xs max-w-[220px]",
                                                       isError ? "border-red-200" : isAmbig ? "border-amber-300" : "border-border"
                                                     )}>
-                                                      <div className={cn(
-                                                        "w-7 h-7 rounded-[6px] flex items-center justify-center shrink-0",
-                                                        isError ? "bg-red-50" : "bg-primary/10"
-                                                      )}>
-                                                        {f.ext === "pdf"
-                                                          ? <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
-                                                          : f.ext === "zip"
-                                                          ? <FolderOpen className="h-3.5 w-3.5 text-primary shrink-0" />
-                                                          : <FileSpreadsheet className="h-3.5 w-3.5 text-primary shrink-0" />}
+                                                      <div className={cn("w-7 h-7 rounded-[6px] flex items-center justify-center shrink-0", isError ? "bg-red-50" : "bg-primary/10")}>
+                                                        {f.ext === "pdf" ? <FileText className="h-3.5 w-3.5 text-primary shrink-0" /> : f.ext === "zip" ? <FolderOpen className="h-3.5 w-3.5 text-primary shrink-0" /> : <FileSpreadsheet className="h-3.5 w-3.5 text-primary shrink-0" />}
                                                       </div>
                                                       <span className="flex-1 min-w-0 truncate font-medium text-foreground">{f.name}</span>
                                                       {isAmbig && (
@@ -3349,13 +3404,8 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                           <option value="workpaper">Prior Year WP</option>
                                                         </select>
                                                       )}
-                                                      {isError && (
-                                                        <span className="text-[10px] text-red-600 shrink-0">{f.kind === "unsupported" ? "Unsupported" : "Too large"}</span>
-                                                      )}
-                                                      <button
-                                                        onClick={e => { e.stopPropagation(); setInvUploadFiles(prev => prev.filter(x => x.id !== f.id)); }}
-                                                        className="shrink-0 text-red-400 hover:text-red-600 transition-colors"
-                                                      >
+                                                      {isError && <span className="text-[10px] text-red-600 shrink-0">{f.kind === "unsupported" ? "Unsupported" : "Too large"}</span>}
+                                                      <button onClick={e => { e.stopPropagation(); setInvUploadFiles(prev => prev.filter(x => x.id !== f.id)); }} className="shrink-0 text-red-400 hover:text-red-600 transition-colors">
                                                         <Trash2 className="h-3.5 w-3.5" />
                                                       </button>
                                                     </div>
@@ -3364,277 +3414,109 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                               </div>
                                             )}
 
-                                            {/* Actions row */}
-                                            <div className="flex items-center gap-2">
-                                              <button
-                                                onClick={() => { setInvUploadOpen(false); setInvUploadFiles([]); }}
-                                                className="h-9 px-3 text-xs font-medium rounded-[8px] border border-border hover:bg-muted/40 transition-colors text-foreground"
-                                              >
-                                                Cancel
-                                              </button>
-                                              {validFiles.length > 0 && ambigFiles.length === 0 && (
+                                            {/* ── Review table ── */}
+                                            {invReviewRows.length > 0 && (
+                                              <div className="space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                  <span className="text-[11px] font-semibold text-foreground">
+                                                    {invReviewRows.length} transaction{invReviewRows.length !== 1 ? "s" : ""} extracted — review before submitting
+                                                  </span>
+                                                  <div className="shrink-0 ml-3 flex items-center gap-0 rounded-[8px] border border-border bg-muted/40 p-0.5">
+                                                    <button
+                                                      disabled={!invSchedGenerated}
+                                                      onClick={() => setInvSchedPhase("done")}
+                                                      className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-medium text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                                    >
+                                                      <BarChart2 className="w-3 h-3" /> Schedule
+                                                    </button>
+                                                    <button className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-semibold bg-background text-foreground shadow-sm border border-border/60 transition-all">
+                                                      <Pencil className="w-3 h-3" /> Add/Edit
+                                                    </button>
+                                                  </div>
+                                                </div>
+                                                <div className="rounded-[8px] border border-border overflow-hidden">
+                                                  <div className="overflow-x-auto">
+                                                    <table className="w-full text-[10px]" style={{ minWidth: 1100 }}>
+                                                      <thead>
+                                                        <tr className="bg-muted/30 border-b border-border">
+                                                          {["Date *","Security *","Ticker","Type *","CCY","Units *","Price *","Account","Source",""].map((h, i) => (
+                                                            <th key={i} className={`px-2 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10 text-left" : "text-left"}`}>
+                                                              {h.endsWith(" *") ? <>{h.slice(0,-2)} <span className="text-red-500">*</span></> : h}
+                                                            </th>
+                                                          ))}
+                                                        </tr>
+                                                      </thead>
+                                                      <tbody>
+                                                        {invReviewRows.map((row, ri) => {
+                                                          const IC = "h-6 text-[10px] px-1.5 border rounded bg-background focus:outline-none w-full border-border focus:border-primary/40";
+                                                          const upd = (field: keyof InvReviewRow, val: string) =>
+                                                            setInvReviewRows(prev => prev.map(r => r.id === row.id ? { ...r, [field]: val } : r));
+                                                          return (
+                                                            <tr key={row.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
+                                                              <td className="px-1.5 py-1 min-w-[110px]"><input value={row.date} onChange={e => upd("date", e.target.value)} type="date" className={IC} /></td>
+                                                              <td className="px-1.5 py-1 min-w-[160px]"><input value={row.security} onChange={e => upd("security", e.target.value)} className={cn(IC, "w-40")} placeholder="Security name" /></td>
+                                                              <td className="px-1.5 py-1 min-w-[70px]"><input value={row.ticker} onChange={e => upd("ticker", e.target.value)} className={cn(IC, "w-16 font-mono uppercase")} placeholder="TICK" /></td>
+                                                              <td className="px-1.5 py-1 min-w-[130px]">
+                                                                <select value={row.type} onChange={e => upd("type", e.target.value)} className={cn(IC, "w-32 appearance-none")}>
+                                                                  {TX_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                                                                </select>
+                                                              </td>
+                                                              <td className="px-1.5 py-1 min-w-[65px]">
+                                                                <select value={row.currency} onChange={e => upd("currency", e.target.value)} className={cn(IC, "w-14 appearance-none")}>
+                                                                  {["CAD","USD","EUR","GBP"].map(c => <option key={c}>{c}</option>)}
+                                                                </select>
+                                                              </td>
+                                                              <td className="px-1.5 py-1 min-w-[80px]"><input value={row.units} onChange={e => upd("units", e.target.value)} className={cn(IC, "w-20 text-right")} placeholder="0" /></td>
+                                                              <td className="px-1.5 py-1 min-w-[85px]"><input value={row.price} onChange={e => upd("price", e.target.value)} className={cn(IC, "w-20 text-right")} placeholder="0.00" /></td>
+                                                              <td className="px-1.5 py-1 min-w-[120px]"><input value={row.account} onChange={e => upd("account", e.target.value)} className={cn(IC, "w-28")} placeholder="Account" /></td>
+                                                              <td className="px-1.5 py-1 min-w-[110px]"><input value={row.source} onChange={e => upd("source", e.target.value)} className={cn(IC, "w-28")} placeholder="Source" /></td>
+                                                              <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
+                                                                <div className="flex items-center justify-end">
+                                                                  <button onClick={() => setInvReviewRows(prev => prev.filter(r => r.id !== row.id))} className="p-1 rounded hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors">
+                                                                    <Trash2 className="h-3 w-3" />
+                                                                  </button>
+                                                                </div>
+                                                              </td>
+                                                            </tr>
+                                                          );
+                                                        })}
+                                                      </tbody>
+                                                    </table>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            )}
+
+                                            {/* ── Bottom actions ── */}
+                                            {(invReviewRows.length > 0 || validFiles.length > 0) && (
+                                              <div className="flex items-center justify-between gap-2 pt-1">
                                                 <button
-                                                  onClick={() => {
-                                                    setInvSchedSrcLabel(`${validFiles.length} uploaded document${validFiles.length !== 1 ? "s" : ""}`);
-                                                    setInvReviewRows(INV_MOCK_ROWS);
-                                                    setInvSchedPhase("review");
-                                                  }}
-                                                  className="inline-flex items-center gap-1.5 h-9 px-5 text-sm font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors"
+                                                  onClick={() => setInvReviewRows(prev => [...prev, { id: `ir-new-${Date.now()}`, date: "", security: "", ticker: "", type: "Purchase", units: "", price: "", currency: "CAD", account: "", source: "" }])}
+                                                  className="inline-flex items-center gap-1 h-8 px-3 text-xs font-medium border border-border rounded-[8px] bg-background hover:bg-muted transition-colors text-foreground"
                                                 >
-                                                  Next
+                                                  <Plus className="h-3 w-3" /> Add Manual Entry
                                                 </button>
-                                              )}
-                                            </div>
-                                          </div>
+                                                <div className="flex items-center gap-2">
+                                                  <span className="text-[11px] text-muted-foreground">{invReviewRows.length} transaction{invReviewRows.length !== 1 ? "s" : ""}</span>
+                                                  <button
+                                                    disabled={invReviewRows.length === 0}
+                                                    onClick={() => { setInvSchedGenerated(true); setInvSchedPhase("done"); }}
+                                                    className="inline-flex items-center gap-1.5 h-8 px-5 text-sm font-semibold bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                                  >
+                                                    Submit
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            )}
+                                          </>
                                         );
                                       })()
-
-                                    ) : (
-                                      /* ── INITIAL TWO-BUTTON STATE ── */
-                                      <>
-                                        <div className="flex flex-col gap-2 sm:flex-row">
-                                          <button
-                                            onClick={() => setInvPlaidOpen(true)}
-                                            className="flex-1 flex items-center gap-2 px-4 py-3 rounded-[10px] border-2 border-primary/30 bg-primary/5 hover:border-primary hover:bg-primary/10 transition-all text-sm font-medium text-foreground"
-                                          >
-                                            <span className="w-7 h-7 rounded-full bg-primary flex items-center justify-center shrink-0"><Zap className="h-3.5 w-3.5 text-white" /></span>
-                                            <div className="text-left">
-                                              <p className="font-semibold text-sm text-foreground">Connect via Plaid</p>
-                                              <p className="text-[11px] text-muted-foreground">Auto-sync transactions from TD, RBC, BMO, Fidelity</p>
-                                            </div>
-                                          </button>
-                                          <button
-                                            onClick={() => {
-                                              const inp = document.createElement("input");
-                                              inp.type = "file"; inp.accept = ".pdf,.xlsx,.xls,.csv,.zip"; inp.multiple = true;
-                                              inp.onchange = e => {
-                                                const files = (e.target as HTMLInputElement).files;
-                                                if (!files || files.length === 0) return;
-                                                const classified = Array.from(files).map(classifyInvFile);
-                                                const valid = classified.filter(f => f.kind !== "unsupported" && f.kind !== "oversized" && f.kind !== "ambiguous");
-                                                if (valid.length > 0) {
-                                                  setInvUploadFiles(classified.slice(0, 15));
-                                                  setInvSchedSrcLabel(`${valid.length} uploaded document${valid.length !== 1 ? "s" : ""}`);
-                                                  setInvReviewRows(INV_MOCK_ROWS);
-                                                  setInvSchedPhase("review");
-                                                } else {
-                                                  setInvUploadFiles(classified.slice(0, 15));
-                                                  setInvUploadOpen(true);
-                                                }
-                                              };
-                                              inp.click();
-                                            }}
-                                            className="flex-1 flex items-center gap-2 px-4 py-3 rounded-[10px] border border-border bg-background hover:bg-muted/40 transition-all text-sm font-medium text-foreground"
-                                          >
-                                            <span className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0"><Upload className="h-3.5 w-3.5 text-foreground" /></span>
-                                            <div className="text-left">
-                                              <p className="font-semibold text-sm text-foreground">Upload Documents</p>
-                                              <p className="text-[11px] text-muted-foreground">PDF statements, CSV trade files, Excel workpaper</p>
-                                              <p className="text-[10px] text-muted-foreground/70 mt-0.5">Max 15 docs · 25 MB total</p>
-                                            </div>
-                                          </button>
-                                        </div>
-                                      </>
                                     )}
-                                  </>
-                                ) : invSchedPhase === "review" ? (
-                                  /* ── REVIEW / EDIT TABLE ── */
-                                  <>
-                                    <p className="text-sm text-foreground leading-relaxed">
-                                      Review and edit the extracted transactions below, then click <strong>Submit</strong> to generate the Investment Schedule.
-                                    </p>
-
-                                    {/* ── Source section: compact connect + upload panels ── */}
-                                    <div className="grid grid-cols-2 gap-2">
-
-                                      {/* ── Plaid panel ── */}
-                                      {invSchedSrcLabel?.startsWith("Plaid") ? (
-                                        /* Connected state */
-                                        <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] border border-green-200 bg-green-50">
-                                          <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                                            <Check className="w-3.5 h-3.5 text-green-600" />
-                                          </div>
-                                          <div className="flex-1 min-w-0">
-                                            <p className="text-[11px] font-semibold text-green-800 truncate">{invSchedSrcLabel?.replace("Plaid — ","")}</p>
-                                            <p className="text-[10px] text-green-700">Connected · read-only</p>
-                                          </div>
-                                          <button
-                                            onClick={() => { setInvSchedSrcLabel(null); setInvReviewRows([]); resetInvPlaid(); }}
-                                            className="inline-flex items-center gap-1 h-6 px-2 rounded-[6px] border border-green-300 bg-white text-[10px] font-medium text-red-500 hover:border-red-300 hover:bg-red-50 transition-colors shrink-0"
-                                          >
-                                            <X className="w-2.5 h-2.5" /> Disconnect
-                                          </button>
-                                        </div>
-                                      ) : (
-                                        /* Not connected — connect button */
-                                        <button
-                                          onClick={() => setInvPlaidOpen(true)}
-                                          className="flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] border border-border bg-background hover:bg-muted/40 transition-colors text-left w-full"
-                                        >
-                                          <div className="w-7 h-7 rounded-[6px] bg-[#1A1A1A] flex items-center justify-center shrink-0">
-                                            <span className="text-white text-[9px] font-bold tracking-tight">p</span>
-                                          </div>
-                                          <div className="flex-1 min-w-0">
-                                            <p className="text-[11px] font-semibold text-foreground">Connect via Plaid</p>
-                                            <p className="text-[10px] text-muted-foreground">12,000+ institutions</p>
-                                          </div>
-                                          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                        </button>
-                                      )}
-
-                                      {/* ── Upload panel ── */}
-                                      <div className="flex flex-col gap-1.5">
-                                        {/* Existing file chips */}
-                                        {invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized").length > 0 && (
-                                          <div className="flex flex-wrap gap-1.5 rounded-[10px] border border-border bg-background px-2 py-2">
-                                            {invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized").map(f => (
-                                              <div key={f.id} className="inline-flex items-center gap-1 pl-1.5 pr-1 py-0.5 rounded-[6px] border border-border bg-muted/30 max-w-[140px]">
-                                                {f.ext === "pdf"
-                                                  ? <FileText className="h-3 w-3 text-primary shrink-0" />
-                                                  : <FileSpreadsheet className="h-3 w-3 text-primary shrink-0" />}
-                                                <span className="flex-1 min-w-0 truncate text-[10px] font-medium text-foreground">{f.name}</span>
-                                                <button
-                                                  onClick={() => setInvUploadFiles(prev => prev.filter(x => x.id !== f.id))}
-                                                  className="shrink-0 text-red-400 hover:text-red-600 transition-colors ml-0.5"
-                                                >
-                                                  <X className="h-2.5 w-2.5" />
-                                                </button>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        )}
-                                        {/* Add / Upload button */}
-                                        <button
-                                          onClick={() => {
-                                            const inp = document.createElement("input");
-                                            inp.type = "file"; inp.accept = ".pdf,.xlsx,.xls,.csv,.zip"; inp.multiple = true;
-                                            inp.onchange = e => {
-                                              const files = (e.target as HTMLInputElement).files;
-                                              if (!files) return;
-                                              const classified = Array.from(files).map(classifyInvFile);
-                                              setInvUploadFiles(prev => {
-                                                const existing = new Set(prev.map(f => f.name));
-                                                return [...prev, ...classified.filter(f => !existing.has(f.name))].slice(0, 15);
-                                              });
-                                            };
-                                            inp.click();
-                                          }}
-                                          className="flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] border border-dashed border-border bg-background hover:bg-muted/40 transition-colors w-full"
-                                        >
-                                          <div className="w-7 h-7 rounded-[6px] bg-primary/10 flex items-center justify-center shrink-0">
-                                            <Upload className="w-3.5 h-3.5 text-primary" />
-                                          </div>
-                                          <div className="flex-1 min-w-0 text-left">
-                                            <p className="text-[11px] font-semibold text-foreground">
-                                              {invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized").length > 0
-                                                ? "Add more documents"
-                                                : "Upload Documents"}
-                                            </p>
-                                            <p className="text-[10px] text-muted-foreground">PDF, XLSX, CSV · 25 MB</p>
-                                          </div>
-                                          <Plus className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                        </button>
-                                      </div>
-
-                                    </div>
-
-                                    {invReviewRows.length > 0 && (
-                                      <div className="space-y-2">
-                                        {/* Header bar with toggle */}
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-[11px] font-semibold text-foreground">
-                                            {invReviewRows.length} transaction{invReviewRows.length !== 1 ? "s" : ""} extracted — review before submitting
-                                          </span>
-                                          <div className="shrink-0 ml-3 flex items-center gap-0 rounded-[8px] border border-border bg-muted/40 p-0.5">
-                                            <button
-                                              disabled={!invSchedGenerated}
-                                              onClick={() => setInvSchedPhase("done")}
-                                              className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-medium text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                                            >
-                                              <BarChart2 className="w-3 h-3" /> Schedule
-                                            </button>
-                                            <button className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-semibold bg-background text-foreground shadow-sm border border-border/60 transition-all">
-                                              <Pencil className="w-3 h-3" /> Add/Edit
-                                            </button>
-                                          </div>
-                                        </div>
-                                        {/* Scrollable review table */}
-                                        <div className="rounded-[8px] border border-border overflow-hidden">
-                                          <div className="overflow-x-auto">
-                                            <table className="w-full text-[10px]" style={{ minWidth: 1100 }}>
-                                              <thead>
-                                                <tr className="bg-muted/30 border-b border-border">
-                                                  {["Date *","Security *","Ticker","Type *","CCY","Units *","Price *","Account","Source",""].map((h, i) => (
-                                                    <th key={i} className={`px-2 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10 text-left" : "text-left"}`}>
-                                                      {h.endsWith(" *") ? <>{h.slice(0,-2)} <span className="text-red-500">*</span></> : h}
-                                                    </th>
-                                                  ))}
-                                                </tr>
-                                              </thead>
-                                              <tbody>
-                                                {invReviewRows.map((row, ri) => {
-                                                  const IC = "h-6 text-[10px] px-1.5 border rounded bg-background focus:outline-none w-full border-border focus:border-primary/40";
-                                                  const upd = (field: keyof InvReviewRow, val: string) =>
-                                                    setInvReviewRows(prev => prev.map(r => r.id === row.id ? { ...r, [field]: val } : r));
-                                                  return (
-                                                    <tr key={row.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
-                                                      <td className="px-1.5 py-1 min-w-[110px]"><input value={row.date} onChange={e => upd("date", e.target.value)} type="date" className={IC} /></td>
-                                                      <td className="px-1.5 py-1 min-w-[160px]"><input value={row.security} onChange={e => upd("security", e.target.value)} className={cn(IC, "w-40")} placeholder="Security name" /></td>
-                                                      <td className="px-1.5 py-1 min-w-[70px]"><input value={row.ticker} onChange={e => upd("ticker", e.target.value)} className={cn(IC, "w-16 font-mono uppercase")} placeholder="TICK" /></td>
-                                                      <td className="px-1.5 py-1 min-w-[130px]">
-                                                        <select value={row.type} onChange={e => upd("type", e.target.value)} className={cn(IC, "w-32 appearance-none")}>
-                                                          {TX_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                                                        </select>
-                                                      </td>
-                                                      <td className="px-1.5 py-1 min-w-[65px]">
-                                                        <select value={row.currency} onChange={e => upd("currency", e.target.value)} className={cn(IC, "w-14 appearance-none")}>
-                                                          {["CAD","USD","EUR","GBP"].map(c => <option key={c}>{c}</option>)}
-                                                        </select>
-                                                      </td>
-                                                      <td className="px-1.5 py-1 min-w-[80px]"><input value={row.units} onChange={e => upd("units", e.target.value)} className={cn(IC, "w-20 text-right")} placeholder="0" /></td>
-                                                      <td className="px-1.5 py-1 min-w-[85px]"><input value={row.price} onChange={e => upd("price", e.target.value)} className={cn(IC, "w-20 text-right")} placeholder="0.00" /></td>
-                                                      <td className="px-1.5 py-1 min-w-[120px]"><input value={row.account} onChange={e => upd("account", e.target.value)} className={cn(IC, "w-28")} placeholder="Account" /></td>
-                                                      <td className="px-1.5 py-1 min-w-[110px]"><input value={row.source} onChange={e => upd("source", e.target.value)} className={cn(IC, "w-28")} placeholder="Source" /></td>
-                                                      <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
-                                                        <div className="flex items-center justify-end">
-                                                          <button onClick={() => setInvReviewRows(prev => prev.filter(r => r.id !== row.id))} className="p-1 rounded hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors">
-                                                            <Trash2 className="h-3 w-3" />
-                                                          </button>
-                                                        </div>
-                                                      </td>
-                                                    </tr>
-                                                  );
-                                                })}
-                                              </tbody>
-                                            </table>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    )}
-                                    {/* Bottom actions */}
-                                    <div className="flex items-center justify-between gap-2 pt-1">
-                                      <button
-                                        onClick={() => setInvReviewRows(prev => [...prev, { id: `ir-new-${Date.now()}`, date: "", security: "", ticker: "", type: "Purchase", units: "", price: "", currency: "CAD", account: "", source: "" }])}
-                                        className="inline-flex items-center gap-1 h-8 px-3 text-xs font-medium border border-border rounded-[8px] bg-background hover:bg-muted transition-colors text-foreground"
-                                      >
-                                        <Plus className="h-3 w-3" /> Add Manual Entry
-                                      </button>
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-[11px] text-muted-foreground">{invReviewRows.length} transaction{invReviewRows.length !== 1 ? "s" : ""}</span>
-                                        <button
-                                          disabled={invReviewRows.length === 0}
-                                          onClick={() => { setInvSchedGenerated(true); setInvSchedPhase("done"); }}
-                                          className="inline-flex items-center gap-1.5 h-8 px-5 text-sm font-semibold bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                        >
-                                          Submit
-                                        </button>
-                                      </div>
-                                    </div>
                                   </>
                                 ) : (
                                   /* ── DONE / SCHEDULE VIEW ── */
                                   <>
-                                    <InvestmentScheduleResponse onEditTransactions={() => { setInvSchedPhase("review"); }} />
+                                    <InvestmentScheduleResponse onEditTransactions={() => { setInvSchedPhase("upload-prompt"); }} />
                                     {/* Follow-up chips */}
                                     <div className="flex flex-wrap gap-2 pt-1">
                                       {["Export to Excel", "Show unrealized G/L note", "Reconcile to broker statements", "Generate AJEs"].map(chip => (
