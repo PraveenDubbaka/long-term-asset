@@ -1271,14 +1271,6 @@ function AJEsPanel({ ajes, ajeQueue, clearAjeQueue }: {
       {/* Header */}
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-foreground">Adjusting Journal Entries</span>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setAddOpen(v => !v)}
-            className="inline-flex items-center gap-1 h-7 px-2.5 text-[11px] font-medium bg-primary text-primary-foreground rounded-[7px] hover:bg-primary/90 transition-colors"
-          >
-            <Plus className="w-3 h-3" />Add Entry
-          </button>
-        </div>
       </div>
 
 
