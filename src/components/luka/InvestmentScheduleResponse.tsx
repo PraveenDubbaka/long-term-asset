@@ -10,7 +10,7 @@ import {
 import { sources as baseSources, priorYearLots, currentYearTransactions } from "@/lib/luka/mockData";
 import type { Source, Transaction, PriorYearLot } from "@/lib/luka/types";
 import { defaultTbAccount } from "@/lib/luka/coa";
-import { Pencil, Trash2, Plus, Check, X, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, ChevronRight, Send, RotateCcw, FileDown } from "lucide-react";
+import { Pencil, Trash2, Plus, Check, X, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, ChevronRight, Send, RotateCcw, FileDown, BarChart2 } from "lucide-react";
 import { CHART_OF_ACCOUNTS } from "@/lib/luka/coa";
 
 // ─── LocalInvJE type (inline, not imported from page) ─────────────────────────
@@ -1460,7 +1460,7 @@ function HoldingsPanel({ schedules }: { schedules: SecuritySchedule[] }) {
 }
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
-export function InvestmentScheduleResponse() {
+export function InvestmentScheduleResponse({ onEditTransactions }: { onEditTransactions?: () => void } = {}) {
   const settings = useStore(s => s.settings);
   const [activeTab, setActiveTab] = useState<TabId>("transactions");
 
@@ -1540,23 +1540,38 @@ export function InvestmentScheduleResponse() {
       </p>
 
       {/* Tab bar */}
-      <div className="flex items-center gap-0 border-b border-border overflow-x-auto">
-        {TABS.map(({ id, label }) => {
-          const isActive = activeTab === id;
-          return (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-1 px-3 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap shrink-0 ${
-                isActive
-                  ? "border-primary text-primary bg-primary/5"
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
-              }`}
-            >
-              {label}
+      <div className="flex items-center border-b border-border -mx-0">
+        <div className="flex items-center gap-0 overflow-x-auto flex-1 min-w-0">
+          {TABS.map(({ id, label }) => {
+            const isActive = activeTab === id;
+            return (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={`flex items-center gap-1 px-3 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap shrink-0 ${
+                  isActive
+                    ? "border-primary text-primary bg-primary/5"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        {onEditTransactions && (
+          <div className="shrink-0 ml-3 mb-px flex items-center gap-0 rounded-[8px] border border-border bg-muted/40 p-0.5">
+            <button className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-semibold bg-background text-foreground shadow-sm border border-border/60 transition-all">
+              <BarChart2 className="w-3 h-3" /> Schedule
             </button>
-          );
-        })}
+            <button
+              onClick={onEditTransactions}
+              className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-medium text-muted-foreground hover:text-foreground transition-all"
+            >
+              <Pencil className="w-3 h-3" /> Add/Edit
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Tab content — always mounted so state survives tab switches */}
