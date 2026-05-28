@@ -3488,18 +3488,6 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                   <span className="text-[11px] font-semibold text-foreground">
                                                     {invReviewRows.length} transaction{invReviewRows.length !== 1 ? "s" : ""} extracted — review before submitting
                                                   </span>
-                                                  <div className="shrink-0 ml-3 flex items-center gap-0 rounded-[8px] border border-border bg-muted/40 p-0.5">
-                                                    <button
-                                                      disabled={!invSchedGenerated}
-                                                      onClick={() => setInvSchedPhase("done")}
-                                                      className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-medium text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                                                    >
-                                                      <BarChart2 className="w-3 h-3" /> Schedule
-                                                    </button>
-                                                    <button className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-semibold bg-background text-foreground shadow-sm border border-border/60 transition-all">
-                                                      <Pencil className="w-3 h-3" /> Add/Edit
-                                                    </button>
-                                                  </div>
                                                 </div>
                                                 <div className="rounded-[8px] border border-border overflow-hidden">
                                                   <div className="overflow-x-auto">
