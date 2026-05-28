@@ -2358,7 +2358,18 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
   const [engSearch,       setEngSearch]       = useState("");
   const [selectedEngId,   setSelectedEngId]   = useState<string | null>(null);
   const [saveMenuRect,    setSaveMenuRect]     = useState<DOMRect | null>(null);
+  const [engPanelRect,    setEngPanelRect]     = useState<{ left: number; right: number; bottom: number } | null>(null);
   const saveBtnRef = useRef<HTMLButtonElement>(null);
+
+  // Recompute panel anchor whenever we enter the engagement/saving/saved steps
+  useLayoutEffect(() => {
+    const active = saveFlowStep === "engagement" || saveFlowStep === "saving" || saveFlowStep === "saved";
+    if (!active) { setEngPanelRect(null); return; }
+    const el = document.querySelector(".luka-gradient-border") as HTMLElement | null;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setEngPanelRect({ left: r.left, right: window.innerWidth - r.right, bottom: window.innerHeight - r.top + 8 });
+  }, [saveFlowStep]);
 
   const openSaveFlow = () => {
     setSaveDocType(null);
@@ -2367,7 +2378,7 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
     setSaveFlowStep("doc-type");
     setSaveMenuRect(saveBtnRef.current?.getBoundingClientRect() ?? null);
   };
-  const closeSaveFlow = () => { setSaveFlowStep("closed"); setSaveMenuRect(null); };
+  const closeSaveFlow = () => { setSaveFlowStep("closed"); setSaveMenuRect(null); setEngPanelRect(null); };
 
   const DOC_TYPES = [
     { id: "workpaper",  label: "Long-term Debt Workpaper", icon: FileSpreadsheet, desc: "Full workpaper with all tabs" },
@@ -2607,16 +2618,21 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
             </div>
           )}
 
-          {/* Step 2 — Engagement picker modal */}
+          {/* Step 2 — Engagement picker, slides up from bottom of the Luka panel */}
           {(saveFlowStep === "engagement" || saveFlowStep === "saving" || saveFlowStep === "saved") && (
-            <div className="fixed inset-0 z-[300] flex items-center justify-center p-6">
-              <div className="w-full max-w-2xl bg-background border border-border rounded-[14px] shadow-[0_8px_48px_rgba(0,0,0,0.18)] animate-in fade-in scale-in duration-200 flex flex-col overflow-hidden max-h-[80vh]">
+            <div
+              className="fixed z-[60] pointer-events-none"
+              style={engPanelRect
+                ? { left: engPanelRect.left, right: engPanelRect.right, bottom: engPanelRect.bottom }
+                : { left: 24, right: 24, bottom: 124 }}
+            >
+              <div className="w-full pointer-events-auto bg-background border border-border rounded-[12px] shadow-[0_2px_24px_rgba(0,0,0,0.12)] animate-in slide-in-from-bottom-4 fade-in duration-200 flex flex-col overflow-hidden" style={{ maxHeight: "70vh" }}>
 
                 {saveFlowStep === "saved" ? (
                   /* ── Saved confirmation ── */
-                  <div className="px-6 py-10 flex flex-col items-center gap-3 text-center">
-                    <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-                      <Check className="h-6 w-6 text-green-600" />
+                  <div className="px-6 py-8 flex flex-col items-center gap-3 text-center">
+                    <div className="w-11 h-11 rounded-full bg-green-100 flex items-center justify-center">
+                      <Check className="h-5 w-5 text-green-600" />
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-foreground">Saved to engagement</p>
@@ -2625,14 +2641,14 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
                         <strong>{MOCK_ENGAGEMENTS.find(e => e.id === selectedEngId)?.client}</strong>
                       </p>
                     </div>
-                    <button onClick={closeSaveFlow} className="mt-2 h-8 px-6 text-xs font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors">
+                    <button onClick={closeSaveFlow} className="mt-1 h-8 px-6 text-xs font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors">
                       Done
                     </button>
                   </div>
                 ) : (
                   <>
                     {/* Header */}
-                    <div className="flex items-center justify-between px-5 py-3.5 border-b border-border shrink-0">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
                       <div>
                         <p className="text-sm font-semibold text-foreground">Select Engagement</p>
                         {saveDocType && (
@@ -2642,7 +2658,6 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        {/* Search */}
                         <div className="relative">
                           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                           <input
@@ -2650,7 +2665,7 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
                             value={engSearch}
                             onChange={e => setEngSearch(e.target.value)}
                             placeholder="Search"
-                            className="h-8 pl-8 pr-3 w-44 text-xs border border-border rounded-[8px] bg-background focus:outline-none focus:border-primary/50"
+                            className="h-8 pl-8 pr-3 w-40 text-xs border border-border rounded-[8px] bg-background focus:outline-none focus:border-primary/50"
                           />
                         </div>
                         <button onClick={closeSaveFlow} className="p-1.5 rounded-[6px] hover:bg-muted transition-colors text-muted-foreground">
@@ -2666,7 +2681,7 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
                           <tr>
                             {["Client Name","Engagement ID","Year End","Status","Date Created"].map(h => (
                               <th key={h} className="px-4 py-2.5 text-left text-[11px] font-semibold text-foreground/70 whitespace-nowrap">
-                                <span className="inline-flex items-center gap-1">{h} <ChevronDown className="h-3 w-3 opacity-50" /></span>
+                                <span className="inline-flex items-center gap-1">{h} <ChevronDown className="h-3 w-3 opacity-40" /></span>
                               </th>
                             ))}
                           </tr>
@@ -2679,15 +2694,15 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
                               e.engId.toLowerCase().includes(engSearch.toLowerCase())
                             )
                             .map(eng => {
-                              const isSelected = selectedEngId === eng.id;
+                              const isSel = selectedEngId === eng.id;
                               return (
                                 <tr
                                   key={eng.id}
                                   onClick={() => setSelectedEngId(eng.id)}
-                                  className={`border-b border-border/50 cursor-pointer transition-colors ${isSelected ? "bg-primary/8" : "hover:bg-muted/40"}`}
+                                  className={`border-b border-border/50 cursor-pointer transition-colors ${isSel ? "bg-primary/[0.06]" : "hover:bg-muted/40"}`}
                                 >
                                   <td className="px-4 py-3">
-                                    <span className={`font-medium ${isSelected ? "text-primary" : "text-foreground"}`}>{eng.client}</span>
+                                    <span className={`font-medium ${isSel ? "text-primary" : "text-foreground"}`}>{eng.client}</span>
                                   </td>
                                   <td className="px-4 py-3 text-muted-foreground font-mono text-[11px]">{eng.engId}</td>
                                   <td className="px-4 py-3 text-muted-foreground">{eng.yearEnd}</td>
@@ -2709,7 +2724,7 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
                     </div>
 
                     {/* Footer */}
-                    <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-muted/20 shrink-0">
+                    <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20 shrink-0">
                       <button
                         onClick={() => setSaveFlowStep("doc-type")}
                         className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-[8px] bg-background hover:bg-muted transition-colors"
@@ -2740,6 +2755,7 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
                     </div>
                   </>
                 )}
+
               </div>
             </div>
           )}
