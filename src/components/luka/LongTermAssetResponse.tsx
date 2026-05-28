@@ -10,9 +10,81 @@ import {
 } from "lucide-react";
 import { COVENANT_TEMPLATES, GL_ACCOUNTS, GL_CATEGORY_ORDER, GL_CATEGORY_LABELS } from "@/lib/covenantTemplates";
 import type { GlCategory } from "@/lib/covenantTemplates";
+import { accountMappings as allGLAccountsForAdd } from "@/data/mockData";
 import { useStore } from "@/store/useStore";
 import toast from "react-hot-toast";
 import type { Loan, ContinuityRow, AmortizationRow, Covenant, CovenantFormulaLine, JEProposal, ReconciliationItem, EngagementSettings, AccountMapping } from "@/types";
+
+// ─── Add-mode review row (mirrors LtDebtReviewRow in AskLukaOverlay) ─────────
+interface LtAddRow {
+  id: string; sourceFile?: string;
+  name: string; lender: string; type: string; currency: string;
+  originalPrincipal: string; currentBalance: string; rate: string;
+  interestType: string; startDate: string; maturityDate: string;
+  firstPaymentDate: string; monthlyPayment: string; fxRate: string;
+  paymentFrequency: string; paymentType: string;
+  dayCount: string; compounding: string;
+  ioPeriod: string; balloonAmt: string;
+  collateral: string; status: string; glPrincipal: string;
+}
+const EMPTY_LT_ADD_ROW = (): LtAddRow => ({
+  id: `lta-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
+  name: "", lender: "", type: "Term", currency: "CAD",
+  originalPrincipal: "", currentBalance: "", rate: "",
+  interestType: "Fixed", startDate: "", maturityDate: "",
+  firstPaymentDate: "", monthlyPayment: "", fxRate: "",
+  paymentFrequency: "Monthly", paymentType: "P&I",
+  dayCount: "ACT/365", compounding: "Monthly",
+  ioPeriod: "", balloonAmt: "", collateral: "", status: "Active", glPrincipal: "2100",
+});
+const LT_ADD_REQUIRED: (keyof LtAddRow)[] = ["name","lender","currentBalance","rate","startDate","maturityDate","glPrincipal"];
+const LT_ADD_RIGHT_COLS = new Set(["Int. Rate % *","Mo. Payment","Orig. Loan Amt","FX Rate","Opening Bal. *","IO Period (mo.)","Balloon Amt"]);
+const LT_ADD_SCR = "h-6 text-[10px] px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer";
+function ltAddRowMissing(row: LtAddRow, field: keyof LtAddRow) { return !String(row[field] ?? "").trim(); }
+
+function GLComboboxMiniAdd({ value, onChange, required }: { value: string; onChange: (v: string) => void; required?: boolean }) {
+  const [open, setOpen]   = useState(false);
+  const [query, setQuery] = useState('');
+  const [typed, setTyped] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropRef  = useRef<HTMLDivElement>(null);
+  const [pos, setPos]     = useState({ top: 0, left: 0, width: 0 });
+  const selected     = allGLAccountsForAdd.find((a: { code: string }) => a.code === value);
+  const displayLabel = selected ? `${selected.code} — ${(selected as { name: string }).name}` : value;
+  useEffect(() => { if (!typed) setQuery(displayLabel); }, [value, typed, displayLabel]);
+  const openDrop = () => {
+    if (inputRef.current) { const r = inputRef.current.getBoundingClientRect(); setPos({ top: r.bottom + 2, left: r.left, width: Math.max(r.width, 260) }); }
+    setQuery(''); setTyped(false); setOpen(true);
+  };
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => { if (!inputRef.current?.contains(e.target as Node) && !dropRef.current?.contains(e.target as Node)) { setOpen(false); setTyped(false); setQuery(displayLabel); } };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open, displayLabel]);
+  const q = query.toLowerCase();
+  const filtered = typed
+    ? allGLAccountsForAdd.filter((a: { code: string; name: string }) => a.code.toLowerCase().includes(q) || a.name.toLowerCase().includes(q))
+    : allGLAccountsForAdd;
+  return (
+    <>
+      <input ref={inputRef} className={`h-6 text-[10px] px-1.5 border rounded bg-background focus:outline-none w-full font-mono ${required && !value ? "border-red-400 bg-red-50/60 placeholder:text-red-400 text-red-600" : "border-border focus:border-primary/40 placeholder:text-muted-foreground"}`}
+        value={open ? query : displayLabel} placeholder="Search GL…"
+        onChange={e => { setQuery(e.target.value); setTyped(true); }} onFocus={openDrop} onClick={openDrop} />
+      {open && filtered.length > 0 && ReactDOM.createPortal(
+        <div ref={dropRef} style={{ position: 'fixed', top: pos.top, left: pos.left, width: Math.max(pos.width, 260), zIndex: 9999 }}
+          className="bg-background border border-border rounded-md shadow-lg py-1 max-h-48 overflow-y-auto">
+          {(filtered as Array<{ code: string; name: string }>).map(a => (
+            <div key={a.code} className={`px-3 py-1 text-[11px] cursor-pointer font-mono ${a.code === value ? 'bg-primary/10 font-semibold text-primary' : 'text-foreground hover:bg-muted'}`}
+              onMouseDown={e => { e.preventDefault(); onChange(a.code); setOpen(false); setTyped(false); setQuery(`${a.code} — ${a.name}`); }}>
+              <span className="font-semibold">{a.code}</span><span className="text-muted-foreground ml-1.5">— {a.name}</span>
+            </div>
+          ))}
+        </div>, document.body
+      )}
+    </>
+  );
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const USD_FX = 1.353;
@@ -375,8 +447,6 @@ function generateMockDetectedLoans(fileNames: string[]): DetectedLoan[] {
   return result;
 }
 
-type PendingLoan = Partial<Loan> & { _id: string };
-
 function LoansTab({
   loans,
   loanMode,
@@ -389,8 +459,8 @@ function LoansTab({
   loanMode: "view" | "edit" | "add";
   batchEdits: Record<string, Partial<Loan>>;
   setBatchEdits: React.Dispatch<React.SetStateAction<Record<string, Partial<Loan>>>>;
-  pendingLoans: PendingLoan[];
-  setPendingLoans: React.Dispatch<React.SetStateAction<PendingLoan[]>>;
+  pendingLoans: LtAddRow[];
+  setPendingLoans: React.Dispatch<React.SetStateAction<LtAddRow[]>>;
 }) {
   const { accountMappings, reconciliation, updateLoan, addLoan, deleteLoan } = useStore(s => ({
     accountMappings: s.accountMappings,
@@ -436,15 +506,14 @@ function LoansTab({
   };
 
   // ── Add-mode helpers ─────────────────────────────────────────────────────────
-  const addPendingRow = () => {
-    setPendingLoans(prev => [...prev, { ...EMPTY_LOAN_DRAFT(), _id: `pending-${Date.now()}` } as PendingLoan]);
-  };
+  const addPendingRow = () =>
+    setPendingLoans(prev => [...prev, EMPTY_LT_ADD_ROW()]);
 
-  const updatePending = (id: string, k: keyof Loan, v: unknown) =>
-    setPendingLoans(prev => prev.map(p => p._id === id ? { ...p, [k]: v } : p));
+  const updatePending = (id: string, field: keyof LtAddRow, value: string) =>
+    setPendingLoans(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
 
   const removePending = (id: string) =>
-    setPendingLoans(prev => prev.filter(p => p._id !== id));
+    setPendingLoans(prev => prev.filter(p => p.id !== id));
 
   const handleAddModeUpload = (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -454,15 +523,17 @@ function LoansTab({
       setPendingLoans(prev => [
         ...prev,
         ...detected.map(d => ({
-          _id: `pending-${d.id}`,
-          name: d.name, lender: d.lender, type: d.type as Loan["type"],
-          currency: d.currency, interestType: d.interestType as Loan["interestType"],
-          rate: d.rate, originalPrincipal: d.originalPrincipal, currentBalance: d.currentBalance,
-          startDate: d.startDate, maturityDate: d.maturityDate, firstPaymentDate: d.firstPaymentDate,
-          paymentFrequency: d.paymentFrequency as Loan["paymentFrequency"],
-          paymentType: d.paymentType as Loan["paymentType"], dayCountBasis: d.dayCountBasis as Loan["dayCountBasis"],
-          securityDescription: d.securityDescription, status: "Active" as const,
-        } as PendingLoan)),
+          ...EMPTY_LT_ADD_ROW(),
+          id: `lta-${d.id}`,
+          name: d.name, lender: d.lender, type: d.type,
+          currency: d.currency, interestType: d.interestType,
+          rate: String(d.rate), originalPrincipal: String(d.originalPrincipal),
+          currentBalance: String(d.currentBalance),
+          startDate: d.startDate, maturityDate: d.maturityDate,
+          firstPaymentDate: d.firstPaymentDate,
+          paymentFrequency: d.paymentFrequency, paymentType: d.paymentType,
+          dayCount: d.dayCountBasis, collateral: d.securityDescription,
+        } as LtAddRow)),
       ]);
       setAddUploading(false);
       toast.success(`Extracted ${detected.length} loan${detected.length !== 1 ? "s" : ""} from document`);
@@ -629,64 +700,67 @@ function LoansTab({
             </div>
           </div>
 
-          {/* Pending rows table */}
+          {/* Pending rows table — same component as initial LTD flow */}
           {pendingLoans.length > 0 && (
-            <div className="rounded-[8px] border border-primary/20 overflow-hidden">
-              <div className="px-3 py-2 bg-primary/[0.04] border-b border-primary/15 flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-foreground">{pendingLoans.length} loan{pendingLoans.length !== 1 ? "s" : ""} extracted — review and complete before submitting</span>
-                <button onClick={addPendingRow} className="inline-flex items-center gap-1 h-6 px-2.5 text-[11px] font-medium text-primary hover:bg-primary/10 rounded-[6px] transition-colors">
-                  <Plus className="h-3 w-3" /> Add row
-                </button>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-foreground">
+                  {pendingLoans.length} loan{pendingLoans.length !== 1 ? "s" : ""} extracted — review and complete before submitting
+                </span>
               </div>
-              <div className="overflow-x-auto">
-                <table className="text-[11px]" style={{ minWidth: "1400px" }}>
-                  <thead>
-                    <tr className="bg-primary/[0.03] border-b border-primary/15">
-                      {HEADERS.map(({ h, left }) => (
-                        <th key={h} className={`px-2.5 py-2 font-semibold text-muted-foreground uppercase tracking-wide text-[10px] whitespace-nowrap ${left ? "text-left" : "text-right"}`}>{h}</th>
-                      ))}
-                      <th className="px-2 py-2 w-7" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pendingLoans.map(p => {
-                      const IC  = "h-6 w-full min-w-[52px] text-[11px] px-1.5 border border-primary/40 rounded-[5px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30";
-                      const ICS = "h-6 w-full min-w-[52px] text-[11px] px-1 border border-primary/40 rounded-[5px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer";
-                      return (
-                        <tr key={p._id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
-                          {!hiddenCols.has("Loan Name")          && <td className="px-1.5 py-1"><input autoFocus value={p.name??""} onChange={e=>updatePending(p._id,"name",e.target.value)} className={IC} placeholder="Name *" /></td>}
-                          {!hiddenCols.has("Lender")              && <td className="px-1.5 py-1"><input value={p.lender??""} onChange={e=>updatePending(p._id,"lender",e.target.value)} className={IC} placeholder="Lender *" /></td>}
-                          {!hiddenCols.has("Current Collateral")  && <td className="px-1.5 py-1"><input value={p.securityDescription??""} onChange={e=>updatePending(p._id,"securityDescription",e.target.value)} className={IC} placeholder="Collateral" /></td>}
-                          {!hiddenCols.has("Type")                && <td className="px-1.5 py-1"><select value={p.type??"Term"} onChange={e=>updatePending(p._id,"type",e.target.value)} className={ICS}>{["Term","LOC","Revolver","Mortgage","Bridge"].map(t=><option key={t}>{t}</option>)}</select></td>}
-                          {!hiddenCols.has("Rate Type")           && <td className="px-1.5 py-1"><select value={p.interestType??"Fixed"} onChange={e=>updatePending(p._id,"interestType",e.target.value)} className={ICS}>{["Fixed","Variable","Floating","Hybrid","Step Rate"].map(t=><option key={t}>{t}</option>)}</select></td>}
-                          {!hiddenCols.has("Int. Rate (%)")       && <td className="px-1.5 py-1"><input type="number" step="0.01" value={p.rate||""} onChange={e=>updatePending(p._id,"rate",parseFloat(e.target.value)||0)} className={IC} placeholder="0.00" /></td>}
-                          {!hiddenCols.has("Start")               && <td className="px-1.5 py-1"><input type="date" value={p.startDate??""} onChange={e=>updatePending(p._id,"startDate",e.target.value)} className={IC} /></td>}
-                          {!hiddenCols.has("Maturity")            && <td className="px-1.5 py-1"><input type="date" value={p.maturityDate??""} onChange={e=>updatePending(p._id,"maturityDate",e.target.value)} className={IC} /></td>}
-                          {!hiddenCols.has("Tenure (Mo.)")        && <td className="px-1.5 py-1 text-right text-muted-foreground">—</td>}
-                          {!hiddenCols.has("First Payment")       && <td className="px-1.5 py-1"><input type="date" value={p.firstPaymentDate??""} onChange={e=>updatePending(p._id,"firstPaymentDate",e.target.value)} className={IC} /></td>}
-                          {!hiddenCols.has("CCY")                 && <td className="px-1.5 py-1"><select value={p.currency??"CAD"} onChange={e=>updatePending(p._id,"currency",e.target.value)} className={ICS}>{["CAD","USD","EUR","GBP"].map(c=><option key={c}>{c}</option>)}</select></td>}
-                          {!hiddenCols.has("Mo. Payment")         && <td className="px-1.5 py-1"><input type="number" step="100" value={p.monthlyPayment||""} onChange={e=>updatePending(p._id,"monthlyPayment",parseFloat(e.target.value)||undefined)} className={IC} placeholder="auto" /></td>}
-                          {!hiddenCols.has("Orig. Loan Amt")      && <td className="px-1.5 py-1"><input type="number" step="1000" value={p.originalPrincipal||""} onChange={e=>updatePending(p._id,"originalPrincipal",parseFloat(e.target.value)||0)} className={IC} placeholder="0" /></td>}
-                          {!hiddenCols.has("FX Rate")             && <td className="px-1.5 py-1"><input type="number" step="0.0001" value={p.fxRateToCAD||""} onChange={e=>updatePending(p._id,"fxRateToCAD",parseFloat(e.target.value)||undefined)} className={IC} placeholder="1.000" /></td>}
-                          {!hiddenCols.has("Converted Amt")       && <td className="px-1.5 py-1 text-right text-muted-foreground">—</td>}
-                          {!hiddenCols.has("Closing Balance")     && <td className="px-1.5 py-1"><input type="number" step="1000" value={p.currentBalance||""} onChange={e=>updatePending(p._id,"currentBalance",parseFloat(e.target.value)||0)} className={IC} placeholder="0" /></td>}
-                          {!hiddenCols.has("GL Principal")        && <td className="px-1.5 py-1"><GLSelect loanId={p._id} value={p.glPrincipalAccount??""} options={principalAccts} field="glPrincipalAccount" onSave={(_,__,code)=>updatePending(p._id,"glPrincipalAccount",code)} /></td>}
-                          {!hiddenCols.has("Day Count")           && <td className="px-1.5 py-1"><select value={p.dayCountBasis??"ACT/365"} onChange={e=>updatePending(p._id,"dayCountBasis",e.target.value)} className={ICS}>{["ACT/365","ACT/360","30/360"].map(d=><option key={d}>{d}</option>)}</select></td>}
-                          {!hiddenCols.has("Payment Type")        && <td className="px-1.5 py-1"><select value={p.paymentType??"P&I"} onChange={e=>updatePending(p._id,"paymentType",e.target.value)} className={ICS}>{["P&I","Interest-only","Balloon"].map(t=><option key={t}>{t}</option>)}</select></td>}
-                          {!hiddenCols.has("Compounding")         && <td className="px-1.5 py-1"><select value={p.compoundingFrequency??"Monthly"} onChange={e=>updatePending(p._id,"compoundingFrequency",e.target.value)} className={ICS}>{["Monthly","Quarterly","Semi-annual","Annual"].map(f=><option key={f}>{f}</option>)}</select></td>}
-                          {!hiddenCols.has("IO Period (mo.)")     && <td className="px-1.5 py-1"><input type="number" step="1" value={p.interestOnlyPeriodMonths||""} onChange={e=>updatePending(p._id,"interestOnlyPeriodMonths",parseInt(e.target.value)||undefined)} className={IC} placeholder="00" /></td>}
-                          {!hiddenCols.has("Balloon Amt")         && <td className="px-1.5 py-1"><input type="number" step="1000" value={p.balloonAmount||""} onChange={e=>updatePending(p._id,"balloonAmount",parseFloat(e.target.value)||undefined)} className={IC} placeholder="00" /></td>}
-                          {!hiddenCols.has("Status")              && <td className="px-1.5 py-1"><select value={p.status??"Active"} onChange={e=>updatePending(p._id,"status",e.target.value as Loan["status"])} className={ICS}>{["Active","Paid Off","Refinanced","Defaulted"].map(s=><option key={s}>{s}</option>)}</select></td>}
-                          <td className="px-2 py-1">
-                            <button onClick={() => removePending(p._id)} className="inline-flex items-center justify-center w-6 h-6 rounded-[5px] text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors">
-                              <X className="h-3 w-3" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              <div className="rounded-[8px] border border-border overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[10px]" style={{ minWidth: 2400 }}>
+                    <thead>
+                      <tr className="bg-muted/30 border-b border-border">
+                        {["Loan Name *","Lender *","Current Collateral","Type","Rate Type","Int. Rate % *","Start *","Maturity *","First Payment","CCY","Mo. Payment","Orig. Loan Amt","FX Rate","Opening Bal. *","GL Principal *","Day Count","Payment Type","Freq.","Compounding","IO Period (mo.)","Balloon Amt","Status",""].map((h, i) => (
+                          <th key={i} className={`px-2 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${LT_ADD_RIGHT_COLS.has(h) ? "text-right" : "text-left"} ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10" : ""}`}>
+                            {h.endsWith(" *") ? <>{h.slice(0,-2)} <span className="text-red-500">*</span></> : h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingLoans.map((row, ri) => {
+                        const fc = (field: keyof LtAddRow, req: boolean) =>
+                          `h-6 text-[10px] px-1.5 border rounded bg-background focus:outline-none w-full ${req && ltAddRowMissing(row, field) ? "border-red-400 bg-red-50/60 placeholder:text-red-400 text-red-600 focus:border-red-500" : "border-border focus:border-primary/40"}`;
+                        return (
+                          <tr key={row.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
+                            <td className="px-1.5 py-1 min-w-[130px]"><input value={row.name} onChange={e=>updatePending(row.id,"name",e.target.value)} className={`${fc("name",true)} w-32`} placeholder="Loan name" /></td>
+                            <td className="px-1.5 py-1 min-w-[110px]"><input value={row.lender} onChange={e=>updatePending(row.id,"lender",e.target.value)} className={`${fc("lender",true)} w-28`} placeholder="Lender" /></td>
+                            <td className="px-1.5 py-1 min-w-[120px]"><input value={row.collateral} onChange={e=>updatePending(row.id,"collateral",e.target.value)} className={`${fc("collateral",false)} w-28`} placeholder="e.g. Real property" /></td>
+                            <td className="px-1.5 py-1"><select value={row.type} onChange={e=>updatePending(row.id,"type",e.target.value)} className={`${LT_ADD_SCR} w-20`}>{["Term","LOC","Revolver","Mortgage","Bridge"].map(t=><option key={t}>{t}</option>)}</select></td>
+                            <td className="px-1.5 py-1"><select value={row.interestType} onChange={e=>updatePending(row.id,"interestType",e.target.value)} className={`${LT_ADD_SCR} w-22`}>{["Fixed","Variable","Floating","Hybrid","Step Rate"].map(t=><option key={t}>{t}</option>)}</select></td>
+                            <td className="px-1.5 py-1"><input value={row.rate} onChange={e=>updatePending(row.id,"rate",e.target.value)} className={`${fc("rate",true)} w-14 text-right`} placeholder="%" /></td>
+                            <td className="px-1.5 py-1"><input type="date" value={row.startDate} onChange={e=>updatePending(row.id,"startDate",e.target.value)} className={`${fc("startDate",true)} w-28`} /></td>
+                            <td className="px-1.5 py-1"><input type="date" value={row.maturityDate} onChange={e=>updatePending(row.id,"maturityDate",e.target.value)} className={`${fc("maturityDate",true)} w-28`} /></td>
+                            <td className="px-1.5 py-1"><input type="date" value={row.firstPaymentDate} onChange={e=>updatePending(row.id,"firstPaymentDate",e.target.value)} className={`${fc("firstPaymentDate",false)} w-28`} /></td>
+                            <td className="px-1.5 py-1"><select value={row.currency} onChange={e=>updatePending(row.id,"currency",e.target.value)} className={`${LT_ADD_SCR} w-14`}>{["CAD","USD","EUR","GBP"].map(c=><option key={c}>{c}</option>)}</select></td>
+                            <td className="px-1.5 py-1"><input value={row.monthlyPayment} onChange={e=>updatePending(row.id,"monthlyPayment",e.target.value)} className={`${fc("monthlyPayment",false)} w-24 text-right`} placeholder="auto" /></td>
+                            <td className="px-1.5 py-1"><input value={row.originalPrincipal} onChange={e=>updatePending(row.id,"originalPrincipal",e.target.value)} className={`${fc("originalPrincipal",false)} w-24 text-right`} placeholder="0" /></td>
+                            <td className="px-1.5 py-1"><input value={row.fxRate} onChange={e=>updatePending(row.id,"fxRate",e.target.value)} className={`${fc("fxRate",false)} w-16 text-right font-mono`} placeholder="1.000" /></td>
+                            <td className="px-1.5 py-1"><input value={row.currentBalance} onChange={e=>updatePending(row.id,"currentBalance",e.target.value)} className={`${fc("currentBalance",true)} w-24 text-right`} placeholder="Balance" /></td>
+                            <td className="px-1.5 py-1 min-w-[160px]"><GLComboboxMiniAdd value={row.glPrincipal} onChange={v=>updatePending(row.id,"glPrincipal",v)} required={ltAddRowMissing(row,"glPrincipal")} /></td>
+                            <td className="px-1.5 py-1"><select value={row.dayCount} onChange={e=>updatePending(row.id,"dayCount",e.target.value)} className={`${LT_ADD_SCR} w-20`}>{["ACT/365","ACT/360","30/360"].map(d=><option key={d}>{d}</option>)}</select></td>
+                            <td className="px-1.5 py-1"><select value={row.paymentType} onChange={e=>updatePending(row.id,"paymentType",e.target.value)} className={`${LT_ADD_SCR} w-24`}>{["P&I","Interest-only","Balloon"].map(p=><option key={p}>{p}</option>)}</select></td>
+                            <td className="px-1.5 py-1"><select value={row.paymentFrequency} onChange={e=>updatePending(row.id,"paymentFrequency",e.target.value)} className={`${LT_ADD_SCR} w-22`}>{["Monthly","Quarterly","Semi-annual","Annual"].map(f=><option key={f}>{f}</option>)}</select></td>
+                            <td className="px-1.5 py-1"><select value={row.compounding} onChange={e=>updatePending(row.id,"compounding",e.target.value)} className={`${LT_ADD_SCR} w-22`}>{["Monthly","Quarterly","Semi-annual","Annual"].map(f=><option key={f}>{f}</option>)}</select></td>
+                            <td className="px-1.5 py-1"><input value={row.ioPeriod} onChange={e=>updatePending(row.id,"ioPeriod",e.target.value)} className={`${fc("ioPeriod",false)} w-14 text-right`} placeholder="0" /></td>
+                            <td className="px-1.5 py-1"><input value={row.balloonAmt} onChange={e=>updatePending(row.id,"balloonAmt",e.target.value)} className={`${fc("balloonAmt",false)} w-24 text-right`} placeholder="0" /></td>
+                            <td className="px-1.5 py-1"><select value={row.status} onChange={e=>updatePending(row.id,"status",e.target.value)} className={`${LT_ADD_SCR} w-20`}>{["Active","Closed","Replaced","Inactive"].map(s=><option key={s}>{s}</option>)}</select></td>
+                            <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
+                              <div className="flex items-center justify-end">
+                                <button onClick={()=>removePending(row.id)} className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors">
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -2172,7 +2246,7 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
   const [activeTab,     setActiveTab]     = useState<TabId>("loans");
   const [loanMode,      setLoanMode]      = useState<"view" | "edit" | "add">("view");
   const [batchEdits,    setBatchEdits]    = useState<Record<string, Partial<Loan>>>({});
-  const [pendingLoans,  setPendingLoans]  = useState<PendingLoan[]>([]);
+  const [pendingLoans,  setPendingLoans]  = useState<LtAddRow[]>([]);
 
   const discardMode = () => { setLoanMode("view"); setBatchEdits({}); setPendingLoans([]); };
 
@@ -2188,12 +2262,34 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
     const valid = pendingLoans.filter(l => l.name?.trim() && l.lender?.trim());
     if (!valid.length) { toast.error("Add at least one loan with a name and lender"); return; }
     valid.forEach(l => {
+      const base = EMPTY_LOAN_DRAFT() as Loan;
       storeAddLoan({
-        ...(EMPTY_LOAN_DRAFT() as Loan),
-        ...l,
-        id: l._id,
-        refNumber: (l.refNumber as string) || `REF-${Date.now()}`,
-      } as Loan);
+        ...base,
+        id: l.id,
+        name: l.name,
+        lender: l.lender,
+        type: l.type as Loan["type"],
+        currency: l.currency as Loan["currency"],
+        originalPrincipal: parseFloat(l.originalPrincipal) || 0,
+        currentBalance: parseFloat(l.currentBalance) || 0,
+        rate: parseFloat(l.rate) || 0,
+        interestType: l.interestType as Loan["interestType"],
+        startDate: l.startDate,
+        maturityDate: l.maturityDate,
+        firstPaymentDate: l.firstPaymentDate,
+        monthlyPayment: parseFloat(l.monthlyPayment) || 0,
+        fxRateToCAD: parseFloat(l.fxRate) || 1,
+        paymentFrequency: l.paymentFrequency as Loan["paymentFrequency"],
+        paymentType: l.paymentType as Loan["paymentType"],
+        dayCountBasis: l.dayCount as Loan["dayCountBasis"],
+        compoundingFrequency: l.compounding as Loan["compoundingFrequency"],
+        ioPeriodMonths: parseInt(l.ioPeriod) || 0,
+        balloonAmount: parseFloat(l.balloonAmt) || 0,
+        securityDescription: l.collateral,
+        status: l.status as Loan["status"],
+        glAccountPrincipal: l.glPrincipal,
+        sourceFile: l.sourceFile,
+      } as unknown as Loan);
     });
     discardMode();
     toast.success(`${valid.length} loan${valid.length !== 1 ? "s" : ""} added · re-running analysis…`);
