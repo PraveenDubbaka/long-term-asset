@@ -2290,14 +2290,26 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
   const [loanMode,      setLoanMode]      = useState<"view" | "edit" | "add">("view");
   const [batchEdits,    setBatchEdits]    = useState<Record<string, Partial<Loan>>>({});
   const [pendingLoans,  setPendingLoans]  = useState<LtAddRow[]>([]);
+  const [isRerunning,   setIsRerunning]   = useState(false);
+
+  // ── Submit enablement ─────────────────────────────────────────────────────
+  const canSubmitEdit = Object.keys(batchEdits).length > 0;
+  const canSubmitAdd  = pendingLoans.length > 0 &&
+    pendingLoans.every(l => LT_ADD_REQUIRED.every(f => !ltAddRowMissing(l, f)));
 
   const discardMode = () => { setLoanMode("view"); setBatchEdits({}); setPendingLoans([]); };
+
+  const triggerRerun = (afterMs = 2600) => {
+    setIsRerunning(true);
+    setTimeout(() => setIsRerunning(false), afterMs);
+  };
 
   const submitEdits = () => {
     const count = Object.keys(batchEdits).length;
     if (count === 0) { discardMode(); return; }
     Object.entries(batchEdits).forEach(([id, patch]) => updateLoan(id, patch));
     discardMode();
+    triggerRerun();
     toast.success(`${count} loan${count !== 1 ? "s" : ""} updated · re-running analysis…`);
   };
 
@@ -2335,6 +2347,7 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
       } as unknown as Loan);
     });
     discardMode();
+    triggerRerun();
     toast.success(`${valid.length} loan${valid.length !== 1 ? "s" : ""} added · re-running analysis…`);
   };
 
@@ -2437,8 +2450,33 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
         </div>
       </div>
 
-      {/* Tab content */}
-      <div className="min-w-0">
+      {/* Tab content — shimmer overlay while re-running */}
+      <div className="min-w-0 relative">
+        {isRerunning && (
+          <div className="absolute inset-0 z-20 rounded-[8px] overflow-hidden pointer-events-none">
+            {/* Frosted base */}
+            <div className="absolute inset-0 bg-background/60 backdrop-blur-[3px]" />
+            {/* Sweeping shimmer beam */}
+            <div className="absolute inset-y-0 w-[120px] bg-gradient-to-r from-transparent via-primary/10 to-transparent animate-shimmer-sweep" />
+            {/* Secondary slower beam for depth */}
+            <div className="absolute inset-y-0 w-[60px] bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer-sweep" style={{ animationDelay: "0.5s", animationDuration: "1.8s" }} />
+            {/* Status pill */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-background/95 shadow-xl border border-border/80 text-xs font-medium text-foreground">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                Analysing data and generating workpaper…
+              </div>
+              <div className="flex items-center gap-1.5">
+                {TABS.map(({ id, label }) => (
+                  <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-[10px] font-medium text-primary border border-primary/15">
+                    <span className="w-1 h-1 rounded-full bg-primary animate-pulse" style={{ animationDelay: `${TABS.findIndex(t=>t.id===id)*0.15}s` }} />
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
         {activeTab === "loans"        && <LoansTab loans={loans} loanMode={loanMode} batchEdits={batchEdits} setBatchEdits={setBatchEdits} pendingLoans={pendingLoans} setPendingLoans={setPendingLoans} />}
         {activeTab === "continuity"   && loanMode === "view" && <ContinuityTabPanel loans={loans} continuity={continuity} />}
         {activeTab === "amortization" && loanMode === "view" && <AmortizationTabPanel loans={loans} amortization={amortization} />}
@@ -2451,12 +2489,39 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
       <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border">
         {loanMode !== "view" ? (
           <div className="flex items-center gap-2 ml-auto">
-            <button
-              onClick={loanMode === "edit" ? submitEdits : submitAdd}
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
-            >
-              <RotateCcw className="h-3.5 w-3.5" /> Submit &amp; Rerun
-            </button>
+            {(() => {
+              const canSubmit = loanMode === "edit" ? canSubmitEdit : canSubmitAdd;
+              const missingCount = loanMode === "add"
+                ? pendingLoans.reduce((s, l) => s + LT_ADD_REQUIRED.filter(f => ltAddRowMissing(l, f)).length, 0)
+                : 0;
+              const tooltip = !canSubmit
+                ? loanMode === "edit"
+                  ? "Make at least one change to enable"
+                  : missingCount > 0
+                    ? `${missingCount} required field${missingCount !== 1 ? "s" : ""} missing`
+                    : "Add at least one loan to enable"
+                : null;
+              return (
+                <div className="relative group/submit">
+                  <button
+                    onClick={canSubmit ? (loanMode === "edit" ? submitEdits : submitAdd) : undefined}
+                    disabled={!canSubmit}
+                    className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-xs font-medium transition-all ${
+                      canSubmit
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+                        : "bg-primary/30 text-primary-foreground/50 cursor-not-allowed"
+                    }`}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" /> Submit &amp; Rerun
+                  </button>
+                  {tooltip && (
+                    <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-1 rounded-[6px] bg-foreground text-background text-[10px] font-medium opacity-0 group-hover/submit:opacity-100 transition-opacity pointer-events-none z-50">
+                      {tooltip}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             <button
               onClick={discardMode}
               className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors"

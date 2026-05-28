@@ -170,6 +170,10 @@ export default {
           "75%": { transform: "rotate(2deg)" },
           "100%":{ transform: "rotate(0deg)" },
         },
+        "shimmer-sweep": {
+          "0%":   { transform: "translateX(-200%) skewX(-12deg)" },
+          "100%": { transform: "translateX(300%) skewX(-12deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -179,6 +183,7 @@ export default {
         "scale-in":       "scale-in 0.2s ease-out",
         "pulse-glow":     "pulse-glow 2s ease-in-out infinite",
         "swing":          "swing 1.5s ease-in-out infinite",
+        "shimmer-sweep":  "shimmer-sweep 1.4s ease-in-out infinite",
       },
     },
   },
