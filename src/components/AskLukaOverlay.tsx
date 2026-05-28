@@ -3069,9 +3069,30 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                     })()}
                                   </>
                                 ) : (
-                                  <p className="text-sm text-foreground">
-                                    Workpaper generated from <strong>{ltDebtSrcLabel}</strong> ✓
-                                  </p>
+                                  <div className="space-y-2">
+                                    <p className="text-sm text-foreground">
+                                      Workpaper generated from <strong>{ltDebtSrcLabel}</strong> ✓
+                                    </p>
+                                    {/* Uploaded file chips — shown after generation */}
+                                    {ltDebtUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized").length > 0 && (
+                                      <div className="flex flex-wrap gap-2">
+                                        {ltDebtUploadFiles
+                                          .filter(f => f.kind !== "unsupported" && f.kind !== "oversized")
+                                          .map(f => (
+                                            <div key={f.id} className="inline-flex items-center gap-2 pl-1.5 pr-2.5 py-1.5 rounded-[10px] border border-border bg-background text-xs max-w-[240px]">
+                                              <div className="w-6 h-6 rounded-[5px] flex items-center justify-center shrink-0 bg-primary/10">
+                                                {f.ext === "pdf"
+                                                  ? <FileText className="h-3 w-3 text-primary shrink-0" />
+                                                  : f.ext === "zip"
+                                                  ? <FolderOpen className="h-3 w-3 text-primary shrink-0" />
+                                                  : <FileSpreadsheet className="h-3 w-3 text-primary shrink-0" />}
+                                              </div>
+                                              <span className="flex-1 min-w-0 truncate font-medium text-foreground text-[11px]">{f.name}</span>
+                                            </div>
+                                          ))}
+                                      </div>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             ) : richResponseType === "investment" ? (
