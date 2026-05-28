@@ -375,7 +375,23 @@ function generateMockDetectedLoans(fileNames: string[]): DetectedLoan[] {
   return result;
 }
 
-function LoansTab({ loans }: { loans: Loan[] }) {
+type PendingLoan = Partial<Loan> & { _id: string };
+
+function LoansTab({
+  loans,
+  loanMode,
+  batchEdits,
+  setBatchEdits,
+  pendingLoans,
+  setPendingLoans,
+}: {
+  loans: Loan[];
+  loanMode: "view" | "edit" | "add";
+  batchEdits: Record<string, Partial<Loan>>;
+  setBatchEdits: React.Dispatch<React.SetStateAction<Record<string, Partial<Loan>>>>;
+  pendingLoans: PendingLoan[];
+  setPendingLoans: React.Dispatch<React.SetStateAction<PendingLoan[]>>;
+}) {
   const { accountMappings, reconciliation, updateLoan, addLoan, deleteLoan } = useStore(s => ({
     accountMappings: s.accountMappings,
     reconciliation:  s.reconciliation,
@@ -389,10 +405,14 @@ function LoansTab({ loans }: { loans: Loan[] }) {
   const [colMenuOpen,     setColMenuOpen]     = useState(false);
   const [colMenuPos,      setColMenuPos]      = useState<{ top: number; left: number } | null>(null);
   const colBtnRef = useRef<HTMLButtonElement>(null);
+  // Per-row edit state (view mode only)
   const [editingId,       setEditingId]       = useState<string | null>(null);
   const [editDraft,       setEditDraft]       = useState<Partial<Loan>>({});
   const [addingNew,       setAddingNew]       = useState(false);
   const [newRowDraft,     setNewRowDraft]     = useState<Partial<Loan>>(EMPTY_LOAN_DRAFT);
+  // Add-mode upload state
+  const [addUploading,    setAddUploading]    = useState(false);
+  const addFileRef = useRef<HTMLInputElement>(null);
 
   const cancelEdit = () => { setEditingId(null); setEditDraft({}); };
   const saveEdit = () => {
@@ -413,6 +433,40 @@ function LoansTab({ loans }: { loans: Loan[] }) {
     addLoan(loan);
     toast.success("Loan added — generating amortization schedule…");
     cancelAdd();
+  };
+
+  // ── Add-mode helpers ─────────────────────────────────────────────────────────
+  const addPendingRow = () => {
+    setPendingLoans(prev => [...prev, { ...EMPTY_LOAN_DRAFT(), _id: `pending-${Date.now()}` } as PendingLoan]);
+  };
+
+  const updatePending = (id: string, k: keyof Loan, v: unknown) =>
+    setPendingLoans(prev => prev.map(p => p._id === id ? { ...p, [k]: v } : p));
+
+  const removePending = (id: string) =>
+    setPendingLoans(prev => prev.filter(p => p._id !== id));
+
+  const handleAddModeUpload = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setAddUploading(true);
+    setTimeout(() => {
+      const detected = generateMockDetectedLoans(Array.from(files).map(f => f.name));
+      setPendingLoans(prev => [
+        ...prev,
+        ...detected.map(d => ({
+          _id: `pending-${d.id}`,
+          name: d.name, lender: d.lender, type: d.type as Loan["type"],
+          currency: d.currency, interestType: d.interestType as Loan["interestType"],
+          rate: d.rate, originalPrincipal: d.originalPrincipal, currentBalance: d.currentBalance,
+          startDate: d.startDate, maturityDate: d.maturityDate, firstPaymentDate: d.firstPaymentDate,
+          paymentFrequency: d.paymentFrequency as Loan["paymentFrequency"],
+          paymentType: d.paymentType as Loan["paymentType"], dayCountBasis: d.dayCountBasis as Loan["dayCountBasis"],
+          securityDescription: d.securityDescription, status: "Active" as const,
+        } as PendingLoan)),
+      ]);
+      setAddUploading(false);
+      toast.success(`Extracted ${detected.length} loan${detected.length !== 1 ? "s" : ""} from document`);
+    }, 1800);
   };
   const handleDeleteLoan = (id: string, name: string) => {
     if (!window.confirm(`Delete "${name}"?\n\nThis removes the loan and all associated data (amortization, covenants, activities, reconciliation).`)) return;
@@ -493,11 +547,143 @@ function LoansTab({ loans }: { loans: Loan[] }) {
 
   return (
     <div className="space-y-3">
+
+      {/* ── ADD MODE: Upload + manual entry ── */}
+      {loanMode === "add" && (
+        <div className="rounded-[10px] border border-primary/20 bg-primary/[0.03] overflow-hidden">
+          <div className="px-4 py-3 border-b border-primary/15 flex items-center justify-between">
+            <div>
+              <p className="text-[13px] font-semibold text-foreground">Add New Facilities</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Upload a document or add rows manually — review below, then Submit &amp; Rerun</p>
+            </div>
+          </div>
+          <div className="p-4 grid grid-cols-2 gap-3">
+            {/* Upload card */}
+            <div
+              className="rounded-[10px] border-2 border-dashed border-border bg-background flex flex-col items-center justify-center gap-2.5 py-6 px-4 cursor-pointer hover:border-primary/40 hover:bg-primary/[0.02] transition-all group relative"
+              onClick={() => addFileRef.current?.click()}
+              onDragOver={e => e.preventDefault()}
+              onDrop={e => { e.preventDefault(); handleAddModeUpload(e.dataTransfer.files); }}
+            >
+              <input ref={addFileRef} type="file" accept=".pdf,.xlsx,.csv" multiple hidden onChange={e => handleAddModeUpload(e.target.files)} />
+              {addUploading ? (
+                <>
+                  <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                  <p className="text-[11px] font-medium text-primary">Extracting loan data…</p>
+                </>
+              ) : (
+                <>
+                  <div className="w-9 h-9 rounded-[8px] bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    <Upload className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[12px] font-semibold text-foreground">Upload Document</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">PDF, Excel or CSV · drag &amp; drop</p>
+                  </div>
+                </>
+              )}
+            </div>
+            {/* Manual add card */}
+            <div className="rounded-[10px] border border-border bg-background flex flex-col items-center justify-center gap-2.5 py-6 px-4">
+              <div className="w-9 h-9 rounded-[8px] bg-muted flex items-center justify-center">
+                <Plus className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="text-center">
+                <p className="text-[12px] font-semibold text-foreground">Add Row Manually</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Enter loan details inline</p>
+              </div>
+              <button
+                onClick={addPendingRow}
+                className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[7px] bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors"
+              >
+                <Plus className="h-3 w-3" /> Add Row
+              </button>
+            </div>
+          </div>
+
+          {/* Pending rows table */}
+          {pendingLoans.length > 0 && (
+            <div className="border-t border-primary/15">
+              <div className="px-4 py-2 bg-primary/[0.04] flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-primary">Pending — {pendingLoans.length} loan{pendingLoans.length !== 1 ? "s" : ""} to add</span>
+                <span className="text-[10px] text-muted-foreground">Review and edit before submitting</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="text-[11px]" style={{ minWidth: "1400px" }}>
+                  <thead>
+                    <tr className="bg-primary/[0.04] border-b border-primary/15">
+                      {HEADERS.map(({ h, left }) => (
+                        <th key={h} className={`px-2.5 py-2 font-semibold text-primary/70 uppercase tracking-wide text-[10px] whitespace-nowrap ${left ? "text-left" : "text-right"}`}>{h}</th>
+                      ))}
+                      <th className="px-2 py-2 w-7" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingLoans.map(p => {
+                      const IC  = "h-6 w-full min-w-[52px] text-[11px] px-1.5 border border-primary/40 rounded-[5px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30";
+                      const ICS = "h-6 w-full min-w-[52px] text-[11px] px-1 border border-primary/40 rounded-[5px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer";
+                      return (
+                        <tr key={p._id} className="border-b border-primary/10 bg-primary/[0.02]">
+                          {!hiddenCols.has("Loan Name")          && <td className="px-1.5 py-1"><input autoFocus value={p.name??""} onChange={e=>updatePending(p._id,"name",e.target.value)} className={IC} placeholder="Name *" /></td>}
+                          {!hiddenCols.has("Lender")              && <td className="px-1.5 py-1"><input value={p.lender??""} onChange={e=>updatePending(p._id,"lender",e.target.value)} className={IC} placeholder="Lender *" /></td>}
+                          {!hiddenCols.has("Current Collateral")  && <td className="px-1.5 py-1"><input value={p.securityDescription??""} onChange={e=>updatePending(p._id,"securityDescription",e.target.value)} className={IC} placeholder="Collateral" /></td>}
+                          {!hiddenCols.has("Type")                && <td className="px-1.5 py-1"><select value={p.type??"Term"} onChange={e=>updatePending(p._id,"type",e.target.value)} className={ICS}>{["Term","LOC","Revolver","Mortgage","Bridge"].map(t=><option key={t}>{t}</option>)}</select></td>}
+                          {!hiddenCols.has("Rate Type")           && <td className="px-1.5 py-1"><select value={p.interestType??"Fixed"} onChange={e=>updatePending(p._id,"interestType",e.target.value)} className={ICS}>{["Fixed","Variable","Floating","Hybrid","Step Rate"].map(t=><option key={t}>{t}</option>)}</select></td>}
+                          {!hiddenCols.has("Int. Rate (%)")       && <td className="px-1.5 py-1"><input type="number" step="0.01" value={p.rate||""} onChange={e=>updatePending(p._id,"rate",parseFloat(e.target.value)||0)} className={IC} placeholder="0.00" /></td>}
+                          {!hiddenCols.has("Start")               && <td className="px-1.5 py-1"><input type="date" value={p.startDate??""} onChange={e=>updatePending(p._id,"startDate",e.target.value)} className={IC} /></td>}
+                          {!hiddenCols.has("Maturity")            && <td className="px-1.5 py-1"><input type="date" value={p.maturityDate??""} onChange={e=>updatePending(p._id,"maturityDate",e.target.value)} className={IC} /></td>}
+                          {!hiddenCols.has("Tenure (Mo.)")        && <td className="px-1.5 py-1 text-right text-muted-foreground">—</td>}
+                          {!hiddenCols.has("First Payment")       && <td className="px-1.5 py-1"><input type="date" value={p.firstPaymentDate??""} onChange={e=>updatePending(p._id,"firstPaymentDate",e.target.value)} className={IC} /></td>}
+                          {!hiddenCols.has("CCY")                 && <td className="px-1.5 py-1"><select value={p.currency??"CAD"} onChange={e=>updatePending(p._id,"currency",e.target.value)} className={ICS}>{["CAD","USD","EUR","GBP"].map(c=><option key={c}>{c}</option>)}</select></td>}
+                          {!hiddenCols.has("Mo. Payment")         && <td className="px-1.5 py-1"><input type="number" step="100" value={p.monthlyPayment||""} onChange={e=>updatePending(p._id,"monthlyPayment",parseFloat(e.target.value)||undefined)} className={IC} placeholder="auto" /></td>}
+                          {!hiddenCols.has("Orig. Loan Amt")      && <td className="px-1.5 py-1"><input type="number" step="1000" value={p.originalPrincipal||""} onChange={e=>updatePending(p._id,"originalPrincipal",parseFloat(e.target.value)||0)} className={IC} placeholder="0" /></td>}
+                          {!hiddenCols.has("FX Rate")             && <td className="px-1.5 py-1"><input type="number" step="0.0001" value={p.fxRateToCAD||""} onChange={e=>updatePending(p._id,"fxRateToCAD",parseFloat(e.target.value)||undefined)} className={IC} placeholder="1.000" /></td>}
+                          {!hiddenCols.has("Converted Amt")       && <td className="px-1.5 py-1 text-right text-muted-foreground">—</td>}
+                          {!hiddenCols.has("Closing Balance")     && <td className="px-1.5 py-1"><input type="number" step="1000" value={p.currentBalance||""} onChange={e=>updatePending(p._id,"currentBalance",parseFloat(e.target.value)||0)} className={IC} placeholder="0" /></td>}
+                          {!hiddenCols.has("GL Principal")        && <td className="px-1.5 py-1"><GLSelect loanId={p._id} value={p.glPrincipalAccount??""} options={principalAccts} field="glPrincipalAccount" onSave={(_,__,code)=>updatePending(p._id,"glPrincipalAccount",code)} /></td>}
+                          {!hiddenCols.has("Day Count")           && <td className="px-1.5 py-1"><select value={p.dayCountBasis??"ACT/365"} onChange={e=>updatePending(p._id,"dayCountBasis",e.target.value)} className={ICS}>{["ACT/365","ACT/360","30/360"].map(d=><option key={d}>{d}</option>)}</select></td>}
+                          {!hiddenCols.has("Payment Type")        && <td className="px-1.5 py-1"><select value={p.paymentType??"P&I"} onChange={e=>updatePending(p._id,"paymentType",e.target.value)} className={ICS}>{["P&I","Interest-only","Balloon"].map(t=><option key={t}>{t}</option>)}</select></td>}
+                          {!hiddenCols.has("Compounding")         && <td className="px-1.5 py-1"><select value={p.compoundingFrequency??"Monthly"} onChange={e=>updatePending(p._id,"compoundingFrequency",e.target.value)} className={ICS}>{["Monthly","Quarterly","Semi-annual","Annual"].map(f=><option key={f}>{f}</option>)}</select></td>}
+                          {!hiddenCols.has("IO Period (mo.)")     && <td className="px-1.5 py-1"><input type="number" step="1" value={p.interestOnlyPeriodMonths||""} onChange={e=>updatePending(p._id,"interestOnlyPeriodMonths",parseInt(e.target.value)||undefined)} className={IC} placeholder="00" /></td>}
+                          {!hiddenCols.has("Balloon Amt")         && <td className="px-1.5 py-1"><input type="number" step="1000" value={p.balloonAmount||""} onChange={e=>updatePending(p._id,"balloonAmount",parseFloat(e.target.value)||undefined)} className={IC} placeholder="00" /></td>}
+                          {!hiddenCols.has("Status")              && <td className="px-1.5 py-1"><select value={p.status??"Active"} onChange={e=>updatePending(p._id,"status",e.target.value as Loan["status"])} className={ICS}>{["Active","Paid Off","Refinanced","Defaulted"].map(s=><option key={s}>{s}</option>)}</select></td>}
+                          <td className="px-2 py-1">
+                            <button onClick={() => removePending(p._id)} className="inline-flex items-center justify-center w-6 h-6 rounded-[5px] text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors">
+                              <X className="h-3 w-3" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="px-4 py-2 border-t border-primary/10 flex items-center gap-2">
+                <button onClick={addPendingRow} className="inline-flex items-center gap-1 h-6 px-2.5 text-[11px] font-medium text-primary hover:bg-primary/10 rounded-[6px] transition-colors">
+                  <Plus className="h-3 w-3" /> Add another row
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── LOAN REGISTER TABLE ── */}
       <div className="rounded-[8px] border border-border overflow-hidden">
         <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
-          <span className="text-sm font-semibold text-foreground">Loan Register</span>
+          {loanMode === "edit" ? (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-foreground">Loan Register</span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
+                <Pencil className="h-2.5 w-2.5" /> Editing
+              </span>
+              <span className="text-[10px] text-muted-foreground">All rows editable — submit changes with Submit &amp; Rerun</span>
+            </div>
+          ) : (
+            <span className="text-sm font-semibold text-foreground">Loan Register</span>
+          )}
           <div className="flex items-center gap-3">
-            <span className="text-[10px] text-muted-foreground">Manage facilities, terms, and GL mappings</span>
+            {loanMode === "view" && <span className="text-[10px] text-muted-foreground">Manage facilities, terms, and GL mappings</span>}
             <button
               onClick={() => setTableExpanded(v => !v)}
               title={tableExpanded ? "Fit to screen (compact)" : "Expand all columns"}
@@ -622,8 +808,8 @@ function LoansTab({ loans }: { loans: Loan[] }) {
                 </>;
 
                 return <>
-                  {/* ── New inline row ── */}
-                  {addingNew && (
+                  {/* ── New inline row (view mode only) ── */}
+                  {loanMode === "view" && addingNew && (
                     <tr className="border-b border-primary/30 bg-primary/[0.04]">
                       {newRowCells(newRowDraft, (k, v) => setNewRowDraft(p => ({ ...p, [k]: v })))}
                       <td className="px-2 py-1 sticky right-0 z-10 bg-background border-l border-border">
@@ -637,15 +823,24 @@ function LoansTab({ loans }: { loans: Loan[] }) {
 
                   {/* ── Existing rows ── */}
                   {loans.map((l) => {
-                    const isEditing = editingId === l.id;
+                    // Global edit mode: merge loan data with batch edits for this row
+                    const isGlobalEdit = loanMode === "edit";
+                    const mergedDraft  = isGlobalEdit ? { ...l, ...(batchEdits[l.id] ?? {}) } : l;
+                    const batchSetter  = (k: keyof Loan, v: unknown) =>
+                      setBatchEdits(prev => ({ ...prev, [l.id]: { ...(prev[l.id] ?? {}), [k]: v } }));
+
+                    const isEditing  = !isGlobalEdit && editingId === l.id;
                     const fx         = getFxRate(l);
                     const pmt        = calcMonthlyPmt(l);
                     const pmtCAD     = pmt !== null ? pmt * fx : null;
                     const convAmt    = l.originalPrincipal * fx;
                     const closingCAD = (l.closingBalance ?? l.currentBalance) * fx;
                     return (
-                      <tr key={l.id} className={`group border-b border-border transition-colors ${isEditing ? "bg-primary/[0.04]" : "hover:bg-muted/30 cursor-pointer"}`}>
-                        {isEditing ? newRowCells(editDraft, (k, v) => setEditDraft(p => ({ ...p, [k]: v }))) : <>
+                      <tr key={l.id} className={`group border-b border-border transition-colors ${isGlobalEdit ? "bg-primary/[0.02]" : isEditing ? "bg-primary/[0.04]" : "hover:bg-muted/30 cursor-pointer"}`}>
+                        {(isGlobalEdit || isEditing) ? newRowCells(
+                          isGlobalEdit ? mergedDraft : editDraft,
+                          isGlobalEdit ? batchSetter : (k, v) => setEditDraft(p => ({ ...p, [k]: v }))
+                        ) : <>
                           {!hid.has("Loan Name") && (
                             <td className="px-2.5 py-1.5">
                               <div className={fit ? "max-w-[110px] truncate font-medium text-foreground" : "font-medium text-foreground whitespace-nowrap min-w-[140px]"} title={l.name}>{l.name}</div>
@@ -1936,8 +2131,8 @@ const TABS = [
 
 type TabId = typeof TABS[number]["id"];
 
-export function LongTermAssetResponse({ onEditLoans }: { onEditLoans?: () => void } = {}) {
-  const { loans, covenants, amortization, continuity, jes, reconciliation, settings } = useStore(s => ({
+export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoans?: () => void } = {}) {
+  const { loans, covenants, amortization, continuity, jes, reconciliation, settings, updateLoan, addLoan: storeAddLoan } = useStore(s => ({
     loans:          s.loans.filter(l => l.status === "Active"),
     covenants:      s.covenants,
     amortization:   s.amortization,
@@ -1945,9 +2140,39 @@ export function LongTermAssetResponse({ onEditLoans }: { onEditLoans?: () => voi
     jes:            s.jes,
     reconciliation: s.reconciliation,
     settings:       s.settings,
+    updateLoan:     s.updateLoan,
+    addLoan:        s.addLoan,
   }));
 
-  const [activeTab, setActiveTab] = useState<TabId>("loans");
+  const [activeTab,     setActiveTab]     = useState<TabId>("loans");
+  const [loanMode,      setLoanMode]      = useState<"view" | "edit" | "add">("view");
+  const [batchEdits,    setBatchEdits]    = useState<Record<string, Partial<Loan>>>({});
+  const [pendingLoans,  setPendingLoans]  = useState<PendingLoan[]>([]);
+
+  const discardMode = () => { setLoanMode("view"); setBatchEdits({}); setPendingLoans([]); };
+
+  const submitEdits = () => {
+    const count = Object.keys(batchEdits).length;
+    if (count === 0) { discardMode(); return; }
+    Object.entries(batchEdits).forEach(([id, patch]) => updateLoan(id, patch));
+    discardMode();
+    toast.success(`${count} loan${count !== 1 ? "s" : ""} updated · re-running analysis…`);
+  };
+
+  const submitAdd = () => {
+    const valid = pendingLoans.filter(l => l.name?.trim() && l.lender?.trim());
+    if (!valid.length) { toast.error("Add at least one loan with a name and lender"); return; }
+    valid.forEach(l => {
+      storeAddLoan({
+        ...(EMPTY_LOAN_DRAFT() as Loan),
+        ...l,
+        id: l._id,
+        refNumber: (l.refNumber as string) || `REF-${Date.now()}`,
+      } as Loan);
+    });
+    discardMode();
+    toast.success(`${valid.length} loan${valid.length !== 1 ? "s" : ""} added · re-running analysis…`);
+  };
 
   // ── Save-to-Engagement slide-up ───────────────────────────────────────────
   const [addToWpOpen, setAddToWpOpen] = useState(false);
@@ -1995,14 +2220,17 @@ export function LongTermAssetResponse({ onEditLoans }: { onEditLoans?: () => voi
         <div className="flex items-center gap-0 overflow-x-auto flex-1 min-w-0">
           {TABS.map(({ id, label }) => {
             const isActive = activeTab === id;
+            const locked   = loanMode === "edit" && id !== "loans";
             return (
               <button
                 key={id}
-                onClick={() => setActiveTab(id)}
+                onClick={() => { if (locked) return; setActiveTab(id); }}
                 className={`flex items-center gap-1 px-3 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap shrink-0 ${
                   isActive
                     ? "border-primary text-primary bg-primary/5"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+                    : locked
+                      ? "border-transparent text-muted-foreground/30 cursor-not-allowed"
+                      : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
                 }`}
               >
                 {label}
@@ -2010,48 +2238,83 @@ export function LongTermAssetResponse({ onEditLoans }: { onEditLoans?: () => voi
             );
           })}
         </div>
-        {onEditLoans && (
-          <div className="shrink-0 ml-3 mb-px flex items-center gap-0 rounded-[8px] border border-border bg-muted/40 p-0.5">
-            <button
-              className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-semibold bg-background text-foreground shadow-sm border border-border/60 transition-all"
-            >
-              <BarChart2 className="w-3 h-3" /> Schedule
-            </button>
-            <button
-              onClick={onEditLoans}
-              className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-medium text-muted-foreground hover:text-foreground transition-all"
-            >
-              <Pencil className="w-3 h-3" /> Add/Edit
-            </button>
-          </div>
-        )}
+        {/* Schedule / Edit / Add button group */}
+        <div className="shrink-0 ml-3 mb-px flex items-center gap-0 rounded-[8px] border border-border bg-muted/40 p-0.5">
+          <button
+            className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] transition-all ${
+              loanMode === "view"
+                ? "font-semibold bg-background text-foreground shadow-sm border border-border/60"
+                : "font-medium text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <BarChart2 className="w-3 h-3" /> Schedule
+          </button>
+          <button
+            onClick={() => { setLoanMode("edit"); setActiveTab("loans"); setBatchEdits({}); }}
+            className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] transition-all ${
+              loanMode === "edit"
+                ? "font-semibold bg-background text-primary shadow-sm border border-primary/30"
+                : "font-medium text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Pencil className="w-3 h-3" /> Edit
+          </button>
+          <button
+            onClick={() => { setLoanMode("add"); setActiveTab("loans"); setPendingLoans([]); }}
+            className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] transition-all ${
+              loanMode === "add"
+                ? "font-semibold bg-background text-primary shadow-sm border border-primary/30"
+                : "font-medium text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Plus className="w-3 h-3" /> Add
+          </button>
+        </div>
       </div>
 
       {/* Tab content */}
       <div className="min-w-0">
-        {activeTab === "loans"        && <LoansTab loans={loans} />}
-        {activeTab === "continuity"   && <ContinuityTabPanel loans={loans} continuity={continuity} />}
-        {activeTab === "amortization" && <AmortizationTabPanel loans={loans} amortization={amortization} />}
+        {activeTab === "loans"        && <LoansTab loans={loans} loanMode={loanMode} batchEdits={batchEdits} setBatchEdits={setBatchEdits} pendingLoans={pendingLoans} setPendingLoans={setPendingLoans} />}
+        {activeTab === "continuity"   && loanMode === "view" && <ContinuityTabPanel loans={loans} continuity={continuity} />}
+        {activeTab === "amortization" && loanMode === "view" && <AmortizationTabPanel loans={loans} amortization={amortization} />}
         {/* Covenants tab hidden — removed from scope 2026-05-26 */}
-        {activeTab === "ajes"         && <AJEsTabPanel jes={jes} loans={loans} />}
-        {activeTab === "notes"        && <NotesTabPanel loans={loans} continuity={continuity} reconciliation={reconciliation} settings={settings} />}
+        {activeTab === "ajes"         && loanMode === "view" && <AJEsTabPanel jes={jes} loans={loans} />}
+        {activeTab === "notes"        && loanMode === "view" && <NotesTabPanel loans={loans} continuity={continuity} reconciliation={reconciliation} settings={settings} />}
       </div>
 
       {/* Action buttons */}
       <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border">
-        <button onClick={() => { setSaveStep("confirm"); setAddToWpOpen(true); }} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
-          <Save className="h-3.5 w-3.5" /> Save to Engagement
-        </button>
-
-        <button onClick={() => toast.success("Downloading workpaper…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
-          <Download className="h-3.5 w-3.5" /> Download
-        </button>
-        <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success("Link copied to clipboard"); }} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
-          <Copy className="h-3.5 w-3.5" /> Copy
-        </button>
-        <button onClick={() => toast.success("Re-running analysis…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
-          <RotateCcw className="h-3.5 w-3.5" /> Rerun
-        </button>
+        {loanMode !== "view" ? (
+          <>
+            <button
+              onClick={loanMode === "edit" ? submitEdits : submitAdd}
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
+            >
+              <RotateCcw className="h-3.5 w-3.5" /> Submit &amp; Rerun
+            </button>
+            <button
+              onClick={discardMode}
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors"
+            >
+              <X className="h-3.5 w-3.5" /> Discard
+            </button>
+          </>
+        ) : (
+          <>
+            <button onClick={() => { setSaveStep("confirm"); setAddToWpOpen(true); }} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
+              <Save className="h-3.5 w-3.5" /> Save to Engagement
+            </button>
+            <button onClick={() => toast.success("Downloading workpaper…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+              <Download className="h-3.5 w-3.5" /> Download
+            </button>
+            <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success("Link copied to clipboard"); }} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+              <Copy className="h-3.5 w-3.5" /> Copy
+            </button>
+            <button onClick={() => toast.success("Re-running analysis…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+              <RotateCcw className="h-3.5 w-3.5" /> Rerun
+            </button>
+          </>
+        )}
       </div>
 
       {/* Add-to-Workpaper slide-up modal */}
