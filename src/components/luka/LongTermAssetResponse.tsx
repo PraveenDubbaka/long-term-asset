@@ -2241,10 +2241,11 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
         {/* Schedule / Edit / Add button group */}
         <div className="shrink-0 ml-3 mb-px flex items-center gap-0 rounded-[8px] border border-border bg-muted/40 p-0.5">
           <button
+            disabled={loanMode !== "view"}
             className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] transition-all ${
               loanMode === "view"
                 ? "font-semibold bg-background text-foreground shadow-sm border border-border/60"
-                : "font-medium text-muted-foreground hover:text-foreground"
+                : "font-medium text-muted-foreground/40 cursor-not-allowed"
             }`}
           >
             <BarChart2 className="w-3 h-3" /> Schedule
