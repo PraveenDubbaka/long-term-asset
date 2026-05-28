@@ -548,72 +548,102 @@ function LoansTab({
   return (
     <div className="space-y-3">
 
-      {/* ── ADD MODE: Upload + manual entry ── */}
+      {/* ── ADD MODE: same gradient upload section as initial LTD flow ── */}
       {loanMode === "add" && (
-        <div className="rounded-[10px] border border-primary/20 bg-primary/[0.03] overflow-hidden">
-          <div className="px-4 py-3 border-b border-primary/15 flex items-center justify-between">
-            <div>
-              <p className="text-[13px] font-semibold text-foreground">Add New Facilities</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Upload a document or add rows manually — review below, then Submit &amp; Rerun</p>
+        <div className="space-y-3">
+          {/* Gradient container */}
+          <div className="relative rounded-[14px] overflow-hidden border border-primary/20 bg-gradient-to-br from-primary/[0.04] via-background to-violet-50/30">
+            {/* Ambient blobs */}
+            <div className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full bg-primary/10 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-violet-400/10 blur-3xl" />
+
+            <div className="relative z-10 px-5 pt-4 pb-3 text-center space-y-0.5">
+              <p className="text-xs font-semibold text-foreground">How would you like to add loans?</p>
+              <p className="text-[10px] text-muted-foreground">Luka will auto-extract and fill all fields from your documents</p>
             </div>
-          </div>
-          <div className="p-4 grid grid-cols-2 gap-3">
-            {/* Upload card */}
-            <div
-              className="rounded-[10px] border-2 border-dashed border-border bg-background flex flex-col items-center justify-center gap-2.5 py-6 px-4 cursor-pointer hover:border-primary/40 hover:bg-primary/[0.02] transition-all group relative"
-              onClick={() => addFileRef.current?.click()}
-              onDragOver={e => e.preventDefault()}
-              onDrop={e => { e.preventDefault(); handleAddModeUpload(e.dataTransfer.files); }}
-            >
-              <input ref={addFileRef} type="file" accept=".pdf,.xlsx,.csv" multiple hidden onChange={e => handleAddModeUpload(e.target.files)} />
-              {addUploading ? (
-                <>
-                  <Loader2 className="h-6 w-6 text-primary animate-spin" />
-                  <p className="text-[11px] font-medium text-primary">Extracting loan data…</p>
-                </>
-              ) : (
-                <>
-                  <div className="w-9 h-9 rounded-[8px] bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                    <Upload className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[12px] font-semibold text-foreground">Upload Document</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">PDF, Excel or CSV · drag &amp; drop</p>
-                  </div>
-                </>
-              )}
-            </div>
-            {/* Manual add card */}
-            <div className="rounded-[10px] border border-border bg-background flex flex-col items-center justify-center gap-2.5 py-6 px-4">
-              <div className="w-9 h-9 rounded-[8px] bg-muted flex items-center justify-center">
-                <Plus className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="text-center">
-                <p className="text-[12px] font-semibold text-foreground">Add Row Manually</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Enter loan details inline</p>
-              </div>
-              <button
-                onClick={addPendingRow}
-                className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[7px] bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors"
+
+            <div className="relative z-10 flex items-stretch gap-0 px-4 pb-4 pt-2">
+              {/* Upload card */}
+              <div
+                className="flex-1 flex flex-col items-center gap-2.5 p-4 rounded-[10px] border border-dashed border-primary/25 bg-primary/[0.03] cursor-pointer hover:bg-primary/[0.07] hover:border-primary/45 transition-all group text-center"
+                onClick={() => addFileRef.current?.click()}
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => { e.preventDefault(); handleAddModeUpload(e.dataTransfer.files); }}
               >
-                <Plus className="h-3 w-3" /> Add Row
-              </button>
+                <input ref={addFileRef} type="file" accept=".pdf,.xlsx,.xls,.csv,.zip" multiple hidden onChange={e => handleAddModeUpload(e.target.files)} />
+                {addUploading ? (
+                  <>
+                    <div className="relative">
+                      <div className="absolute inset-0 rounded-full bg-primary/20 blur-md" />
+                      <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shadow-sm">
+                        <Loader2 className="w-4 h-4 text-white animate-spin" />
+                      </div>
+                    </div>
+                    <p className="text-[11px] font-medium text-primary">Extracting loan data…</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="relative">
+                      <div className="absolute inset-0 rounded-full bg-primary/20 blur-md group-hover:bg-primary/30 transition-all" />
+                      <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shadow-sm">
+                        <Upload className="w-4 h-4 text-white" />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-foreground">Import documents</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Loan agreements · Registers<br />Schedules · PDF · XLSX · ZIP</p>
+                    </div>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary group-hover:underline">
+                      Click to browse or drag &amp; drop
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {/* OR divider */}
+              <div className="flex flex-col items-center justify-center px-3 gap-1.5">
+                <div className="w-px flex-1 bg-gradient-to-b from-transparent via-border to-transparent" />
+                <span className="text-[10px] font-bold text-muted-foreground/50">or</span>
+                <div className="w-px flex-1 bg-gradient-to-b from-transparent via-border to-transparent" />
+              </div>
+
+              {/* Manual entry card */}
+              <div
+                className="flex-1 flex flex-col items-center gap-2.5 p-4 rounded-[10px] border border-dashed border-violet-300/40 bg-violet-50/20 cursor-pointer hover:bg-violet-50/50 hover:border-violet-400/50 transition-all group text-center"
+                onClick={addPendingRow}
+              >
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-full bg-violet-400/20 blur-md group-hover:bg-violet-400/30 transition-all" />
+                  <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shadow-sm">
+                    <Plus className="w-4 h-4 text-white" />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold text-foreground">Enter manually</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Add a blank row and type<br />loan details directly in the table</p>
+                </div>
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-violet-600 group-hover:underline">
+                  Add a new entry row
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Pending rows table */}
           {pendingLoans.length > 0 && (
-            <div className="border-t border-primary/15">
-              <div className="px-4 py-2 bg-primary/[0.04] flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-primary">Pending — {pendingLoans.length} loan{pendingLoans.length !== 1 ? "s" : ""} to add</span>
-                <span className="text-[10px] text-muted-foreground">Review and edit before submitting</span>
+            <div className="rounded-[8px] border border-primary/20 overflow-hidden">
+              <div className="px-3 py-2 bg-primary/[0.04] border-b border-primary/15 flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-foreground">{pendingLoans.length} loan{pendingLoans.length !== 1 ? "s" : ""} extracted — review and complete before submitting</span>
+                <button onClick={addPendingRow} className="inline-flex items-center gap-1 h-6 px-2.5 text-[11px] font-medium text-primary hover:bg-primary/10 rounded-[6px] transition-colors">
+                  <Plus className="h-3 w-3" /> Add row
+                </button>
               </div>
               <div className="overflow-x-auto">
                 <table className="text-[11px]" style={{ minWidth: "1400px" }}>
                   <thead>
-                    <tr className="bg-primary/[0.04] border-b border-primary/15">
+                    <tr className="bg-primary/[0.03] border-b border-primary/15">
                       {HEADERS.map(({ h, left }) => (
-                        <th key={h} className={`px-2.5 py-2 font-semibold text-primary/70 uppercase tracking-wide text-[10px] whitespace-nowrap ${left ? "text-left" : "text-right"}`}>{h}</th>
+                        <th key={h} className={`px-2.5 py-2 font-semibold text-muted-foreground uppercase tracking-wide text-[10px] whitespace-nowrap ${left ? "text-left" : "text-right"}`}>{h}</th>
                       ))}
                       <th className="px-2 py-2 w-7" />
                     </tr>
@@ -623,7 +653,7 @@ function LoansTab({
                       const IC  = "h-6 w-full min-w-[52px] text-[11px] px-1.5 border border-primary/40 rounded-[5px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30";
                       const ICS = "h-6 w-full min-w-[52px] text-[11px] px-1 border border-primary/40 rounded-[5px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer";
                       return (
-                        <tr key={p._id} className="border-b border-primary/10 bg-primary/[0.02]">
+                        <tr key={p._id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                           {!hiddenCols.has("Loan Name")          && <td className="px-1.5 py-1"><input autoFocus value={p.name??""} onChange={e=>updatePending(p._id,"name",e.target.value)} className={IC} placeholder="Name *" /></td>}
                           {!hiddenCols.has("Lender")              && <td className="px-1.5 py-1"><input value={p.lender??""} onChange={e=>updatePending(p._id,"lender",e.target.value)} className={IC} placeholder="Lender *" /></td>}
                           {!hiddenCols.has("Current Collateral")  && <td className="px-1.5 py-1"><input value={p.securityDescription??""} onChange={e=>updatePending(p._id,"securityDescription",e.target.value)} className={IC} placeholder="Collateral" /></td>}
@@ -658,18 +688,13 @@ function LoansTab({
                   </tbody>
                 </table>
               </div>
-              <div className="px-4 py-2 border-t border-primary/10 flex items-center gap-2">
-                <button onClick={addPendingRow} className="inline-flex items-center gap-1 h-6 px-2.5 text-[11px] font-medium text-primary hover:bg-primary/10 rounded-[6px] transition-colors">
-                  <Plus className="h-3 w-3" /> Add another row
-                </button>
-              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* ── LOAN REGISTER TABLE ── */}
-      <div className="rounded-[8px] border border-border overflow-hidden">
+      {/* ── LOAN REGISTER TABLE — hidden in add mode ── */}
+      <div className={`rounded-[8px] border border-border overflow-hidden ${loanMode === "add" ? "hidden" : ""}`}>
         <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
           {loanMode === "edit" ? (
             <div className="flex items-center gap-2">
@@ -2220,7 +2245,7 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
         <div className="flex items-center gap-0 overflow-x-auto flex-1 min-w-0">
           {TABS.map(({ id, label }) => {
             const isActive = activeTab === id;
-            const locked   = loanMode === "edit" && id !== "loans";
+            const locked   = loanMode !== "view" && id !== "loans";
             return (
               <button
                 key={id}
