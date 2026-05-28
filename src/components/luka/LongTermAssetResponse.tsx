@@ -935,8 +935,8 @@ function LoansTab({
         </div>
       </div>
 
-      {/* GL Account Summary */}
-      <div className="rounded-[8px] border border-border overflow-hidden">
+      {/* GL Account Summary — hidden in edit/add mode */}
+      <div className={`rounded-[8px] border border-border overflow-hidden ${loanMode !== "view" ? "hidden" : ""}`}>
         <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-foreground">GL Account Summary</span>
@@ -2285,7 +2285,7 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
       {/* Action buttons */}
       <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border">
         {loanMode !== "view" ? (
-          <>
+          <div className="flex items-center gap-2 ml-auto">
             <button
               onClick={loanMode === "edit" ? submitEdits : submitAdd}
               className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
@@ -2298,7 +2298,7 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
             >
               <X className="h-3.5 w-3.5" /> Discard
             </button>
-          </>
+          </div>
         ) : (
           <>
             <button onClick={() => { setSaveStep("confirm"); setAddToWpOpen(true); }} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
