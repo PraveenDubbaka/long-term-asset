@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback, Fragment } from "react";
+import { useState, useMemo, useCallback, Fragment, useRef, useEffect } from "react";
+import toast from "react-hot-toast";
 import { useStore } from "@/store/useStore";
 import {
   compute, buildAJEs, buildIncomeMatrix, buildFxSchedule,
@@ -10,7 +11,7 @@ import {
 import { sources as baseSources, priorYearLots, currentYearTransactions } from "@/lib/luka/mockData";
 import type { Source, Transaction, PriorYearLot } from "@/lib/luka/types";
 import { defaultTbAccount } from "@/lib/luka/coa";
-import { Pencil, Trash2, Plus, Check, X, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, ChevronRight, Send, RotateCcw, FileDown, BarChart2 } from "lucide-react";
+import { Pencil, Trash2, Plus, Check, X, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, ChevronRight, Send, RotateCcw, FileDown, BarChart2, Upload, Loader2, FolderOpen, FileText, FileSpreadsheet, Copy, Download } from "lucide-react";
 import { CHART_OF_ACCOUNTS } from "@/lib/luka/coa";
 
 // ─── LocalInvJE type (inline, not imported from page) ─────────────────────────
@@ -128,6 +129,41 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "holdings",     label: "Holdings"          },
 ];
 
+// ─── Add-mode row type ────────────────────────────────────────────────────────
+interface InvAddRow {
+  id: string; sourceFile?: string;
+  date: string; settlement: string; broker: string;
+  security: string; ticker: string; type: string;
+  qty: string; price: string; ccy: string;
+  fxRate: string; tbAccount: string; status: string;
+}
+const EMPTY_INV_ADD_ROW = (): InvAddRow => ({
+  id: `ia-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
+  date: "", settlement: "", broker: "", security: "", ticker: "",
+  type: "Purchase", qty: "", price: "", ccy: "CAD", fxRate: "1",
+  tbAccount: "", status: "pending",
+});
+const INV_ADD_REQUIRED: (keyof InvAddRow)[] = ["date","security","type","qty","price"];
+function invAddRowMissing(row: InvAddRow, field: keyof InvAddRow) { return !String(row[field] ?? "").trim(); }
+
+function generateMockTxns(fileNames: string[]): InvAddRow[] {
+  const MOCK = [
+    { security: "Apple Inc.", ticker: "AAPL", type: "Purchase", qty: "100", price: "185.50", ccy: "USD", fxRate: "1.36", broker: "TD Direct" },
+    { security: "Royal Bank of Canada", ticker: "RY", type: "Purchase", qty: "50", price: "132.20", ccy: "CAD", fxRate: "1", broker: "RBC Direct" },
+    { security: "Microsoft Corp.", ticker: "MSFT", type: "Dividend", qty: "200", price: "0.75", ccy: "USD", fxRate: "1.36", broker: "TD Direct" },
+    { security: "Canadian Natural Res.", ticker: "CNQ", type: "Sale", qty: "75", price: "88.40", ccy: "CAD", fxRate: "1", broker: "RBC Direct" },
+  ];
+  return fileNames.flatMap((fn, fi) =>
+    MOCK.slice(0, 2).map((m, i) => ({
+      ...EMPTY_INV_ADD_ROW(),
+      id: `ia-mock-${fi}-${i}`,
+      sourceFile: fn,
+      ...m,
+      date: `2024-${String(fi * 3 + i + 1).padStart(2,"0")}-15`.replace(/-(\d{2})-/, (_, m2) => `-${String(Math.min(12, parseInt(m2))).padStart(2,"0")}-`),
+    } as InvAddRow))
+  );
+}
+
 // ─── Tab 1: Transactions ──────────────────────────────────────────────────────
 const TX_TYPES = [
   "Purchase","Sale","Dividend","Interest","Return of Capital",
@@ -181,6 +217,7 @@ function TransactionsPanel({
   setHiddenTxIds,
   txEdits,
   setTxEdits,
+  batchEditMode,
 }: {
   effectiveTxns: Transaction[];
   allInvSources: Source[];
@@ -190,6 +227,7 @@ function TransactionsPanel({
   setHiddenTxIds: React.Dispatch<React.SetStateAction<Set<string>>>;
   txEdits: Record<string, Partial<Transaction>>;
   setTxEdits: React.Dispatch<React.SetStateAction<Record<string, Partial<Transaction>>>>;
+  batchEditMode?: boolean;
 }) {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState<TxDraft>(EMPTY_TX_DRAFT());
@@ -391,23 +429,35 @@ function TransactionsPanel({
     <div className="rounded-[8px] border border-border overflow-hidden">
       {/* Header */}
       <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between gap-3">
-        <span className="text-sm font-semibold text-foreground">Transactions</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-foreground">Transactions</span>
+          {batchEditMode && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+              <Pencil className="h-2.5 w-2.5" /> Editing
+            </span>
+          )}
+          {batchEditMode && (
+            <span className="text-[10px] text-muted-foreground">All rows editable — submit changes with Submit &amp; Rerun</span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           {/* Status filter dropdown */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-muted-foreground font-medium">View:</span>
-            <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value as typeof statusFilter)}
-              className="h-7 text-[11px] px-2 pr-6 border border-border rounded-[7px] bg-background text-foreground appearance-none focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer"
-            >
-              <option value="all">All</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="published">Published</option>
-            </select>
-          </div>
-          {selectedIds.size > 0 && (
+          {!batchEditMode && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-muted-foreground font-medium">View:</span>
+              <select
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value as typeof statusFilter)}
+                className="h-7 text-[11px] px-2 pr-6 border border-border rounded-[7px] bg-background text-foreground appearance-none focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer"
+              >
+                <option value="all">All</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="published">Published</option>
+              </select>
+            </div>
+          )}
+          {!batchEditMode && selectedIds.size > 0 && (
             <>
               <span className="text-[11px] text-muted-foreground">{selectedIds.size} selected</span>
               <button onClick={() => bulkSetStatus("approved")} className="inline-flex items-center h-7 px-2.5 text-[11px] font-medium rounded-[7px] border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">Approve</button>
@@ -442,30 +492,39 @@ function TransactionsPanel({
             </tr>
           </thead>
           <tbody>
-            {adding && renderFormRow(draft, (k, v) => setDraft(p => ({ ...p, [k]: v })), saveAdd, () => setAdding(false))}
+            {!batchEditMode && adding && renderFormRow(draft, (k, v) => setDraft(p => ({ ...p, [k]: v })), saveAdd, () => setAdding(false))}
             {visible.map((t, i) => {
-              const isEditing = editId === t.id;
-              const d = editDraft;
+              const isEditing = !batchEditMode && editId === t.id;
+              const isBatchEditing = batchEditMode;
+              const d = isEditing ? editDraft : editDraft;
               const setD = (k: keyof TxDraft, v: unknown) => setEditDraft(p => ({ ...p, [k]: v }));
+              // Batch edit values: use txEdits overlay on top of transaction
+              const bv = isBatchEditing ? { ...(txEdits[t.id] ?? {}) } : null;
+              const bSet = (field: string, value: unknown) =>
+                setTxEdits(m => ({ ...m, [t.id]: { ...m[t.id], [field]: value } }));
               return (
                 <tr
                   key={t.id}
-                  className={`border-b border-border/40 ${isEditing ? "bg-primary/[0.04]" : i % 2 === 1 ? "bg-muted/10" : ""}`}
+                  className={`border-b border-border/40 ${isEditing ? "bg-primary/[0.04]" : isBatchEditing ? "bg-primary/[0.02]" : i % 2 === 1 ? "bg-muted/10" : ""}`}
                 >
                   {/* Checkbox */}
                   <td className="px-3 py-1.5">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(t.id)}
-                      onChange={() => toggleOne(t.id)}
-                      className="w-3.5 h-3.5 accent-primary rounded"
-                    />
+                    {!batchEditMode && (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(t.id)}
+                        onChange={() => toggleOne(t.id)}
+                        className="w-3.5 h-3.5 accent-primary rounded"
+                      />
+                    )}
                   </td>
 
                   {/* Trade Date */}
                   <td className="px-2 py-1">
                     {isEditing
                       ? <input type="date" value={d.date} onChange={e => setD("date", e.target.value)} className={`${IC} w-28`} />
+                      : isBatchEditing
+                      ? <input type="date" value={String(bv?.date ?? t.date)} onChange={e => bSet("date", e.target.value)} className={`${IC} w-28`} />
                       : <span className="whitespace-nowrap">{fmtDate(t.date)}</span>}
                   </td>
 
@@ -473,6 +532,8 @@ function TransactionsPanel({
                   <td className="px-2 py-1">
                     {isEditing
                       ? <input type="date" value={d.settlement} onChange={e => setD("settlement", e.target.value)} className={`${IC} w-28`} />
+                      : isBatchEditing
+                      ? <input type="date" value={String(bv?.settlementDate ?? t.settlementDate ?? "")} onChange={e => bSet("settlementDate", e.target.value || undefined)} className={`${IC} w-28`} />
                       : <span className="whitespace-nowrap text-muted-foreground">{t.settlementDate ? fmtDate(t.settlementDate) : "—"}</span>}
                   </td>
 
@@ -480,6 +541,8 @@ function TransactionsPanel({
                   <td className="px-2 py-1 max-w-[90px]">
                     {isEditing
                       ? <input value={d.broker} onChange={e => setD("broker", e.target.value)} className={`${IC} w-24`} placeholder="Broker" />
+                      : isBatchEditing
+                      ? <input value={String(bv?.sourceId ?? t.sourceId ?? "")} onChange={e => bSet("sourceId", e.target.value)} className={`${IC} w-24`} placeholder="Broker" />
                       : <span className="truncate block">{brokerName(t)}</span>}
                   </td>
 
@@ -487,6 +550,8 @@ function TransactionsPanel({
                   <td className="px-2 py-1 max-w-[110px]">
                     {isEditing
                       ? <input value={d.security} onChange={e => setD("security", e.target.value)} className={`${IC} w-32`} placeholder="Security" />
+                      : isBatchEditing
+                      ? <input value={String(bv?.security ?? t.security)} onChange={e => bSet("security", e.target.value)} className={`${IC} w-32`} placeholder="Security" />
                       : <span className="font-medium truncate block">{t.security}</span>}
                   </td>
 
@@ -494,6 +559,8 @@ function TransactionsPanel({
                   <td className="px-2 py-1">
                     {isEditing
                       ? <input value={d.ticker} onChange={e => setD("ticker", e.target.value.toUpperCase())} className={`${IC} w-16`} placeholder="AAPL" />
+                      : isBatchEditing
+                      ? <input value={String(bv?.ticker ?? t.ticker ?? "")} onChange={e => bSet("ticker", e.target.value.toUpperCase())} className={`${IC} w-16`} placeholder="AAPL" />
                       : <span className="font-mono text-[10px]">{t.ticker}</span>}
                   </td>
 
@@ -501,6 +568,10 @@ function TransactionsPanel({
                   <td className="px-2 py-1 text-center">
                     {isEditing
                       ? <select value={d.ccy} onChange={e => setD("ccy", e.target.value)} className={`${SC} w-16`}>
+                          {["CAD","USD","EUR","GBP"].map(c => <option key={c}>{c}</option>)}
+                        </select>
+                      : isBatchEditing
+                      ? <select value={String(bv?.currency ?? t.currency)} onChange={e => bSet("currency", e.target.value)} className={`${SC} w-16`}>
                           {["CAD","USD","EUR","GBP"].map(c => <option key={c}>{c}</option>)}
                         </select>
                       : <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border">{t.currency}</span>}
@@ -512,6 +583,10 @@ function TransactionsPanel({
                       ? <select value={d.type} onChange={e => setD("type", e.target.value)} className={`${SC} w-32`}>
                           {TX_TYPES.map(tp => <option key={tp} value={tp}>{tp}</option>)}
                         </select>
+                      : isBatchEditing
+                      ? <select value={String(bv?.type ?? t.type)} onChange={e => bSet("type", e.target.value)} className={`${SC} w-32`}>
+                          {TX_TYPES.map(tp => <option key={tp} value={tp}>{tp}</option>)}
+                        </select>
                       : <TxTypeBadge type={t.type} />}
                   </td>
 
@@ -519,6 +594,8 @@ function TransactionsPanel({
                   <td className="px-2 py-1 text-right">
                     {isEditing
                       ? <input type="number" value={d.qty || ""} onChange={e => setD("qty", parseFloat(e.target.value) || 0)} className={`${IC} w-20 text-right`} placeholder="0" />
+                      : isBatchEditing
+                      ? <input type="number" value={String(bv?.units ?? t.units)} onChange={e => bSet("units", parseFloat(e.target.value) || 0)} className={`${IC} w-20 text-right`} placeholder="0" />
                       : <span className="tabular-nums">{fmt2(t.units)}</span>}
                   </td>
 
@@ -526,6 +603,8 @@ function TransactionsPanel({
                   <td className="px-2 py-1 text-right">
                     {isEditing
                       ? <input type="number" value={d.price || ""} onChange={e => setD("price", parseFloat(e.target.value) || 0)} className={`${IC} w-20 text-right`} placeholder="0.00" />
+                      : isBatchEditing
+                      ? <input type="number" value={String(bv?.price ?? t.price)} onChange={e => bSet("price", parseFloat(e.target.value) || 0)} className={`${IC} w-20 text-right`} placeholder="0.00" />
                       : <span className="tabular-nums">{fmt2(t.price)}</span>}
                   </td>
 
@@ -533,6 +612,8 @@ function TransactionsPanel({
                   <td className="px-2 py-1 text-right">
                     {isEditing
                       ? <input type="number" step="0.0001" value={d.fxRate || ""} onChange={e => setD("fxRate", parseFloat(e.target.value) || 1)} className={`${IC} w-20 text-right`} placeholder="1.0000" />
+                      : isBatchEditing
+                      ? <input type="number" step="0.0001" value={String(bv?.fxRate ?? t.fxRate ?? 1)} onChange={e => bSet("fxRate", parseFloat(e.target.value) || 1)} className={`${IC} w-20 text-right`} placeholder="1.0000" />
                       : <span className="tabular-nums text-muted-foreground">{t.currency === "CAD" ? "—" : fmt4(t.fxRate ?? 1)}</span>}
                   </td>
 
@@ -556,6 +637,13 @@ function TransactionsPanel({
                             <option key={a.code} value={a.code}>{a.code} · {a.name}</option>
                           ))}
                         </select>
+                      : isBatchEditing
+                      ? <select value={String(bv?.tbAccount ?? t.tbAccount ?? "")} onChange={e => bSet("tbAccount", e.target.value)} className={`${SC} w-44`}>
+                          <option value="">— Select —</option>
+                          {CHART_OF_ACCOUNTS.map(a => (
+                            <option key={a.code} value={a.code}>{a.code} · {a.name}</option>
+                          ))}
+                        </select>
                       : <span className="tabular-nums text-muted-foreground font-mono text-[10px]">{t.tbAccount ?? "—"}</span>}
                   </td>
 
@@ -563,6 +651,10 @@ function TransactionsPanel({
                   <td className="px-2 py-1 text-right">
                     {isEditing
                       ? <select value={d.status} onChange={e => setD("status", e.target.value as TxDraft["status"])} className={`${SC} w-24`}>
+                          {["pending","approved","published"].map(s => <option key={s}>{s}</option>)}
+                        </select>
+                      : isBatchEditing
+                      ? <select value={String(bv?.status ?? t.status ?? "pending")} onChange={e => bSet("status", e.target.value)} className={`${SC} w-24`}>
                           {["pending","approved","published"].map(s => <option key={s}>{s}</option>)}
                         </select>
                       : <StatusBadge status={t.status ?? "pending"} />}
@@ -1421,6 +1513,14 @@ function HoldingsPanel({ schedules }: { schedules: SecuritySchedule[] }) {
 export function InvestmentScheduleResponse({ onEditTransactions }: { onEditTransactions?: () => void } = {}) {
   const settings = useStore(s => s.settings);
   const [activeTab, setActiveTab] = useState<TabId>("transactions");
+  const [invMode, setInvMode] = useState<"view" | "edit" | "add">("view");
+  const [pendingTxns, setPendingTxns] = useState<InvAddRow[]>([]);
+  const [addUploading, setAddUploading] = useState(false);
+  const [addUploadedFiles, setAddUploadedFiles] = useState<Array<{id:string; name:string; ext:string}>>([]);
+  const [isRerunning, setIsRerunning] = useState(false);
+  const addFileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { if (invMode !== "add") setAddUploadedFiles([]); }, [invMode]);
 
   const client  = settings.client || "this engagement";
   const dateStr = settings.fiscalYearEnd
@@ -1475,6 +1575,67 @@ export function InvestmentScheduleResponse({ onEditTransactions }: { onEditTrans
   const [ajeQueue, setAjeQueue] = useState<LocalInvJE[]>([]);
   const clearAjeQueue = useCallback(() => setAjeQueue([]), []);
 
+  // ── Edit/Add mode helpers ─────────────────────────────────────────────────
+  const discardMode = () => { setInvMode("view"); setTxEdits({}); setPendingTxns([]); };
+  const canSubmitEdit = Object.keys(txEdits).length > 0;
+  const canSubmitAdd = pendingTxns.length > 0 && pendingTxns.every(r => INV_ADD_REQUIRED.every(f => !invAddRowMissing(r, f)));
+  const triggerRerun = () => { setIsRerunning(true); setTimeout(() => setIsRerunning(false), 2600); };
+
+  const submitEdits = () => {
+    discardMode();
+    triggerRerun();
+    toast.success(`Transactions updated · re-running analysis…`);
+  };
+
+  const submitAdd = () => {
+    const valid = pendingTxns.filter(r => r.security?.trim() && r.date?.trim());
+    if (!valid.length) { toast.error("Add at least one transaction"); return; }
+    valid.forEach(r => {
+      const tx: Transaction = {
+        id: r.id,
+        sourceId: r.broker || "manual",
+        date: r.date,
+        settlementDate: r.settlement || undefined,
+        security: r.security,
+        ticker: r.ticker,
+        type: r.type as Transaction["type"],
+        units: parseFloat(r.qty) || 0,
+        price: parseFloat(r.price) || 0,
+        gross: (parseFloat(r.qty) || 0) * (parseFloat(r.price) || 0),
+        fees: 0,
+        net: (parseFloat(r.qty) || 0) * (parseFloat(r.price) || 0),
+        currency: r.ccy as Transaction["currency"],
+        fxRate: parseFloat(r.fxRate) || 1,
+        status: r.status as Transaction["status"],
+        tbAccount: r.tbAccount || defaultTbAccount(r.type as Transaction["type"]),
+      };
+      setManualTxns(prev => [...prev, tx]);
+    });
+    discardMode();
+    triggerRerun();
+    toast.success(`${valid.length} transaction${valid.length !== 1 ? "s" : ""} added · re-running analysis…`);
+  };
+
+  const handleAddUpload = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const arr = Array.from(files);
+    setAddUploadedFiles(prev => {
+      const existing = new Set(prev.map(f => f.name));
+      return [...prev, ...arr.filter(f => !existing.has(f.name)).map(f => ({
+        id: `f-${Date.now()}-${Math.random().toString(36).slice(2,5)}`,
+        name: f.name,
+        ext: f.name.split(".").pop()?.toLowerCase() ?? "",
+      }))].slice(0, 15);
+    });
+    setAddUploading(true);
+    setTimeout(() => {
+      const rows = generateMockTxns(arr.map(f => f.name));
+      setPendingTxns(prev => [...prev, ...rows]);
+      setAddUploading(false);
+      toast.success(`Extracted ${rows.length} transaction${rows.length !== 1 ? "s" : ""} from document`);
+    }, 1800);
+  };
+
   // ── Computed data ──────────────────────────────────────────────────────────
   const { schedules } = useMemo(
     () => compute(opts, effectivePY, effectiveTxns),
@@ -1502,14 +1663,17 @@ export function InvestmentScheduleResponse({ onEditTransactions }: { onEditTrans
         <div className="flex items-center gap-0 overflow-x-auto flex-1 min-w-0">
           {TABS.map(({ id, label }) => {
             const isActive = activeTab === id;
+            const locked = invMode !== "view" && id !== "transactions";
             return (
               <button
                 key={id}
-                onClick={() => setActiveTab(id)}
+                onClick={() => { if (locked) return; setActiveTab(id); }}
                 className={`flex items-center gap-1 px-3 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap shrink-0 ${
                   isActive
                     ? "border-primary text-primary bg-primary/5"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+                    : locked
+                      ? "border-transparent text-muted-foreground/30 cursor-not-allowed"
+                      : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
                 }`}
               >
                 {label}
@@ -1517,24 +1681,235 @@ export function InvestmentScheduleResponse({ onEditTransactions }: { onEditTrans
             );
           })}
         </div>
-        {onEditTransactions && (
-          <div className="shrink-0 ml-3 mb-px flex items-center gap-0 rounded-[8px] border border-border bg-muted/40 p-0.5">
-            <button className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-semibold bg-background text-foreground shadow-sm border border-border/60 transition-all">
-              <BarChart2 className="w-3 h-3" /> Schedule
-            </button>
-            <button
-              onClick={onEditTransactions}
-              className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] font-medium text-muted-foreground hover:text-foreground transition-all"
-            >
-              <Pencil className="w-3 h-3" /> Add/Edit
-            </button>
-          </div>
-        )}
+        {/* Schedule / Edit / Add button group */}
+        <div className="shrink-0 ml-3 mb-px flex items-center gap-0 rounded-[8px] border border-border bg-muted/40 p-0.5">
+          <button
+            disabled={invMode !== "view"}
+            className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] transition-all ${
+              invMode === "view"
+                ? "font-semibold bg-background text-foreground shadow-sm border border-border/60"
+                : "font-medium text-muted-foreground/40 cursor-not-allowed"
+            }`}
+          >
+            <BarChart2 className="w-3 h-3" /> Schedule
+          </button>
+          <button
+            onClick={() => { setInvMode("edit"); setActiveTab("transactions"); setTxEdits({}); }}
+            className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] transition-all ${
+              invMode === "edit"
+                ? "font-semibold bg-background text-primary shadow-sm border border-primary/30"
+                : "font-medium text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Pencil className="w-3 h-3" /> Edit
+          </button>
+          <button
+            onClick={() => { setInvMode("add"); setActiveTab("transactions"); setPendingTxns([]); }}
+            className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] transition-all ${
+              invMode === "add"
+                ? "font-semibold bg-background text-primary shadow-sm border border-primary/30"
+                : "font-medium text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Plus className="w-3 h-3" /> Add
+          </button>
+        </div>
       </div>
 
-      {/* Tab content — always mounted so state survives tab switches */}
-      <div className="min-w-0">
-        <div className={activeTab === "transactions" ? "" : "hidden"}>
+      {/* Tab content — shimmer overlay while re-running */}
+      <div className="min-w-0 relative">
+        {isRerunning && (
+          <div className="absolute inset-0 z-20 rounded-[8px] overflow-hidden pointer-events-none">
+            <div className="absolute inset-0 bg-background/60 backdrop-blur-[3px]" />
+            <div className="absolute inset-y-0 w-[120px] bg-gradient-to-r from-transparent via-primary/10 to-transparent animate-shimmer-sweep" />
+            <div className="absolute inset-y-0 w-[60px] bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer-sweep" style={{ animationDelay: "0.5s", animationDuration: "1.8s" }} />
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-background/95 shadow-xl border border-border/80 text-xs font-medium text-foreground">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                Analysing data and generating workpaper…
+              </div>
+              <div className="flex items-center gap-1.5">
+                {TABS.map(({ id, label }) => (
+                  <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-[10px] font-medium text-primary border border-primary/15">
+                    <span className="w-1 h-1 rounded-full bg-primary animate-pulse" style={{ animationDelay: `${TABS.findIndex(t=>t.id===id)*0.15}s` }} />
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add-mode: gradient upload UI */}
+        {activeTab === "transactions" && invMode === "add" && (
+          <div className="space-y-3 mb-3">
+            {/* Gradient container */}
+            <div className="relative rounded-[14px] overflow-hidden border border-primary/20 bg-gradient-to-br from-primary/[0.04] via-background to-violet-50/30">
+              <div className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full bg-primary/10 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-violet-400/10 blur-3xl" />
+
+              <div className="relative z-10 px-5 pt-4 pb-3 text-center space-y-0.5">
+                <p className="text-xs font-semibold text-foreground">How would you like to add transactions?</p>
+                <p className="text-[10px] text-muted-foreground">Luka will auto-extract and fill all fields from your documents</p>
+              </div>
+
+              <div className="relative z-10 flex items-stretch gap-0 px-4 pb-4 pt-2">
+                {/* Upload card */}
+                <div
+                  className="flex-1 flex flex-col items-center gap-2.5 p-4 rounded-[10px] border border-dashed border-primary/25 bg-primary/[0.03] cursor-pointer hover:bg-primary/[0.07] hover:border-primary/45 transition-all group text-center"
+                  onClick={() => addFileRef.current?.click()}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={e => { e.preventDefault(); handleAddUpload(e.dataTransfer.files); }}
+                >
+                  <input ref={addFileRef} type="file" accept=".pdf,.xlsx,.xls,.csv,.zip" multiple hidden onChange={e => handleAddUpload(e.target.files)} />
+                  {addUploading ? (
+                    <>
+                      <div className="relative">
+                        <div className="absolute inset-0 rounded-full bg-primary/20 blur-md" />
+                        <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shadow-sm">
+                          <Loader2 className="w-4 h-4 text-white animate-spin" />
+                        </div>
+                      </div>
+                      <p className="text-[11px] font-medium text-primary">Extracting transaction data…</p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="relative">
+                        <div className="absolute inset-0 rounded-full bg-primary/20 blur-md group-hover:bg-primary/30 transition-all" />
+                        <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shadow-sm">
+                          <Upload className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-semibold text-foreground">Import documents</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">Broker statements · Trade confirms<br />Registers · PDF · XLSX · ZIP</p>
+                      </div>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary group-hover:underline">
+                        Click to browse or drag &amp; drop
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                {/* OR divider */}
+                <div className="flex flex-col items-center justify-center px-3 gap-1.5">
+                  <div className="w-px flex-1 bg-gradient-to-b from-transparent via-border to-transparent" />
+                  <span className="text-[10px] font-bold text-muted-foreground/50">or</span>
+                  <div className="w-px flex-1 bg-gradient-to-b from-transparent via-border to-transparent" />
+                </div>
+
+                {/* Manual entry card */}
+                <div
+                  className="flex-1 flex flex-col items-center gap-2.5 p-4 rounded-[10px] border border-dashed border-violet-300/40 bg-violet-50/20 cursor-pointer hover:bg-violet-50/50 hover:border-violet-400/50 transition-all group text-center"
+                  onClick={() => setPendingTxns(prev => [...prev, EMPTY_INV_ADD_ROW()])}
+                >
+                  <div className="relative">
+                    <div className="absolute inset-0 rounded-full bg-violet-400/20 blur-md group-hover:bg-violet-400/30 transition-all" />
+                    <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shadow-sm">
+                      <Plus className="w-4 h-4 text-white" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold text-foreground">Enter manually</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Add a blank row and type<br />transaction details directly in the table</p>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-violet-600 group-hover:underline">
+                    Add a new entry row
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* File chips */}
+            {addUploadedFiles.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {addUploadedFiles.map(f => (
+                  <div key={f.id} className="inline-flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-[10px] border border-border bg-background text-xs max-w-[260px]">
+                    <div className="w-7 h-7 rounded-[6px] flex items-center justify-center shrink-0 bg-primary/10">
+                      {f.ext === "pdf"
+                        ? <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
+                        : f.ext === "zip"
+                        ? <FolderOpen className="h-3.5 w-3.5 text-primary shrink-0" />
+                        : <FileSpreadsheet className="h-3.5 w-3.5 text-primary shrink-0" />}
+                    </div>
+                    <span className="flex-1 min-w-0 truncate font-medium text-foreground text-[11px]">{f.name}</span>
+                    <button
+                      onClick={() => setAddUploadedFiles(prev => prev.filter(x => x.id !== f.id))}
+                      className="shrink-0 text-muted-foreground/50 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Pending transactions review table */}
+            {pendingTxns.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-foreground">
+                    {pendingTxns.length} transaction{pendingTxns.length !== 1 ? "s" : ""} extracted — review and complete before submitting
+                  </span>
+                </div>
+                <div className="rounded-[8px] border border-border overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-[10px]" style={{ minWidth: 1400 }}>
+                      <thead>
+                        <tr className="bg-muted/30 border-b border-border">
+                          {["Date *","Settlement","Source","Security *","Ticker","CCY","Type *","Units *","Price *","FX Rate","TB Account","Status",""].map((h, i) => (
+                            <th key={i} className={`px-2 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10 text-right" : ["Units *","Price *","FX Rate"].includes(h) ? "text-right" : "text-left"}`}>
+                              {h.endsWith(" *") ? <>{h.slice(0,-2)} <span className="text-red-500">*</span></> : h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pendingTxns.map((row, ri) => {
+                          const fc = (field: keyof InvAddRow, req: boolean) =>
+                            `h-6 text-[10px] px-1.5 border rounded bg-background focus:outline-none w-full ${req && invAddRowMissing(row, field) ? "border-red-400 bg-red-50/60 placeholder:text-red-400 text-red-600 focus:border-red-500" : "border-border focus:border-primary/40"}`;
+                          const upd = (field: keyof InvAddRow, value: string) =>
+                            setPendingTxns(prev => prev.map(p => p.id === row.id ? { ...p, [field]: value } : p));
+                          return (
+                            <tr key={row.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
+                              <td className="px-1.5 py-1 min-w-[120px]"><input type="date" value={row.date} onChange={e=>upd("date",e.target.value)} className={`${fc("date",true)} w-28`} /></td>
+                              <td className="px-1.5 py-1 min-w-[120px]"><input type="date" value={row.settlement} onChange={e=>upd("settlement",e.target.value)} className={`${fc("settlement",false)} w-28`} /></td>
+                              <td className="px-1.5 py-1 min-w-[100px]"><input value={row.broker} onChange={e=>upd("broker",e.target.value)} className={`${fc("broker",false)} w-24`} placeholder="Broker" /></td>
+                              <td className="px-1.5 py-1 min-w-[140px]"><input value={row.security} onChange={e=>upd("security",e.target.value)} className={`${fc("security",true)} w-36`} placeholder="Security name" /></td>
+                              <td className="px-1.5 py-1 min-w-[70px]"><input value={row.ticker} onChange={e=>upd("ticker",e.target.value.toUpperCase())} className={`${fc("ticker",false)} w-16`} placeholder="AAPL" /></td>
+                              <td className="px-1.5 py-1"><select value={row.ccy} onChange={e=>upd("ccy",e.target.value)} className="h-6 text-[10px] px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer w-14">{["CAD","USD","EUR","GBP"].map(c=><option key={c}>{c}</option>)}</select></td>
+                              <td className="px-1.5 py-1"><select value={row.type} onChange={e=>upd("type",e.target.value)} className="h-6 text-[10px] px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer w-32">{TX_TYPES.map(t=><option key={t} value={t}>{t}</option>)}</select></td>
+                              <td className="px-1.5 py-1"><input value={row.qty} onChange={e=>upd("qty",e.target.value)} className={`${fc("qty",true)} w-20 text-right`} placeholder="0" /></td>
+                              <td className="px-1.5 py-1"><input value={row.price} onChange={e=>upd("price",e.target.value)} className={`${fc("price",true)} w-20 text-right`} placeholder="0.00" /></td>
+                              <td className="px-1.5 py-1"><input value={row.fxRate} onChange={e=>upd("fxRate",e.target.value)} className={`${fc("fxRate",false)} w-16 text-right font-mono`} placeholder="1.0000" /></td>
+                              <td className="px-1.5 py-1 min-w-[160px]">
+                                <select value={row.tbAccount} onChange={e=>upd("tbAccount",e.target.value)} className="h-6 text-[10px] px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer w-44">
+                                  <option value="">— Select —</option>
+                                  {CHART_OF_ACCOUNTS.map(a=><option key={a.code} value={a.code}>{a.code} · {a.name}</option>)}
+                                </select>
+                              </td>
+                              <td className="px-1.5 py-1"><select value={row.status} onChange={e=>upd("status",e.target.value)} className="h-6 text-[10px] px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer w-20">{["pending","approved","published"].map(s=><option key={s}>{s}</option>)}</select></td>
+                              <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
+                                <div className="flex items-center justify-end">
+                                  <button onClick={()=>setPendingTxns(prev=>prev.filter(p=>p.id!==row.id))} className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors">
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab panels — always mounted so state survives tab switches */}
+        <div className={activeTab === "transactions" && invMode !== "add" ? "" : "hidden"}>
           <TransactionsPanel
             effectiveTxns={effectiveTxns}
             allInvSources={allInvSources}
@@ -1544,6 +1919,7 @@ export function InvestmentScheduleResponse({ onEditTransactions }: { onEditTrans
             setHiddenTxIds={setHiddenTxIds}
             txEdits={txEdits}
             setTxEdits={setTxEdits}
+            batchEditMode={invMode === "edit"}
           />
         </div>
         <div className={activeTab === "wac" ? "" : "hidden"}>
@@ -1570,6 +1946,65 @@ export function InvestmentScheduleResponse({ onEditTransactions }: { onEditTrans
         <div className={activeTab === "holdings" ? "" : "hidden"}>
           <HoldingsPanel schedules={schedules} />
         </div>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex items-center gap-2 pt-1 border-t border-border flex-wrap">
+        {invMode !== "view" ? (
+          <div className="flex items-center gap-2 ml-auto">
+            {(() => {
+              const canSubmit = invMode === "edit" ? canSubmitEdit : canSubmitAdd;
+              const missingCount = invMode === "add"
+                ? pendingTxns.reduce((s, r) => s + INV_ADD_REQUIRED.filter(f => invAddRowMissing(r, f)).length, 0)
+                : 0;
+              const tooltip = !canSubmit
+                ? invMode === "edit"
+                  ? "Make at least one change to enable"
+                  : missingCount > 0
+                    ? `${missingCount} required field${missingCount !== 1 ? "s" : ""} missing`
+                    : "Add at least one transaction to enable"
+                : null;
+              return (
+                <div className="relative group/submit">
+                  <button
+                    onClick={canSubmit ? (invMode === "edit" ? submitEdits : submitAdd) : undefined}
+                    disabled={!canSubmit}
+                    className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-xs font-medium transition-all ${
+                      canSubmit
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+                        : "bg-primary/30 text-primary-foreground/50 cursor-not-allowed"
+                    }`}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" /> Submit &amp; Rerun
+                  </button>
+                  {tooltip && (
+                    <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-1 rounded-[6px] bg-foreground text-background text-[10px] font-medium opacity-0 group-hover/submit:opacity-100 transition-opacity pointer-events-none z-50">
+                      {tooltip}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+            <button
+              onClick={discardMode}
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors"
+            >
+              <X className="h-3.5 w-3.5" /> Discard
+            </button>
+          </div>
+        ) : (
+          <>
+            <button onClick={() => toast.success("Re-running analysis…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+              <RotateCcw className="h-3.5 w-3.5" /> Rerun
+            </button>
+            <button onClick={() => toast.success("Downloading…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+              <Download className="h-3.5 w-3.5" /> Download
+            </button>
+            <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success("Link copied"); }} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+              <Copy className="h-3.5 w-3.5" /> Copy
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
