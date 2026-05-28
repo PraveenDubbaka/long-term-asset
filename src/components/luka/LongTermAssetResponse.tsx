@@ -6,7 +6,7 @@ import {
   ShieldAlert, ShieldCheck, Activity, CreditCard,
   Building2, FileText, BookOpen, Receipt, Layers, FileCheck, Send, TrendingUp,
   Download, Copy, RotateCcw, X, Trash2, Search, Check, Pencil, Folder,
-  Upload, Loader2, Maximize2, Minimize2, SlidersHorizontal, Save,
+  Upload, Loader2, Maximize2, Minimize2, SlidersHorizontal, Save, FolderOpen,
 } from "lucide-react";
 import { COVENANT_TEMPLATES, GL_ACCOUNTS, GL_CATEGORY_ORDER, GL_CATEGORY_LABELS } from "@/lib/covenantTemplates";
 import type { GlCategory } from "@/lib/covenantTemplates";
@@ -482,7 +482,13 @@ function LoansTab({
   const [newRowDraft,     setNewRowDraft]     = useState<Partial<Loan>>(EMPTY_LOAN_DRAFT);
   // Add-mode upload state
   const [addUploading,    setAddUploading]    = useState(false);
+  const [addUploadedFiles, setAddUploadedFiles] = useState<Array<{ id: string; name: string; ext: string }>>([]);
   const addFileRef = useRef<HTMLInputElement>(null);
+
+  // Clear uploaded file chips when leaving add mode
+  useEffect(() => {
+    if (loanMode !== "add") setAddUploadedFiles([]);
+  }, [loanMode]);
 
   const cancelEdit = () => { setEditingId(null); setEditDraft({}); };
   const saveEdit = () => {
@@ -517,9 +523,22 @@ function LoansTab({
 
   const handleAddModeUpload = (files: FileList | null) => {
     if (!files || files.length === 0) return;
+    // Register file chips immediately
+    const fileArr = Array.from(files);
+    setAddUploadedFiles(prev => {
+      const existingNames = new Set(prev.map(f => f.name));
+      const toAdd = fileArr
+        .filter(f => !existingNames.has(f.name))
+        .map(f => ({
+          id: `f-${Date.now()}-${Math.random().toString(36).slice(2,5)}`,
+          name: f.name,
+          ext: f.name.split(".").pop()?.toLowerCase() ?? "",
+        }));
+      return [...prev, ...toAdd].slice(0, 15);
+    });
     setAddUploading(true);
     setTimeout(() => {
-      const detected = generateMockDetectedLoans(Array.from(files).map(f => f.name));
+      const detected = generateMockDetectedLoans(fileArr.map(f => f.name));
       setPendingLoans(prev => [
         ...prev,
         ...detected.map(d => ({
@@ -699,6 +718,30 @@ function LoansTab({
               </div>
             </div>
           </div>
+
+          {/* File chips — uploaded documents, same as initial LTD flow */}
+          {addUploadedFiles.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {addUploadedFiles.map(f => (
+                <div key={f.id} className="inline-flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-[10px] border border-border bg-background text-xs max-w-[260px]">
+                  <div className="w-7 h-7 rounded-[6px] flex items-center justify-center shrink-0 bg-primary/10">
+                    {f.ext === "pdf"
+                      ? <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
+                      : f.ext === "zip"
+                      ? <FolderOpen className="h-3.5 w-3.5 text-primary shrink-0" />
+                      : <FileSpreadsheet className="h-3.5 w-3.5 text-primary shrink-0" />}
+                  </div>
+                  <span className="flex-1 min-w-0 truncate font-medium text-foreground text-[11px]">{f.name}</span>
+                  <button
+                    onClick={() => setAddUploadedFiles(prev => prev.filter(x => x.id !== f.id))}
+                    className="shrink-0 text-muted-foreground/50 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Pending rows table — same component as initial LTD flow */}
           {pendingLoans.length > 0 && (
