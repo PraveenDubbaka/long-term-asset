@@ -669,6 +669,8 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
   const [invUploadFiles, setInvUploadFiles] = useState<InvUploadFile[]>([]);
   // null = no prompt; string[] = months missing (shown before review table)
   const [invMissingMonthsPrompt, setInvMissingMonthsPrompt] = useState<string[]|null>(null);
+  // files uploaded via the "Upload" button in the missing-months prompt
+  const [invMissingReUploads, setInvMissingReUploads] = useState<Array<{id:string;name:string;ext:string}>>([]);
   // ── Free-prompt follow-up turns (context-aware after lt-debt summary) ──
   const [followUpTurns, setFollowUpTurns] = useState<FollowUpTurn[]>([]);
   const [voiceOpen, setVoiceOpen] = useState(false);
@@ -3469,7 +3471,18 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                       onClick={() => {
                                                         const inp = document.createElement("input");
                                                         inp.type = "file"; inp.accept = ".pdf,.xlsx,.xls,.csv,.zip"; inp.multiple = true;
-                                                        inp.onchange = e => addInvFiles((e.target as HTMLInputElement).files);
+                                                        inp.onchange = e => {
+                                                          const files = (e.target as HTMLInputElement).files;
+                                                          if (files) {
+                                                            setInvMissingReUploads(prev => {
+                                                              const existing = new Set(prev.map(f => f.name));
+                                                              return [...prev, ...Array.from(files)
+                                                                .filter(f => !existing.has(f.name))
+                                                                .map(f => ({ id: `mu-${Date.now()}-${Math.random().toString(36).slice(2,5)}`, name: f.name, ext: f.name.split(".").pop()?.toLowerCase() ?? "" }))
+                                                              ].slice(0, 15);
+                                                            });
+                                                          }
+                                                        };
                                                         inp.click();
                                                       }}
                                                       className="h-8 px-4 text-xs font-semibold rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
@@ -3477,6 +3490,38 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                       Upload
                                                     </button>
                                                   </div>
+
+                                                  {/* Uploaded file chips */}
+                                                  {invMissingReUploads.length > 0 && (
+                                                    <div className="space-y-2">
+                                                      <div className="flex flex-wrap gap-2">
+                                                        {invMissingReUploads.map(f => (
+                                                          <div key={f.id} className="inline-flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-[10px] border border-border bg-background text-xs max-w-[240px]">
+                                                            <div className="w-6 h-6 rounded-[5px] flex items-center justify-center shrink-0 bg-primary/10">
+                                                              {f.ext === "pdf"
+                                                                ? <FileText className="h-3 w-3 text-primary shrink-0" />
+                                                                : f.ext === "zip"
+                                                                ? <FolderOpen className="h-3 w-3 text-primary shrink-0" />
+                                                                : <FileSpreadsheet className="h-3 w-3 text-primary shrink-0" />}
+                                                            </div>
+                                                            <span className="flex-1 min-w-0 truncate font-medium text-foreground text-[11px]">{f.name}</span>
+                                                            <button
+                                                              onClick={() => setInvMissingReUploads(prev => prev.filter(x => x.id !== f.id))}
+                                                              className="shrink-0 text-muted-foreground/50 hover:text-red-500 transition-colors"
+                                                            >
+                                                              <X className="h-3 w-3" />
+                                                            </button>
+                                                          </div>
+                                                        ))}
+                                                      </div>
+                                                      <button
+                                                        onClick={() => { setInvMissingMonthsPrompt([]); setInvMissingReUploads([]); setInvReviewRows(INV_MOCK_ROWS); }}
+                                                        className="h-8 px-4 text-xs font-semibold rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                                                      >
+                                                        Submit
+                                                      </button>
+                                                    </div>
+                                                  )}
                                                 </div>
                                               </div>
                                             )}

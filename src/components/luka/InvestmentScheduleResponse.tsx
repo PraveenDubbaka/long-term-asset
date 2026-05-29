@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback, Fragment, useRef, useEffect } from "react";
+import { useState, useMemo, useCallback, Fragment, useRef, useEffect, useLayoutEffect } from "react";
+import ReactDOM from "react-dom";
 import toast from "react-hot-toast";
 import { useStore } from "@/store/useStore";
 import {
@@ -11,7 +12,7 @@ import {
 import { sources as baseSources, priorYearLots, currentYearTransactions } from "@/lib/luka/mockData";
 import type { Source, Transaction, PriorYearLot } from "@/lib/luka/types";
 import { defaultTbAccount } from "@/lib/luka/coa";
-import { Pencil, Trash2, Plus, Check, X, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, ChevronRight, Send, RotateCcw, FileDown, BarChart2, Upload, Loader2, FolderOpen, FileText, FileSpreadsheet, Copy, Download } from "lucide-react";
+import { Pencil, Trash2, Plus, Check, X, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, ChevronRight, Send, RotateCcw, FileDown, BarChart2, Upload, Loader2, FolderOpen, FileText, FileSpreadsheet, Copy, Download, Save, Search, Clock, GitCommit, FilePlus, PenLine, FileCheck } from "lucide-react";
 import { CHART_OF_ACCOUNTS } from "@/lib/luka/coa";
 
 // ─── LocalInvJE type (inline, not imported from page) ─────────────────────────
@@ -1575,6 +1576,60 @@ export function InvestmentScheduleResponse({ onEditTransactions }: { onEditTrans
   const [ajeQueue, setAjeQueue] = useState<LocalInvJE[]>([]);
   const clearAjeQueue = useCallback(() => setAjeQueue([]), []);
 
+  // ── Save-to-Engagement flow ────────────────────────────────────────────────
+  type SaveFlowStep = "closed" | "doc-type" | "engagement" | "saving" | "saved";
+  const [saveFlowStep,  setSaveFlowStep]  = useState<SaveFlowStep>("closed");
+  const [saveDocType,   setSaveDocType]   = useState<string | null>(null);
+  const [engSearch,     setEngSearch]     = useState("");
+  const [selectedEngId, setSelectedEngId] = useState<string | null>(null);
+  const [saveMenuRect,  setSaveMenuRect]  = useState<DOMRect | null>(null);
+  const [engPanelRect,  setEngPanelRect]  = useState<{ left: number; right: number; bottom: number } | null>(null);
+  const saveBtnRef = useRef<HTMLButtonElement>(null);
+
+  useLayoutEffect(() => {
+    const active = saveFlowStep === "engagement" || saveFlowStep === "saving" || saveFlowStep === "saved";
+    if (!active) { setEngPanelRect(null); return; }
+    const el = document.querySelector(".luka-gradient-border") as HTMLElement | null;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setEngPanelRect({ left: r.left, right: window.innerWidth - r.right, bottom: window.innerHeight - r.top + 8 });
+  }, [saveFlowStep]);
+
+  const openSaveFlow = () => {
+    setSaveDocType(null); setSelectedEngId(null); setEngSearch("");
+    setSaveFlowStep("doc-type");
+    setSaveMenuRect(saveBtnRef.current?.getBoundingClientRect() ?? null);
+  };
+  const closeSaveFlow = () => { setSaveFlowStep("closed"); setSaveMenuRect(null); setEngPanelRect(null); };
+
+  const DOC_TYPES = [
+    { id: "workpaper",  label: "Investment Schedule Workpaper", icon: FileSpreadsheet, desc: "Full workpaper with all tabs"   },
+    { id: "pdf-report", label: "PDF Report",                    icon: FileText,        desc: "Printable summary report"       },
+    { id: "excel",      label: "Excel Package",                 icon: FileSpreadsheet, desc: "Downloadable .xlsx bundle"      },
+    { id: "note",       label: "Financial Statement Note",      icon: FileCheck,       desc: "Investment note disclosure only"},
+  ];
+
+  const MOCK_ENGAGEMENTS = [
+    { id: "COM-DEE-May312026",  client: "deepak corp",        engId: "COM-DEE-May312026",  yearEnd: "May 31, 2026",  status: "New",         created: "May 28, 2026 02:13 AM" },
+    { id: "COM-GIG-Feb282026",  client: "Giggle & Goods Inc", engId: "COM-GIG-Feb282026",  yearEnd: "Feb 28, 2026",  status: "New",         created: "May 26, 2026 12:40 PM" },
+    { id: "COM-GIG-Apr302026",  client: "Giggle & Goods Inc", engId: "COM-GIG-Apr302026",  yearEnd: "Apr 30, 2026",  status: "New",         created: "May 26, 2026 12:45 PM" },
+    { id: "COM-TES-Dec312024",  client: "Test123",            engId: "COM-TES-Dec312024",  yearEnd: "Dec 31, 2024",  status: "In Progress", created: "May 19, 2026 03:23 AM" },
+    { id: "COM-FAL-May312025",  client: "Falah LUKA Testing", engId: "COM-FAL-May312025",  yearEnd: "May 31, 2025",  status: "In Progress", created: "May 20, 2026 10:02 AM" },
+    { id: "COM-DEE-May302026",  client: "Deepak Pharma",      engId: "COM-DEE-May302026",  yearEnd: "May 30, 2026",  status: "New",         created: "May 22, 2026 02:25 AM" },
+    { id: "COM-KAU-Dec312024",  client: "Kaushal CORP",       engId: "COM-KAU-Dec312024",  yearEnd: "Dec 31, 2024",  status: "In Progress", created: "May 18, 2026 03:20 AM" },
+    { id: "REV-HAI-Sep132025",  client: "Haider",             engId: "REV-HAI-Sep132025",  yearEnd: "Sep 13, 2025",  status: "New",         created: "Jul 17, 2025 07:53 AM" },
+  ];
+
+  // ── Activity timeline ──────────────────────────────────────────────────────
+  const [timelineOpen, setTimelineOpen] = useState(false);
+  const WP_TIMELINE = useMemo(() => [
+    { id: "t1", type: "created", icon: GitCommit, label: "Workpaper created",                          user: "Y", by: "You", ts: "Jan 15, 2025 · 9:04 AM"  },
+    { id: "t2", type: "added",   icon: FilePlus,  label: `${effectiveTxns.length} transactions imported`, user: "Y", by: "You", ts: "Jan 15, 2025 · 9:05 AM"  },
+    { id: "t3", type: "edited",  icon: PenLine,   label: "FX rate updated — NVDA",                    user: "Y", by: "You", ts: "Jan 16, 2025 · 11:22 AM" },
+    { id: "t4", type: "edited",  icon: PenLine,   label: "TB account mapped — AAPL",                  user: "Y", by: "You", ts: "Jan 16, 2025 · 2:47 PM"  },
+  ], [effectiveTxns.length]);
+  const latestEvent = WP_TIMELINE[WP_TIMELINE.length - 1];
+
   // ── Edit/Add mode helpers ─────────────────────────────────────────────────
   const discardMode = () => { setInvMode("view"); setTxEdits({}); setPendingTxns([]); };
   const canSubmitEdit = Object.keys(txEdits).length > 0;
@@ -1994,18 +2049,235 @@ export function InvestmentScheduleResponse({ onEditTransactions }: { onEditTrans
           </div>
         ) : (
           <>
-            <button onClick={() => toast.success("Re-running analysis…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
-              <RotateCcw className="h-3.5 w-3.5" /> Rerun
+            <button ref={saveBtnRef} onClick={openSaveFlow} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
+              <Save className="h-3.5 w-3.5" /> Save to Engagement
             </button>
-            <button onClick={() => toast.success("Downloading…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+            <button onClick={() => toast.success("Downloading workpaper…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
               <Download className="h-3.5 w-3.5" /> Download
             </button>
-            <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success("Link copied"); }} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+            <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success("Link copied to clipboard"); }} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
               <Copy className="h-3.5 w-3.5" /> Copy
             </button>
+            <button onClick={triggerRerun} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+              <RotateCcw className="h-3.5 w-3.5" /> Rerun
+            </button>
+
+            {/* ── Activity timeline ── */}
+            <div className="relative ml-auto">
+              <button
+                onClick={() => setTimelineOpen(v => !v)}
+                className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[7px] border transition-colors text-[10px] font-medium ${
+                  timelineOpen
+                    ? "bg-muted border-border text-foreground"
+                    : "bg-transparent border-transparent text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/50"
+                }`}
+              >
+                <Clock className="h-3 w-3 shrink-0" />
+                <span className="max-w-[200px] truncate">{latestEvent.label}</span>
+                <span className="text-muted-foreground/60">·</span>
+                <span className="text-muted-foreground/70 whitespace-nowrap">{latestEvent.ts.split("·")[1]?.trim()}</span>
+                <ChevronDown className={`h-3 w-3 shrink-0 transition-transform text-muted-foreground/50 ${timelineOpen ? "rotate-180" : ""}`} />
+              </button>
+              {timelineOpen && (
+                <>
+                  <div className="fixed inset-0 z-[49]" onClick={() => setTimelineOpen(false)} />
+                  <div className="absolute right-0 bottom-full mb-2 z-50 w-72 bg-popover border border-border rounded-[10px] shadow-[0_4px_24px_rgba(0,0,0,0.12)] animate-in slide-in-from-bottom-2 fade-in duration-150">
+                    <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+                      <span className="text-[10px] font-semibold text-foreground uppercase tracking-wide">Workpaper Activity</span>
+                      <button onClick={() => setTimelineOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="px-3 py-2 space-y-0">
+                      {WP_TIMELINE.map((ev, i) => (
+                        <div key={ev.id} className="relative flex gap-2.5 pb-3 last:pb-1">
+                          {i < WP_TIMELINE.length - 1 && <div className="absolute left-[11px] top-5 bottom-0 w-px bg-border" />}
+                          <div className={`relative z-10 w-5.5 h-5.5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                            ev.type === "created" ? "bg-green-100 text-green-600" :
+                            ev.type === "added"   ? "bg-primary/10 text-primary"  :
+                                                    "bg-amber-50 text-amber-600"
+                          }`} style={{ width: 22, height: 22 }}>
+                            <ev.icon className="h-2.5 w-2.5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] font-medium text-foreground leading-snug">{ev.label}</p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary text-primary-foreground text-[8px] font-bold shrink-0">{ev.user}</span>
+                              <span className="text-[9px] text-muted-foreground">{ev.by} · {ev.ts}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </>
         )}
       </div>
+
+      {/* ── Save to Engagement flow ── */}
+      {saveFlowStep !== "closed" && ReactDOM.createPortal(
+        <>
+          <div className="fixed inset-0 z-[299]" onClick={closeSaveFlow} />
+
+          {/* Step 1 — Doc type dropdown anchored below Save button */}
+          {saveFlowStep === "doc-type" && saveMenuRect && (
+            <div
+              className="fixed z-[300] w-72 bg-popover border border-border rounded-[12px] shadow-[0_8px_32px_rgba(0,0,0,0.14)] animate-in fade-in slide-in-from-top-1 duration-150"
+              style={{ top: saveMenuRect.bottom + 6, left: saveMenuRect.left }}
+            >
+              <div className="px-3 pt-3 pb-2 border-b border-border">
+                <p className="text-xs font-semibold text-foreground">Select document type</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Choose what to save to the engagement</p>
+              </div>
+              <div className="p-1.5 space-y-0.5">
+                {DOC_TYPES.map(dt => (
+                  <button
+                    key={dt.id}
+                    onClick={() => { setSaveDocType(dt.id); setSaveFlowStep("engagement"); }}
+                    className="w-full flex items-center gap-3 px-2.5 py-2 rounded-[8px] hover:bg-muted/70 transition-colors text-left group"
+                  >
+                    <div className="w-7 h-7 rounded-[6px] bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/15 transition-colors">
+                      <dt.icon className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground">{dt.label}</p>
+                      <p className="text-[10px] text-muted-foreground">{dt.desc}</p>
+                    </div>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/50 ml-auto shrink-0 -rotate-90" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Step 2 — Engagement picker slides up from bottom of Luka panel */}
+          {(saveFlowStep === "engagement" || saveFlowStep === "saving" || saveFlowStep === "saved") && (
+            <div
+              className="fixed z-[60] pointer-events-none"
+              style={engPanelRect
+                ? { left: engPanelRect.left, right: engPanelRect.right, bottom: engPanelRect.bottom }
+                : { left: 24, right: 24, bottom: 124 }}
+            >
+              <div className="w-full pointer-events-auto bg-background border border-border rounded-[12px] shadow-[0_2px_24px_rgba(0,0,0,0.12)] animate-in slide-in-from-bottom-4 fade-in duration-200 flex flex-col overflow-hidden" style={{ maxHeight: "70vh" }}>
+                {saveFlowStep === "saved" ? (
+                  <div className="px-6 py-8 flex flex-col items-center gap-3 text-center">
+                    <div className="w-11 h-11 rounded-full bg-green-100 flex items-center justify-center">
+                      <Check className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Saved to engagement</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {DOC_TYPES.find(d => d.id === saveDocType)?.label} saved to{" "}
+                        <strong>{MOCK_ENGAGEMENTS.find(e => e.id === selectedEngId)?.client}</strong>
+                      </p>
+                    </div>
+                    <button onClick={closeSaveFlow} className="mt-1 h-8 px-6 text-xs font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors">
+                      Done
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Select Engagement</p>
+                        {saveDocType && (
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            Saving: <span className="font-medium text-primary">{DOC_TYPES.find(d => d.id === saveDocType)?.label}</span>
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                          <input
+                            autoFocus
+                            value={engSearch}
+                            onChange={e => setEngSearch(e.target.value)}
+                            placeholder="Search"
+                            className="h-8 pl-8 pr-3 w-40 text-xs border border-border rounded-[8px] bg-background focus:outline-none focus:border-primary/50"
+                          />
+                        </div>
+                        <button onClick={closeSaveFlow} className="p-1.5 rounded-[6px] hover:bg-muted transition-colors text-muted-foreground">
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="overflow-auto flex-1">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-muted/40 border-b border-border">
+                          <tr>
+                            {["Client Name","Engagement ID","Year End","Status","Date Created"].map(h => (
+                              <th key={h} className="px-4 py-2.5 text-left text-[11px] font-semibold text-foreground/70 whitespace-nowrap">
+                                <span className="inline-flex items-center gap-1">{h} <ChevronDown className="h-3 w-3 opacity-40" /></span>
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {MOCK_ENGAGEMENTS
+                            .filter(e => !engSearch || e.client.toLowerCase().includes(engSearch.toLowerCase()) || e.engId.toLowerCase().includes(engSearch.toLowerCase()))
+                            .map(eng => {
+                              const isSel = selectedEngId === eng.id;
+                              return (
+                                <tr key={eng.id} onClick={() => setSelectedEngId(eng.id)}
+                                  className={`border-b border-border/50 cursor-pointer transition-colors ${isSel ? "bg-primary/[0.06]" : "hover:bg-muted/40"}`}
+                                >
+                                  <td className="px-4 py-3"><span className={`font-medium ${isSel ? "text-primary" : "text-foreground"}`}>{eng.client}</span></td>
+                                  <td className="px-4 py-3 text-muted-foreground font-mono text-[11px]">{eng.engId}</td>
+                                  <td className="px-4 py-3 text-muted-foreground">{eng.yearEnd}</td>
+                                  <td className="px-4 py-3">
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+                                      eng.status === "In Progress"
+                                        ? "bg-primary/5 text-primary border-primary/20"
+                                        : "bg-amber-50 text-amber-700 border-amber-200"
+                                    }`}>{eng.status}</span>
+                                  </td>
+                                  <td className="px-4 py-3 text-muted-foreground text-[11px]">{eng.created}</td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20 shrink-0">
+                      <button
+                        onClick={() => setSaveFlowStep("doc-type")}
+                        className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-[8px] bg-background hover:bg-muted transition-colors"
+                      >
+                        <ChevronDown className="h-3.5 w-3.5 rotate-90" /> Back
+                      </button>
+                      <button
+                        disabled={!selectedEngId || saveFlowStep === "saving"}
+                        onClick={async () => {
+                          if (!selectedEngId) return;
+                          setSaveFlowStep("saving");
+                          await new Promise<void>(r => setTimeout(r, 1200));
+                          setSaveFlowStep("saved");
+                          const eng = MOCK_ENGAGEMENTS.find(e => e.id === selectedEngId);
+                          toast.success(`Saved to ${eng?.client} · ${eng?.engId}`);
+                        }}
+                        className={`inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium rounded-[8px] transition-colors ${
+                          !selectedEngId || saveFlowStep === "saving"
+                            ? "bg-primary/30 text-primary-foreground/50 cursor-not-allowed"
+                            : "bg-primary text-primary-foreground hover:bg-primary/90"
+                        }`}
+                      >
+                        {saveFlowStep === "saving"
+                          ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</>
+                          : <><Save className="h-3.5 w-3.5" /> Save to Engagement</>}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </>,
+        document.body
+      )}
     </div>
   );
 }
