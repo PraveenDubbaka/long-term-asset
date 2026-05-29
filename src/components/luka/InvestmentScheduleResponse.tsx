@@ -696,13 +696,6 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
 
   const getRows = (s: SecuritySchedule): WacRow[] => rowOverrides[s.key] ?? s.rows;
 
-  const visibleSchedules = useMemo(() =>
-    schedules.filter(s =>
-      (!filterSecurity || s.security.toLowerCase().includes(filterSecurity.toLowerCase()) || s.ticker.toLowerCase().includes(filterSecurity.toLowerCase()))
-    ),
-    [schedules, filterSecurity]
-  );
-
   const saveEdit = (scheduleKey: string, actualIdx: number) => {
     const sched = schedules.find(s => s.key === scheduleKey)!;
     const updated = getRows(sched).map((r, i) => i === actualIdx ? { ...r, ...editData } : r);
@@ -743,6 +736,46 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
     [schedules, rowOverrides]
   );
 
+  type WacSortField = "security" | "ticker" | "date" | "type" | "unitsIn" | "unitsOut" | "cumUnits" | "costIn" | "costOut" | "cumCost" | "wac";
+  const [sortField, setSortField] = useState<WacSortField>("security");
+  const [sortDir,   setSortDir]   = useState<"asc" | "desc">("asc");
+
+  const handleSort = (field: WacSortField) => {
+    if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortField(field); setSortDir("asc"); }
+  };
+  const SortIcon = ({ field }: { field: WacSortField }) => {
+    if (sortField !== field) return <ChevronUp className="h-2.5 w-2.5 opacity-25 -rotate-90" />;
+    return sortDir === "asc"
+      ? <ChevronUp className="h-2.5 w-2.5 text-primary" />
+      : <ChevronDown className="h-2.5 w-2.5 text-primary" />;
+  };
+
+  const sortedSchedules = useMemo(() => {
+    const filtered = schedules.filter(s =>
+      (!filterSecurity || s.security.toLowerCase().includes(filterSecurity.toLowerCase()) || s.ticker.toLowerCase().includes(filterSecurity.toLowerCase()))
+    );
+    return [...filtered].sort((a, b) => {
+      let cmp = 0;
+      const ar = getRows(a); const br = getRows(b);
+      switch (sortField) {
+        case "security":  cmp = a.security.localeCompare(b.security); break;
+        case "ticker":    cmp = a.ticker.localeCompare(b.ticker); break;
+        case "date":      cmp = (ar[0]?.date ?? "").localeCompare(br[0]?.date ?? ""); break;
+        case "type":      cmp = (ar[0]?.type ?? "").localeCompare(br[0]?.type ?? ""); break;
+        case "unitsIn":   cmp = ar.reduce((s,r)=>s+r.unitsIn,0) - br.reduce((s,r)=>s+r.unitsIn,0); break;
+        case "unitsOut":  cmp = ar.reduce((s,r)=>s+r.unitsOut,0) - br.reduce((s,r)=>s+r.unitsOut,0); break;
+        case "cumUnits":  cmp = a.closingUnits - b.closingUnits; break;
+        case "costIn":    cmp = ar.reduce((s,r)=>s+r.costIn,0) - br.reduce((s,r)=>s+r.costIn,0); break;
+        case "costOut":   cmp = ar.reduce((s,r)=>s+r.costOut,0) - br.reduce((s,r)=>s+r.costOut,0); break;
+        case "cumCost":   cmp = a.closingCostCAD - b.closingCostCAD; break;
+        case "wac":       cmp = a.closingWac - b.closingWac; break;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schedules, filterSecurity, sortField, sortDir, rowOverrides]);
+
   const IIC = "h-6 text-[10px] px-1.5 border border-border rounded-[5px] bg-background focus:outline-none w-full";
 
   return (
@@ -771,7 +804,7 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
             <X className="h-3 w-3" /> Clear
           </button>
         )}
-        <span className="ml-auto text-[10px] text-muted-foreground">{visibleSchedules.length} securities · WAC roll-forward</span>
+        <span className="ml-auto text-[10px] text-muted-foreground">{sortedSchedules.length} securities · WAC roll-forward</span>
       </div>
 
       {/* Spreadsheet table */}
@@ -780,28 +813,64 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
           <table className="w-full border-collapse text-[11px]" style={{ minWidth: 900 }}>
             <thead className="sticky top-0 z-10">
               <tr className="bg-[#f0f2f5] border-b-2 border-border">
-                {[
-                  { label: "Security",  cls: "text-left min-w-[140px]" },
-                  { label: "Ticker",    cls: "text-left w-14" },
-                  { label: "Date",      cls: "text-left w-24" },
-                  { label: "Type",      cls: "text-left min-w-[130px]" },
-                  { label: "Units In",  cls: "text-right w-20" },
-                  { label: "Units Out", cls: "text-right w-20" },
-                  { label: "Cum Units", cls: "text-right w-22 font-bold" },
-                  { label: "Cost In",   cls: "text-right w-24" },
-                  { label: "Cost Out",  cls: "text-right w-24" },
-                  { label: "Cum Cost",  cls: "text-right w-24 font-bold" },
-                  { label: "WAC",       cls: "text-right w-20" },
-                  { label: "",          cls: "w-16" },
-                ].map((h, i) => (
-                  <th key={i} className={`px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 last:border-r-0 ${h.cls}`}>
-                    {h.label}
-                  </th>
-                ))}
+                {/* Security */}
+                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 text-left min-w-[140px]">
+                  <button onClick={() => handleSort("security")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">Security <SortIcon field="security" /></button>
+                </th>
+                {/* Ticker */}
+                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 text-left w-14">
+                  <button onClick={() => handleSort("ticker")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">Ticker <SortIcon field="ticker" /></button>
+                </th>
+                {/* Date */}
+                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 text-left w-24">
+                  <button onClick={() => handleSort("date")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">Date <SortIcon field="date" /></button>
+                </th>
+                {/* Type with inline filter */}
+                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 text-left min-w-[130px]">
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => handleSort("type")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">Type <SortIcon field="type" /></button>
+                    <select value={filterType} onChange={e => setFilterType(e.target.value)}
+                      className="h-5 pl-1 pr-4 text-[9px] border border-border/60 rounded-[4px] bg-background focus:outline-none appearance-none cursor-pointer text-muted-foreground hover:border-primary/40 transition-colors"
+                      style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 3px center" }}
+                    >
+                      <option value="">All</option>
+                      {uniqueTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    {filterType && <button onClick={() => setFilterType("")} className="text-muted-foreground/60 hover:text-red-500 transition-colors"><X className="h-2.5 w-2.5" /></button>}
+                  </div>
+                </th>
+                {/* Units In */}
+                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 text-right w-20">
+                  <button onClick={() => handleSort("unitsIn")} className="inline-flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors"><SortIcon field="unitsIn" />Units In</button>
+                </th>
+                {/* Units Out */}
+                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 text-right w-20">
+                  <button onClick={() => handleSort("unitsOut")} className="inline-flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors"><SortIcon field="unitsOut" />Units Out</button>
+                </th>
+                {/* Cum Units */}
+                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 text-right w-22">
+                  <button onClick={() => handleSort("cumUnits")} className="inline-flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors"><SortIcon field="cumUnits" />Cum Units</button>
+                </th>
+                {/* Cost In */}
+                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 text-right w-24">
+                  <button onClick={() => handleSort("costIn")} className="inline-flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors"><SortIcon field="costIn" />Cost In</button>
+                </th>
+                {/* Cost Out */}
+                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 text-right w-24">
+                  <button onClick={() => handleSort("costOut")} className="inline-flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors"><SortIcon field="costOut" />Cost Out</button>
+                </th>
+                {/* Cum Cost */}
+                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 text-right w-24">
+                  <button onClick={() => handleSort("cumCost")} className="inline-flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors"><SortIcon field="cumCost" />Cum Cost</button>
+                </th>
+                {/* WAC */}
+                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right w-20">
+                  <button onClick={() => handleSort("wac")} className="inline-flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors"><SortIcon field="wac" />WAC</button>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {visibleSchedules.map((s, si) => {
+              {sortedSchedules.map((s, si) => {
                 const allRows  = getRows(s);
                 const dataRows = filterType ? allRows.filter(r => r.type === filterType) : allRows;
                 const grpBg    = si % 2 === 0 ? "" : "bg-slate-50/60";
@@ -849,13 +918,13 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                           <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
                             {isEditing
                               ? <input type="number" value={editData.unitsIn ?? r.unitsIn} onChange={e => setEditData(d => ({...d, unitsIn: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} />
-                              : r.unitsIn ? fmtNum(r.unitsIn, 4) : <span className="text-muted-foreground/40">—</span>}
+                              : fmtNum(r.unitsIn, 4)}
                           </td>
                           {/* Units Out */}
                           <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
                             {isEditing
                               ? <input type="number" value={editData.unitsOut ?? r.unitsOut} onChange={e => setEditData(d => ({...d, unitsOut: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} />
-                              : r.unitsOut ? fmtNum(r.unitsOut, 4) : <span className="text-muted-foreground/40">—</span>}
+                              : fmtNum(r.unitsOut, 4)}
                           </td>
                           {/* Cum Units */}
                           <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold border-r border-border/20">
@@ -867,13 +936,13 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                           <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
                             {isEditing
                               ? <input type="number" value={editData.costIn ?? r.costIn} onChange={e => setEditData(d => ({...d, costIn: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} />
-                              : r.costIn ? fmtCAD(r.costIn) : <span className="text-muted-foreground/40">—</span>}
+                              : fmtCAD(r.costIn)}
                           </td>
                           {/* Cost Out */}
                           <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
                             {isEditing
                               ? <input type="number" value={editData.costOut ?? r.costOut} onChange={e => setEditData(d => ({...d, costOut: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} />
-                              : r.costOut ? fmtCAD(r.costOut) : <span className="text-muted-foreground/40">—</span>}
+                              : fmtCAD(r.costOut)}
                           </td>
                           {/* Cum Cost */}
                           <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold border-r border-border/20">
@@ -886,20 +955,6 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                             {isEditing
                               ? <input type="number" value={editData.wac ?? r.wac} onChange={e => setEditData(d => ({...d, wac: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} />
                               : fmtNum(r.wac, 4)}
-                          </td>
-                          {/* Actions */}
-                          <td className="px-2 py-1.5">
-                            {isEditing ? (
-                              <div className="flex gap-0.5">
-                                <button onClick={() => saveEdit(s.key, actualIdx)} className="p-1 rounded hover:bg-emerald-50 text-emerald-600" title="Save"><Check className="h-3 w-3" /></button>
-                                <button onClick={() => setEditKey(null)} className="p-1 rounded hover:bg-muted text-muted-foreground" title="Cancel"><X className="h-3 w-3" /></button>
-                              </div>
-                            ) : (
-                              <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => { setEditKey(eKey); setEditData({...r}); }} className="p-1 rounded hover:bg-muted text-muted-foreground" title="Edit"><Pencil className="h-3 w-3" /></button>
-                                <button onClick={() => deleteRow(s.key, actualIdx)} className="p-1 rounded hover:bg-red-50 text-red-500" title="Delete"><Trash2 className="h-3 w-3" /></button>
-                              </div>
-                            )}
                           </td>
                         </tr>
                       );
@@ -918,13 +973,7 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                         <td className="px-2.5 py-1 border-r border-border/20"><input type="number" placeholder="0.00" value={newRow.costIn ?? ""} onChange={e => setNewRow(d => ({...d, costIn: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} /></td>
                         <td className="px-2.5 py-1 border-r border-border/20"><input type="number" placeholder="0.00" value={newRow.costOut ?? ""} onChange={e => setNewRow(d => ({...d, costOut: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} /></td>
                         <td className="px-2.5 py-1 border-r border-border/20"><input type="number" placeholder="0.00" value={newRow.cumCost ?? ""} onChange={e => setNewRow(d => ({...d, cumCost: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} /></td>
-                        <td className="px-2.5 py-1 border-r border-border/20"><input type="number" placeholder="0.0000" value={newRow.wac ?? ""} onChange={e => setNewRow(d => ({...d, wac: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} /></td>
-                        <td className="px-2.5 py-1">
-                          <div className="flex gap-0.5">
-                            <button onClick={() => addRow(s.key)} className="p-1 rounded hover:bg-emerald-50 text-emerald-600"><Check className="h-3 w-3" /></button>
-                            <button onClick={() => { setAddingFor(null); setNewRow({}); }} className="p-1 rounded hover:bg-muted text-muted-foreground"><X className="h-3 w-3" /></button>
-                          </div>
-                        </td>
+                        <td className="px-2.5 py-1"><input type="number" placeholder="0.0000" value={newRow.wac ?? ""} onChange={e => setNewRow(d => ({...d, wac: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} /></td>
                       </tr>
                     )}
 
@@ -938,18 +987,13 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                       <td className="px-2.5 py-2 border-r border-border/30">
                         <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold bg-primary/10 text-primary border border-primary/25">Closing Balance</span>
                       </td>
-                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">—</td>
-                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">—</td>
+                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">0.0000</td>
+                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">0.0000</td>
                       <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30">{fmtNum(s.closingUnits, 4)}</td>
-                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">—</td>
-                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">—</td>
+                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">0.00</td>
+                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">0.00</td>
                       <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30">{fmtCAD(s.closingCostCAD)}</td>
-                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30">{fmtNum(s.closingWac, 4)}</td>
-                      <td className="px-2.5 py-2">
-                        <button onClick={() => { setAddingFor(s.key); setNewRow({}); }} className="p-1 rounded hover:bg-primary/10 text-primary" title="Add row">
-                          <Plus className="h-3 w-3" />
-                        </button>
-                      </td>
+                      <td className="px-2.5 py-2 text-right tabular-nums">{fmtNum(s.closingWac, 4)}</td>
                     </tr>
                   </Fragment>
                 );
@@ -958,17 +1002,14 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
             {/* Grand totals footer */}
             <tfoot>
               <tr className="bg-slate-100 border-t-2 border-border">
-                <td colSpan={6} className="px-2.5 py-2 text-[11px] font-bold text-foreground">{visibleSchedules.length} securities</td>
+                <td colSpan={6} className="px-2.5 py-2 text-[11px] font-bold text-foreground">{sortedSchedules.length} securities</td>
                 <td className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold border-r border-border/30">
-                  {fmtNum(visibleSchedules.reduce((a, s) => a + s.closingUnits, 0), 4)}
+                  {fmtNum(sortedSchedules.reduce((a, s) => a + s.closingUnits, 0), 4)}
                 </td>
-                <td className="px-2.5 py-2 border-r border-border/30" />
-                <td className="px-2.5 py-2 border-r border-border/30" />
-                <td className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold border-r border-border/30">
-                  {fmtCAD(visibleSchedules.reduce((a, s) => a + s.closingCostCAD, 0))}
+                <td colSpan={2} className="px-2.5 py-2 border-r border-border/30" />
+                <td colSpan={2} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold">
+                  {fmtCAD(sortedSchedules.reduce((a, s) => a + s.closingCostCAD, 0))}
                 </td>
-                <td className="px-2.5 py-2 border-r border-border/30" />
-                <td className="px-2.5 py-2" />
               </tr>
             </tfoot>
           </table>
