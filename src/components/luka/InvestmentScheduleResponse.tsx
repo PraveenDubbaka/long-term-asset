@@ -13,7 +13,8 @@ import {
 import { sources as baseSources, priorYearLots, currentYearTransactions } from "@/lib/luka/mockData";
 import type { Source, Transaction, PriorYearLot } from "@/lib/luka/types";
 import { defaultTbAccount } from "@/lib/luka/coa";
-import { Pencil, Trash2, Plus, Check, X, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, ChevronRight, Send, RotateCcw, FileDown, BarChart2, Upload, Loader2, FolderOpen, FileText, FileSpreadsheet, Copy, Download, Save, Search, Clock, GitCommit, FilePlus, PenLine, FileCheck } from "lucide-react";
+import { Pencil, Trash2, Plus, Check, X, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, ChevronRight, Send, RotateCcw, FileDown, BarChart2, Upload, Loader2, FolderOpen, FileText, FileSpreadsheet, Copy, Download, Save, Search, Clock, GitCommit, FilePlus, PenLine, FileCheck, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { SearchFilter, ColFilter } from "@/pages/InvTableFilters";
 import { CHART_OF_ACCOUNTS } from "@/lib/luka/coa";
 
 // ─── LocalInvJE type (inline, not imported from page) ─────────────────────────
@@ -744,11 +745,11 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
     if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
     else { setSortField(field); setSortDir("asc"); }
   };
-  const SortIcon = ({ field }: { field: WacSortField }) => {
-    if (sortField !== field) return <ChevronUp className="h-2.5 w-2.5 opacity-25 -rotate-90" />;
+  const sortIcon = (field: WacSortField) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 text-muted-foreground/50" />;
     return sortDir === "asc"
-      ? <ChevronUp className="h-2.5 w-2.5 text-primary" />
-      : <ChevronDown className="h-2.5 w-2.5 text-primary" />;
+      ? <ArrowUp className="h-3 w-3 text-primary" />
+      : <ArrowDown className="h-3 w-3 text-primary" />;
   };
 
   const sortedSchedules = useMemo(() => {
@@ -782,26 +783,9 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
     <div className="space-y-2">
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-[160px] max-w-[220px]">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
-          <input
-            value={filterSecurity}
-            onChange={e => setFilterSecurity(e.target.value)}
-            placeholder="Filter security…"
-            className="h-7 pl-7 pr-3 w-full text-[11px] border border-border rounded-[7px] bg-background focus:outline-none focus:border-primary/50"
-          />
-        </div>
-        <select
-          value={filterType}
-          onChange={e => setFilterType(e.target.value)}
-          className="h-7 px-2 text-[11px] border border-border rounded-[7px] bg-background focus:outline-none appearance-none cursor-pointer"
-        >
-          <option value="">All types</option>
-          {uniqueTypes.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
         {(filterSecurity || filterType) && (
           <button onClick={() => { setFilterSecurity(""); setFilterType(""); }} className="inline-flex items-center gap-1 h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground border border-border rounded-[7px] bg-background transition-colors">
-            <X className="h-3 w-3" /> Clear
+            <X className="h-3 w-3" /> Clear filters
           </button>
         )}
         <span className="ml-auto text-[10px] text-muted-foreground">{sortedSchedules.length} securities · WAC roll-forward</span>
@@ -813,59 +797,52 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
           <table className="w-full border-collapse text-[11px]" style={{ minWidth: 900 }}>
             <thead className="sticky top-0 z-10">
               <tr className="bg-[#f0f2f5] border-b-2 border-border">
-                {/* Security */}
-                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 text-left min-w-[140px]">
-                  <button onClick={() => handleSort("security")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">Security <SortIcon field="security" /></button>
+                {/* Security — sort + SearchFilter */}
+                <th className="text-left min-w-[150px] px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                  <span className="flex items-center gap-1">
+                    <button onClick={() => handleSort("security")} className="flex items-center gap-1 hover:text-foreground transition-colors">Security {sortIcon("security")}</button>
+                    <SearchFilter label="" value={filterSecurity} onChange={setFilterSecurity} placeholder="Ticker or name…" />
+                  </span>
                 </th>
                 {/* Ticker */}
-                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 text-left w-14">
-                  <button onClick={() => handleSort("ticker")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">Ticker <SortIcon field="ticker" /></button>
+                <th className="text-left w-16 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                  <button onClick={() => handleSort("ticker")} className="flex items-center gap-1 hover:text-foreground transition-colors">Ticker {sortIcon("ticker")}</button>
                 </th>
                 {/* Date */}
-                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 text-left w-24">
-                  <button onClick={() => handleSort("date")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">Date <SortIcon field="date" /></button>
+                <th className="text-left w-28 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                  <button onClick={() => handleSort("date")} className="flex items-center gap-1 hover:text-foreground transition-colors">Date {sortIcon("date")}</button>
                 </th>
-                {/* Type with inline filter */}
-                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 text-left min-w-[130px]">
-                  <div className="flex items-center gap-1.5">
-                    <button onClick={() => handleSort("type")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">Type <SortIcon field="type" /></button>
-                    <select value={filterType} onChange={e => setFilterType(e.target.value)}
-                      className="h-5 pl-1 pr-4 text-[9px] border border-border/60 rounded-[4px] bg-background focus:outline-none appearance-none cursor-pointer text-muted-foreground hover:border-primary/40 transition-colors"
-                      style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 3px center" }}
-                    >
-                      <option value="">All</option>
-                      {uniqueTypes.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                    {filterType && <button onClick={() => setFilterType("")} className="text-muted-foreground/60 hover:text-red-500 transition-colors"><X className="h-2.5 w-2.5" /></button>}
-                  </div>
+                {/* Type — ColFilter */}
+                <th className="text-left min-w-[140px] px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                  <ColFilter label="Type" options={uniqueTypes} value={filterType} onChange={setFilterType} />
                 </th>
                 {/* Units In */}
-                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 text-right w-20">
-                  <button onClick={() => handleSort("unitsIn")} className="inline-flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors"><SortIcon field="unitsIn" />Units In</button>
+                <th className="text-right w-24 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                  <button onClick={() => handleSort("unitsIn")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Units In {sortIcon("unitsIn")}</button>
                 </th>
                 {/* Units Out */}
-                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 text-right w-20">
-                  <button onClick={() => handleSort("unitsOut")} className="inline-flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors"><SortIcon field="unitsOut" />Units Out</button>
+                <th className="text-right w-24 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                  <button onClick={() => handleSort("unitsOut")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Units Out {sortIcon("unitsOut")}</button>
                 </th>
                 {/* Cum Units */}
-                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 text-right w-22">
-                  <button onClick={() => handleSort("cumUnits")} className="inline-flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors"><SortIcon field="cumUnits" />Cum Units</button>
+                <th className="text-right w-24 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                  <button onClick={() => handleSort("cumUnits")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Cum Units {sortIcon("cumUnits")}</button>
                 </th>
                 {/* Cost In */}
-                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 text-right w-24">
-                  <button onClick={() => handleSort("costIn")} className="inline-flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors"><SortIcon field="costIn" />Cost In</button>
+                <th className="text-right w-28 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                  <button onClick={() => handleSort("costIn")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Cost In {sortIcon("costIn")}</button>
                 </th>
                 {/* Cost Out */}
-                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 text-right w-24">
-                  <button onClick={() => handleSort("costOut")} className="inline-flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors"><SortIcon field="costOut" />Cost Out</button>
+                <th className="text-right w-28 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                  <button onClick={() => handleSort("costOut")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Cost Out {sortIcon("costOut")}</button>
                 </th>
                 {/* Cum Cost */}
-                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 text-right w-24">
-                  <button onClick={() => handleSort("cumCost")} className="inline-flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors"><SortIcon field="cumCost" />Cum Cost</button>
+                <th className="text-right w-28 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                  <button onClick={() => handleSort("cumCost")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Cum Cost {sortIcon("cumCost")}</button>
                 </th>
                 {/* WAC */}
-                <th className="px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right w-20">
-                  <button onClick={() => handleSort("wac")} className="inline-flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors"><SortIcon field="wac" />WAC</button>
+                <th className="text-right w-24 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                  <button onClick={() => handleSort("wac")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">WAC {sortIcon("wac")}</button>
                 </th>
               </tr>
             </thead>
