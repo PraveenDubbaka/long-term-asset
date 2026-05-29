@@ -7,6 +7,7 @@ import {
   buildInvestmentRecon, buildCashRecon,
   type ComputeOptions,
   type SecuritySchedule,
+  type WacRow,
   type AJE,
 } from "@/lib/luka/compute";
 import { sources as baseSources, priorYearLots, currentYearTransactions } from "@/lib/luka/mockData";
@@ -55,6 +56,18 @@ const fmtGL = (n: number) =>
   n >= 0
     ? <span className="text-green-700 tabular-nums">{fmt2(n)}</span>
     : <span className="text-red-600 tabular-nums">({fmt2(Math.abs(n))})</span>;
+
+// WAC-panel helpers (mirrors InvWACTab / InvHoldingsTab)
+const fmtNum = (n: number, dec = 2) =>
+  n.toLocaleString("en-CA", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+const fmtCAD = (n: number) =>
+  n.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const WAC_ROW_TYPES = [
+  "Opening Balance","Purchase","Sale","Dividend","Interest",
+  "Return of Capital","Reinvested Dividend","Withholding Tax",
+  "Fee/Commission","Transfer In","Transfer Out","Adjustment",
+];
 
 // ─── Shared input / select class ──────────────────────────────────────────────
 const IC = "h-7 text-xs px-2 border border-border rounded-md bg-background focus:outline-none w-full";
@@ -673,56 +686,295 @@ function TransactionsPanel({
 
 // ─── Tab 2: WAC Schedule ──────────────────────────────────────────────────────
 function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
-  const totOpenCost  = schedules.reduce((s, x) => s + (x.rows.find(r => r.unitsIn > 0) ? x.rows.filter(r => r.type === "Opening Balance").reduce((a, r) => a + r.costIn, 0) : 0), 0);
-  const totPurchases = schedules.reduce((s, x) => s + x.rows.filter(r => r.unitsIn > 0 && r.type !== "Opening Balance").reduce((a, r) => a + r.costIn, 0), 0);
-  const totDisposals = schedules.reduce((s, x) => s + x.rows.filter(r => r.unitsOut > 0).reduce((a, r) => a + r.costOut, 0), 0);
-  const totCloseCost = schedules.reduce((s, x) => s + x.closingCostCAD, 0);
+  const [filterSecurity, setFilterSecurity] = useState("");
+  const [filterType,     setFilterType]     = useState("");
+  const [rowOverrides,   setRowOverrides]   = useState<Record<string, WacRow[]>>({});
+  const [editKey,        setEditKey]        = useState<string | null>(null);
+  const [editData,       setEditData]       = useState<Partial<WacRow>>({});
+  const [addingFor,      setAddingFor]      = useState<string | null>(null);
+  const [newRow,         setNewRow]         = useState<Partial<WacRow>>({});
+
+  const getRows = (s: SecuritySchedule): WacRow[] => rowOverrides[s.key] ?? s.rows;
+
+  const visibleSchedules = useMemo(() =>
+    schedules.filter(s =>
+      (!filterSecurity || s.security.toLowerCase().includes(filterSecurity.toLowerCase()) || s.ticker.toLowerCase().includes(filterSecurity.toLowerCase()))
+    ),
+    [schedules, filterSecurity]
+  );
+
+  const saveEdit = (scheduleKey: string, actualIdx: number) => {
+    const sched = schedules.find(s => s.key === scheduleKey)!;
+    const updated = getRows(sched).map((r, i) => i === actualIdx ? { ...r, ...editData } : r);
+    setRowOverrides(prev => ({ ...prev, [scheduleKey]: updated }));
+    setEditKey(null);
+    toast.success("Row updated");
+  };
+
+  const deleteRow = (scheduleKey: string, actualIdx: number) => {
+    const sched = schedules.find(s => s.key === scheduleKey)!;
+    const updated = getRows(sched).filter((_, i) => i !== actualIdx);
+    setRowOverrides(prev => ({ ...prev, [scheduleKey]: updated }));
+    toast.success("Row removed");
+  };
+
+  const addRow = (scheduleKey: string) => {
+    const sched = schedules.find(s => s.key === scheduleKey)!;
+    const rows = getRows(sched);
+    const last = rows[rows.length - 1];
+    const entry: WacRow = {
+      date: newRow.date ?? "", type: newRow.type ?? "Adjustment",
+      unitsIn: newRow.unitsIn ?? 0, unitsOut: newRow.unitsOut ?? 0,
+      price: newRow.price ?? last?.wac ?? 0,
+      costIn: newRow.costIn ?? 0, costOut: newRow.costOut ?? 0,
+      cumUnits: newRow.cumUnits ?? last?.cumUnits ?? 0,
+      cumCost: newRow.cumCost ?? last?.cumCost ?? 0,
+      wac: newRow.wac ?? last?.wac ?? 0,
+    };
+    setRowOverrides(prev => ({ ...prev, [scheduleKey]: [...rows, entry] }));
+    setAddingFor(null);
+    setNewRow({});
+    toast.success("Row added");
+  };
+
+  const uniqueTypes = useMemo(() =>
+    Array.from(new Set(schedules.flatMap(s => getRows(s).map(r => r.type)))).sort(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [schedules, rowOverrides]
+  );
+
+  const IIC = "h-6 text-[10px] px-1.5 border border-border rounded-[5px] bg-background focus:outline-none w-full";
 
   return (
-    <TableWrap title="WAC Schedule">
-      <table className="w-full text-[11px]">
-        <thead>
-          <tr className="bg-muted/30 border-b border-border">
-            {["Security","Ticker","CCY","Open Units","Open Cost","Purchases","Disposals","Close Units","Close Cost","WAC/Unit"].map((h, i) => (
-              <th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 3 ? "text-left" : "text-right"}`}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {schedules.map((s, i) => {
-            const openUnits  = s.rows.filter(r => r.type === "Opening Balance").reduce((a, r) => a + r.unitsIn, 0);
-            const openCost   = s.rows.filter(r => r.type === "Opening Balance").reduce((a, r) => a + r.costIn, 0);
-            const purchases  = s.rows.filter(r => r.unitsIn > 0 && r.type !== "Opening Balance").reduce((a, r) => a + r.costIn, 0);
-            const disposals  = s.rows.filter(r => r.unitsOut > 0).reduce((a, r) => a + r.costOut, 0);
-            return (
-              <tr key={s.key} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
-                <td className="px-3 py-1.5 font-medium">{s.security}</td>
-                <td className="px-3 py-1.5 font-mono">{s.ticker}</td>
-                <td className="px-3 py-1.5">{s.currency}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmt2(openUnits)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmt(openCost)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums text-green-700">{fmt(purchases)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums text-red-600">{disposals > 0 ? `(${fmt(disposals)})` : "—"}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums font-medium">{fmt2(s.closingUnits)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums font-semibold">{fmt(s.closingCostCAD)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmt4(s.closingWac)}</td>
+    <div className="space-y-2">
+      {/* Toolbar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[160px] max-w-[220px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+          <input
+            value={filterSecurity}
+            onChange={e => setFilterSecurity(e.target.value)}
+            placeholder="Filter security…"
+            className="h-7 pl-7 pr-3 w-full text-[11px] border border-border rounded-[7px] bg-background focus:outline-none focus:border-primary/50"
+          />
+        </div>
+        <select
+          value={filterType}
+          onChange={e => setFilterType(e.target.value)}
+          className="h-7 px-2 text-[11px] border border-border rounded-[7px] bg-background focus:outline-none appearance-none cursor-pointer"
+        >
+          <option value="">All types</option>
+          {uniqueTypes.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        {(filterSecurity || filterType) && (
+          <button onClick={() => { setFilterSecurity(""); setFilterType(""); }} className="inline-flex items-center gap-1 h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground border border-border rounded-[7px] bg-background transition-colors">
+            <X className="h-3 w-3" /> Clear
+          </button>
+        )}
+        <span className="ml-auto text-[10px] text-muted-foreground">{visibleSchedules.length} securities · WAC roll-forward</span>
+      </div>
+
+      {/* Spreadsheet table */}
+      <div className="rounded-[8px] border border-border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-[11px]" style={{ minWidth: 900 }}>
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-[#f0f2f5] border-b-2 border-border">
+                {[
+                  { label: "Security",  cls: "text-left min-w-[140px]" },
+                  { label: "Ticker",    cls: "text-left w-14" },
+                  { label: "Date",      cls: "text-left w-24" },
+                  { label: "Type",      cls: "text-left min-w-[130px]" },
+                  { label: "Units In",  cls: "text-right w-20" },
+                  { label: "Units Out", cls: "text-right w-20" },
+                  { label: "Cum Units", cls: "text-right w-22 font-bold" },
+                  { label: "Cost In",   cls: "text-right w-24" },
+                  { label: "Cost Out",  cls: "text-right w-24" },
+                  { label: "Cum Cost",  cls: "text-right w-24 font-bold" },
+                  { label: "WAC",       cls: "text-right w-20" },
+                  { label: "",          cls: "w-16" },
+                ].map((h, i) => (
+                  <th key={i} className={`px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 last:border-r-0 ${h.cls}`}>
+                    {h.label}
+                  </th>
+                ))}
               </tr>
-            );
-          })}
-        </tbody>
-        <tfoot>
-          <tr className="bg-muted/30 border-t border-border font-semibold">
-            <td className="px-3 py-2 text-[11px]" colSpan={4}>Total</td>
-            <td className="px-3 py-2 text-right tabular-nums text-[11px]">{fmt(totOpenCost)}</td>
-            <td className="px-3 py-2 text-right tabular-nums text-[11px] text-green-700">{fmt(totPurchases)}</td>
-            <td className="px-3 py-2 text-right tabular-nums text-[11px] text-red-600">{totDisposals > 0 ? `(${fmt(totDisposals)})` : "—"}</td>
-            <td className="px-3 py-2" />
-            <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">{fmt(totCloseCost)}</td>
-            <td className="px-3 py-2" />
-          </tr>
-        </tfoot>
-      </table>
-    </TableWrap>
+            </thead>
+            <tbody>
+              {visibleSchedules.map((s, si) => {
+                const allRows  = getRows(s);
+                const dataRows = filterType ? allRows.filter(r => r.type === filterType) : allRows;
+                const grpBg    = si % 2 === 0 ? "" : "bg-slate-50/60";
+                return (
+                  <Fragment key={s.key}>
+                    {dataRows.map((r, rowI) => {
+                      const actualIdx = allRows.indexOf(r);
+                      const eKey      = `${s.key}|${actualIdx}`;
+                      const isEditing = editKey === eKey;
+                      const isOB      = r.type === "Opening Balance";
+                      const rowBg     = isEditing ? "bg-primary/5" : isOB ? "bg-amber-50/70" : grpBg;
+                      return (
+                        <tr key={eKey} className={`border-b border-border/30 hover:bg-primary/[0.03] transition-colors ${rowBg}`}>
+                          {/* Security */}
+                          <td className="px-2.5 py-1.5 border-r border-border/20 whitespace-nowrap">
+                            {rowI === 0
+                              ? <span className="font-semibold text-foreground">{s.security}</span>
+                              : <span className="text-muted-foreground/30 text-[10px] italic select-none">{s.ticker}</span>}
+                          </td>
+                          {/* Ticker */}
+                          <td className="px-2.5 py-1.5 border-r border-border/20 font-mono font-semibold text-foreground">{s.ticker}</td>
+                          {/* Date */}
+                          <td className="px-2.5 py-1.5 border-r border-border/20 font-mono text-muted-foreground whitespace-nowrap text-[10px]">
+                            {isEditing
+                              ? <input type="date" value={editData.date ?? r.date} onChange={e => setEditData(d => ({...d, date: e.target.value}))} className={`${IIC} w-28`} />
+                              : fmtDate(r.date)}
+                          </td>
+                          {/* Type */}
+                          <td className="px-2.5 py-1.5 border-r border-border/20">
+                            {isEditing ? (
+                              <select value={editData.type ?? r.type} onChange={e => setEditData(d => ({...d, type: e.target.value}))} className={`${IIC} w-36`}>
+                                {WAC_ROW_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                              </select>
+                            ) : (
+                              <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium border ${
+                                isOB
+                                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                                  : r.type === "Closing Balance"
+                                  ? "bg-primary/10 text-primary border-primary/25"
+                                  : "bg-transparent text-foreground border-transparent"
+                              }`}>{r.type}</span>
+                            )}
+                          </td>
+                          {/* Units In */}
+                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
+                            {isEditing
+                              ? <input type="number" value={editData.unitsIn ?? r.unitsIn} onChange={e => setEditData(d => ({...d, unitsIn: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} />
+                              : r.unitsIn ? fmtNum(r.unitsIn, 4) : <span className="text-muted-foreground/40">—</span>}
+                          </td>
+                          {/* Units Out */}
+                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
+                            {isEditing
+                              ? <input type="number" value={editData.unitsOut ?? r.unitsOut} onChange={e => setEditData(d => ({...d, unitsOut: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} />
+                              : r.unitsOut ? fmtNum(r.unitsOut, 4) : <span className="text-muted-foreground/40">—</span>}
+                          </td>
+                          {/* Cum Units */}
+                          <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold border-r border-border/20">
+                            {isEditing
+                              ? <input type="number" value={editData.cumUnits ?? r.cumUnits} onChange={e => setEditData(d => ({...d, cumUnits: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} />
+                              : fmtNum(r.cumUnits, 4)}
+                          </td>
+                          {/* Cost In */}
+                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
+                            {isEditing
+                              ? <input type="number" value={editData.costIn ?? r.costIn} onChange={e => setEditData(d => ({...d, costIn: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} />
+                              : r.costIn ? fmtCAD(r.costIn) : <span className="text-muted-foreground/40">—</span>}
+                          </td>
+                          {/* Cost Out */}
+                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
+                            {isEditing
+                              ? <input type="number" value={editData.costOut ?? r.costOut} onChange={e => setEditData(d => ({...d, costOut: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} />
+                              : r.costOut ? fmtCAD(r.costOut) : <span className="text-muted-foreground/40">—</span>}
+                          </td>
+                          {/* Cum Cost */}
+                          <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold border-r border-border/20">
+                            {isEditing
+                              ? <input type="number" value={editData.cumCost ?? r.cumCost} onChange={e => setEditData(d => ({...d, cumCost: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} />
+                              : fmtCAD(r.cumCost)}
+                          </td>
+                          {/* WAC */}
+                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
+                            {isEditing
+                              ? <input type="number" value={editData.wac ?? r.wac} onChange={e => setEditData(d => ({...d, wac: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} />
+                              : fmtNum(r.wac, 4)}
+                          </td>
+                          {/* Actions */}
+                          <td className="px-2 py-1.5">
+                            {isEditing ? (
+                              <div className="flex gap-0.5">
+                                <button onClick={() => saveEdit(s.key, actualIdx)} className="p-1 rounded hover:bg-emerald-50 text-emerald-600" title="Save"><Check className="h-3 w-3" /></button>
+                                <button onClick={() => setEditKey(null)} className="p-1 rounded hover:bg-muted text-muted-foreground" title="Cancel"><X className="h-3 w-3" /></button>
+                              </div>
+                            ) : (
+                              <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => { setEditKey(eKey); setEditData({...r}); }} className="p-1 rounded hover:bg-muted text-muted-foreground" title="Edit"><Pencil className="h-3 w-3" /></button>
+                                <button onClick={() => deleteRow(s.key, actualIdx)} className="p-1 rounded hover:bg-red-50 text-red-500" title="Delete"><Trash2 className="h-3 w-3" /></button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                    {/* Inline new-row form */}
+                    {addingFor === s.key && (
+                      <tr className="border-b border-dashed border-primary/50 bg-primary/5">
+                        <td className="px-2.5 py-1 border-r border-border/20 text-[10px] text-muted-foreground italic">{s.security}</td>
+                        <td className="px-2.5 py-1 border-r border-border/20 font-mono font-semibold text-[10px]">{s.ticker}</td>
+                        <td className="px-2.5 py-1 border-r border-border/20"><input type="date" value={newRow.date ?? ""} onChange={e => setNewRow(d => ({...d, date: e.target.value}))} className={`${IIC} w-28`} /></td>
+                        <td className="px-2.5 py-1 border-r border-border/20"><select value={newRow.type ?? "Adjustment"} onChange={e => setNewRow(d => ({...d, type: e.target.value}))} className={`${IIC} w-36`}>{WAC_ROW_TYPES.map(t => <option key={t}>{t}</option>)}</select></td>
+                        <td className="px-2.5 py-1 border-r border-border/20"><input type="number" placeholder="0" value={newRow.unitsIn ?? ""} onChange={e => setNewRow(d => ({...d, unitsIn: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} /></td>
+                        <td className="px-2.5 py-1 border-r border-border/20"><input type="number" placeholder="0" value={newRow.unitsOut ?? ""} onChange={e => setNewRow(d => ({...d, unitsOut: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} /></td>
+                        <td className="px-2.5 py-1 border-r border-border/20"><input type="number" placeholder="0.0000" value={newRow.cumUnits ?? ""} onChange={e => setNewRow(d => ({...d, cumUnits: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} /></td>
+                        <td className="px-2.5 py-1 border-r border-border/20"><input type="number" placeholder="0.00" value={newRow.costIn ?? ""} onChange={e => setNewRow(d => ({...d, costIn: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} /></td>
+                        <td className="px-2.5 py-1 border-r border-border/20"><input type="number" placeholder="0.00" value={newRow.costOut ?? ""} onChange={e => setNewRow(d => ({...d, costOut: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} /></td>
+                        <td className="px-2.5 py-1 border-r border-border/20"><input type="number" placeholder="0.00" value={newRow.cumCost ?? ""} onChange={e => setNewRow(d => ({...d, cumCost: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} /></td>
+                        <td className="px-2.5 py-1 border-r border-border/20"><input type="number" placeholder="0.0000" value={newRow.wac ?? ""} onChange={e => setNewRow(d => ({...d, wac: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} /></td>
+                        <td className="px-2.5 py-1">
+                          <div className="flex gap-0.5">
+                            <button onClick={() => addRow(s.key)} className="p-1 rounded hover:bg-emerald-50 text-emerald-600"><Check className="h-3 w-3" /></button>
+                            <button onClick={() => { setAddingFor(null); setNewRow({}); }} className="p-1 rounded hover:bg-muted text-muted-foreground"><X className="h-3 w-3" /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+
+                    {/* Closing / totals row */}
+                    <tr className="border-b-2 border-border font-semibold bg-[#f0f2f5] group">
+                      <td className="px-2.5 py-2 border-r border-border/30 text-[11px] font-bold">{s.security}</td>
+                      <td className="px-2.5 py-2 border-r border-border/30 font-mono font-bold">{s.ticker}</td>
+                      <td className="px-2.5 py-2 border-r border-border/30 font-mono text-muted-foreground text-[10px]">
+                        {allRows[allRows.length - 1]?.date ? fmtDate(allRows[allRows.length - 1].date) : "—"}
+                      </td>
+                      <td className="px-2.5 py-2 border-r border-border/30">
+                        <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold bg-primary/10 text-primary border border-primary/25">Closing Balance</span>
+                      </td>
+                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">—</td>
+                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">—</td>
+                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30">{fmtNum(s.closingUnits, 4)}</td>
+                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">—</td>
+                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">—</td>
+                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30">{fmtCAD(s.closingCostCAD)}</td>
+                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30">{fmtNum(s.closingWac, 4)}</td>
+                      <td className="px-2.5 py-2">
+                        <button onClick={() => { setAddingFor(s.key); setNewRow({}); }} className="p-1 rounded hover:bg-primary/10 text-primary" title="Add row">
+                          <Plus className="h-3 w-3" />
+                        </button>
+                      </td>
+                    </tr>
+                  </Fragment>
+                );
+              })}
+            </tbody>
+            {/* Grand totals footer */}
+            <tfoot>
+              <tr className="bg-slate-100 border-t-2 border-border">
+                <td colSpan={6} className="px-2.5 py-2 text-[11px] font-bold text-foreground">{visibleSchedules.length} securities</td>
+                <td className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold border-r border-border/30">
+                  {fmtNum(visibleSchedules.reduce((a, s) => a + s.closingUnits, 0), 4)}
+                </td>
+                <td className="px-2.5 py-2 border-r border-border/30" />
+                <td className="px-2.5 py-2 border-r border-border/30" />
+                <td className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold border-r border-border/30">
+                  {fmtCAD(visibleSchedules.reduce((a, s) => a + s.closingCostCAD, 0))}
+                </td>
+                <td className="px-2.5 py-2 border-r border-border/30" />
+                <td className="px-2.5 py-2" />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
   );
 }
 
