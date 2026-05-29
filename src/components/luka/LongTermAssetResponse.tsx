@@ -2352,15 +2352,6 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
     toast.success(`${valid.length} loan${valid.length !== 1 ? "s" : ""} added · re-running analysis…`);
   };
 
-  // ── Workpaper activity timeline ──────────────────────────────────────────
-  const [timelineOpen, setTimelineOpen] = useState(false);
-  const WP_TIMELINE = useMemo(() => [
-    { id: "t1", type: "created",  icon: GitCommit, label: "Workpaper created",       user: "PD", by: "Praveen D.", ts: "May 28, 2026 · 2:13 AM" },
-    { id: "t2", type: "added",    icon: FilePlus,  label: `${loans.length} loans imported from PDF`, user: "PD", by: "Praveen D.", ts: "May 28, 2026 · 2:15 AM" },
-    { id: "t3", type: "edited",   icon: PenLine,   label: "Rate updated — Term Loan A",user: "PD", by: "Praveen D.", ts: "May 28, 2026 · 3:42 AM" },
-    { id: "t4", type: "edited",   icon: PenLine,   label: "GL mapping updated — USD Equipment Loan", user: "PD", by: "Praveen D.", ts: "May 28, 2026 · 4:01 AM" },
-  ], [loans.length]);
-  const latestEvent = WP_TIMELINE[WP_TIMELINE.length - 1];
 
   // ── Save-to-Engagement flow ───────────────────────────────────────────────
   type SaveFlowStep = "closed" | "doc-type" | "engagement" | "saving" | "saved";
@@ -2589,65 +2580,6 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
               <RotateCcw className="h-3.5 w-3.5" /> Rerun
             </button>
 
-            {/* ── Activity timeline ── */}
-            <div className="relative ml-auto">
-              {/* Collapsed trigger */}
-              <button
-                onClick={() => setTimelineOpen(v => !v)}
-                className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[7px] border transition-colors text-[10px] font-medium ${
-                  timelineOpen
-                    ? "bg-muted border-border text-foreground"
-                    : "bg-transparent border-transparent text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/50"
-                }`}
-              >
-                <Clock className="h-3 w-3 shrink-0" />
-                <span className="max-w-[200px] truncate">{latestEvent.label}</span>
-                <span className="text-muted-foreground/60">·</span>
-                <span className="text-muted-foreground/70 whitespace-nowrap">{latestEvent.ts.split("·")[1]?.trim()}</span>
-                <ChevronDown className={`h-3 w-3 shrink-0 transition-transform text-muted-foreground/50 ${timelineOpen ? "rotate-180" : ""}`} />
-              </button>
-
-              {/* Expanded panel — slides up */}
-              {timelineOpen && (
-                <>
-                  <div className="fixed inset-0 z-[49]" onClick={() => setTimelineOpen(false)} />
-                  <div className="absolute right-0 bottom-full mb-2 z-50 w-72 bg-popover border border-border rounded-[10px] shadow-[0_4px_24px_rgba(0,0,0,0.12)] animate-in slide-in-from-bottom-2 fade-in duration-150">
-                    <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-                      <span className="text-[10px] font-semibold text-foreground uppercase tracking-wide">Workpaper Activity</span>
-                      <button onClick={() => setTimelineOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    <div className="px-3 py-2 space-y-0">
-                      {WP_TIMELINE.map((ev, i) => (
-                        <div key={ev.id} className="relative flex gap-2.5 pb-3 last:pb-1">
-                          {/* Vertical connector */}
-                          {i < WP_TIMELINE.length - 1 && (
-                            <div className="absolute left-[11px] top-5 bottom-0 w-px bg-border" />
-                          )}
-                          {/* Icon dot */}
-                          <div className={`relative z-10 w-5.5 h-5.5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                            ev.type === "created"  ? "bg-green-100 text-green-600" :
-                            ev.type === "added"    ? "bg-primary/10 text-primary"  :
-                                                    "bg-amber-50 text-amber-600"
-                          }`} style={{ width: 22, height: 22 }}>
-                            <ev.icon className="h-2.5 w-2.5" />
-                          </div>
-                          {/* Text */}
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[10px] font-medium text-foreground leading-snug">{ev.label}</p>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary text-primary-foreground text-[8px] font-bold shrink-0">{ev.user}</span>
-                              <span className="text-[9px] text-muted-foreground">{ev.by} · {ev.ts}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
           </>
         )}
       </div>
