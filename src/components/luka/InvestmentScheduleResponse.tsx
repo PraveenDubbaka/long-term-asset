@@ -1495,54 +1495,67 @@ function BrokerReconPanel({
               </table>
             </div>
 
-            {/* ── Section 2: Activity During the Period ── */}
+            {/* ── Section 2: Activity During the Period — single unified table ── */}
             <SectionHead title="Activity During the Period" />
-
-            <div className="border-b border-border/40">
-              <div className="px-4 py-1.5 bg-blue-50/30 border-b border-border/30 flex items-center gap-2">
-                <span className="text-[10px] font-semibold text-foreground">Purchases</span>
-                <span className="text-[10px] text-muted-foreground">({purchaseTxns.length} transactions)</span>
-                <span className="ml-auto text-[11px] font-bold tabular-nums text-foreground">{fmtCAD(booksPurchases)}</span>
-              </div>
-              <ActivityTable txns={purchaseTxns} sign={1} />
-            </div>
-
-            <div className="border-b border-border/40">
-              <div className="px-4 py-1.5 bg-red-50/30 border-b border-border/30 flex items-center gap-2">
-                <span className="text-[10px] font-semibold text-foreground">Sales / Disposals</span>
-                <span className="text-[10px] text-muted-foreground">({saleTxns.length} transactions)</span>
-                <span className="ml-auto text-[11px] font-bold tabular-nums text-foreground">({fmtCAD(booksSales)})</span>
-              </div>
-              <ActivityTable txns={saleTxns} sign={-1} />
-            </div>
-
-            <div className="border-b border-border/40">
-              <div className="px-4 py-1.5 bg-green-50/30 border-b border-border/30 flex items-center gap-2">
-                <span className="text-[10px] font-semibold text-foreground">Income — Dividends</span>
-                <span className="text-[10px] text-muted-foreground">({dividendTxns.length} transactions)</span>
-                <span className="ml-auto text-[11px] font-bold tabular-nums">{fmtCAD(dividendTxns.reduce((a, t) => a + (t.gross ?? 0) * (t.fxRate ?? 1), 0))}</span>
-              </div>
-              <ActivityTable txns={dividendTxns} sign={1} />
-            </div>
-
-            {interestTxns.length > 0 && (
-              <div className="border-b border-border/40">
-                <div className="px-4 py-1.5 bg-green-50/20 border-b border-border/30 flex items-center gap-2">
-                  <span className="text-[10px] font-semibold text-foreground">Income — Interest</span>
-                  <span className="text-[10px] text-muted-foreground">({interestTxns.length} transactions)</span>
-                  <span className="ml-auto text-[11px] font-bold tabular-nums">{fmtCAD(interestTxns.reduce((a, t) => a + (t.gross ?? 0) * (t.fxRate ?? 1), 0))}</span>
-                </div>
-                <ActivityTable txns={interestTxns} sign={1} />
-              </div>
-            )}
-
-            <div className="border-b border-border/40">
-              <div className="px-4 py-1.5 bg-orange-50/30 border-b border-border/30 flex items-center gap-2">
-                <span className="text-[10px] font-semibold text-foreground">Expenses (Fees &amp; Withholding Tax)</span>
-                <span className="text-[10px] text-muted-foreground">({feeTxns.length} transactions)</span>
-                <span className="ml-auto text-[11px] font-bold tabular-nums text-foreground">({fmtCAD(booksExpenses)})</span>
-              </div>
-              <ActivityTable txns={feeTxns} sign={-1} />
+            <div className="overflow-x-auto border-b border-border/40">
+              <table className="w-full text-[11px]">
+                <thead>
+                  <tr className="bg-muted/20 border-b-2 border-border">
+                    {["Date","Security","Ticker","Type","CCY","Foreign Amt","FX Rate","CAD Equiv"].map((h, i) => (
+                      <th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 4 ? "text-left" : "text-right"}`}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { label: "Purchases",                    txns: purchaseTxns,  sign:  1 as const, subtotal: booksPurchases,  bg: "bg-blue-50/20"   },
+                    { label: "Sales / Disposals",            txns: saleTxns,      sign: -1 as const, subtotal: -booksSales,     bg: "bg-red-50/20"    },
+                    { label: "Income — Dividends",           txns: dividendTxns,  sign:  1 as const, subtotal: dividendTxns.reduce((a,t) => a+(t.gross??0)*(t.fxRate??1),0), bg: "bg-green-50/20" },
+                    ...(interestTxns.length > 0 ? [{ label: "Income — Interest", txns: interestTxns, sign: 1 as const, subtotal: interestTxns.reduce((a,t) => a+(t.gross??0)*(t.fxRate??1),0), bg: "bg-green-50/10" }] : []),
+                    { label: "Expenses (Fees & Withholding Tax)", txns: feeTxns,  sign: -1 as const, subtotal: -booksExpenses,  bg: "bg-orange-50/20" },
+                  ].map(group2 => (
+                    <Fragment key={group2.label}>
+                      {/* Category group header row */}
+                      <tr className={`border-b border-border/30 ${group2.bg}`}>
+                        <td className="px-3 py-1.5 text-[10px] font-bold text-foreground" colSpan={7}>
+                          {group2.label}
+                          <span className="ml-2 text-[9px] font-normal text-muted-foreground">({group2.txns.length} transaction{group2.txns.length !== 1 ? "s" : ""})</span>
+                        </td>
+                        <td className="px-3 py-1.5 text-right text-[10px] font-bold tabular-nums">
+                          {group2.subtotal < 0 ? `(${fmtCAD(Math.abs(group2.subtotal))})` : fmtCAD(group2.subtotal)}
+                        </td>
+                      </tr>
+                      {/* Transaction rows */}
+                      {group2.txns.length === 0
+                        ? <tr className="border-b border-border/20"><td colSpan={8} className="px-3 py-1.5 text-[11px] text-muted-foreground italic pl-6">No transactions</td></tr>
+                        : group2.txns.map((t, i) => {
+                            const cadAmt = Math.abs((t.net ?? t.gross ?? 0) * (t.fxRate ?? 1));
+                            return (
+                              <tr key={t.id} className={`border-b border-border/30 ${i % 2 === 0 ? "" : "bg-muted/[0.03]"}`}>
+                                <td className="px-3 py-1 pl-6 whitespace-nowrap text-muted-foreground">{fmtDate(t.date)}</td>
+                                <td className="px-3 py-1 font-medium">{t.security}</td>
+                                <td className="px-3 py-1 font-mono">{t.ticker}</td>
+                                <td className="px-3 py-1"><TxTypeBadge type={t.type} /></td>
+                                <td className="px-3 py-1">{t.currency}</td>
+                                <td className="px-3 py-1 text-right tabular-nums">{fmtCAD(Math.abs(t.net ?? t.gross ?? 0))}</td>
+                                <td className="px-3 py-1 text-right tabular-nums font-mono text-muted-foreground">{fmt4(t.fxRate ?? 1)}</td>
+                                <td className="px-3 py-1 text-right tabular-nums">{group2.sign < 0 ? `(${fmtCAD(cadAmt)})` : fmtCAD(cadAmt)}</td>
+                              </tr>
+                            );
+                          })
+                      }
+                    </Fragment>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-muted/30 border-t-2 border-border font-semibold">
+                    <td className="px-3 py-2 text-[11px]" colSpan={7}>Net Activity</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">
+                      {fmtCAD(booksPurchases - booksSales + booksIncome - booksExpenses)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
 
             {/* ── Section 3: FX Differences ── */}
