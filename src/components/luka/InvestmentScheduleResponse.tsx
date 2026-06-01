@@ -1046,6 +1046,14 @@ function GainLossPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                 <th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 3 ? "text-left" : "text-right"}`}>{h}</th>
               ))}
             </tr>
+            <tr className="border-b border-border bg-primary/[0.03]">
+              <td className="px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide" colSpan={6}>TB Account</td>
+              <td className="px-3 py-1.5 text-right">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-muted text-foreground border-border whitespace-nowrap">
+                  4800 / 4900
+                </span>
+              </td>
+            </tr>
           </thead>
           <tbody>
             {disposals.length === 0 && (
@@ -1086,6 +1094,14 @@ function GainLossPanel({ schedules }: { schedules: SecuritySchedule[] }) {
               ].map(h => (
                 <th key={h.label} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-${h.align}`}>{h.label}</th>
               ))}
+            </tr>
+            <tr className="border-b border-border bg-primary/[0.03]">
+              <td className="px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide" colSpan={5}>TB Account</td>
+              <td className="px-3 py-1.5 text-right">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-muted text-foreground border-border whitespace-nowrap">
+                  4810 / 4910
+                </span>
+              </td>
             </tr>
           </thead>
           <tbody>
