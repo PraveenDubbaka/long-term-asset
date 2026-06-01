@@ -1958,6 +1958,7 @@ function AJEsPanel({ ajes, ajeQueue, clearAjeQueue }: {
     () => new Set(ajes.map((_, i) => `aje-init-${i}`))
   );
   const [filterStatus, setFilterStatus] = useState<"All" | AJEStatus | "Deleted">("All");
+  const [filterType,   setFilterType]   = useState<"All" | AJE["type"]>("All");
   const [addOpen, setAddOpen] = useState(false);
   const [consumed, setConsumed] = useState(false);
 
@@ -1994,28 +1995,63 @@ function AJEsPanel({ ajes, ajeQueue, clearAjeQueue }: {
   const approvedCnt = active.filter(j => j.status === "Approved").length;
   const postedCnt   = active.filter(j => j.status === "Posted").length;
 
-  const filtered = filterStatus === "Deleted"
-    ? deleted
-    : active.filter(j => filterStatus === "All" || j.status === filterStatus);
+  const TYPE_LABELS: Record<AJE["type"], string> = {
+    "Disposition":     "Realized G/L",
+    "Fair Value Adj":  "Unrealized G/L",
+    "Accrual":         "Income & Expenses",
+    "FX Adj":          "FX Entries",
+    "Reclassification":"Reclassification",
+    "Correcting":      "Correcting",
+  };
+  const typeCounts = (list: LocalInvJE[]) =>
+    (Object.keys(TYPE_LABELS) as AJE["type"][]).reduce((acc, t) => {
+      acc[t] = list.filter(j => j.type === t).length;
+      return acc;
+    }, {} as Record<AJE["type"], number>);
+  const tCounts = typeCounts(active);
+
+  const filtered = (filterStatus === "Deleted" ? deleted : active.filter(j => filterStatus === "All" || j.status === filterStatus))
+    .filter(j => filterType === "All" || j.type === filterType);
 
   return (
     <div className="space-y-3">
 
-      {/* Filter dropdown */}
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] text-muted-foreground shrink-0">View:</span>
-        <div className="relative">
-          <select
-            value={filterStatus}
-            onChange={e => setFilterStatus(e.target.value as typeof filterStatus)}
-            className="h-7 pl-2.5 pr-7 text-[11px] font-medium border border-border rounded-[7px] bg-background text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 hover:border-primary/40 transition-colors"
-          >
-            <option value="All">All ({active.length})</option>
-            <option value="Draft">Draft ({draftCnt})</option>
-            <option value="Posted">Posted ({postedCnt})</option>
-            <option value="Deleted">Deleted ({deleted.length})</option>
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+      {/* Filter bar */}
+      <div className="flex items-center gap-3 flex-wrap">
+        {/* Status filter */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] text-muted-foreground shrink-0">View:</span>
+          <div className="relative">
+            <select
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value as typeof filterStatus)}
+              className="h-7 pl-2.5 pr-7 text-[11px] font-medium border border-border rounded-[7px] bg-background text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 hover:border-primary/40 transition-colors"
+            >
+              <option value="All">All ({active.length})</option>
+              <option value="Draft">Draft ({draftCnt})</option>
+              <option value="Approved">Approved ({approvedCnt})</option>
+              <option value="Posted">Posted ({postedCnt})</option>
+              <option value="Deleted">Deleted ({deleted.length})</option>
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+          </div>
+        </div>
+        {/* Type filter */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] text-muted-foreground shrink-0">Type:</span>
+          <div className="relative">
+            <select
+              value={filterType}
+              onChange={e => setFilterType(e.target.value as typeof filterType)}
+              className="h-7 pl-2.5 pr-7 text-[11px] font-medium border border-border rounded-[7px] bg-background text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 hover:border-primary/40 transition-colors"
+            >
+              <option value="All">All types</option>
+              {(Object.entries(TYPE_LABELS) as [AJE["type"], string][]).map(([k, label]) =>
+                tCounts[k] > 0 ? <option key={k} value={k}>{label} ({tCounts[k]})</option> : null
+              )}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+          </div>
         </div>
       </div>
 
@@ -2368,7 +2404,7 @@ export function InvestmentScheduleResponse({ onEditTransactions }: { onEditTrans
     () => compute(opts, effectivePY, effectiveTxns),
     [opts, effectivePY, effectiveTxns],
   );
-  const ajes         = useMemo(() => buildAJEs(schedules, opts),                  [schedules, opts]);
+  const ajes         = useMemo(() => buildAJEs(schedules, opts, effectiveTxns),   [schedules, opts, effectiveTxns]);
   const incomeMatrix = useMemo(() => buildIncomeMatrix(effectiveTxns),            [effectiveTxns]);
   const fxSchedule   = useMemo(() => buildFxSchedule(effectiveTxns, effectivePY), [effectiveTxns, effectivePY]);
   const invRecon     = useMemo(() => buildInvestmentRecon(schedules),             [schedules]);

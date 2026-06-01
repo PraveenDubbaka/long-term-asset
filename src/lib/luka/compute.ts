@@ -213,41 +213,51 @@ export interface AJE {
   confidence: "High" | "Medium" | "Low";
 }
 
-export function buildAJEs(schedules: SecuritySchedule[], opts: ComputeOptions): AJE[] {
+export function buildAJEs(schedules: SecuritySchedule[], opts: ComputeOptions, txns?: Transaction[]): AJE[] {
   const out: AJE[] = [];
   let n = 1;
   const ref = () => `AE-${String(n++).padStart(2, "0")}`;
 
-  // Sales / dispositions realized G/L
+  // ── Type 1: Realized Gain / Loss (one entry per disposal) ─────────────────
   for (const s of schedules) {
     if (s.realizedGL !== 0) {
       out.push({
         ref: ref(),
         description: `Record realized ${s.realizedGL >= 0 ? "gain" : "loss"} on disposal — ${s.security}`,
-        drAccount: s.realizedGL >= 0 ? "1500 · Investments" : "4900 · Realized Loss",
+        drAccount: s.realizedGL >= 0 ? "1500 · Investments" : "4900 · Realized Loss on Investments",
         crAccount: s.realizedGL >= 0 ? "4800 · Realized Gain on Investments" : "1500 · Investments",
         amount: Math.abs(s.realizedGL),
         type: "Disposition",
         confidence: "High",
       });
     }
-    if (opts.measurementBasis === "FVTPL" && Math.abs(s.unrealizedGL) > 0.01) {
-      out.push({
-        ref: ref(),
-        description: `Mark-to-market FV adjustment — ${s.security}`,
-        drAccount: s.unrealizedGL >= 0 ? "1500 · Investments" : "4910 · Unrealized Loss",
-        crAccount: s.unrealizedGL >= 0 ? "4810 · Unrealized Gain on Investments" : "1500 · Investments",
-        amount: Math.abs(s.unrealizedGL),
-        type: "Fair Value Adj",
-        confidence: "Medium",
-      });
+  }
+
+  // ── Type 2: Unrealized Gain / Loss — mark-to-market (optional booking) ────
+  if (opts.measurementBasis === "FVTPL") {
+    for (const s of schedules) {
+      if (Math.abs(s.unrealizedGL) > 0.01) {
+        out.push({
+          ref: ref(),
+          description: `Unrealized G/L — mark-to-market FV adjustment — ${s.security}`,
+          drAccount: s.unrealizedGL >= 0 ? "1500 · Investments" : "4910 · Unrealized Loss on Investments",
+          crAccount: s.unrealizedGL >= 0 ? "4810 · Unrealized Gain on Investments" : "1500 · Investments",
+          amount: Math.abs(s.unrealizedGL),
+          type: "Fair Value Adj",
+          confidence: "Medium",
+        });
+      }
     }
+  }
+
+  // ── FX Translation entries (one per foreign-currency security) ────────────
+  for (const s of schedules) {
     if (Math.abs(s.fxGL) > 0.5) {
       out.push({
         ref: ref(),
-        description: `FX translation on ${s.currency} holdings — ${s.security}`,
-        drAccount: s.fxGL >= 0 ? "1500 · Investments" : "5800 · FX Loss",
-        crAccount: s.fxGL >= 0 ? "4820 · FX Gain" : "1500 · Investments",
+        description: `FX translation difference — ${s.currency}/${s.ticker} — ${s.security}`,
+        drAccount: s.fxGL >= 0 ? "1500 · Investments" : "5800 · FX Loss on Investments",
+        crAccount: s.fxGL >= 0 ? "4820 · FX Gain on Investments" : "1500 · Investments",
         amount: Math.abs(s.fxGL),
         type: "FX Adj",
         confidence: "Medium",
@@ -255,36 +265,49 @@ export function buildAJEs(schedules: SecuritySchedule[], opts: ComputeOptions): 
     }
   }
 
-  // Income accruals
-  out.push({
-    ref: ref(),
-    description: "Record dividend income — TD Waterhouse (Source A)",
-    drAccount: "1100 · Cash — BMO Operating",
-    crAccount: "4700 · Investment Income — Dividends",
-    amount: Object.entries(incomeAmounts)
-      .filter(([k]) => k.startsWith("RY|") || k.startsWith("ENB|") && !k.includes("11-25"))
-      .reduce((a, [, v]) => a + v, 0),
-    type: "Accrual",
-    confidence: "High",
-  });
-  out.push({
-    ref: ref(),
-    description: "Record USD dividend income — RBC Direct (Source B)",
-    drAccount: "1110 · Cash — RBC USD",
-    crAccount: "4700 · Investment Income — Dividends",
-    amount: ((incomeAmounts["AAPL|2024-06-12"] ?? 0) + (incomeAmounts["MSFT|2024-11-08"] ?? 0)) * closingFxRate,
-    type: "Accrual",
-    confidence: "High",
-  });
-  out.push({
-    ref: ref(),
-    description: "Reclassify platform fee — capitalize to investment cost",
-    drAccount: "1500 · Investments",
-    crAccount: "6200 · Brokerage Fees Expense",
-    amount: 125 * closingFxRate,
-    type: "Reclassification",
-    confidence: "Low",
-  });
+  // ── Income & Expenses — individual entry per transaction ──────────────────
+  const allTxns = txns ?? currentYearTransactions;
+  const incomeTypeTxns = allTxns.filter(t =>
+    ["Dividend","Reinvested Dividend","Interest","Fee/Commission","Withholding Tax"].includes(t.type)
+  );
+
+  for (const t of incomeTypeTxns) {
+    const cadAmt = Math.abs((t.gross ?? 0) * (t.fxRate ?? 1));
+    if (cadAmt < 0.01) continue;
+
+    const isFee = t.type === "Fee/Commission";
+    const isWHT = t.type === "Withholding Tax";
+    const isDividend = t.type === "Dividend" || t.type === "Reinvested Dividend";
+    const isInterest = t.type === "Interest";
+
+    const cashAcct  = t.currency === "CAD" ? "1100 · Cash — BMO Operating" : "1110 · Cash — RBC USD";
+
+    let dr: string, cr: string, desc: string, ajeType: AJE["type"];
+
+    if (isDividend) {
+      dr   = cashAcct;
+      cr   = "4100 · Dividend Income";
+      desc = `Record dividend — ${t.security} (${t.ticker}) — ${t.date}`;
+      ajeType = "Accrual";
+    } else if (isInterest) {
+      dr   = cashAcct;
+      cr   = "4150 · Interest Income";
+      desc = `Record interest income — ${t.security} (${t.ticker}) — ${t.date}`;
+      ajeType = "Accrual";
+    } else if (isFee) {
+      dr   = "5200 · Investment Fees";
+      cr   = cashAcct;
+      desc = `Record brokerage fee — ${t.security} (${t.ticker}) — ${t.date}`;
+      ajeType = "Accrual";
+    } else { // Withholding Tax
+      dr   = "5300 · Withholding Tax — Foreign";
+      cr   = cashAcct;
+      desc = `Record withholding tax — ${t.security} (${t.ticker}) — ${t.date}`;
+      ajeType = "Accrual";
+    }
+
+    out.push({ ref: ref(), description: desc, drAccount: dr, crAccount: cr, amount: cadAmt, type: ajeType, confidence: "High" });
+  }
 
   return out;
 }
