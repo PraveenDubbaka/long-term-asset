@@ -1297,52 +1297,164 @@ function IncomePanel({ incomeMatrix }: { incomeMatrix: ReturnType<typeof buildIn
 }
 
 // ─── Tab 6: Broker Recon ──────────────────────────────────────────────────────
-function BrokerReconPanel({ invRecon }: { invRecon: ReturnType<typeof buildInvestmentRecon> }) {
+function BrokerReconPanel({
+  invRecon, schedules, effectiveTxns,
+}: {
+  invRecon: ReturnType<typeof buildInvestmentRecon>;
+  schedules: SecuritySchedule[];
+  effectiveTxns: ReturnType<typeof buildIncomeMatrix> extends never ? never : import("@/lib/luka/types").Transaction[];
+}) {
+  const settings  = useStore(s => s.settings);
+  const yearEnd   = settings.fiscalYearEnd ? fmtDate(settings.fiscalYearEnd.slice(0, 10)) : "Dec 31, 2024";
+  const yearStart = settings.fiscalYearEnd
+    ? fmtDate(settings.fiscalYearEnd.slice(0, 4) + "-01-01")
+    : "Jan 1, 2024";
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {invRecon.map(group => {
-        const totBrokerCost = group.positions.reduce((s, p) => s + p.perStmtCost, 0);
-        const totBookCost   = group.positions.reduce((s, p) => s + p.perScheduleCost, 0);
-        const totVarianceFmv = group.positions.reduce((s, p) => s + p.varianceFmv, 0);
+        // ── Gather WAC rows for this broker's securities ───────────────────
+        const brokerScheds = schedules.filter(s => s.sourceIds.includes(group.sourceId));
+
+        // Opening: cost of Opening Balance rows
+        const booksOpening   = brokerScheds.reduce((a, s) => a + s.rows.filter(r => r.type === "Opening Balance").reduce((x, r) => x + r.costIn, 0), 0);
+        // Purchases: costIn on Purchase/Transfer In/Reinvested Dividend rows
+        const booksPurchases = brokerScheds.reduce((a, s) => a + s.rows.filter(r => ["Purchase","Transfer In","Reinvested Dividend"].includes(r.type)).reduce((x, r) => x + r.costIn, 0), 0);
+        // Sales: costOut on Sale/Transfer Out rows
+        const booksSales     = brokerScheds.reduce((a, s) => a + s.rows.filter(r => ["Sale","Transfer Out"].includes(r.type)).reduce((x, r) => x + r.costOut, 0), 0);
+        // Income: Dividend + Interest (from txns for this broker)
+        const booksIncome    = effectiveTxns.filter(t => t.sourceId === group.sourceId && ["Dividend","Interest","Reinvested Dividend"].includes(t.type)).reduce((a, t) => a + (t.gross ?? 0) * (t.fxRate ?? 1), 0);
+        // Expenses: Fees + Withholding Tax
+        const booksExpenses  = effectiveTxns.filter(t => t.sourceId === group.sourceId && ["Fee/Commission","Withholding Tax"].includes(t.type)).reduce((a, t) => a + Math.abs(t.net ?? t.gross ?? 0) * (t.fxRate ?? 1), 0);
+        // Closing per books
+        const booksClosing   = group.positions.reduce((a, p) => a + p.perScheduleCost, 0);
+
+        // Broker statement values (mock: same except AAPL FMV variance)
+        const stmtOpening   = booksOpening;
+        const stmtPurchases = booksPurchases;
+        const stmtSales     = booksSales;
+        const stmtIncome    = booksIncome;
+        const stmtExpenses  = booksExpenses;
+        const stmtClosing   = group.positions.reduce((a, p) => a + p.perStmtCost, 0);
+
+        const closingVar = booksClosing - stmtClosing;
+        const reconciled = Math.abs(closingVar) < 1;
+
+        // ── Roll-forward lines ─────────────────────────────────────────────
+        const lines = [
+          { label: "Opening Balance",   books: booksOpening,    stmt: stmtOpening,    indent: false, bold: false, separator: false },
+          { label: "Purchases",         books: booksPurchases,  stmt: stmtPurchases,  indent: true,  bold: false, separator: false },
+          { label: "Sales / Disposals", books: -booksSales,     stmt: -stmtSales,     indent: true,  bold: false, separator: false },
+          { label: "Income Received",   books: booksIncome,     stmt: stmtIncome,     indent: true,  bold: false, separator: false },
+          { label: "Expenses & Fees",   books: -booksExpenses,  stmt: -stmtExpenses,  indent: true,  bold: false, separator: true  },
+          { label: "Closing Balance",   books: booksClosing,    stmt: stmtClosing,    indent: false, bold: true,  separator: false },
+        ];
+
         return (
-          <TableWrap
-            key={group.sourceId}
-            title={`${group.institution} (…${group.last4})`}
-          >
-            <table className="w-full text-[11px]">
-              <thead>
-                <tr className="bg-muted/30 border-b border-border">
-                  {["Security","Ticker","CCY","Broker Cost","Book Cost","Variance"].map((h, i) => (
-                    <th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 3 ? "text-left" : "text-right"}`}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {group.positions.map((p, i) => (
-                  <tr key={p.ticker} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
-                    <td className="px-3 py-1.5 font-medium">{p.security}</td>
-                    <td className="px-3 py-1.5 font-mono">{p.ticker}</td>
-                    <td className="px-3 py-1.5">{p.ccy}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">{fmt2(p.perStmtCost)}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">{fmt2(p.perScheduleCost)}</td>
-                    <td className={`px-3 py-1.5 text-right tabular-nums font-medium ${"text-foreground"}`}>
-                      {fmt2(p.varianceFmv)}
-                    </td>
+          <div key={group.sourceId} className="rounded-[8px] border border-border overflow-hidden">
+            {/* Header */}
+            <div className="px-4 py-3 bg-muted/40 border-b border-border flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-foreground">{group.institution}</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">Acct …{group.last4}</span>
+                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${reconciled ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
+                    {reconciled ? "✓ Reconciled" : "⚠ Variance"}
+                  </span>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Period: {yearStart} — {yearEnd} · {group.currency}</p>
+              </div>
+            </div>
+
+            {/* Roll-forward reconciliation */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px]">
+                <thead>
+                  <tr className="bg-muted/20 border-b border-border">
+                    <th className="px-4 py-2 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-56">Activity</th>
+                    <th className="px-4 py-2 text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Per Books</th>
+                    <th className="px-4 py-2 text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Per Broker Stmt</th>
+                    <th className="px-4 py-2 text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Variance</th>
+                    <th className="px-4 py-2 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="bg-muted/30 border-t border-border font-semibold">
-                  <td className="px-3 py-2 text-[11px]" colSpan={3}>Total</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-[11px]">{fmt2(totBrokerCost)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-[11px]">{fmt2(totBookCost)}</td>
-                  <td className={`px-3 py-2 text-right tabular-nums text-[11px] font-bold ${"text-foreground"}`}>
-                    {fmt2(totVarianceFmv)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </TableWrap>
+                </thead>
+                <tbody>
+                  {lines.map((l, i) => {
+                    const variance = l.books - l.stmt;
+                    const ok = Math.abs(variance) < 1;
+                    return (
+                      <Fragment key={l.label}>
+                        {l.separator && <tr className="border-t-2 border-border/60"><td colSpan={5} className="py-0" /></tr>}
+                        <tr className={`border-b border-border/40 ${l.bold ? "bg-muted/30 font-semibold" : i % 2 === 0 ? "" : "bg-muted/[0.04]"}`}>
+                          <td className={`px-4 py-2 ${l.indent ? "pl-8 text-muted-foreground" : "font-semibold text-foreground"}`}>
+                            {l.indent ? (l.books < 0 ? "− " : "+ ") : ""}{l.label}
+                          </td>
+                          <td className="px-4 py-2 text-right tabular-nums">{fmtCAD(Math.abs(l.books))}</td>
+                          <td className="px-4 py-2 text-right tabular-nums">{fmtCAD(Math.abs(l.stmt))}</td>
+                          <td className="px-4 py-2 text-right tabular-nums font-medium">{fmtCAD(Math.abs(variance))}</td>
+                          <td className="px-4 py-2 text-center">
+                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold border whitespace-nowrap ${ok ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
+                              {ok ? "✓ Match" : "✗ Diff"}
+                            </span>
+                          </td>
+                        </tr>
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Position detail */}
+            <div className="border-t border-border">
+              <div className="px-4 py-2 bg-muted/20 border-b border-border">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Closing Position Detail</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[11px]">
+                  <thead>
+                    <tr className="bg-muted/10 border-b border-border">
+                      {["Security","Ticker","CCY","Units (Books)","Units (Broker)","Cost (Books)","Cost (Broker)","Variance","Status"].map((h, i) => (
+                        <th key={h} className={`px-3 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 3 ? "text-left" : i === 8 ? "text-center" : "text-right"}`}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.positions.map((p, i) => (
+                      <tr key={p.ticker} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
+                        <td className="px-3 py-1.5 font-medium">{p.security}</td>
+                        <td className="px-3 py-1.5 font-mono">{p.ticker}</td>
+                        <td className="px-3 py-1.5">{p.ccy}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums">{fmtNum(p.perScheduleUnits, 4)}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums">{fmtNum(p.perStmtUnits, 4)}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums">{fmtCAD(p.perScheduleCost)}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums">{fmtCAD(p.perStmtCost)}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums font-medium">{fmtCAD(Math.abs(p.varianceCost))}</td>
+                        <td className="px-3 py-1.5 text-center">
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold border whitespace-nowrap ${p.pass ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
+                            {p.pass ? "✓" : "✗"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-muted/30 border-t border-border font-semibold">
+                      <td className="px-3 py-2 text-[11px]" colSpan={5}>Total Positions</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-[11px]">{fmtCAD(group.positions.reduce((a, p) => a + p.perScheduleCost, 0))}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-[11px]">{fmtCAD(group.positions.reduce((a, p) => a + p.perStmtCost, 0))}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">{fmtCAD(Math.abs(closingVar))}</td>
+                      <td className="px-3 py-2 text-center">
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold border whitespace-nowrap ${reconciled ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
+                          {reconciled ? "✓ Reconciled" : "✗ Variance"}
+                        </span>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
         );
       })}
     </div>
@@ -2314,7 +2426,7 @@ export function InvestmentScheduleResponse({ onEditTransactions }: { onEditTrans
           <IncomePanel incomeMatrix={incomeMatrix} />
         </div>
         <div className={activeTab === "brokerrecon" ? "" : "hidden"}>
-          <BrokerReconPanel invRecon={invRecon} />
+          <BrokerReconPanel invRecon={invRecon} schedules={schedules} effectiveTxns={effectiveTxns} />
         </div>
         <div className={activeTab === "taxrecon" ? "" : "hidden"}>
           <TaxReconPanel schedules={schedules} />
