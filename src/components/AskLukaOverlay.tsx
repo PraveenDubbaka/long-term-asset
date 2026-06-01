@@ -500,6 +500,7 @@ function classifyInvFile(file: File): InvUploadFile {
 interface InvReviewRow {
   id: string;
   date: string;
+  settlement: string;
   security: string;
   ticker: string;
   type: string;
@@ -511,18 +512,18 @@ interface InvReviewRow {
 }
 
 const INV_MOCK_ROWS: InvReviewRow[] = [
-  { id: "ir-01", date: "2024-03-15", security: "Royal Bank of Canada",   ticker: "RY",    type: "Purchase",   units: "100",  price: "132.50", currency: "CAD", account: "TD Waterhouse",  source: "TD Statement" },
-  { id: "ir-02", date: "2024-06-30", security: "Enbridge Inc.",           ticker: "ENB",   type: "Sale",       units: "200",  price: "49.80",  currency: "CAD", account: "TD Waterhouse",  source: "TD Statement" },
-  { id: "ir-03", date: "2024-08-20", security: "Shopify Inc.",            ticker: "SHOP",  type: "Purchase",   units: "300",  price: "95.20",  currency: "CAD", account: "TD Waterhouse",  source: "TD Statement" },
-  { id: "ir-04", date: "2024-11-15", security: "Shopify Inc.",            ticker: "SHOP",  type: "Sale",       units: "80",   price: "108.75", currency: "CAD", account: "TD Waterhouse",  source: "TD Statement" },
-  { id: "ir-05", date: "2024-05-10", security: "Royal Bank of Canada",   ticker: "RY",    type: "Dividend",   units: "600",  price: "1.38",   currency: "CAD", account: "TD Waterhouse",  source: "TD Statement" },
-  { id: "ir-06", date: "2024-02-05", security: "Apple Inc.",              ticker: "AAPL",  type: "Purchase",   units: "50",   price: "188.40", currency: "USD", account: "RBC Direct",     source: "RBC Statement" },
-  { id: "ir-07", date: "2024-04-18", security: "Microsoft Corp.",         ticker: "MSFT",  type: "Purchase",   units: "25",   price: "415.00", currency: "USD", account: "RBC Direct",     source: "RBC Statement" },
-  { id: "ir-08", date: "2024-07-22", security: "NVIDIA Corp.",            ticker: "NVDA",  type: "Purchase",   units: "100",  price: "121.50", currency: "USD", account: "RBC Direct",     source: "RBC Statement" },
-  { id: "ir-09", date: "2024-09-15", security: "Apple Inc.",              ticker: "AAPL",  type: "Sale",       units: "75",   price: "224.10", currency: "USD", account: "RBC Direct",     source: "RBC Statement" },
-  { id: "ir-10", date: "2024-06-12", security: "Apple Inc.",              ticker: "AAPL",  type: "Dividend",   units: "250",  price: "0.25",   currency: "USD", account: "RBC Direct",     source: "RBC Statement" },
-  { id: "ir-11", date: "2024-09-25", security: "Apple Inc.",              ticker: "AAPL",  type: "Purchase",   units: "30",   price: "226.50", currency: "USD", account: "RBC Direct",     source: "RBC Statement" },
-  { id: "ir-12", date: "2024-10-30", security: "NVIDIA Corp.",            ticker: "NVDA",  type: "Sale",       units: "40",   price: "139.20", currency: "USD", account: "RBC Direct",     source: "RBC Statement" },
+  { id: "ir-01", date: "2024-03-15", settlement: "2024-03-18", security: "Royal Bank of Canada",   ticker: "RY",    type: "Purchase",   units: "100",  price: "132.50", currency: "CAD", account: "TD Waterhouse",  source: "TD Statement" },
+  { id: "ir-02", date: "2024-06-30", settlement: "2024-07-03", security: "Enbridge Inc.",           ticker: "ENB",   type: "Sale",       units: "200",  price: "49.80",  currency: "CAD", account: "TD Waterhouse",  source: "TD Statement" },
+  { id: "ir-03", date: "2024-08-20", settlement: "2024-08-23", security: "Shopify Inc.",            ticker: "SHOP",  type: "Purchase",   units: "300",  price: "95.20",  currency: "CAD", account: "TD Waterhouse",  source: "TD Statement" },
+  { id: "ir-04", date: "2024-11-15", settlement: "2024-11-18", security: "Shopify Inc.",            ticker: "SHOP",  type: "Sale",       units: "80",   price: "108.75", currency: "CAD", account: "TD Waterhouse",  source: "TD Statement" },
+  { id: "ir-05", date: "2024-05-10", settlement: "2024-05-13", security: "Royal Bank of Canada",   ticker: "RY",    type: "Dividend",   units: "600",  price: "1.38",   currency: "CAD", account: "TD Waterhouse",  source: "TD Statement" },
+  { id: "ir-06", date: "2024-02-05", settlement: "2024-02-08", security: "Apple Inc.",              ticker: "AAPL",  type: "Purchase",   units: "50",   price: "188.40", currency: "USD", account: "RBC Direct",     source: "RBC Statement" },
+  { id: "ir-07", date: "2024-04-18", settlement: "2024-04-21", security: "Microsoft Corp.",         ticker: "MSFT",  type: "Purchase",   units: "25",   price: "415.00", currency: "USD", account: "RBC Direct",     source: "RBC Statement" },
+  { id: "ir-08", date: "2024-07-22", settlement: "2024-07-25", security: "NVIDIA Corp.",            ticker: "NVDA",  type: "Purchase",   units: "100",  price: "121.50", currency: "USD", account: "RBC Direct",     source: "RBC Statement" },
+  { id: "ir-09", date: "2024-09-15", settlement: "2024-09-18", security: "Apple Inc.",              ticker: "AAPL",  type: "Sale",       units: "75",   price: "224.10", currency: "USD", account: "RBC Direct",     source: "RBC Statement" },
+  { id: "ir-10", date: "2024-06-12", settlement: "2024-06-12", security: "Apple Inc.",              ticker: "AAPL",  type: "Dividend",   units: "250",  price: "0.25",   currency: "USD", account: "RBC Direct",     source: "RBC Statement" },
+  { id: "ir-11", date: "2024-09-25", settlement: "2024-09-28", security: "Apple Inc.",              ticker: "AAPL",  type: "Purchase",   units: "30",   price: "226.50", currency: "USD", account: "RBC Direct",     source: "RBC Statement" },
+  { id: "ir-12", date: "2024-10-30", settlement: "2024-11-02", security: "NVIDIA Corp.",            ticker: "NVDA",  type: "Sale",       units: "40",   price: "139.20", currency: "USD", account: "RBC Direct",     source: "RBC Statement" },
 ];
 
 const TX_TYPES = ["Opening","Purchase","Sale","Dividend","Interest","Return of Capital","Stock Split","Transfer In","Transfer Out","FX Conversion","Fee/Commission","Withholding Tax","Reinvested Dividend"];
@@ -3536,10 +3537,10 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                 </div>
                                                 <div className="rounded-[8px] border border-border overflow-hidden">
                                                   <div className="overflow-x-auto">
-                                                    <table className="w-full text-[10px]" style={{ minWidth: 1100 }}>
+                                                    <table className="w-full text-[10px]" style={{ minWidth: 1260 }}>
                                                       <thead>
                                                         <tr className="bg-muted/30 border-b border-border">
-                                                          {["Date *","Security *","Ticker","Type *","CCY","Units *","Price *","Account","Source",""].map((h, i) => (
+                                                          {["Trade Date *","Settlement","Security *","Ticker","Type *","CCY","Units *","Price *","Account","Source",""].map((h, i) => (
                                                             <th key={i} className={`px-2 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10 text-left" : "text-left"}`}>
                                                               {h.endsWith(" *") ? <>{h.slice(0,-2)} <span className="text-red-500">*</span></> : h}
                                                             </th>
@@ -3554,6 +3555,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                                           return (
                                                             <tr key={row.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
                                                               <td className="px-1.5 py-1 min-w-[110px]"><input value={row.date} onChange={e => upd("date", e.target.value)} type="date" className={IC} /></td>
+                                                              <td className="px-1.5 py-1 min-w-[110px]"><input value={row.settlement ?? ""} onChange={e => upd("settlement", e.target.value)} type="date" className={IC} /></td>
                                                               <td className="px-1.5 py-1 min-w-[160px]"><input value={row.security} onChange={e => upd("security", e.target.value)} className={cn(IC, "w-40")} placeholder="Security name" /></td>
                                                               <td className="px-1.5 py-1 min-w-[70px]"><input value={row.ticker} onChange={e => upd("ticker", e.target.value)} className={cn(IC, "w-16 font-mono uppercase")} placeholder="TICK" /></td>
                                                               <td className="px-1.5 py-1 min-w-[130px]">
@@ -3591,7 +3593,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                             {(invReviewRows.length > 0 || validFiles.length > 0) && !(invMissingMonthsPrompt !== null && invMissingMonthsPrompt.length > 0 && invReviewRows.length === 0) && (
                                               <div className="flex items-center justify-between gap-2 pt-1">
                                                 <button
-                                                  onClick={() => setInvReviewRows(prev => [...prev, { id: `ir-new-${Date.now()}`, date: "", security: "", ticker: "", type: "Purchase", units: "", price: "", currency: "CAD", account: "", source: "" }])}
+                                                  onClick={() => setInvReviewRows(prev => [...prev, { id: `ir-new-${Date.now()}`, date: "", settlement: "", security: "", ticker: "", type: "Purchase", units: "", price: "", currency: "CAD", account: "", source: "" }])}
                                                   className="inline-flex items-center gap-1 h-8 px-3 text-xs font-medium border border-border rounded-[8px] bg-background hover:bg-muted transition-colors text-foreground"
                                                 >
                                                   <Plus className="h-3 w-3" /> Add Manual Entry
