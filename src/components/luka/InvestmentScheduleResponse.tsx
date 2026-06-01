@@ -1221,33 +1221,49 @@ function FXPanel({ fxSchedule }: { fxSchedule: { rates: import("@/lib/luka/types
 // ─── Tab 5: Income & Expenses ─────────────────────────────────────────────────
 function IncomePanel({ incomeMatrix }: { incomeMatrix: ReturnType<typeof buildIncomeMatrix> }) {
   const COLS: import("@/lib/luka/types").IncomeType[] = ["Dividend","Interest","Other","Withholding Tax","Fees"];
-  const totals = incomeMatrix.totals;
+  const { totals, tbMap } = incomeMatrix;
   return (
     <TableWrap title="Income & Expenses">
       <table className="w-full text-[11px]">
         <thead>
           <tr className="bg-muted/30 border-b border-border">
-            {["Security","Ticker","CCY",...COLS].map((h, i) => (
+            {["Security","Ticker","CCY",...COLS,"Total"].map((h, i) => (
               <th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 3 ? "text-left" : "text-right"}`}>{h}</th>
             ))}
           </tr>
+          {/* TB Account mapping row */}
+          <tr className="border-b border-border bg-primary/[0.03]">
+            <td className="px-3 py-1 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide" colSpan={3}>TB Account</td>
+            {COLS.map(col => (
+              <td key={col} className="px-3 py-1 text-right">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold border bg-muted text-muted-foreground border-border whitespace-nowrap">
+                  {tbMap[col]}
+                </span>
+              </td>
+            ))}
+            <td className="px-3 py-1" />
+          </tr>
         </thead>
         <tbody>
-          {incomeMatrix.rows.map((r, i) => (
-            <tr key={r.ticker} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
-              <td className="px-3 py-1.5 font-medium">{r.security}</td>
-              <td className="px-3 py-1.5 font-mono">{r.ticker}</td>
-              <td className="px-3 py-1.5">{r.ccy}</td>
-              {COLS.map(col => {
-                const cell = r.cells[col];
-                return (
-                  <td key={col} className="px-3 py-1.5 text-right tabular-nums">
-                    {cell ? fmtGL(cell.cad) : <span className="tabular-nums text-foreground">0.00</span>}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
+          {incomeMatrix.rows.map((r, i) => {
+            const rowTotal = COLS.reduce((sum, col) => sum + (r.cells[col]?.cad ?? 0), 0);
+            return (
+              <tr key={r.ticker} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
+                <td className="px-3 py-1.5 font-medium">{r.security}</td>
+                <td className="px-3 py-1.5 font-mono">{r.ticker}</td>
+                <td className="px-3 py-1.5">{r.ccy}</td>
+                {COLS.map(col => {
+                  const cell = r.cells[col];
+                  return (
+                    <td key={col} className="px-3 py-1.5 text-right tabular-nums">
+                      {cell ? fmtGL(cell.cad) : <span className="tabular-nums text-foreground">0.00</span>}
+                    </td>
+                  );
+                })}
+                <td className="px-3 py-1.5 text-right tabular-nums font-semibold">{fmtGL(rowTotal)}</td>
+              </tr>
+            );
+          })}
         </tbody>
         <tfoot>
           <tr className="bg-muted/30 border-t border-border font-semibold">
@@ -1257,6 +1273,9 @@ function IncomePanel({ incomeMatrix }: { incomeMatrix: ReturnType<typeof buildIn
                 {fmtGL(totals[col] ?? 0)}
               </td>
             ))}
+            <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">
+              {fmtGL(COLS.reduce((s, col) => s + (totals[col] ?? 0), 0))}
+            </td>
           </tr>
         </tfoot>
       </table>
