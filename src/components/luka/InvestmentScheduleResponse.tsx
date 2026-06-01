@@ -129,14 +129,13 @@ function TableWrap({ title, subtitle, onAdd, addLabel, children }: {
 
 // ─── Tab definitions ──────────────────────────────────────────────────────────
 type TabId =
-  | "transactions" | "wac" | "gainloss" | "fx" | "income"
+  | "transactions" | "wac" | "gainloss" | "income"
   | "brokerrecon" | "taxrecon" | "ajes" | "holdings";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "transactions", label: "Transactions"      },
   { id: "wac",          label: "WAC Schedule"      },
   { id: "gainloss",     label: "Gain / Loss"       },
-  { id: "fx",           label: "FX Schedule"       },
   { id: "income",       label: "Income & Expenses" },
   { id: "brokerrecon",  label: "Broker Recon"      },
   { id: "taxrecon",     label: "Tax Recon"         },
@@ -2278,9 +2277,6 @@ export function InvestmentScheduleResponse({ onEditTransactions }: { onEditTrans
         </div>
         <div className={activeTab === "gainloss" ? "" : "hidden"}>
           <GainLossPanel schedules={schedules} />
-        </div>
-        <div className={activeTab === "fx" ? "" : "hidden"}>
-          <FXPanel fxSchedule={fxSchedule} />
         </div>
         <div className={activeTab === "income" ? "" : "hidden"}>
           <IncomePanel incomeMatrix={incomeMatrix} />
