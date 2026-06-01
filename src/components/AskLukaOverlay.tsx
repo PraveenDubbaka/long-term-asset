@@ -3104,19 +3104,48 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                               </div>
                             ) : richResponseType === "investment" ? (
                               <div className="space-y-3 py-0.5 max-w-full">
+                                {(() => {
+                                  const INV_PHASES = ["idle","thinking","engagement-check","tb-check","upload-prompt","review","done"] as const;
+                                  const phaseIdx = INV_PHASES.indexOf(invSchedPhase as typeof INV_PHASES[number]);
+                                  const past  = (p: typeof INV_PHASES[number]) => phaseIdx > INV_PHASES.indexOf(p);
+                                  const at    = (p: typeof INV_PHASES[number]) => invSchedPhase === p;
+                                  const reached = (p: typeof INV_PHASES[number]) => phaseIdx >= INV_PHASES.indexOf(p);
+                                  return (<>
 
-                                {/* ── Phase: Thinking ── */}
-                                {invSchedPhase === "thinking" && (
-                                  <div className="flex items-center gap-3 py-2">
-                                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shrink-0 luka-thinking-spin">
-                                      <Zap className="w-3.5 h-3.5 text-white" />
+                                {/* ── Thinking: active → spinner; past → ✓ summary ── */}
+                                {reached("thinking") && (
+                                  <div className="flex items-center gap-3 py-1">
+                                    <div className={`w-7 h-7 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shrink-0 ${at("thinking") ? "luka-thinking-spin" : ""}`}>
+                                      {past("thinking") ? <Check className="w-3.5 h-3.5 text-white" /> : <Zap className="w-3.5 h-3.5 text-white" />}
                                     </div>
-                                    <span className="text-sm text-foreground luka-thinking-text">Checking your engagement setup…</span>
+                                    {at("thinking")
+                                      ? <span className="text-sm text-foreground luka-thinking-text">Checking your engagement setup…</span>
+                                      : <span className="text-xs text-muted-foreground">Checked engagement setup</span>}
                                   </div>
                                 )}
 
-                                {/* ── Phase: Engagement Check ── */}
-                                {invSchedPhase === "engagement-check" && (
+                                {/* ── Engagement Check: active → full picker; past → compact selection summary ── */}
+                                {reached("engagement-check") && past("engagement-check") && (
+                                  <div className="flex items-start gap-3">
+                                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shrink-0 mt-0.5">
+                                      <Check className="w-3.5 h-3.5 text-white" />
+                                    </div>
+                                    <div className="flex-1 space-y-1.5">
+                                      <p className="text-xs text-muted-foreground">Connect to an Engagement</p>
+                                      {invSelectedEngId
+                                        ? <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-green-50 border border-green-200">
+                                            <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                                            <span className="text-xs text-green-800 font-medium">Connected to <strong>{invSelectedEngId}</strong></span>
+                                          </div>
+                                        : <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-muted border border-border">
+                                            <span className="text-xs text-muted-foreground">Skipped — no engagement selected</span>
+                                          </div>}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* ── Engagement Check active ── */}
+                                {at("engagement-check") && (
                                   <div className="space-y-3">
                                     <div className="flex items-start gap-3">
                                       <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shrink-0 mt-0.5">
@@ -3204,8 +3233,24 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                   </div>
                                 )}
 
-                                {/* ── Phase: TB Check ── */}
-                                {invSchedPhase === "tb-check" && (
+                                {/* ── TB Check: past → compact summary ── */}
+                                {reached("tb-check") && past("tb-check") && (
+                                  <div className="flex items-start gap-3">
+                                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shrink-0 mt-0.5">
+                                      <Check className="w-3.5 h-3.5 text-white" />
+                                    </div>
+                                    <div className="flex-1 space-y-1.5">
+                                      <p className="text-xs text-muted-foreground">Trial Balance Check</p>
+                                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-green-50 border border-green-200">
+                                        <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                                        <span className="text-xs text-green-800 font-medium">Confirmed — proceeding to generate workpaper</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* ── TB Check active ── */}
+                                {at("tb-check") && (
                                   <div className="flex items-start gap-3">
                                     <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shrink-0 mt-0.5">
                                       <Zap className="w-3.5 h-3.5 text-white" />
@@ -3243,9 +3288,9 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                   </div>
                                 )}
 
-                                {(invSchedPhase === "upload-prompt" || invSchedPhase === "review" || invSchedPhase === "done") && (
+                                {reached("upload-prompt") && (
                                 <>
-                                {invSchedPhase !== "done" ? (
+                                {!at("done") ? (
                                   <>
                                     {/* ── GRADIENT CONTAINER + CHIPS + REVIEW TABLE ── */}
                                     {(() => {
@@ -3775,6 +3820,8 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                 )}
                                 </>
                                 )}
+                                  </>);
+                                })()}
                               </div>
                             ) : richResponseType === "loan-amortization" ? (
                               <div className="space-y-2.5 py-0.5">
