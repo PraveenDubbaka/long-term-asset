@@ -71,8 +71,8 @@ const WAC_ROW_TYPES = [
 ];
 
 // ─── Shared input / select class ──────────────────────────────────────────────
-const IC = "h-7 text-xs px-2 border border-border rounded-md bg-background focus:outline-none w-full";
-const SC = "h-7 text-xs px-2 border border-border rounded-md bg-background focus:outline-none w-full appearance-none";
+const IC = "h-7 text-[11px] px-2 border border-[#dcdfe4] rounded-[6px] bg-background text-foreground placeholder:text-muted-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] focus:outline-none focus:ring-1 focus:ring-primary/30 w-full";
+const SC = `${IC} appearance-none cursor-pointer`;
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
