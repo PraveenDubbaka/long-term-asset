@@ -1042,22 +1042,14 @@ function GainLossPanel({ schedules }: { schedules: SecuritySchedule[] }) {
         <table className="w-full text-[11px]">
           <thead>
             <tr className="bg-muted/30 border-b border-border">
-              {["Security","Ticker","Date","Units","Gross Proceeds","Cost (ACB)","Realized G/L"].map((h, i) => (
+              {["Security","Ticker","Date","Units","Gross Proceeds","Cost (ACB)","Realized G/L","TB Account"].map((h, i) => (
                 <th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 3 ? "text-left" : "text-right"}`}>{h}</th>
               ))}
-            </tr>
-            <tr className="border-b border-border bg-primary/[0.03]">
-              <td className="px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide" colSpan={6}>TB Account</td>
-              <td className="px-3 py-1.5 text-right">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-muted text-foreground border-border whitespace-nowrap">
-                  4800 / 4900
-                </span>
-              </td>
             </tr>
           </thead>
           <tbody>
             {disposals.length === 0 && (
-              <tr><td colSpan={7} className="px-3 py-4 text-center text-[11px] text-muted-foreground">No disposals in this period</td></tr>
+              <tr><td colSpan={8} className="px-3 py-4 text-center text-[11px] text-muted-foreground">No disposals in this period</td></tr>
             )}
             {disposals.map((d, i) => (
               <tr key={`${d.ticker}-${d.date}-${i}`} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
@@ -1068,6 +1060,11 @@ function GainLossPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                 <td className="px-3 py-1.5 text-right tabular-nums">{fmt2(d.proceeds)}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">{fmt2(d.costOut)}</td>
                 <td className="px-3 py-1.5 text-right">{fmtGL(d.gl)}</td>
+                <td className="px-3 py-1.5 text-right">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border bg-muted text-foreground border-border whitespace-nowrap">
+                    {d.gl >= 0 ? "4800" : "4900"}
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -1075,6 +1072,7 @@ function GainLossPanel({ schedules }: { schedules: SecuritySchedule[] }) {
             <tr className="bg-muted/30 border-t border-border font-semibold">
               <td className="px-3 py-2 text-[11px]" colSpan={6}>Total Realized</td>
               <td className="px-3 py-2 text-right text-[11px]">{fmtGL(totGL)}</td>
+              <td className="px-3 py-2" />
             </tr>
           </tfoot>
         </table>
@@ -1091,17 +1089,10 @@ function GainLossPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                 { label: "Units Outstanding", align: "right" },
                 { label: "Fair Market Value", align: "right" },
                 { label: "Unrealized G/L",    align: "right" },
+                { label: "TB Account",        align: "right" },
               ].map(h => (
                 <th key={h.label} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-${h.align}`}>{h.label}</th>
               ))}
-            </tr>
-            <tr className="border-b border-border bg-primary/[0.03]">
-              <td className="px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide" colSpan={5}>TB Account</td>
-              <td className="px-3 py-1.5 text-right">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-muted text-foreground border-border whitespace-nowrap">
-                  4810 / 4910
-                </span>
-              </td>
             </tr>
           </thead>
           <tbody>
@@ -1113,6 +1104,11 @@ function GainLossPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                 <td className="px-3 py-1.5 text-right tabular-nums">{fmtNum(s.closingUnits, 4)}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums font-medium">{fmtCAD(s.fmvCAD)}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">{fmtGL(s.unrealizedGL)}</td>
+                <td className="px-3 py-1.5 text-right">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border bg-muted text-foreground border-border whitespace-nowrap">
+                    {s.unrealizedGL >= 0 ? "4810" : "4910"}
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -1122,6 +1118,7 @@ function GainLossPanel({ schedules }: { schedules: SecuritySchedule[] }) {
               <td className="px-3 py-2 text-right tabular-nums text-[11px]">{fmtNum(schedules.reduce((a, s) => a + s.closingUnits, 0), 4)}</td>
               <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">{fmtCAD(schedules.reduce((a, s) => a + s.fmvCAD, 0))}</td>
               <td className="px-3 py-2 text-right tabular-nums text-[11px]">{fmtGL(totUnrealized)}</td>
+              <td className="px-3 py-2" />
             </tr>
           </tfoot>
         </table>
