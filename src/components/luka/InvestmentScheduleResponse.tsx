@@ -55,8 +55,8 @@ const fmt4 = (n: number) =>
 
 const fmtGL = (n: number) =>
   n >= 0
-    ? <span className="text-green-700 tabular-nums">{fmt2(n)}</span>
-    : <span className="text-red-600 tabular-nums">({fmt2(Math.abs(n))})</span>;
+    ? <span className="text-foreground tabular-nums">{fmt2(n)}</span>
+    : <span className="text-foreground tabular-nums">({fmt2(Math.abs(n))})</span>;
 
 // WAC-panel helpers (mirrors InvWACTab / InvHoldingsTab)
 const fmtNum = (n: number, dec = 2) =>
@@ -1281,7 +1281,7 @@ function BrokerReconPanel({ invRecon }: { invRecon: ReturnType<typeof buildInves
                     <td className="px-3 py-1.5">{p.ccy}</td>
                     <td className="px-3 py-1.5 text-right tabular-nums">{fmt2(p.perStmtCost)}</td>
                     <td className="px-3 py-1.5 text-right tabular-nums">{fmt2(p.perScheduleCost)}</td>
-                    <td className={`px-3 py-1.5 text-right tabular-nums font-medium ${Math.abs(p.varianceFmv) < 1 ? "text-green-700" : "text-red-600"}`}>
+                    <td className={`px-3 py-1.5 text-right tabular-nums font-medium ${"text-foreground"}`}>
                       {fmt2(p.varianceFmv)}
                     </td>
                   </tr>
@@ -1292,7 +1292,7 @@ function BrokerReconPanel({ invRecon }: { invRecon: ReturnType<typeof buildInves
                   <td className="px-3 py-2 text-[11px]" colSpan={3}>Total</td>
                   <td className="px-3 py-2 text-right tabular-nums text-[11px]">{fmt2(totBrokerCost)}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-[11px]">{fmt2(totBookCost)}</td>
-                  <td className={`px-3 py-2 text-right tabular-nums text-[11px] font-bold ${Math.abs(totVarianceFmv) < 1 ? "text-green-700" : "text-red-600"}`}>
+                  <td className={`px-3 py-2 text-right tabular-nums text-[11px] font-bold ${"text-foreground"}`}>
                     {fmt2(totVarianceFmv)}
                   </td>
                 </tr>
@@ -1781,7 +1781,7 @@ function HoldingsPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                 <td className="px-3 py-1.5 text-right tabular-nums font-medium">{fmt(s.closingCostCAD)}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums font-medium">{fmt(s.fmvCAD)}</td>
                 <td className="px-3 py-1.5 text-right">{fmtGL(s.unrealizedGL)}</td>
-                <td className={`px-3 py-1.5 text-right tabular-nums ${glPct >= 0 ? "text-green-700" : "text-red-600"}`}>
+                <td className={`px-3 py-1.5 text-right tabular-nums ${"text-foreground"}`}>
                   {glPct >= 0 ? `${fmt2(glPct)}%` : `(${fmt2(Math.abs(glPct))}%)`}
                 </td>
               </tr>
