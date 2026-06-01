@@ -954,30 +954,8 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                       </tr>
                     )}
 
-                    {/* Per-security totals row */}
-                    {(() => {
-                      const totUnitsIn  = allRows.reduce((a, r) => a + r.unitsIn,  0);
-                      const totUnitsOut = allRows.reduce((a, r) => a + r.unitsOut, 0);
-                      const totCostIn   = allRows.reduce((a, r) => a + r.costIn,   0);
-                      const totCostOut  = allRows.reduce((a, r) => a + r.costOut,  0);
-                      return (
-                        <tr className="border-b border-border/60 bg-slate-50 font-semibold text-[10px]">
-                          <td className="px-2.5 py-1.5 border-r border-border/30 text-muted-foreground italic" colSpan={4}>
-                            <span className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground/60">Totals</span>
-                          </td>
-                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtNum(totUnitsIn,  4)}</td>
-                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtNum(totUnitsOut, 4)}</td>
-                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtNum(s.closingUnits, 4)}</td>
-                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtCAD(totCostIn)}</td>
-                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtCAD(totCostOut)}</td>
-                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtCAD(s.closingCostCAD)}</td>
-                          <td className="px-2.5 py-1.5 text-right tabular-nums font-bold">{fmtNum(s.closingWac, 4)}</td>
-                        </tr>
-                      );
-                    })()}
-
                     {/* Closing balance row */}
-                    <tr className="border-b-2 border-border font-semibold bg-[#f0f2f5]">
+                    <tr className="border-b border-border font-semibold bg-[#f0f2f5]">
                       <td className="px-2.5 py-2 border-r border-border/30 text-[11px] font-bold">{s.security}</td>
                       <td className="px-2.5 py-2 border-r border-border/30 font-mono font-bold">{s.ticker}</td>
                       <td className="px-2.5 py-2 border-r border-border/30 font-mono text-muted-foreground text-[10px]">
@@ -994,6 +972,28 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                       <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30">{fmtCAD(s.closingCostCAD)}</td>
                       <td className="px-2.5 py-2 text-right tabular-nums">{fmtNum(s.closingWac, 4)}</td>
                     </tr>
+
+                    {/* Per-security totals row */}
+                    {(() => {
+                      const totUnitsIn  = allRows.reduce((a, r) => a + r.unitsIn,  0);
+                      const totUnitsOut = allRows.reduce((a, r) => a + r.unitsOut, 0);
+                      const totCostIn   = allRows.reduce((a, r) => a + r.costIn,   0);
+                      const totCostOut  = allRows.reduce((a, r) => a + r.costOut,  0);
+                      return (
+                        <tr className="border-b-2 border-border bg-slate-100 font-semibold text-[10px]">
+                          <td className="px-2.5 py-1.5 border-r border-border/30" colSpan={4}>
+                            <span className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground/60">Totals</span>
+                          </td>
+                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtNum(totUnitsIn,  4)}</td>
+                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtNum(totUnitsOut, 4)}</td>
+                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtNum(s.closingUnits, 4)}</td>
+                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtCAD(totCostIn)}</td>
+                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtCAD(totCostOut)}</td>
+                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtCAD(s.closingCostCAD)}</td>
+                          <td className="px-2.5 py-1.5 text-right tabular-nums font-bold">{fmtNum(s.closingWac, 4)}</td>
+                        </tr>
+                      );
+                    })()}
                   </Fragment>
                 );
               })}
