@@ -628,7 +628,7 @@ function TransactionsPanel({
                       ? <input type="number" step="0.0001" value={d.fxRate || ""} onChange={e => setD("fxRate", parseFloat(e.target.value) || 1)} className={`${IC} w-20 text-right`} placeholder="1.0000" />
                       : isBatchEditing
                       ? <input type="number" step="0.0001" value={String(bv?.fxRate ?? t.fxRate ?? 1)} onChange={e => bSet("fxRate", parseFloat(e.target.value) || 1)} className={`${IC} w-20 text-right`} placeholder="1.0000" />
-                      : <span className="tabular-nums text-muted-foreground">{t.currency === "CAD" ? "—" : fmt4(t.fxRate ?? 1)}</span>}
+                      : <span className="tabular-nums text-foreground">{fmt4(t.fxRate ?? 1)}</span>}
                   </td>
 
                   {/* Amount — always read-only (computed) */}
@@ -1242,7 +1242,7 @@ function IncomePanel({ incomeMatrix }: { incomeMatrix: ReturnType<typeof buildIn
                 const cell = r.cells[col];
                 return (
                   <td key={col} className="px-3 py-1.5 text-right tabular-nums">
-                    {cell ? fmtGL(cell.cad) : <span className="text-muted-foreground">—</span>}
+                    {cell ? fmtGL(cell.cad) : <span className="tabular-nums text-foreground">0.00</span>}
                   </td>
                 );
               })}
