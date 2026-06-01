@@ -130,7 +130,7 @@ function TableWrap({ title, subtitle, onAdd, addLabel, children }: {
 // ─── Tab definitions ──────────────────────────────────────────────────────────
 type TabId =
   | "transactions" | "wac" | "gainloss" | "income"
-  | "brokerrecon" | "taxrecon" | "ajes" | "holdings";
+  | "brokerrecon" | "ajes" | "holdings";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "transactions", label: "Transactions"      },
@@ -138,7 +138,6 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "gainloss",     label: "Gain / Loss"       },
   { id: "income",       label: "Income & Expenses" },
   { id: "brokerrecon",  label: "Broker Recon"      },
-  { id: "taxrecon",     label: "Tax Recon"         },
   { id: "ajes",         label: "AJEs"              },
   { id: "holdings",     label: "Holdings"          },
 ];
@@ -2661,9 +2660,6 @@ export function InvestmentScheduleResponse({ onEditTransactions }: { onEditTrans
         </div>
         <div className={activeTab === "brokerrecon" ? "" : "hidden"}>
           <BrokerReconPanel invRecon={invRecon} schedules={schedules} effectiveTxns={effectiveTxns} />
-        </div>
-        <div className={activeTab === "taxrecon" ? "" : "hidden"}>
-          <TaxReconPanel schedules={schedules} />
         </div>
         <div className={activeTab === "ajes" ? "" : "hidden"}>
           <AJEsPanel ajes={ajes} ajeQueue={ajeQueue} clearAjeQueue={clearAjeQueue} />
