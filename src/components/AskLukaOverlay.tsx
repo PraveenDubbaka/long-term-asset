@@ -653,9 +653,12 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
   const [addMoreProcessedIds, setAddMoreProcessedIds] = useState<Set<string>>(new Set());
   const [addMoreDone,         setAddMoreDone]         = useState(false);
   // ── Investment Schedule (chat-based) ──
-  const [invSchedPhase, setInvSchedPhase] = useState<"idle"|"upload-prompt"|"review"|"done">("idle");
+  const [invSchedPhase, setInvSchedPhase] = useState<"idle"|"thinking"|"engagement-check"|"tb-check"|"upload-prompt"|"review"|"done">("idle");
   const [invSchedGenerated, setInvSchedGenerated] = useState(false);
   const [invSchedSrcLabel, setInvSchedSrcLabel] = useState<string|null>(null);
+  const [invEngagementConnected, setInvEngagementConnected] = useState(false);
+  const [invSelectedEngId, setInvSelectedEngId] = useState<string|null>(null);
+  const [invEngSearch, setInvEngSearch] = useState("");
   const [invReviewRows, setInvReviewRows] = useState<InvReviewRow[]>([]);
   // ── Investment — Plaid connect flow ──
   const [invPlaidOpen, setInvPlaidOpen] = useState(false);
@@ -1034,7 +1037,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
     setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
-    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null);
+    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch("");
     setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
@@ -1049,7 +1052,8 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
         setLtDebtPhase("upload-prompt");
       } else if (isInvSched) {
         setRichResponseType("investment"); setAiResponse("__rich__");
-        setInvSchedPhase("upload-prompt");
+        setInvSchedPhase("thinking");
+        setTimeout(() => setInvSchedPhase("engagement-check"), 2200);
       } else if (isLoanAmort) {
         setRichResponseType("loan-amortization"); setAiResponse("__rich__");
         // Kick off agentic search sequence
@@ -3100,6 +3104,147 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                               </div>
                             ) : richResponseType === "investment" ? (
                               <div className="space-y-3 py-0.5 max-w-full">
+
+                                {/* ── Phase: Thinking ── */}
+                                {invSchedPhase === "thinking" && (
+                                  <div className="flex items-center gap-3 py-2">
+                                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shrink-0 luka-thinking-spin">
+                                      <Zap className="w-3.5 h-3.5 text-white" />
+                                    </div>
+                                    <span className="text-sm text-foreground luka-thinking-text">Checking your engagement setup…</span>
+                                  </div>
+                                )}
+
+                                {/* ── Phase: Engagement Check ── */}
+                                {invSchedPhase === "engagement-check" && (
+                                  <div className="space-y-3">
+                                    <div className="flex items-start gap-3">
+                                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shrink-0 mt-0.5">
+                                        <Zap className="w-3.5 h-3.5 text-white" />
+                                      </div>
+                                      <div className="flex-1 space-y-3">
+                                        <div className="rounded-[12px] border border-border bg-background px-4 py-3 space-y-1">
+                                          <p className="text-sm font-semibold text-foreground">Connect to an Engagement</p>
+                                          <p className="text-xs text-muted-foreground leading-relaxed">
+                                            To generate the Investment Schedule workpaper, I need to be connected to an engagement — the Trial Balance is required to reconcile investment balances.
+                                          </p>
+                                        </div>
+
+                                        {/* Engagement picker table */}
+                                        <div className="rounded-[10px] border border-border overflow-hidden">
+                                          <div className="flex items-center justify-between px-3 py-2 bg-muted/40 border-b border-border">
+                                            <span className="text-[11px] font-semibold text-foreground">Select Engagement</span>
+                                            <div className="relative">
+                                              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+                                              <input
+                                                value={invEngSearch}
+                                                onChange={e => setInvEngSearch(e.target.value)}
+                                                placeholder="Search…"
+                                                className="h-6 pl-6 pr-2 w-36 text-[11px] border border-border rounded-[6px] bg-background focus:outline-none focus:border-primary/50"
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="overflow-auto max-h-[200px]">
+                                            <table className="w-full text-[11px]">
+                                              <thead className="sticky top-0 bg-muted/30 border-b border-border">
+                                                <tr>
+                                                  {["Client","Engagement ID","Year End","Status"].map(h => (
+                                                    <th key={h} className="px-3 py-1.5 text-left text-[10px] font-semibold text-muted-foreground whitespace-nowrap">{h}</th>
+                                                  ))}
+                                                </tr>
+                                              </thead>
+                                              <tbody>
+                                                {[
+                                                  { id: "COM-CON-Dec312024", client: "Shipping Line Inc.",  yearEnd: "Dec 31, 2024", status: "In Progress" },
+                                                  { id: "COM-TES-Dec312024", client: "Test123",            yearEnd: "Dec 31, 2024", status: "In Progress" },
+                                                  { id: "COM-GIG-Feb282026", client: "Giggle & Goods Inc", yearEnd: "Feb 28, 2026", status: "New"         },
+                                                  { id: "COM-DEE-May312026", client: "deepak corp",        yearEnd: "May 31, 2026", status: "New"         },
+                                                  { id: "COM-FAL-May312025", client: "Falah LUKA Testing", yearEnd: "May 31, 2025", status: "In Progress" },
+                                                  { id: "COM-KAU-Dec312024", client: "Kaushal CORP",       yearEnd: "Dec 31, 2024", status: "In Progress" },
+                                                ]
+                                                  .filter(e => !invEngSearch || e.client.toLowerCase().includes(invEngSearch.toLowerCase()) || e.id.toLowerCase().includes(invEngSearch.toLowerCase()))
+                                                  .map(eng => {
+                                                    const isSel = invSelectedEngId === eng.id;
+                                                    return (
+                                                      <tr key={eng.id} onClick={() => setInvSelectedEngId(eng.id)}
+                                                        className={`border-b border-border/40 cursor-pointer transition-colors ${isSel ? "bg-primary/[0.06]" : "hover:bg-muted/40"}`}>
+                                                        <td className="px-3 py-2"><span className={`font-medium ${isSel ? "text-primary" : "text-foreground"}`}>{eng.client}</span></td>
+                                                        <td className="px-3 py-2 font-mono text-muted-foreground text-[10px]">{eng.id}</td>
+                                                        <td className="px-3 py-2 text-muted-foreground">{eng.yearEnd}</td>
+                                                        <td className="px-3 py-2">
+                                                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${eng.status === "In Progress" ? "bg-primary/5 text-primary border-primary/20" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
+                                                            {eng.status}
+                                                          </span>
+                                                        </td>
+                                                      </tr>
+                                                    );
+                                                  })}
+                                              </tbody>
+                                            </table>
+                                          </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                          <button
+                                            disabled={!invSelectedEngId}
+                                            onClick={() => { setInvEngagementConnected(true); setInvSchedPhase("tb-check"); }}
+                                            className={`h-8 px-4 text-xs font-semibold rounded-[8px] transition-colors ${invSelectedEngId ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-primary/30 text-primary-foreground/50 cursor-not-allowed"}`}
+                                          >
+                                            Connect &amp; Continue
+                                          </button>
+                                          <button
+                                            onClick={() => setInvSchedPhase("upload-prompt")}
+                                            className="h-8 px-4 text-xs font-medium rounded-[8px] border border-border bg-background text-foreground hover:bg-muted transition-colors"
+                                          >
+                                            Skip for now
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* ── Phase: TB Check ── */}
+                                {invSchedPhase === "tb-check" && (
+                                  <div className="flex items-start gap-3">
+                                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shrink-0 mt-0.5">
+                                      <Zap className="w-3.5 h-3.5 text-white" />
+                                    </div>
+                                    <div className="flex-1 space-y-3">
+                                      {/* Connected confirmation */}
+                                      <div className="flex items-center gap-2 px-3 py-2 rounded-[8px] bg-green-50 border border-green-200">
+                                        <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                                        <span className="text-xs text-green-800 font-medium">Connected to <strong>{invSelectedEngId}</strong></span>
+                                      </div>
+
+                                      {/* TB notice */}
+                                      <div className="rounded-[12px] border border-amber-200 bg-amber-50 px-4 py-3 space-y-1">
+                                        <p className="text-sm font-semibold text-amber-900">Trial Balance Required</p>
+                                        <p className="text-xs text-amber-800 leading-relaxed">
+                                          The Investment Schedule workpaper uses the Trial Balance to verify investment account balances and reconcile to the general ledger. Make sure your TB is uploaded in the engagement before proceeding.
+                                        </p>
+                                      </div>
+
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          onClick={() => setInvSchedPhase("upload-prompt")}
+                                          className="h-8 px-4 text-xs font-semibold rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                                        >
+                                          TB is ready — Generate Workpaper
+                                        </button>
+                                        <button
+                                          onClick={() => setInvSchedPhase("upload-prompt")}
+                                          className="h-8 px-4 text-xs font-medium rounded-[8px] border border-border bg-background text-foreground hover:bg-muted transition-colors"
+                                        >
+                                          Proceed without TB
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {(invSchedPhase === "upload-prompt" || invSchedPhase === "review" || invSchedPhase === "done") && (
+                                <>
                                 {invSchedPhase !== "done" ? (
                                   <>
                                     {/* ── GRADIENT CONTAINER + CHIPS + REVIEW TABLE ── */}
@@ -3627,6 +3772,8 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                       ))}
                                     </div>
                                   </>
+                                )}
+                                </>
                                 )}
                               </div>
                             ) : richResponseType === "loan-amortization" ? (
