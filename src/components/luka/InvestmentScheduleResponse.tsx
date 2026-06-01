@@ -982,7 +982,7 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                       return (
                         <tr className="border-b-[3px] border-slate-300/80 bg-slate-100 font-semibold text-[10px]">
                           <td className="px-2.5 py-1.5 border-r border-border/30" colSpan={4}>
-                            <span className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground/60">Totals</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wide text-foreground">Totals</span>
                           </td>
                           <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtNum(totUnitsIn,  4)}</td>
                           <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtNum(totUnitsOut, 4)}</td>
