@@ -1018,6 +1018,9 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
 
 // ─── Tab 3: Gain / Loss ───────────────────────────────────────────────────────
 function GainLossPanel({ schedules }: { schedules: SecuritySchedule[] }) {
+  const settings   = useStore(s => s.settings);
+  const yearEndStr = settings.fiscalYearEnd ? fmtDate(settings.fiscalYearEnd.slice(0, 10)) : "—";
+
   const disposals = schedules.flatMap(s =>
     s.rows
       .filter(r => r.unitsOut > 0)
@@ -1074,8 +1077,15 @@ function GainLossPanel({ schedules }: { schedules: SecuritySchedule[] }) {
         <table className="w-full text-[11px]">
           <thead>
             <tr className="bg-muted/30 border-b border-border">
-              {["Security","Ticker","Unrealized G/L"].map((h, i) => (
-                <th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 2 ? "text-left" : "text-right"}`}>{h}</th>
+              {[
+                { label: "Security",          align: "left"  },
+                { label: "Ticker",            align: "left"  },
+                { label: "Year-End Date",     align: "right" },
+                { label: "Units Outstanding", align: "right" },
+                { label: "Fair Market Value", align: "right" },
+                { label: "Unrealized G/L",    align: "right" },
+              ].map(h => (
+                <th key={h.label} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-${h.align}`}>{h.label}</th>
               ))}
             </tr>
           </thead>
@@ -1084,14 +1094,19 @@ function GainLossPanel({ schedules }: { schedules: SecuritySchedule[] }) {
               <tr key={s.key} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
                 <td className="px-3 py-1.5 font-medium">{s.security}</td>
                 <td className="px-3 py-1.5 font-mono">{s.ticker}</td>
-                <td className="px-3 py-1.5 text-right">{fmtGL(s.unrealizedGL)}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{yearEndStr}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">{fmtNum(s.closingUnits, 4)}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums font-medium">{fmtCAD(s.fmvCAD)}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">{fmtGL(s.unrealizedGL)}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr className="bg-muted/30 border-t border-border font-semibold">
-              <td className="px-3 py-2 text-[11px]" colSpan={2}>Total Unrealized</td>
-              <td className="px-3 py-2 text-right text-[11px]">{fmtGL(totUnrealized)}</td>
+              <td className="px-3 py-2 text-[11px]" colSpan={3}>Total Unrealized</td>
+              <td className="px-3 py-2 text-right tabular-nums text-[11px]">{fmtNum(schedules.reduce((a, s) => a + s.closingUnits, 0), 4)}</td>
+              <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">{fmtCAD(schedules.reduce((a, s) => a + s.fmvCAD, 0))}</td>
+              <td className="px-3 py-2 text-right tabular-nums text-[11px]">{fmtGL(totUnrealized)}</td>
             </tr>
           </tfoot>
         </table>
