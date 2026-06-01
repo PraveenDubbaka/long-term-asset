@@ -10,7 +10,7 @@ import {
   type WacRow,
   type AJE,
 } from "@/lib/luka/compute";
-import { sources as baseSources, priorYearLots, currentYearTransactions } from "@/lib/luka/mockData";
+import { sources as baseSources, priorYearLots, currentYearTransactions, fxRates as mockFxRates } from "@/lib/luka/mockData";
 import type { Source, Transaction, PriorYearLot } from "@/lib/luka/types";
 import { defaultTbAccount } from "@/lib/luka/coa";
 import { Pencil, Trash2, Plus, Check, X, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, ChevronRight, Send, RotateCcw, FileDown, BarChart2, Upload, Loader2, FolderOpen, FileText, FileSpreadsheet, Copy, Download, Save, Search, Clock, GitCommit, FilePlus, PenLine, FileCheck, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
@@ -1297,6 +1297,15 @@ function IncomePanel({ incomeMatrix }: { incomeMatrix: ReturnType<typeof buildIn
 }
 
 // ─── Tab 6: Broker Recon ──────────────────────────────────────────────────────
+// ── Shared section header ──────────────────────────────────────────────────────
+function SectionHead({ title }: { title: string }) {
+  return (
+    <div className="px-4 py-2 bg-muted/20 border-b border-border">
+      <span className="text-[10px] font-bold text-foreground uppercase tracking-wider">{title}</span>
+    </div>
+  );
+}
+
 function BrokerReconPanel({
   invRecon, schedules, effectiveTxns,
 }: {
@@ -1350,9 +1359,77 @@ function BrokerReconPanel({
           { label: "Closing Balance",   books: booksClosing,    stmt: stmtClosing,    indent: false, bold: true,  separator: false },
         ];
 
+        // ── Detailed activity transactions ─────────────────────────────────
+        const purchaseTxns = effectiveTxns.filter(t => t.sourceId === group.sourceId && ["Purchase","Transfer In"].includes(t.type));
+        const saleTxns     = effectiveTxns.filter(t => t.sourceId === group.sourceId && ["Sale","Transfer Out"].includes(t.type));
+        const dividendTxns = effectiveTxns.filter(t => t.sourceId === group.sourceId && ["Dividend","Reinvested Dividend"].includes(t.type));
+        const interestTxns = effectiveTxns.filter(t => t.sourceId === group.sourceId && t.type === "Interest");
+        const feeTxns      = effectiveTxns.filter(t => t.sourceId === group.sourceId && ["Fee/Commission","Withholding Tax"].includes(t.type));
+
+        // ── FX differences ─────────────────────────────────────────────────
+        const fxRows = mockFxRates.filter(r => r.ccy !== "CAD");
+        const fxImpact = brokerScheds
+          .filter(s => s.currency !== "CAD")
+          .map(s => {
+            const rate = fxRows.find(r => r.ccy === s.currency);
+            if (!rate) return null;
+            const openCostCAD = s.rows.filter(r => r.type === "Opening Balance").reduce((a, r) => a + r.costIn, 0);
+            const openCostForeign = openCostCAD / rate.opening;
+            const fxDiff = openCostForeign * (rate.closing - rate.opening);
+            return { security: s.security, ticker: s.ticker, ccy: s.currency, openRate: rate.opening, closeRate: rate.closing, openCostForeign, fxDiff };
+          }).filter(Boolean) as { security: string; ticker: string; ccy: string; openRate: number; closeRate: number; openCostForeign: number; fxDiff: number }[];
+        const totalFxDiff = fxImpact.reduce((a, r) => a + r.fxDiff, 0);
+
+        // ── Closing balance per books ──────────────────────────────────────
+        const booksClosingPerBooks = booksOpening + booksPurchases - booksSales + booksIncome - booksExpenses + totalFxDiff;
+
+        // Reusable activity sub-table
+        const ActivityTable = ({ txns, sign }: { txns: typeof effectiveTxns; sign: 1 | -1 }) => {
+          if (!txns.length) return <p className="px-4 py-2 text-[11px] text-muted-foreground italic">No transactions in period</p>;
+          const total = txns.reduce((a, t) => a + Math.abs((t.net ?? t.gross ?? 0) * (t.fxRate ?? 1)), 0);
+          return (
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className="bg-muted/10 border-b border-border">
+                  {["Date","Security","Ticker","Type","CCY","Foreign Amt","FX Rate","CAD Equiv"].map((h, i) => (
+                    <th key={h} className={`px-3 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 4 ? "text-left" : "text-right"}`}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {txns.map((t, i) => {
+                  const cadAmt = Math.abs((t.net ?? t.gross ?? 0) * (t.fxRate ?? 1));
+                  const foreignAmt = Math.abs(t.net ?? t.gross ?? 0);
+                  return (
+                    <tr key={t.id} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/[0.04]" : ""}`}>
+                      <td className="px-3 py-1 whitespace-nowrap text-muted-foreground">{fmtDate(t.date)}</td>
+                      <td className="px-3 py-1 font-medium">{t.security}</td>
+                      <td className="px-3 py-1 font-mono">{t.ticker}</td>
+                      <td className="px-3 py-1">
+                        <TxTypeBadge type={t.type} />
+                      </td>
+                      <td className="px-3 py-1">{t.currency}</td>
+                      <td className="px-3 py-1 text-right tabular-nums">{fmtCAD(foreignAmt)}</td>
+                      <td className="px-3 py-1 text-right tabular-nums font-mono text-muted-foreground">{fmt4(t.fxRate ?? 1)}</td>
+                      <td className="px-3 py-1 text-right tabular-nums font-medium">{sign > 0 ? "" : "("}{fmtCAD(cadAmt)}{sign > 0 ? "" : ")"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="bg-muted/30 border-t border-border font-semibold">
+                  <td className="px-3 py-1.5 text-[11px]" colSpan={7}>{sign > 0 ? "Total" : "Total"}</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums text-[11px] font-bold">{sign > 0 ? "" : "("}{fmtCAD(total)}{sign > 0 ? "" : ")"}</td>
+                </tr>
+              </tfoot>
+            </table>
+          );
+        };
+
         return (
           <div key={group.sourceId} className="rounded-[8px] border border-border overflow-hidden">
-            {/* Header */}
+
+            {/* ── Broker Header ── */}
             <div className="px-4 py-3 bg-muted/40 border-b border-border flex items-center justify-between flex-wrap gap-2">
               <div>
                 <div className="flex items-center gap-2">
@@ -1366,94 +1443,200 @@ function BrokerReconPanel({
               </div>
             </div>
 
-            {/* Roll-forward reconciliation */}
+            {/* ── Section 1: Opening Balance ── */}
+            <SectionHead title="Opening Balance" />
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px]">
+                <tbody>
+                  <tr className="border-b border-border/40 bg-amber-50/40">
+                    <td className="px-4 py-2 font-semibold text-foreground w-64">Opening Balance — Jan 1</td>
+                    <td className="px-4 py-2 text-right tabular-nums font-bold">{fmtCAD(booksOpening)}</td>
+                    <td className="px-4 py-2 text-[10px] text-muted-foreground">Per prior year WAC schedule</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* ── Section 2: Activity During the Period ── */}
+            <SectionHead title="Activity During the Period" />
+
+            <div className="border-b border-border/40">
+              <div className="px-4 py-1.5 bg-blue-50/30 border-b border-border/30 flex items-center gap-2">
+                <span className="text-[10px] font-semibold text-foreground">Purchases</span>
+                <span className="text-[10px] text-muted-foreground">({purchaseTxns.length} transactions)</span>
+                <span className="ml-auto text-[11px] font-bold tabular-nums text-foreground">{fmtCAD(booksPurchases)}</span>
+              </div>
+              <ActivityTable txns={purchaseTxns} sign={1} />
+            </div>
+
+            <div className="border-b border-border/40">
+              <div className="px-4 py-1.5 bg-red-50/30 border-b border-border/30 flex items-center gap-2">
+                <span className="text-[10px] font-semibold text-foreground">Sales / Disposals</span>
+                <span className="text-[10px] text-muted-foreground">({saleTxns.length} transactions)</span>
+                <span className="ml-auto text-[11px] font-bold tabular-nums text-foreground">({fmtCAD(booksSales)})</span>
+              </div>
+              <ActivityTable txns={saleTxns} sign={-1} />
+            </div>
+
+            <div className="border-b border-border/40">
+              <div className="px-4 py-1.5 bg-green-50/30 border-b border-border/30 flex items-center gap-2">
+                <span className="text-[10px] font-semibold text-foreground">Income — Dividends</span>
+                <span className="text-[10px] text-muted-foreground">({dividendTxns.length} transactions)</span>
+                <span className="ml-auto text-[11px] font-bold tabular-nums">{fmtCAD(dividendTxns.reduce((a, t) => a + (t.gross ?? 0) * (t.fxRate ?? 1), 0))}</span>
+              </div>
+              <ActivityTable txns={dividendTxns} sign={1} />
+            </div>
+
+            {interestTxns.length > 0 && (
+              <div className="border-b border-border/40">
+                <div className="px-4 py-1.5 bg-green-50/20 border-b border-border/30 flex items-center gap-2">
+                  <span className="text-[10px] font-semibold text-foreground">Income — Interest</span>
+                  <span className="text-[10px] text-muted-foreground">({interestTxns.length} transactions)</span>
+                  <span className="ml-auto text-[11px] font-bold tabular-nums">{fmtCAD(interestTxns.reduce((a, t) => a + (t.gross ?? 0) * (t.fxRate ?? 1), 0))}</span>
+                </div>
+                <ActivityTable txns={interestTxns} sign={1} />
+              </div>
+            )}
+
+            <div className="border-b border-border/40">
+              <div className="px-4 py-1.5 bg-orange-50/30 border-b border-border/30 flex items-center gap-2">
+                <span className="text-[10px] font-semibold text-foreground">Expenses (Fees &amp; Withholding Tax)</span>
+                <span className="text-[10px] text-muted-foreground">({feeTxns.length} transactions)</span>
+                <span className="ml-auto text-[11px] font-bold tabular-nums text-foreground">({fmtCAD(booksExpenses)})</span>
+              </div>
+              <ActivityTable txns={feeTxns} sign={-1} />
+            </div>
+
+            {/* ── Section 3: FX Differences ── */}
+            {fxImpact.length > 0 && (
+              <>
+                <SectionHead title="Foreign Exchange Differences" />
+                <div className="overflow-x-auto border-b border-border/40">
+                  <table className="w-full text-[11px]">
+                    <thead>
+                      <tr className="bg-muted/10 border-b border-border">
+                        {["Security","Ticker","CCY","Opening FX","Closing FX","FX Change","Opening Cost (Foreign)","FX Translation Diff"].map((h, i) => (
+                          <th key={h} className={`px-3 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 3 ? "text-left" : "text-right"}`}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fxImpact.map((r, i) => (
+                        <tr key={r.ticker} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/[0.04]" : ""}`}>
+                          <td className="px-3 py-1.5 font-medium">{r.security}</td>
+                          <td className="px-3 py-1.5 font-mono">{r.ticker}</td>
+                          <td className="px-3 py-1.5">{r.ccy}</td>
+                          <td className="px-3 py-1.5 text-right tabular-nums font-mono">{fmt4(r.openRate)}</td>
+                          <td className="px-3 py-1.5 text-right tabular-nums font-mono">{fmt4(r.closeRate)}</td>
+                          <td className="px-3 py-1.5 text-right tabular-nums font-mono">{fmt4(r.closeRate - r.openRate)}</td>
+                          <td className="px-3 py-1.5 text-right tabular-nums">{fmtCAD(r.openCostForeign)}</td>
+                          <td className="px-3 py-1.5 text-right tabular-nums font-semibold">{r.fxDiff >= 0 ? "" : "("}{fmtCAD(Math.abs(r.fxDiff))}{r.fxDiff >= 0 ? "" : ")"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-muted/30 border-t border-border font-semibold">
+                        <td className="px-3 py-2 text-[11px]" colSpan={7}>Total FX Translation Difference</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">{totalFxDiff >= 0 ? "" : "("}{fmtCAD(Math.abs(totalFxDiff))}{totalFxDiff >= 0 ? "" : ")"}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </>
+            )}
+
+            {/* ── Section 4: Closing Balance ── */}
+            <SectionHead title="Closing Balances" />
             <div className="overflow-x-auto">
               <table className="w-full text-[11px]">
                 <thead>
                   <tr className="bg-muted/20 border-b border-border">
-                    <th className="px-4 py-2 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-56">Activity</th>
-                    <th className="px-4 py-2 text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Per Books</th>
+                    <th className="px-4 py-2 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-64">Item</th>
+                    <th className="px-4 py-2 text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Per Books (CAD)</th>
                     <th className="px-4 py-2 text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Per Broker Stmt</th>
                     <th className="px-4 py-2 text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Variance</th>
                     <th className="px-4 py-2 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {lines.map((l, i) => {
+                  {[
+                    { label: "Opening Balance",        books: booksOpening,         stmt: booksOpening,                         indent: false },
+                    { label: "+ Purchases",            books: booksPurchases,        stmt: booksPurchases,                       indent: true  },
+                    { label: "− Sales / Disposals",    books: -booksSales,           stmt: -booksSales,                          indent: true  },
+                    { label: "+ Income (Div/Int)",     books: booksIncome,           stmt: booksIncome,                          indent: true  },
+                    { label: "− Expenses & Fees",      books: -booksExpenses,        stmt: -booksExpenses,                       indent: true  },
+                    { label: "+ FX Translation",       books: totalFxDiff,           stmt: totalFxDiff,                          indent: true  },
+                    { label: "Closing Balance",        books: booksClosingPerBooks,  stmt: stmtClosing,                          indent: false },
+                  ].map((l, i) => {
                     const variance = l.books - l.stmt;
                     const ok = Math.abs(variance) < 1;
+                    const isFinal = l.label === "Closing Balance";
                     return (
-                      <Fragment key={l.label}>
-                        {l.separator && <tr className="border-t-2 border-border/60"><td colSpan={5} className="py-0" /></tr>}
-                        <tr className={`border-b border-border/40 ${l.bold ? "bg-muted/30 font-semibold" : i % 2 === 0 ? "" : "bg-muted/[0.04]"}`}>
-                          <td className={`px-4 py-2 ${l.indent ? "pl-8 text-muted-foreground" : "font-semibold text-foreground"}`}>
-                            {l.indent ? (l.books < 0 ? "− " : "+ ") : ""}{l.label}
-                          </td>
-                          <td className="px-4 py-2 text-right tabular-nums">{fmtCAD(Math.abs(l.books))}</td>
-                          <td className="px-4 py-2 text-right tabular-nums">{fmtCAD(Math.abs(l.stmt))}</td>
-                          <td className="px-4 py-2 text-right tabular-nums font-medium">{fmtCAD(Math.abs(variance))}</td>
-                          <td className="px-4 py-2 text-center">
-                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold border whitespace-nowrap ${ok ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
-                              {ok ? "✓ Match" : "✗ Diff"}
+                      <tr key={l.label} className={`border-b border-border/40 ${isFinal ? "bg-primary/5 font-semibold" : i % 2 === 0 ? "" : "bg-muted/[0.04]"}`}>
+                        <td className={`px-4 py-2 ${l.indent ? "pl-8 text-muted-foreground" : "font-semibold text-foreground"}`}>{l.label}</td>
+                        <td className="px-4 py-2 text-right tabular-nums">{fmtCAD(Math.abs(l.books))}</td>
+                        <td className="px-4 py-2 text-right tabular-nums">{fmtCAD(Math.abs(l.stmt))}</td>
+                        <td className="px-4 py-2 text-right tabular-nums">{fmtCAD(Math.abs(variance))}</td>
+                        <td className="px-4 py-2 text-center">
+                          {isFinal && (
+                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${ok ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
+                              {ok ? "✓ Reconciled" : "✗ Variance"}
                             </span>
-                          </td>
-                        </tr>
-                      </Fragment>
+                          )}
+                        </td>
+                      </tr>
                     );
                   })}
                 </tbody>
               </table>
             </div>
 
-            {/* Position detail */}
-            <div className="border-t border-border">
-              <div className="px-4 py-2 bg-muted/20 border-b border-border">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Closing Position Detail</span>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-[11px]">
-                  <thead>
-                    <tr className="bg-muted/10 border-b border-border">
-                      {["Security","Ticker","CCY","Units (Books)","Units (Broker)","Cost (Books)","Cost (Broker)","Variance","Status"].map((h, i) => (
-                        <th key={h} className={`px-3 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 3 ? "text-left" : i === 8 ? "text-center" : "text-right"}`}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {group.positions.map((p, i) => (
-                      <tr key={p.ticker} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
-                        <td className="px-3 py-1.5 font-medium">{p.security}</td>
-                        <td className="px-3 py-1.5 font-mono">{p.ticker}</td>
-                        <td className="px-3 py-1.5">{p.ccy}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums">{fmtNum(p.perScheduleUnits, 4)}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums">{fmtNum(p.perStmtUnits, 4)}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums">{fmtCAD(p.perScheduleCost)}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums">{fmtCAD(p.perStmtCost)}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums font-medium">{fmtCAD(Math.abs(p.varianceCost))}</td>
-                        <td className="px-3 py-1.5 text-center">
-                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold border whitespace-nowrap ${p.pass ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
-                            {p.pass ? "✓" : "✗"}
-                          </span>
-                        </td>
-                      </tr>
+            {/* ── Section 5: Closing Position Detail ── */}
+            <SectionHead title="Closing Position Detail — Per Security" />
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px]">
+                <thead>
+                  <tr className="bg-muted/10 border-b border-border">
+                    {["Security","Ticker","CCY","Units (Books)","Units (Broker)","Cost (Books)","Cost (Broker)","Variance","Status"].map((h, i) => (
+                      <th key={h} className={`px-3 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 3 ? "text-left" : i === 8 ? "text-center" : "text-right"}`}>{h}</th>
                     ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-muted/30 border-t border-border font-semibold">
-                      <td className="px-3 py-2 text-[11px]" colSpan={5}>Total Positions</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-[11px]">{fmtCAD(group.positions.reduce((a, p) => a + p.perScheduleCost, 0))}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-[11px]">{fmtCAD(group.positions.reduce((a, p) => a + p.perStmtCost, 0))}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">{fmtCAD(Math.abs(closingVar))}</td>
-                      <td className="px-3 py-2 text-center">
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold border whitespace-nowrap ${reconciled ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
-                          {reconciled ? "✓ Reconciled" : "✗ Variance"}
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.positions.map((p, i) => (
+                    <tr key={p.ticker} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
+                      <td className="px-3 py-1.5 font-medium">{p.security}</td>
+                      <td className="px-3 py-1.5 font-mono">{p.ticker}</td>
+                      <td className="px-3 py-1.5">{p.ccy}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{fmtNum(p.perScheduleUnits, 4)}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{fmtNum(p.perStmtUnits, 4)}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{fmtCAD(p.perScheduleCost)}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{fmtCAD(p.perStmtCost)}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums font-medium">{fmtCAD(Math.abs(p.varianceCost))}</td>
+                      <td className="px-3 py-1.5 text-center">
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold border whitespace-nowrap ${p.pass ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
+                          {p.pass ? "✓" : "✗"}
                         </span>
                       </td>
                     </tr>
-                  </tfoot>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-muted/30 border-t border-border font-semibold">
+                    <td className="px-3 py-2 text-[11px]" colSpan={5}>Total Closing Positions</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-[11px]">{fmtCAD(group.positions.reduce((a, p) => a + p.perScheduleCost, 0))}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-[11px]">{fmtCAD(group.positions.reduce((a, p) => a + p.perStmtCost, 0))}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">{fmtCAD(Math.abs(closingVar))}</td>
+                    <td className="px-3 py-2 text-center">
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold border whitespace-nowrap ${reconciled ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
+                        {reconciled ? "✓ Reconciled" : "✗ Variance"}
+                      </span>
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
+
           </div>
         );
       })}
