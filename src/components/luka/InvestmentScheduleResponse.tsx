@@ -1315,13 +1315,30 @@ function BrokerReconPanel({
 }) {
   const settings  = useStore(s => s.settings);
   const yearEnd   = settings.fiscalYearEnd ? fmtDate(settings.fiscalYearEnd.slice(0, 10)) : "Dec 31, 2024";
+  const fiscalYear = settings.fiscalYearEnd ? settings.fiscalYearEnd.slice(0, 4) : "2024";
   const yearStart = settings.fiscalYearEnd
     ? fmtDate(settings.fiscalYearEnd.slice(0, 4) + "-01-01")
     : "Jan 1, 2024";
 
   return (
-    <div className="space-y-4">
-      {invRecon.map(group => {
+    <div className="space-y-6">
+      {/* Panel intro */}
+      <div className="flex items-center justify-between px-1">
+        <div>
+          <p className="text-[11px] text-muted-foreground">
+            One annual reconciliation per broker — full fiscal year {fiscalYear} · {invRecon.length} broker account{invRecon.length !== 1 ? "s" : ""} reconciled
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5">
+          {invRecon.map(g => (
+            <span key={g.sourceId} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${g.pass ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
+              {g.pass ? "✓" : "⚠"} {g.institution.split(" ")[0]}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {invRecon.map((group, groupIdx) => {
         // ── Gather WAC rows for this broker's securities ───────────────────
         const brokerScheds = schedules.filter(s => s.sourceIds.includes(group.sourceId));
 
@@ -1427,19 +1444,47 @@ function BrokerReconPanel({
         };
 
         return (
-          <div key={group.sourceId} className="rounded-[8px] border border-border overflow-hidden">
+          <div key={group.sourceId} className="rounded-[8px] border-2 border-border overflow-hidden">
 
             {/* ── Broker Header ── */}
-            <div className="px-4 py-3 bg-muted/40 border-b border-border flex items-center justify-between flex-wrap gap-2">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-foreground">{group.institution}</span>
-                  <span className="text-[10px] text-muted-foreground font-mono">Acct …{group.last4}</span>
-                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${reconciled ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
-                    {reconciled ? "✓ Reconciled" : "⚠ Variance"}
-                  </span>
+            <div className="px-5 py-4 bg-muted/50 border-b-2 border-border">
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div className="space-y-1">
+                  {/* Reconciliation number badge */}
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-[5px] text-[9px] font-bold uppercase tracking-wider border bg-background text-muted-foreground border-border">
+                      Broker Reconciliation #{groupIdx + 1} of {invRecon.length}
+                    </span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-[5px] text-[9px] font-bold uppercase tracking-wider border bg-background text-muted-foreground border-border">
+                      Annual · Fiscal Year {fiscalYear}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-base font-bold text-foreground">{group.institution}</span>
+                    <span className="text-[11px] text-muted-foreground font-mono bg-background border border-border px-1.5 py-0.5 rounded-[4px]">…{group.last4}</span>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border whitespace-nowrap ${reconciled ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
+                      {reconciled ? "✓ Fully Reconciled" : "⚠ Variance — Review Required"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 text-[10px] text-muted-foreground mt-0.5">
+                    <span>Reporting currency: <strong className="text-foreground">{group.currency}</strong></span>
+                    <span>Period: <strong className="text-foreground">{yearStart} — {yearEnd}</strong></span>
+                    <span>Prepared: <strong className="text-foreground">{yearEnd}</strong></span>
+                  </div>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Period: {yearStart} — {yearEnd} · {group.currency}</p>
+                {/* Summary KPIs */}
+                <div className="flex items-center gap-3 shrink-0">
+                  {[
+                    { label: "Opening",  val: booksOpening },
+                    { label: "Closing",  val: booksClosingPerBooks },
+                    { label: "Variance", val: Math.abs(closingVar) },
+                  ].map(k => (
+                    <div key={k.label} className="text-center px-3 py-2 rounded-[8px] border border-border bg-background min-w-[80px]">
+                      <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide">{k.label}</p>
+                      <p className="text-[13px] font-bold text-foreground tabular-nums mt-0.5">{fmtCAD(k.val)}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
