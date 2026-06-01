@@ -130,7 +130,7 @@ function TableWrap({ title, subtitle, onAdd, addLabel, children }: {
 // ─── Tab definitions ──────────────────────────────────────────────────────────
 type TabId =
   | "transactions" | "wac" | "gainloss" | "income"
-  | "brokerrecon" | "ajes" | "holdings";
+  | "brokerrecon" | "ajes";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "transactions", label: "Transactions"      },
@@ -139,7 +139,6 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "income",       label: "Income & Expenses" },
   { id: "brokerrecon",  label: "Broker Recon"      },
   { id: "ajes",         label: "AJEs"              },
-  { id: "holdings",     label: "Holdings"          },
 ];
 
 // ─── Add-mode row type ────────────────────────────────────────────────────────
@@ -2699,9 +2698,6 @@ export function InvestmentScheduleResponse({ onEditTransactions }: { onEditTrans
         </div>
         <div className={activeTab === "ajes" ? "" : "hidden"}>
           <AJEsPanel ajes={ajes} ajeQueue={ajeQueue} clearAjeQueue={clearAjeQueue} />
-        </div>
-        <div className={activeTab === "holdings" ? "" : "hidden"}>
-          <HoldingsPanel schedules={schedules} />
         </div>
       </div>
 
