@@ -980,7 +980,7 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                       const totCostIn   = allRows.reduce((a, r) => a + r.costIn,   0);
                       const totCostOut  = allRows.reduce((a, r) => a + r.costOut,  0);
                       return (
-                        <tr className="border-b-2 border-border bg-slate-100 font-semibold text-[10px]">
+                        <tr className="border-b-[3px] border-slate-300/80 bg-slate-100 font-semibold text-[10px]">
                           <td className="px-2.5 py-1.5 border-r border-border/30" colSpan={4}>
                             <span className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground/60">Totals</span>
                           </td>
