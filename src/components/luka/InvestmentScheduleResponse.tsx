@@ -1233,15 +1233,15 @@ function IncomePanel({ incomeMatrix }: { incomeMatrix: ReturnType<typeof buildIn
           </tr>
           {/* TB Account mapping row */}
           <tr className="border-b border-border bg-primary/[0.03]">
-            <td className="px-3 py-1 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide" colSpan={3}>TB Account</td>
+            <td className="px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide" colSpan={3}>TB Account</td>
             {COLS.map(col => (
-              <td key={col} className="px-3 py-1 text-right">
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold border bg-muted text-muted-foreground border-border whitespace-nowrap">
+              <td key={col} className="px-3 py-1.5 text-right">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-muted text-foreground border-border whitespace-nowrap">
                   {tbMap[col]}
                 </span>
               </td>
             ))}
-            <td className="px-3 py-1" />
+            <td className="px-3 py-1.5" />
           </tr>
         </thead>
         <tbody>
