@@ -3263,6 +3263,32 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                   </div>
                                 )}
 
+                                {/* ── Source summary in history (shown once done) ── */}
+                                {at("done") && (invSchedSrcLabel || invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized").length > 0) && (
+                                  <div className="space-y-1.5">
+                                    <p className="text-xs text-muted-foreground">
+                                      {invSchedSrcLabel?.startsWith("Plaid") ? "Connected via Plaid" : "Uploaded documents"}
+                                    </p>
+                                    {invSchedSrcLabel?.startsWith("Plaid") ? (
+                                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-green-50 border border-green-200">
+                                        <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                                        <span className="text-xs text-green-800 font-medium">{invSchedSrcLabel.replace("Plaid — ", "")}</span>
+                                      </div>
+                                    ) : (
+                                      <div className="flex flex-wrap gap-2">
+                                        {invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized").map(f => (
+                                          <div key={f.id} className="inline-flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-[8px] border border-border bg-background max-w-[220px]">
+                                            <div className="w-5 h-5 rounded-[4px] flex items-center justify-center shrink-0 bg-primary/10">
+                                              {f.ext === "pdf" ? <FileText className="h-3 w-3 text-primary shrink-0" /> : f.ext === "zip" ? <FolderOpen className="h-3 w-3 text-primary shrink-0" /> : <FileSpreadsheet className="h-3 w-3 text-primary shrink-0" />}
+                                            </div>
+                                            <span className="flex-1 min-w-0 truncate text-[11px] font-medium text-foreground">{f.name}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
                                 {reached("upload-prompt") && (
                                 <>
                                 {!at("done") ? (
