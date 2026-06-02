@@ -3208,12 +3208,6 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                           >
                                             Connect &amp; Continue
                                           </button>
-                                          <button
-                                            onClick={() => setInvSchedPhase("upload-prompt")}
-                                            className="h-8 px-4 text-xs font-medium rounded-[8px] border border-border bg-background text-foreground hover:bg-muted transition-colors"
-                                          >
-                                            Skip for now
-                                          </button>
                                         </div>
                                   </div>
                                 )}
