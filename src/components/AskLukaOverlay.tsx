@@ -1078,6 +1078,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
     }
   }, [followUpTurns.length]);
 
+  // Auto-scroll when investment phase changes (new content appears)
+  useEffect(() => {
+    if (invSchedPhase !== "idle") {
+      setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 100);
+    }
+  }, [invSchedPhase]);
+
   // Position agentic loan amort wizard above the input bar
   useLayoutEffect(() => {
     if (amortPhase !== "wizard") { setAmortWizRect(null); return; }
