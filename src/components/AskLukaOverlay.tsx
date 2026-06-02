@@ -2641,7 +2641,25 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                 </tr></thead>
                                 <tbody>
                                   {ENGAGEMENTS_PANEL.filter(e => { const q = engagementSearchCtx.toLowerCase(); return !q || e.client.toLowerCase().includes(q) || e.id.toLowerCase().includes(q); }).map((e, i) => (
-                                    <motion.tr key={`${e.client}-${i}`} whileHover={{ backgroundColor: "hsl(270, 80%, 65% / 0.06)" }} onClick={() => { setSelectedEngagementCtx(e); setShowEngagementTrayCtx(false); setEngagementSearchCtx(""); }} className="cursor-pointer" style={{ borderBottom: "1px solid hsl(var(--border) / 0.4)" }}>
+                                    <motion.tr key={`${e.client}-${i}`} whileHover={{ backgroundColor: "hsl(270, 80%, 65% / 0.06)" }} onClick={() => {
+                                      setSelectedEngagementCtx(e);
+                                      setShowEngagementTrayCtx(false);
+                                      setEngagementSearchCtx("");
+                                      // If investment flow is waiting for engagement, advance it
+                                      if (invSchedPhase === "engagement-check") {
+                                        setInvSelectedEngId(e.id);
+                                        setInvEngagementConnected(true);
+                                        setInvTBChecking(true);
+                                        setInvTBFound(null);
+                                        setInvSchedPhase("tb-check");
+                                        const hasTB = MOCK_ENG_WITH_TB.has(e.id);
+                                        setTimeout(() => {
+                                          setInvTBChecking(false);
+                                          setInvTBFound(hasTB);
+                                          if (hasTB) setTimeout(() => setInvSchedPhase("upload-prompt"), 1000);
+                                        }, 1800);
+                                      }
+                                    }} className="cursor-pointer" style={{ borderBottom: "1px solid hsl(var(--border) / 0.4)" }}>
                                       <td className="px-5 py-3 font-semibold">{e.client}</td>
                                       <td className="px-5 py-3">{e.id}</td>
                                       <td className="px-5 py-3">{e.yearEnd}</td>
@@ -3124,88 +3142,14 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
                                 {/* ── Engagement Check active ── */}
                                 {at("engagement-check") && (
-                                  <div className="space-y-3">
-                                        <div className="rounded-[12px] border border-border bg-background px-4 py-3 space-y-1">
-                                          <p className="text-sm font-semibold text-foreground">Connect to an Engagement</p>
-                                          <p className="text-xs text-muted-foreground leading-relaxed">
-                                            To generate the Investment Schedule workpaper, I need to be connected to an engagement — the Trial Balance is required to reconcile investment balances.
-                                          </p>
-                                        </div>
-
-                                        {/* Engagement picker table */}
-                                        <div className="rounded-[10px] border border-border overflow-hidden">
-                                          <div className="flex items-center justify-between px-3 py-2 bg-muted/40 border-b border-border">
-                                            <span className="text-[11px] font-semibold text-foreground">Select Engagement</span>
-                                            <div className="relative">
-                                              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
-                                              <input
-                                                value={invEngSearch}
-                                                onChange={e => setInvEngSearch(e.target.value)}
-                                                placeholder="Search…"
-                                                className="h-6 pl-6 pr-2 w-36 text-[11px] border border-border rounded-[6px] bg-background focus:outline-none focus:border-primary/50"
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="overflow-auto max-h-[200px]">
-                                            <table className="w-full text-[11px]">
-                                              <thead className="sticky top-0 bg-muted/30 border-b border-border">
-                                                <tr>
-                                                  {["Client","Engagement ID","Year End","Status"].map(h => (
-                                                    <th key={h} className="px-3 py-1.5 text-left text-[10px] font-semibold text-muted-foreground whitespace-nowrap">{h}</th>
-                                                  ))}
-                                                </tr>
-                                              </thead>
-                                              <tbody>
-                                                {[
-                                                  { id: "COM-CON-Dec312024", client: "Shipping Line Inc.",  yearEnd: "Dec 31, 2024", status: "In Progress" },
-                                                  { id: "COM-TES-Dec312024", client: "Test123",            yearEnd: "Dec 31, 2024", status: "In Progress" },
-                                                  { id: "COM-GIG-Feb282026", client: "Giggle & Goods Inc", yearEnd: "Feb 28, 2026", status: "New"         },
-                                                  { id: "COM-DEE-May312026", client: "deepak corp",        yearEnd: "May 31, 2026", status: "New"         },
-                                                  { id: "COM-FAL-May312025", client: "Falah LUKA Testing", yearEnd: "May 31, 2025", status: "In Progress" },
-                                                  { id: "COM-KAU-Dec312024", client: "Kaushal CORP",       yearEnd: "Dec 31, 2024", status: "In Progress" },
-                                                ]
-                                                  .filter(e => !invEngSearch || e.client.toLowerCase().includes(invEngSearch.toLowerCase()) || e.id.toLowerCase().includes(invEngSearch.toLowerCase()))
-                                                  .map(eng => {
-                                                    const isSel = invSelectedEngId === eng.id;
-                                                    return (
-                                                      <tr key={eng.id} onClick={() => setInvSelectedEngId(eng.id)}
-                                                        className={`border-b border-border/40 cursor-pointer transition-colors ${isSel ? "bg-primary/[0.06]" : "hover:bg-muted/40"}`}>
-                                                        <td className="px-3 py-2"><span className={`font-medium ${isSel ? "text-primary" : "text-foreground"}`}>{eng.client}</span></td>
-                                                        <td className="px-3 py-2 font-mono text-muted-foreground text-[10px]">{eng.id}</td>
-                                                        <td className="px-3 py-2 text-muted-foreground">{eng.yearEnd}</td>
-                                                        <td className="px-3 py-2">
-                                                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${eng.status === "In Progress" ? "bg-primary/5 text-primary border-primary/20" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
-                                                            {eng.status}
-                                                          </span>
-                                                        </td>
-                                                      </tr>
-                                                    );
-                                                  })}
-                                              </tbody>
-                                            </table>
-                                          </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-2">
-                                          <button
-                                            disabled={!invSelectedEngId}
-                                            onClick={() => {
-                                              setInvEngagementConnected(true);
-                                              setInvTBChecking(true);
-                                              setInvTBFound(null);
-                                              setInvSchedPhase("tb-check");
-                                              const hasTB = MOCK_ENG_WITH_TB.has(invSelectedEngId!);
-                                              setTimeout(() => {
-                                                setInvTBChecking(false);
-                                                setInvTBFound(hasTB);
-                                                if (hasTB) setTimeout(() => setInvSchedPhase("upload-prompt"), 1000);
-                                              }, 1800);
-                                            }}
-                                            className={`h-8 px-4 text-xs font-semibold rounded-[8px] transition-colors ${invSelectedEngId ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-primary/30 text-primary-foreground/50 cursor-not-allowed"}`}
-                                          >
-                                            Connect &amp; Continue
-                                          </button>
-                                        </div>
+                                  <div className="flex items-start gap-3 py-1">
+                                    <p className="text-sm text-foreground leading-relaxed flex-1">
+                                      Please select an engagement from the engagement button{" "}
+                                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-muted border border-border align-middle mx-0.5">
+                                        <Inbox className="w-3.5 h-3.5 text-muted-foreground" />
+                                      </span>
+                                      {" "}in the toolbar to proceed with it. This action cannot be performed without an engagement selection.
+                                    </p>
                                   </div>
                                 )}
 
