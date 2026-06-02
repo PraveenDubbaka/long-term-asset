@@ -4646,49 +4646,6 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                   )}
                 </div>
 
-                {/* Chat input */}
-                <div className={cn("pb-6 pt-2", viewMode === "full" ? "px-12" : "px-6")}>
-                  <div className={cn("w-full mx-auto relative", viewMode === "full" ? "max-w-none" : "max-w-[700px]")}>
-                    <PromptPicker open={showPromptPicker} filter={hashFilter} onSelect={handlePromptSelect} onClose={() => { setShowPromptPicker(false); setHashFilter(""); }} />
-                    <div className="border border-border rounded-[12px] overflow-visible bg-background dark:bg-card hover:border-primary/30 transition-all duration-200 luka-gradient-border relative">
-                      <AttachedFilesBar files={attachedFiles} onRemove={removeFile} onClearAll={clearFiles} />
-                      <div className="px-4 pt-3 pb-2">
-                        <input
-                          ref={inputRef}
-                          type="text"
-                          value={message}
-                          onChange={handleInputChange}
-                          onKeyDown={handleKeyDown}
-                          placeholder={isFollowUpContext ? "Ask a follow-up question about this summary…" : "Type # for prompts or just ask anything..."}
-                          className={cn("w-full bg-transparent h-9 placeholder:text-foreground outline-none border-none text-sm", message.includes("#") ? "text-primary font-medium" : "text-foreground")}
-                        />
-                      </div>
-                      <div className="px-3 pb-3 flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                          <LukaAttachMenu onFilesAdded={addFiles} />
-                          <Button variant="outline" size="icon" className="h-9 w-9 rounded-[10px]"><Inbox className="h-4 w-4 text-foreground" /></Button>
-                          <div className="flex items-center gap-1.5 px-3 h-9 rounded-[10px] border border-border bg-background dark:bg-muted/20 text-sm text-foreground">
-                            <span className="text-amber-500">✨</span>
-                            <span className="text-sm font-medium">Gemini 3 Flash</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-[10px]" onClick={() => setVoiceOpen(true)}>
-                            <Mic className="h-4 w-4 text-foreground" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            className={cn("h-9 w-9 rounded-full transition-all duration-200", message.trim() ? "bg-gradient-to-br from-[#8649F1] to-[#2355A4] hover:opacity-90 text-white shadow-md" : "bg-muted hover:bg-muted/80 text-foreground")}
-                            onClick={handleSend}
-                          >
-                            <Send className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                    <VoiceRecordingOverlay open={voiceOpen} onClose={() => setVoiceOpen(false)} onComplete={(text) => setMessage(prev => prev ? prev + " " + text : text)} />
-                  </div>
-                </div>
                     </div>
                     )}
                   </div>
