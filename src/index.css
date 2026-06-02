@@ -447,6 +447,120 @@
   .font-size-aaa{ font-size: 120%; }
 }
 
+/* ============================================
+   LUKA CHAT PANEL — imported from countablexlukaconcept
+   ============================================ */
+
+  .luka-threads-sidebar {
+    @apply flex flex-col h-full shrink-0;
+    background: hsl(var(--card));
+    border-right: 1px solid hsl(var(--border));
+    scrollbar-width: none;
+  }
+  .luka-threads-sidebar ::-webkit-scrollbar { display: none; }
+
+  .luka-new-thread-btn {
+    @apply w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer;
+    color: hsl(var(--foreground));
+    background: hsl(var(--muted));
+  }
+  .luka-new-thread-btn:hover { background: hsl(var(--primary) / 0.08); color: hsl(var(--primary)); }
+
+  .luka-thread-search {
+    @apply w-full pl-8 pr-3 py-2 rounded-lg border text-sm outline-none transition-all duration-200;
+    border-color: hsl(var(--border));
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+  }
+  .luka-thread-search:focus { border-color: hsl(var(--primary)); box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1); }
+
+  .luka-thread-item {
+    @apply w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-all duration-150 cursor-pointer text-left;
+    color: hsl(var(--foreground));
+  }
+  .luka-thread-item:hover { background: hsl(var(--primary) / 0.06); }
+
+  .luka-strip-icon {
+    @apply w-9 h-9 flex items-center justify-center rounded-lg transition-all duration-200 cursor-pointer;
+    color: hsl(var(--muted-foreground));
+  }
+  .luka-strip-icon:hover { background: hsl(var(--primary) / 0.08); color: hsl(var(--primary)); }
+  .luka-strip-icon.active { color: hsl(var(--primary)); background: hsl(var(--primary) / 0.1); }
+
+  .luka-chat-body { background: transparent; }
+
+  .luka-bolt-icon {
+    @apply w-14 h-14 rounded-full flex items-center justify-center;
+    border: 2px solid hsla(270, 65%, 64%, 0.3);
+    background: linear-gradient(135deg, hsla(270,65%,64%,0.12) 0%, hsla(211,76%,33%,0.12) 100%);
+  }
+
+  .luka-prompt-chip {
+    @apply px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+  }
+  .luka-prompt-chip:hover {
+    border-color: hsl(var(--primary) / 0.3);
+    background: hsl(var(--primary) / 0.04);
+    box-shadow: 0 1px 4px hsl(0 0% 0% / 0.06);
+  }
+
+  .luka-input-wrapper {
+    @apply rounded-xl border p-3 transition-all duration-200;
+    border-color: hsl(0 0% 35%);
+    background: hsl(var(--card));
+    box-shadow: 0 2px 12px 0 hsla(0,0%,0%,0.10), 0 1px 4px 0 hsla(0,0%,0%,0.06);
+  }
+  .luka-input-wrapper:focus-within {
+    border-color: hsl(207 71% 19%);
+    border-width: 2px;
+    padding: calc(0.75rem - 1px);
+  }
+
+  .luka-input {
+    @apply w-full text-sm outline-none resize-none bg-transparent;
+    color: hsl(var(--foreground));
+    line-height: 20px;
+  }
+  .luka-input-autoresize { scrollbar-width: none; -ms-overflow-style: none; }
+  .luka-input-autoresize::-webkit-scrollbar { display: none; }
+  .luka-input::placeholder { color: hsl(var(--muted-foreground)); }
+
+  .luka-input-action {
+    @apply p-1.5 rounded-md transition-all duration-200 cursor-pointer;
+    color: hsl(var(--muted-foreground));
+  }
+  .luka-input-action:hover { color: hsl(var(--foreground)); background: hsl(var(--muted)); }
+
+  .luka-model-badge {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all duration-200 cursor-pointer;
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+  }
+  .luka-model-badge:hover { background: hsl(var(--muted)); }
+
+  .luka-send-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s ease; cursor: not-allowed;
+    background: hsl(var(--muted)); color: hsl(var(--muted-foreground) / 0.5); border: none;
+  }
+  .luka-send-btn.enabled {
+    cursor: pointer;
+    background: linear-gradient(135deg, #9747FF, #115697);
+    color: white;
+    box-shadow: 0 2px 8px hsla(270,60%,50%,0.3);
+  }
+  .luka-send-btn.enabled:hover { box-shadow: 0 4px 14px hsla(270,60%,50%,0.45); }
+
+  .luka-qb-badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+  }
+
 /* ── Luka gradient double border focus effect ── */
 .luka-gradient-border:focus-within {
   border-color: hsl(270 60% 80%) !important;
