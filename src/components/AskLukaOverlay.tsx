@@ -11,7 +11,7 @@ import {
   FolderOpen, RotateCcw, Sparkles, Eye, EyeOff, Pin, LayoutList, CalendarDays, CalendarRange,
   ArrowUpDown, Check, BookOpen, HardDrive, FileSpreadsheet, ShieldCheck,
   AlertTriangle, TrendingUp, TrendingDown, Info, Table2, RefreshCw,
-  Calendar, Receipt, Download, Trash2, BarChart2, Pencil,
+  Calendar, Receipt, Download, Trash2, BarChart2, Pencil, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/wp-ui/button";
 import { ScrollArea } from "@/components/wp-ui/scroll-area";
@@ -659,6 +659,11 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
   const [invEngagementConnected, setInvEngagementConnected] = useState(false);
   const [invSelectedEngId, setInvSelectedEngId] = useState<string|null>(null);
   const [invEngSearch, setInvEngSearch] = useState("");
+  const [invTBChecking, setInvTBChecking] = useState(false);
+  const [invTBFound, setInvTBFound] = useState<boolean|null>(null);
+
+  // Mock: engagements that have a TB already uploaded
+  const MOCK_ENG_WITH_TB = new Set(["COM-CON-Dec312024","COM-TES-Dec312024","COM-KAU-Dec312024"]);
   const [invReviewRows, setInvReviewRows] = useState<InvReviewRow[]>([]);
   // ── Investment — Plaid connect flow ──
   const [invPlaidOpen, setInvPlaidOpen] = useState(false);
@@ -1037,7 +1042,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
     setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
-    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch("");
+    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null);
     setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
@@ -3203,7 +3208,18 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                         <div className="flex items-center gap-2">
                                           <button
                                             disabled={!invSelectedEngId}
-                                            onClick={() => { setInvEngagementConnected(true); setInvSchedPhase("tb-check"); }}
+                                            onClick={() => {
+                                              setInvEngagementConnected(true);
+                                              setInvTBChecking(true);
+                                              setInvTBFound(null);
+                                              setInvSchedPhase("tb-check");
+                                              const hasTB = MOCK_ENG_WITH_TB.has(invSelectedEngId!);
+                                              setTimeout(() => {
+                                                setInvTBChecking(false);
+                                                setInvTBFound(hasTB);
+                                                if (hasTB) setTimeout(() => setInvSchedPhase("upload-prompt"), 1000);
+                                              }, 1800);
+                                            }}
                                             className={`h-8 px-4 text-xs font-semibold rounded-[8px] transition-colors ${invSelectedEngId ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-primary/30 text-primary-foreground/50 cursor-not-allowed"}`}
                                           >
                                             Connect &amp; Continue
@@ -3216,9 +3232,11 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                 {reached("tb-check") && past("tb-check") && (
                                   <div className="space-y-1.5">
                                     <p className="text-xs text-muted-foreground">Trial Balance Check</p>
-                                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-green-50 border border-green-200">
-                                      <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
-                                      <span className="text-xs text-green-800 font-medium">Confirmed — proceeding to generate workpaper</span>
+                                    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-[8px] border ${invTBFound ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"}`}>
+                                      <CheckCircle2 className={`h-3.5 w-3.5 shrink-0 ${invTBFound ? "text-green-600" : "text-amber-600"}`} />
+                                      <span className={`text-xs font-medium ${invTBFound ? "text-green-800" : "text-amber-800"}`}>
+                                        {invTBFound ? "TB found — proceeding to generate workpaper" : "TB not found — proceeding without TB"}
+                                      </span>
                                     </div>
                                   </div>
                                 )}
@@ -3226,28 +3244,48 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                 {/* ── TB Check active ── */}
                                 {at("tb-check") && (
                                   <div className="space-y-3">
-                                      {/* TB notice */}
-                                      <div className="rounded-[12px] border border-amber-200 bg-amber-50 px-4 py-3 space-y-1">
-                                        <p className="text-sm font-semibold text-amber-900">Trial Balance Required</p>
-                                        <p className="text-xs text-amber-800 leading-relaxed">
-                                          The Investment Schedule workpaper uses the Trial Balance to verify investment account balances and reconcile to the general ledger. Make sure your TB is uploaded in the engagement before proceeding.
-                                        </p>
-                                      </div>
 
-                                      <div className="flex items-center gap-2">
-                                        <button
-                                          onClick={() => setInvSchedPhase("upload-prompt")}
-                                          className="h-8 px-4 text-xs font-semibold rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                                        >
-                                          TB is ready — Generate Workpaper
-                                        </button>
-                                        <button
-                                          onClick={() => setInvSchedPhase("upload-prompt")}
-                                          className="h-8 px-4 text-xs font-medium rounded-[8px] border border-border bg-background text-foreground hover:bg-muted transition-colors"
-                                        >
-                                          Proceed without TB
-                                        </button>
+                                    {/* Checking state */}
+                                    {invTBChecking && (
+                                      <div className="flex items-center gap-2 px-3 py-2 rounded-[8px] bg-muted/50 border border-border">
+                                        <Loader2 className="h-3.5 w-3.5 text-primary shrink-0 animate-spin" />
+                                        <span className="text-xs text-muted-foreground luka-thinking-text">Checking for Trial Balance in {invSelectedEngId}…</span>
                                       </div>
+                                    )}
+
+                                    {/* TB Found */}
+                                    {!invTBChecking && invTBFound === true && (
+                                      <div className="flex items-center gap-2 px-3 py-2 rounded-[8px] bg-green-50 border border-green-200">
+                                        <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                                        <span className="text-xs text-green-800 font-medium">Trial Balance found in engagement — generating workpaper…</span>
+                                      </div>
+                                    )}
+
+                                    {/* TB Not Found */}
+                                    {!invTBChecking && invTBFound === false && (
+                                      <>
+                                        <div className="rounded-[12px] border border-amber-200 bg-amber-50 px-4 py-3 space-y-1">
+                                          <p className="text-sm font-semibold text-amber-900">Trial Balance Not Found</p>
+                                          <p className="text-xs text-amber-800 leading-relaxed">
+                                            No Trial Balance was found in <strong>{invSelectedEngId}</strong>. The Investment Schedule workpaper uses the TB to verify investment account balances and reconcile to the general ledger. Please upload the TB to the engagement first, or proceed without it.
+                                          </p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <button
+                                            onClick={() => setInvSchedPhase("upload-prompt")}
+                                            className="h-8 px-4 text-xs font-semibold rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                                          >
+                                            TB is ready — Generate Workpaper
+                                          </button>
+                                          <button
+                                            onClick={() => setInvSchedPhase("upload-prompt")}
+                                            className="h-8 px-4 text-xs font-medium rounded-[8px] border border-border bg-background text-foreground hover:bg-muted transition-colors"
+                                          >
+                                            Proceed without TB
+                                          </button>
+                                        </div>
+                                      </>
+                                    )}
                                   </div>
                                 )}
 
