@@ -3290,10 +3290,18 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                 )}
 
                                 {/* ── Source summary in history (shown once done) ── */}
-                                {at("done") && (invSchedSrcLabel || invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized").length > 0) && (
+                                {at("done") && (() => {
+                                  const validMain = invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
+                                  // Merge main uploads + re-uploads (missing months), dedup by name
+                                  const allFiles = [
+                                    ...validMain.map(f => ({ id: f.id, name: f.name, ext: f.ext })),
+                                    ...invMissingReUploads.filter(r => !validMain.some(m => m.name === r.name)),
+                                  ];
+                                  if (!invSchedSrcLabel && allFiles.length === 0) return null;
+                                  return (
                                   <div className="space-y-1.5">
                                     <p className="text-xs text-muted-foreground">
-                                      {invSchedSrcLabel?.startsWith("Plaid") ? "Connected via Plaid" : "Uploaded documents"}
+                                      {invSchedSrcLabel?.startsWith("Plaid") ? "Connected via Plaid" : `Uploaded documents (${allFiles.length})`}
                                     </p>
                                     {invSchedSrcLabel?.startsWith("Plaid") ? (
                                       <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-green-50 border border-green-200">
@@ -3302,7 +3310,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                       </div>
                                     ) : (
                                       <div className="flex flex-wrap gap-2">
-                                        {invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized").map(f => (
+                                        {allFiles.map(f => (
                                           <div key={f.id} className="inline-flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-[8px] border border-border bg-background max-w-[220px]">
                                             <div className="w-5 h-5 rounded-[4px] flex items-center justify-center shrink-0 bg-primary/10">
                                               {f.ext === "pdf" ? <FileText className="h-3 w-3 text-primary shrink-0" /> : f.ext === "zip" ? <FolderOpen className="h-3 w-3 text-primary shrink-0" /> : <FileSpreadsheet className="h-3 w-3 text-primary shrink-0" />}
@@ -3313,6 +3321,8 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                       </div>
                                     )}
                                   </div>
+                                  );
+                                })()
                                 )}
 
                                 {reached("upload-prompt") && (
