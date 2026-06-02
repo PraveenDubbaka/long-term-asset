@@ -3290,7 +3290,7 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                 )}
 
                                 {/* ── Source summary in history (shown once done) ── */}
-                                {at("done") && (() => {
+                                {at("done") && ((() => {
                                   const validMain = invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
                                   // Merge main uploads + re-uploads (missing months), dedup by name
                                   const allFiles = [
@@ -3322,8 +3322,8 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                                     )}
                                   </div>
                                   );
-                                })()
-                                )}
+                                })())}
+
 
                                 {reached("upload-prompt") && (
                                 <>
