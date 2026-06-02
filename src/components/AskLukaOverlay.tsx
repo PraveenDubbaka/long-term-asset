@@ -1,23 +1,27 @@
 import React, { useState, useRef, useCallback, useEffect, useLayoutEffect } from "react";
 import ReactDOM from "react-dom";
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { accountMappings as allGLAccounts } from "@/data/mockData";
 import { LukaAttachMenu, AttachedFilesBar, useAttachedFiles } from "@/components/luka/LukaAttachMenu";
 import { VoiceRecordingOverlay } from "@/components/luka/VoiceRecordingOverlay";
 import {
-  X, Mic, Plus, Search, MessageSquare, Minus, Send, Inbox, Maximize2,
+  X, Mic, Plus, Search, MessageSquare, Minus, Send, Inbox, Maximize2, Minimize2, ExternalLink, Menu,
   ChevronLeft, ChevronRight, Clock, PanelLeftClose, MoreHorizontal,
   Zap, Building2, CheckCircle2, ChevronDown, SlidersHorizontal,
   Bell, Settings, ArrowLeft, Lock, Upload, FileText, Mail, Square,
-  FolderOpen, RotateCcw, Sparkles, Eye, EyeOff, Pin, LayoutList, CalendarDays, CalendarRange,
+  FolderOpen, RotateCcw, Sparkles, Eye, EyeOff, Pin, PinOff, LayoutList, CalendarDays, CalendarRange,
   ArrowUpDown, Check, BookOpen, HardDrive, FileSpreadsheet, ShieldCheck,
   AlertTriangle, TrendingUp, TrendingDown, Info, Table2, RefreshCw,
   Calendar, Receipt, Download, Trash2, BarChart2, Pencil, Loader2,
+  PlusCircle, ChevronsLeft, ChevronsRight, Wand2, GitBranch, Database,
+  Cloud, Globe, CreditCard, BarChart3, MoreVertical, MessageCircle, Trello,
 } from "lucide-react";
 import { Button } from "@/components/wp-ui/button";
 import { ScrollArea } from "@/components/wp-ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/wp-ui/tooltip";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/wp-ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { setLukaOpen } from "@/lib/lukaOpenStore";
 import { PromptPicker } from "@/components/luka/PromptPicker";
 import { GrossMarginResponse } from "@/components/luka/GrossMarginResponse";
 import { LoanAmortizationPrompt } from "@/components/luka/LoanAmortizationPrompt";
@@ -26,6 +30,16 @@ import type { LoanAmortData } from "@/components/luka/LoanAmortizationPrompt";
 import { LongTermAssetResponse } from "@/components/luka/LongTermAssetResponse";
 import { InvestmentScheduleResponse } from "@/components/luka/InvestmentScheduleResponse";
 import { LukaResponseActions } from "@/components/luka/LukaResponseActions";
+import LukaActivityPanel, { type ActivityEntry } from "@/components/dashboard/LukaActivityPanel";
+import LukaSettingsOverlay from "@/components/dashboard/LukaSettingsOverlay";
+import ReconciliationFlow from "@/components/dashboard/reconciliation/ReconciliationFlow";
+import TaxPayableFlow from "@/components/dashboard/TaxPayableFlow";
+import WorkspaceView from "@/components/dashboard/workspace/WorkspaceView";
+import WorkspaceEmptyState from "@/components/dashboard/workspace/WorkspaceEmptyState";
+import AddEngagementModal from "@/components/dashboard/workspace/AddEngagementModal";
+import EngagementWorkspaceShell from "@/components/dashboard/workspace/EngagementWorkspaceShell";
+import lukaLogo from "@/assets/luka-logo.png";
+import quickbooksLogo from "@/assets/quickbooks-intuit-logo.png";
 import { useStore } from "@/store/useStore";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import type { Loan } from "@/types";
@@ -81,6 +95,80 @@ const suggestions = [
   "#Long-term Debt",
   "#Investment Schedule",
 ];
+
+// ─── Thread management types ─────────────────────────────────────────────────
+type ThreadItem = { name: string; createdAt: Date };
+
+const initialPinnedThreads: ThreadItem[] = [
+  { name: "Capital Asset Amortization", createdAt: new Date(2026, 4, 28, 9, 14) },
+  { name: "Generate Variance Analysis",  createdAt: new Date(2026, 4, 26, 15, 42) },
+  { name: "Summarise Uploaded Report",   createdAt: new Date(2026, 4, 22, 11, 5)  },
+];
+
+const initialRecentThreads: ThreadItem[] = [
+  { name: "Run Client Health Check",  createdAt: new Date(2026, 4, 30, 8, 21)  },
+  { name: "Aged AR Analysis",         createdAt: new Date(2026, 4, 29, 17, 3)  },
+  { name: "Generate Trial Balance",   createdAt: new Date(2026, 4, 29, 10, 47) },
+  { name: "Capital Asset Amortization", createdAt: new Date(2026, 4, 28, 14, 12) },
+  { name: "Summarise Uploaded Report", createdAt: new Date(2026, 4, 27, 9, 33) },
+  { name: "Bank To Trial Balance",    createdAt: new Date(2026, 4, 26, 16, 58) },
+  { name: "Account Reconciliation",   createdAt: new Date(2026, 4, 25, 13, 24) },
+  { name: "Notes Generator",          createdAt: new Date(2026, 4, 24, 11, 9)  },
+];
+
+const formatThreadDate = (d: Date) =>
+  d.toLocaleString(undefined, {
+    month: "short", day: "numeric", year: "numeric",
+    hour: "numeric", minute: "2-digit",
+  });
+
+interface ThreadRowProps {
+  thread: ThreadItem;
+  icon: React.ReactNode;
+  isPinned: boolean;
+  onPinToggle: () => void;
+  onDelete: () => void;
+}
+
+const ThreadRow = ({ thread, icon, isPinned, onPinToggle, onDelete }: ThreadRowProps) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  return (
+    <TooltipProvider delayDuration={300}>
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <div className="luka-thread-item group relative pr-7" role="button" tabIndex={0}>
+            {icon}
+            <span className="truncate flex-1 text-left">{thread.name}</span>
+            <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  onClick={(e) => e.stopPropagation()}
+                  className={`absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md flex items-center justify-center transition-opacity duration-150 hover:bg-[hsl(var(--primary)/0.12)] ${menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus:opacity-100"}`}
+                  aria-label="Thread actions"
+                >
+                  <MoreVertical size={14} className="text-muted-foreground" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" side="right" className="w-36">
+                <DropdownMenuItem onClick={onPinToggle}>
+                  {isPinned ? <><PinOff size={14} className="mr-2" /> Unpin</> : <><Pin size={14} className="mr-2" /> Pin</>}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+                  <Trash2 size={14} className="mr-2" /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="max-w-xs">
+          <div className="font-medium text-xs">{thread.name}</div>
+          <div className="text-[10px] opacity-70 mt-0.5">Created {formatThreadDate(thread.createdAt)}</div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
 
 const WP_THREADS = [
   { id: "capital-amort", label: "Capital Asset Amortization", desc: "The calculation of depreciation (amortization) expense for capital assets over their useful lives", required: true },
@@ -156,6 +244,7 @@ function BoldText({ text }: { text: string }) {
 interface AskLukaOverlayProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onClose?: () => void;
 }
 
 // ── Agentic Loan Amort — mock discovery data ───────────────────────────────
@@ -581,7 +670,274 @@ function detectLtDebtIntent(msg: string): FreePromptIntent {
   return "general";
 }
 
-export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
+export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: AskLukaOverlayProps) {
+  const handleClose = useCallback(() => {
+    onCloseProp?.();
+    onOpenChange(false);
+  }, [onCloseProp, onOpenChange]);
+
+  // ── framer-motion shell state ──
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [threadsSidebarCollapsed, setThreadsSidebarCollapsed] = useState(true);
+  const [workspaceSidebarCollapsed, setWorkspaceSidebarCollapsed] = useState(false);
+  const [pinnedThreadsList, setPinnedThreadsList] = useState<ThreadItem[]>(initialPinnedThreads);
+  const [recentThreadsList, setRecentThreadsList] = useState<ThreadItem[]>(initialRecentThreads);
+  const [threadSearchVal, setThreadSearchVal] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [hasWorkspaceEngagement, setHasWorkspaceEngagement] = useState(false);
+  const [showAddEngagementModal, setShowAddEngagementModal] = useState(false);
+  const [workspaceEngagement, setWorkspaceEngagement] = useState<{ name: string; code: string; source?: "quickbooks" | "xero" } | null>(null);
+  const [activeFlowPanel, setActiveFlowPanel] = useState<string | null>(null);
+  const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
+  const [activityMinimized, setActivityMinimized] = useState(false);
+  const [isActivityProcessing, setIsActivityProcessing] = useState(false);
+  const activityIdCounter = useRef(0);
+  const threadsFullscreenRef = useRef(false);
+  const [selectedEngagementCtx, setSelectedEngagementCtx] = useState<{ client: string; id: string; yearEnd: string; status: string } | null>(null);
+  const [showEngagementTrayCtx, setShowEngagementTrayCtx] = useState(false);
+  const [engagementSearchCtx, setEngagementSearchCtx] = useState("");
+  const engagementTrayCtxRef = useRef<HTMLDivElement>(null);
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [originalPromptVal, setOriginalPromptVal] = useState<string | null>(null);
+  const [enhancedPrompt, setEnhancedPrompt] = useState<string | null>(null);
+  const [enhanceCount, setEnhanceCount] = useState(0);
+  const [selectedModel, setSelectedModel] = useState("GPT-5.4 Pro");
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
+  const modelDropdownRef = useRef<HTMLDivElement>(null);
+  const [showPlusTray, setShowPlusTray] = useState(false);
+  const plusTrayRef = useRef<HTMLDivElement>(null);
+  const [showPromptWindow, setShowPromptWindow] = useState(false);
+  const [selectedPromptIndex, setSelectedPromptIndex] = useState(0);
+  const shellInputRef = useRef<HTMLTextAreaElement>(null);
+  const [shellInputValue, setShellInputValue] = useState("");
+  const [connectors, setConnectors] = useState([
+    { id: "quickbooks", name: "QuickBooks",      connected: false, color: "#2CA01C", abbr: "QB" },
+    { id: "xero",       name: "Xero",            connected: false, color: "#13B5EA", abbr: "XE" },
+    { id: "google-drive", name: "Google Drive",  connected: false, color: "#4285F4", abbr: "GD" },
+    { id: "slack",      name: "Slack",           connected: false, color: "#4A154B", abbr: "SL" },
+    { id: "plaid",      name: "Plaid",           connected: false, color: "#111111", abbr: "PL" },
+    { id: "hubspot",    name: "HubSpot",         connected: false, color: "#FF7A59", abbr: "HS" },
+    { id: "stripe",     name: "Stripe",          connected: false, color: "#635BFF", abbr: "ST" },
+    { id: "excel",      name: "Microsoft Excel", connected: false, color: "#217346", abbr: "XL" },
+    { id: "outlook",    name: "Microsoft Outlook", connected: false, color: "#0078D4", abbr: "OL" },
+  ]);
+
+  const ENGAGEMENTS_PANEL = [
+    { client: "Phoenix Marie",  id: "COM-DEF-May312024", yearEnd: "22 Jan 2022", status: "Active" },
+    { client: "Circooles",      id: "COM-DEF-Dec312024", yearEnd: "20 Jan 2022", status: "Active" },
+    { client: "Command+R",      id: "COM-DEF-Dec312024", yearEnd: "24 Jan 2022", status: "Active" },
+    { client: "Hourglass",      id: "REV-DEF-Dec312024", yearEnd: "26 Jan 2022", status: "Active" },
+    { client: "Layers",         id: "REV-DEF-Dec312024", yearEnd: "18 Jan 2022", status: "Active" },
+    { client: "Quotient",       id: "COM-DEF-Dec312024", yearEnd: "28 Jan 2022", status: "Active" },
+    { client: "Sisyphus",       id: "REV-DEF-Dec312024", yearEnd: "16 Jan 2022", status: "Active" },
+    { client: "Catalog",        id: "COM-DEF-Dec312024", yearEnd: "12 Jan 2022", status: "Active" },
+  ];
+
+  const connectedConnectors = connectors.filter(c => c.connected);
+  const availableConnectors = connectors.filter(c => !c.connected);
+
+  const handleConnectConnector = useCallback((id: string) => {
+    setConnectors(prev => prev.map(c => c.id === id ? { ...c, connected: true } : c));
+  }, []);
+
+  // Thread pin/unpin/delete
+  const unpinThread = (idx: number) => {
+    setPinnedThreadsList(prev => {
+      const next = [...prev];
+      const [item] = next.splice(idx, 1);
+      if (item) setRecentThreadsList(r => [item, ...r]);
+      return next;
+    });
+  };
+  const pinThread = (idx: number) => {
+    setRecentThreadsList(prev => {
+      const next = [...prev];
+      const [item] = next.splice(idx, 1);
+      if (item) setPinnedThreadsList(p => [...p, item]);
+      return next;
+    });
+  };
+  const deletePinnedThread = (idx: number) => setPinnedThreadsList(prev => prev.filter((_, i) => i !== idx));
+  const deleteRecentThread  = (idx: number) => setRecentThreadsList(prev => prev.filter((_, i) => i !== idx));
+
+  const handleActivityUpdate = useCallback((text: string, status: "done" | "processing" | "pending", highlight?: boolean) => {
+    const now = new Date();
+    const timestamp = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+    setActivityEntries(prev => {
+      if (status === "done") {
+        const existingIdx = prev.findIndex(e => e.text === text && e.status === "processing");
+        if (existingIdx !== -1) {
+          const updated = [...prev];
+          updated[existingIdx] = { ...updated[existingIdx], status: "done", timestamp };
+          return updated;
+        }
+      }
+      if (status === "processing") {
+        const exists = prev.find(e => e.text === text && e.status === "processing");
+        if (exists) return prev;
+      }
+      activityIdCounter.current += 1;
+      return [...prev, { id: `act-${activityIdCounter.current}`, text, timestamp, status, highlight }];
+    });
+    setIsActivityProcessing(status === "processing");
+  }, []);
+
+  const autoResizeShellTextarea = useCallback(() => {
+    const el = shellInputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const lineHeight = parseInt(getComputedStyle(el).lineHeight) || 20;
+    const maxHeight = lineHeight * 12;
+    el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
+    el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden';
+  }, []);
+
+  const handleShellInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setShellInputValue(val);
+    if (val.endsWith("/")) { setShowPromptWindow(true); setSelectedPromptIndex(0); }
+    else if (!val.includes("/")) setShowPromptWindow(false);
+    requestAnimationFrame(autoResizeShellTextarea);
+  };
+
+  useEffect(() => { autoResizeShellTextarea(); }, [shellInputValue, autoResizeShellTextarea]);
+
+  const shellPromptList = [
+    "Variance Analysis", "General Ledger Analysis", "Account Reconciliation",
+    "Bank Reconciliation", "Aged AR Analysis", "Loan Amortization", "Tax Payable",
+    "Long-term Debt", "Investment Schedule",
+  ];
+
+  const handleShellPromptSelect = (prompt: string) => {
+    if (prompt === "Account Reconciliation") {
+      setShowPromptWindow(false); setShellInputValue("");
+      setActiveFlowPanel("account-reconciliation"); setIsFullscreen(true);
+      setThreadsSidebarCollapsed(true); setActivityEntries([]); setActivityMinimized(true);
+      return;
+    }
+    if (prompt === "Tax Payable") {
+      setShowPromptWindow(false); setShellInputValue("");
+      setActiveFlowPanel("tax-payable"); setIsFullscreen(true);
+      setThreadsSidebarCollapsed(true); setActivityEntries([]); setActivityMinimized(false);
+      return;
+    }
+    // Route to existing rich-response flows
+    if (prompt === "Long-term Debt" || prompt === "Investment Schedule") {
+      setShowPromptWindow(false); setShellInputValue("");
+      handlePromptSelect(prompt);
+      return;
+    }
+    setShellInputValue(shellInputValue.replace(/\/$/, "") + "/" + prompt + " ");
+    setShowPromptWindow(false);
+    shellInputRef.current?.focus();
+  };
+
+  const handleShellKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!showPromptWindow) return;
+    if (e.key === "ArrowDown")  { e.preventDefault(); setSelectedPromptIndex(p => Math.min(p + 1, shellPromptList.length - 1)); }
+    else if (e.key === "ArrowUp")    { e.preventDefault(); setSelectedPromptIndex(p => Math.max(p - 1, 0)); }
+    else if (e.key === "Enter")      { e.preventDefault(); handleShellPromptSelect(shellPromptList[selectedPromptIndex]); }
+    else if (e.key === "Escape")     { e.preventDefault(); setShowPromptWindow(false); }
+  };
+
+  const handleEnhancePrompt = useCallback(async () => {
+    if (!shellInputValue.trim() || isEnhancing) return;
+    setOriginalPromptVal(shellInputValue.trim());
+    setIsEnhancing(true);
+    await new Promise(r => setTimeout(r, 1200));
+    setEnhancedPrompt(`Analyze and provide a detailed breakdown of ${shellInputValue.trim()}, including key insights, trends, and actionable recommendations based on the current financial data.`);
+    setEnhanceCount(prev => prev + 1);
+    setIsEnhancing(false);
+  }, [shellInputValue, isEnhancing]);
+
+  const handleReplaceWithEnhanced = useCallback(() => {
+    if (!enhancedPrompt) return;
+    setShellInputValue(enhancedPrompt);
+    setEnhancedPrompt(null); setOriginalPromptVal(null); setEnhanceCount(0);
+    shellInputRef.current?.focus();
+  }, [enhancedPrompt]);
+
+  const handleDismissEnhanced = useCallback(() => {
+    setEnhancedPrompt(null); setOriginalPromptVal(null); setEnhanceCount(0);
+  }, []);
+
+  const handleOpenNewWindow = useCallback(() => {
+    const w = window.open("", "_blank", "width=720,height=700,menubar=no,toolbar=no,location=no,status=no");
+    if (w) { w.document.title = "Luka Chat"; w.document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;"><div style="text-align:center;"><h2>⚡ Luka Chat</h2><p style="color:#888;">Chat window opened</p></div></div>`; }
+  }, []);
+
+  // Settings listener
+  useEffect(() => {
+    const handler = () => setSettingsOpen(true);
+    window.addEventListener("open-luka-settings", handler);
+    return () => window.removeEventListener("open-luka-settings", handler);
+  }, []);
+
+  // Sync lukaOpenStore
+  useEffect(() => { setLukaOpen(open); }, [open]);
+
+  // Close engagement tray on outside click
+  useEffect(() => {
+    if (!showEngagementTrayCtx) return;
+    const handler = (e: MouseEvent) => {
+      if (engagementTrayCtxRef.current && !engagementTrayCtxRef.current.contains(e.target as Node))
+        setShowEngagementTrayCtx(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showEngagementTrayCtx]);
+
+  // Close plus tray on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (plusTrayRef.current && !plusTrayRef.current.contains(e.target as Node)) setShowPlusTray(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Close model dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(e.target as Node)) setShowModelDropdown(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // SVG icons for model groups
+  const openaiIcon = (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+      <path d="M22.28 9.37a5.98 5.98 0 0 0-.52-4.93 6.07 6.07 0 0 0-6.55-2.91A5.98 5.98 0 0 0 10.69 0a6.07 6.07 0 0 0-5.8 4.27 5.98 5.98 0 0 0-4 2.9 6.07 6.07 0 0 0 .74 7.12 5.98 5.98 0 0 0 .52 4.93 6.07 6.07 0 0 0 6.55 2.91A5.98 5.98 0 0 0 13.31 24a6.07 6.07 0 0 0 5.8-4.27 5.98 5.98 0 0 0 4-2.9 6.07 6.07 0 0 0-.74-7.12Z" fill="currentColor"/>
+    </svg>
+  );
+  const googleIcon = (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1Z" fill="#4285F4"/>
+    </svg>
+  );
+  const anthropicIcon = (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+      <path d="M13.83 2H16.8l6.2 20h-2.97l-1.51-5.08h-7.25L9.76 22H6.8l7.04-20Zm1.37 3.63L12.45 14.2h5.5l-2.75-8.57ZM8.6 2H5.6L0 22h2.97L8.6 2Z" fill="#D4A27F"/>
+    </svg>
+  );
+  const modelGroups = [
+    { ecosystem: "ChatGPT Ecosystem", icon: openaiIcon, models: [
+      { name: "GPT-5.4 Pro", desc: "Analyze deeply", badge: "Thinking" },
+      { name: "GPT-5.4 Standard", desc: "Write / summarize", badge: "Fast" },
+      { name: "o3 Reasoning", desc: "Complex calculations", badge: "Reasoning" },
+    ]},
+    { ecosystem: "Google · Gemini", icon: googleIcon, models: [
+      { name: "Gemini 3.1 Pro", desc: "Large documents", badge: "Large documents" },
+      { name: "Gemini 3.1 Flash", desc: "Fast analysis", badge: "Fast" },
+    ]},
+    { ecosystem: "Anthropic · Claude", icon: anthropicIcon, models: [
+      { name: "Claude Opus 4.6", desc: "Deep analysis", badge: "Large documents" },
+      { name: "Claude Sonnet 4.6", desc: "Cheap + fast", badge: "Fast" },
+    ]},
+  ];
+
   // ── Threads chat state ──
   const [message, setMessage] = useState("");
   const [activeTab, setActiveTab] = useState<"threads" | "workspaces">("threads");
@@ -2023,665 +2379,290 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
     </div>
   );
 
+  const isWorkspaceTab = activeTab === "workspaces";
+
   return (
-    <>
-      {viewMode === "half" && (
-        <div className="fixed inset-0 z-40" onClick={() => onOpenChange(false)} />
-      )}
+    <AnimatePresence>
+      {open && (
+        <>
+          {/* Overlay */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-40 bg-black/20"
+            onClick={handleClose}
+          />
 
-      <div className={cn(
-        "fixed top-0 right-0 bottom-0 z-50 bg-background dark:bg-card overflow-hidden",
-        "animate-in slide-in-from-right-5 fade-in zoom-in-[0.97] duration-400 ease-out",
-        viewMode === "full"
-          ? "left-14 rounded-tl-[1.25rem] rounded-bl-[1.25rem] border-l border-[hsl(210deg_36.19%_7.6%/76%)] shadow-[-10px_0_20px_-4px_rgba(0,0,0,0.90),-3px_0_6px_-3px_rgba(0,0,0,0.90)]"
-          : "left-[45%] rounded-tl-[1.25rem] rounded-bl-[1.25rem] border-l border-[hsl(210deg_36.19%_7.6%/76%)] shadow-[-10px_0_20px_-4px_rgba(0,0,0,0.90),-3px_0_6px_-3px_rgba(0,0,0,0.90)]"
-      )}>
-        <div className="flex h-full min-w-0 w-full">
-
-          {/* ═══ LEFT SIDEBAR — Claude Code style ═══ */}
-          <aside
-            className={cn(
-              "relative flex flex-col transition-all duration-300 ease-in-out shrink-0",
-              "bg-[hsl(212.43deg_86.02%_10.76%)]",
-              sidebarExpanded ? "w-[260px]" : "w-[52px]"
-            )}
-            onMouseEnter={() => setSidebarHovered(true)}
-            onMouseLeave={() => setSidebarHovered(false)}
+          {/* Panel */}
+          <motion.div
+            initial={{ x: "100%", opacity: 0.6 }}
+            animate={
+              isFullscreen
+                ? { x: 0, y: 0, opacity: 1, width: "100vw" }
+                : isMinimized
+                ? { x: 0, y: "calc(100% - 56px)", opacity: 1, width: threadsSidebarCollapsed ? 640 : 909 }
+                : { x: 0, y: 0, opacity: 1, width: threadsSidebarCollapsed ? 640 : 909 }
+            }
+            exit={{ x: "100%", opacity: 0.6 }}
+            transition={{ type: "spring", damping: 32, stiffness: 280, mass: 0.85 }}
+            className={`fixed top-0 right-0 z-50 flex ${isFullscreen ? "w-full h-full" : "h-full rounded-l-2xl overflow-hidden"}`}
+            style={isFullscreen ? undefined : { maxWidth: "98vw" }}
           >
-            <TooltipProvider delayDuration={100}>
-              {sidebarExpanded ? (
-                <>
-                  {/* ── Logo row ── */}
-                  <div className="px-3 pt-3 pb-2 flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(265_80%_55%)] flex items-center justify-center shrink-0">
-                      <LukaIcon size={13} />
+            {/* LHS threads sidebar */}
+            {!isWorkspaceTab && (
+              <motion.div
+                className="luka-threads-sidebar"
+                animate={{ width: threadsSidebarCollapsed ? 0 : 269 }}
+                transition={{ type: "spring", damping: 32, stiffness: 280, mass: 0.85 }}
+                style={{ overflow: threadsSidebarCollapsed ? "hidden" : "visible", position: "relative", zIndex: 10 }}
+              >
+                <div className={`flex flex-col h-full ${threadsSidebarCollapsed ? "items-center" : ""}`} style={{ overflowX: "visible", overflowY: "auto", scrollbarWidth: "none" }}>
+                  {threadsSidebarCollapsed ? (
+                    <div className="flex flex-col items-center pt-3 pb-1 gap-2">
+                      <motion.button
+                        whileHover={{ scale: 1.12, backgroundColor: "hsl(270 60% 55% / 0.08)" }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => setThreadsSidebarCollapsed(false)}
+                        className="w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer transition-all duration-200 relative group"
+                        style={{ color: "hsl(var(--muted-foreground))", background: "hsl(var(--muted) / 0.5)", border: "1px solid hsl(var(--border) / 0.6)" }}
+                      >
+                        <motion.div animate={{ x: [0, 2, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}>
+                          <ChevronsRight size={16} />
+                        </motion.div>
+                        <div className="lhs-tooltip">Expand sidebar</div>
+                      </motion.button>
                     </div>
-                    <span className="text-sm font-semibold text-white flex-1 tracking-tight">Luka</span>
-                    <span className="text-[9px] font-semibold text-white/45 bg-white/[0.10] rounded px-1.5 py-0.5 tracking-wide uppercase">AI</span>
-                    <button
-                      onClick={() => setSidebarExpanded(false)}
-                      className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/[0.15] transition-colors ml-0.5"
-                    >
-                      <PanelLeftClose className="h-3.5 w-3.5 text-white/70" />
-                    </button>
-                  </div>
-
-                  {/* ── New session button ── */}
-                  <div className="px-2 pb-2">
-                    <button
-                      onClick={activeTab === "threads" ? () => {} : () => setNewWsModalOpen(true)}
-                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-white/[0.13] transition-colors group"
-                    >
-                      <div className="w-5 h-5 rounded-full border border-white/50 flex items-center justify-center shrink-0 group-hover:border-white/80 transition-colors">
-                        <Plus className="w-3 h-3 text-white/80 group-hover:text-white" />
-                      </div>
-                      <span className="text-sm text-white/55 group-hover:text-white/80 transition-colors">
-                        {activeTab === "threads" ? "New thread" : "New workspace"}
-                      </span>
-                    </button>
-                  </div>
-
-                  {/* ── Filter row ── */}
-                  <div className="px-3 pb-2 flex items-center gap-1">
-                    <div className="relative" ref={el => { (filterDropdownRef as React.MutableRefObject<HTMLDivElement | null>).current = el; (wsFilterDropdownRef as React.MutableRefObject<HTMLDivElement | null>).current = el; }}>
-                      {activeTab === "threads" ? (
-                        <button
-                          onClick={() => setFilterDropdownOpen(o => !o)}
-                          className="flex items-center gap-1 text-xs font-medium text-white/50 hover:text-white/75 transition-colors"
-                        >
-                          {activeFilterLabel}
-                          <ChevronDown className={cn("w-3 h-3 transition-transform duration-150", filterDropdownOpen && "rotate-180")} />
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => setWsFilterDropdownOpen(o => !o)}
-                          className="flex items-center gap-1 text-xs font-medium text-white/50 hover:text-white/75 transition-colors"
-                        >
-                          {activeWsFilterLabel}
-                          <ChevronDown className={cn("w-3 h-3 transition-transform duration-150", wsFilterDropdownOpen && "rotate-180")} />
-                        </button>
-                      )}
-                      {filterDropdownOpen && activeTab === "threads" && (
-                        <div className="absolute top-full left-0 mt-1.5 z-50 min-w-[155px] rounded-[8px] bg-[hsl(212_60%_14%)] border border-white/[0.10] shadow-[0_4px_12px_rgba(0,0,0,0.18)] py-1">
-                          {THREAD_FILTERS.map(f => (
-                            <button
-                              key={f.id}
-                              onClick={() => { setThreadFilter(f.id); setFilterDropdownOpen(false); }}
-                              className={cn(
-                                "w-full flex items-center gap-2.5 px-3 py-1.5 text-xs transition-colors",
-                                threadFilter === f.id
-                                  ? "text-white bg-white/[0.10]"
-                                  : "text-white/50 hover:text-white/80 hover:bg-white/[0.06]"
-                              )}
-                            >
-                              <f.Icon className="w-3.5 h-3.5 shrink-0 opacity-70" />
-                              {f.label}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {wsFilterDropdownOpen && activeTab === "workspaces" && (
-                        <div className="absolute top-full left-0 mt-1.5 z-50 min-w-[165px] rounded-[8px] bg-[hsl(212_60%_14%)] border border-white/[0.10] shadow-[0_4px_12px_rgba(0,0,0,0.18)] py-1">
-                          {WORKSPACE_FILTERS.map(f => (
-                            <button
-                              key={f.id}
-                              onClick={() => { setWorkspaceFilter(f.id); setWsFilterDropdownOpen(false); }}
-                              className={cn(
-                                "w-full flex items-center gap-2.5 px-3 py-1.5 text-xs transition-colors",
-                                workspaceFilter === f.id
-                                  ? "text-white bg-white/[0.10]"
-                                  : "text-white/50 hover:text-white/80 hover:bg-white/[0.06]"
-                              )}
-                            >
-                              <f.Icon className="w-3.5 h-3.5 shrink-0 opacity-70" />
-                              {f.label}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1" />
-                    <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-white/[0.15] transition-colors">
-                      <Search className="w-3 h-3 text-white/65 hover:text-white/90" />
-                    </button>
-                    <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-white/[0.15] transition-colors">
-                      <SlidersHorizontal className="w-3 h-3 text-white/65 hover:text-white/90" />
-                    </button>
-                  </div>
-
-                  <div className="mx-3 border-t border-white/[0.22] mb-1" />
-
-                  {/* ── List content ── */}
-                  {activeTab === "threads" ? (
-                    <ScrollArea className="flex-1 px-2">
-                      {/* Show flat filtered list for non-"all" filters */}
-                      {threadFilter !== "all" ? (
-                        <>
-                          <p className="px-2 pt-2 pb-1 text-[10px] font-medium text-white/[0.38] uppercase tracking-wider">
-                            {activeFilterLabel}
-                          </p>
-                          {(threadFilter === "pinned" ? pinnedThreads : recentThreads).map(t => (
-                            <button key={t.id} className="w-full flex items-center gap-2.5 px-2 py-1.5 text-left rounded-lg hover:bg-white/[0.13] transition-colors group">
-                              <MessageSquare className="w-3.5 h-3.5 text-white/55 shrink-0 group-hover:text-white/80" />
-                              <span className="text-sm text-white/60 truncate group-hover:text-white/85">{t.name}</span>
-                            </button>
-                          ))}
-                          {(threadFilter === "this-week" || threadFilter === "last-week" || threadFilter === "this-month") && (
-                            <p className="px-2 py-4 text-xs text-white/30 text-center">No threads found</p>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          {/* Pinned section */}
-                          <button onClick={() => toggleSection("pinned")} className="w-full flex items-center gap-1 px-2 pt-2 pb-1 group">
-                            <span className="text-[10px] font-medium text-white/[0.38] uppercase tracking-wider flex-1 text-left">Pinned</span>
-                            <ChevronRight className={cn("w-3 h-3 text-white/25 transition-transform duration-150", sectionOpen.pinned && "rotate-90")} />
-                          </button>
-                          {sectionOpen.pinned && pinnedThreads.map(t => (
-                            <button key={t.id} className="w-full flex items-center gap-2.5 px-2 py-1.5 text-left rounded-lg hover:bg-white/[0.13] transition-colors group">
-                              <MessageSquare className="w-3.5 h-3.5 text-white/55 shrink-0 group-hover:text-white/80" />
-                              <span className="text-sm text-white/60 truncate group-hover:text-white/85">{t.name}</span>
-                            </button>
-                          ))}
-                          {/* Recent section */}
-                          <button onClick={() => toggleSection("recent")} className="w-full flex items-center gap-1 px-2 pt-3 pb-1 group">
-                            <span className="text-[10px] font-medium text-white/[0.38] uppercase tracking-wider flex-1 text-left">Recent</span>
-                            <ChevronRight className={cn("w-3 h-3 text-white/25 transition-transform duration-150", sectionOpen.recent && "rotate-90")} />
-                          </button>
-                          {sectionOpen.recent && recentThreads.map(t => (
-                            <button key={t.id} className="w-full flex items-center gap-2.5 px-2 py-1.5 text-left rounded-lg hover:bg-white/[0.13] transition-colors group">
-                              <MessageSquare className="w-3.5 h-3.5 text-white/55 shrink-0 group-hover:text-white/80" />
-                              <span className="text-sm text-white/60 truncate group-hover:text-white/85">{t.name}</span>
-                            </button>
-                          ))}
-                        </>
-                      )}
-                    </ScrollArea>
                   ) : (
-                    /* ── Compilation Workspaces ── */
-                    <ScrollArea className="flex-1 px-2">
-                      {/* Pinned section */}
-                      {pinnedWs.length > 0 && (
-                        <>
-                          <button onClick={() => toggleSection("pinned")} className="w-full flex items-center gap-1 px-2 pt-2 pb-1.5 group">
-                            <span className="text-[10px] font-medium text-white/[0.38] uppercase tracking-wider flex-1 text-left">Pinned</span>
-                            <ChevronRight className={cn("w-3 h-3 text-white/25 transition-transform duration-150", sectionOpen.pinned && "rotate-90")} />
-                          </button>
-                          {sectionOpen.pinned && COMP_WORKSPACES.filter(w => pinnedWs.includes(w.id)).map(ws => {
-                            const isSelected = selectedCompWs?.id === ws.id;
-                            return (
-                            <div key={ws.id} className="group relative mb-1.5">
-                              <button
-                                onClick={() => selectCompWorkspace(ws)}
-                                className={cn(
-                                  "w-full flex items-center gap-2.5 px-2.5 py-2 text-left rounded-[6px] transition-colors border",
-                                  isSelected
-                                    ? "bg-white/[0.12] border-white/[0.15]"
-                                    : "hover:bg-white/[0.08] border-transparent hover:border-white/[0.08]"
-                                )}
-                              >
-                                <div className={cn("w-6 h-6 rounded-[4px] flex items-center justify-center shrink-0", isSelected ? "bg-primary/30" : "bg-white/[0.08]")}>
-                                  <Building2 className={cn("w-3.5 h-3.5", isSelected ? "text-primary/80" : "text-white/50")} />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className={cn("text-xs font-medium truncate leading-tight", isSelected ? "text-white/90" : "text-white/70")}>{ws.name}</p>
-                                  <p className="text-[10px] text-amber-400/60 truncate leading-tight mt-0.5">{ws.ref}</p>
-                                </div>
-                                {ws.active && <span className="w-1.5 h-1.5 rounded-full bg-green-400/70 shrink-0" />}
-                              </button>
-                              {/* Hover actions */}
-                              <div className="absolute right-1.5 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-0.5 bg-[hsl(212.43deg_86.02%_10.76%)] rounded-[4px] px-0.5 py-0.5">
-                                <button onClick={e => { e.stopPropagation(); togglePinWs(ws.id); }} className="w-5 h-5 flex items-center justify-center rounded hover:bg-white/[0.12] transition-colors">
-                                  <Pin className="w-3 h-3 text-white/50 hover:text-white/80" />
-                                </button>
-                                <button onClick={e => e.stopPropagation()} className="w-5 h-5 flex items-center justify-center rounded hover:bg-white/[0.12] transition-colors">
-                                  <X className="w-3 h-3 text-white/50 hover:text-red-400" />
-                                </button>
-                              </div>
-                            </div>
-                          );})}
-
-                        </>
-                      )}
-                      {/* Active section */}
-                      <button onClick={() => toggleSection("active")} className="w-full flex items-center gap-1 px-2 pt-2 pb-1.5 group">
-                        <span className="text-[10px] font-medium text-white/[0.38] uppercase tracking-wider flex-1 text-left">Active</span>
-                        <ChevronRight className={cn("w-3 h-3 text-white/25 transition-transform duration-150", sectionOpen.active && "rotate-90")} />
-                      </button>
-                      {sectionOpen.active && COMP_WORKSPACES.map(ws => {
-                        const isSelected = selectedCompWs?.id === ws.id;
-                        return (
-                        <div key={ws.id} className="group relative mb-1.5">
-                          <button
-                            onClick={() => selectCompWorkspace(ws)}
-                            className={cn(
-                              "w-full flex items-center gap-2.5 px-2.5 py-2 text-left rounded-[6px] transition-colors border",
-                              isSelected
-                                ? "bg-white/[0.12] border-white/[0.15]"
-                                : "hover:bg-white/[0.08] border-transparent hover:border-white/[0.08]"
-                            )}
+                    <>
+                      <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+                        <div className="flex items-center gap-2 px-4 pt-4 pb-3">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <defs><linearGradient id="luka-grad-sm2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#9747FF" /><stop offset="100%" stopColor="#115697" /></linearGradient></defs>
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="url(#luka-grad-sm2)" />
+                          </svg>
+                          <span className="text-lg font-bold" style={{ background: "linear-gradient(135deg, #9747FF, #115697)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Luka</span>
+                          <motion.button
+                            whileHover={{ scale: 1.12 }} whileTap={{ scale: 0.9 }}
+                            onClick={() => setThreadsSidebarCollapsed(true)}
+                            className="ml-auto w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer transition-all duration-200"
+                            style={{ color: "hsl(var(--muted-foreground))", background: "hsl(var(--muted) / 0.4)", border: "1px solid hsl(var(--border) / 0.5)" }}
                           >
-                            <div className={cn("w-6 h-6 rounded-[4px] flex items-center justify-center shrink-0", isSelected ? "bg-primary/30" : "bg-white/[0.08]")}>
-                              <Building2 className={cn("w-3.5 h-3.5", isSelected ? "text-primary/80" : "text-white/50")} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className={cn("text-xs font-medium truncate leading-tight", isSelected ? "text-white/90" : "text-white/70")}>{ws.name}</p>
-                              <p className="text-[10px] text-amber-400/60 truncate leading-tight mt-0.5">{ws.ref}</p>
-                            </div>
-                            {ws.active && <span className="w-1.5 h-1.5 rounded-full bg-green-400/70 shrink-0" />}
-                          </button>
-                          {/* Hover actions */}
-                          <div className="absolute right-1.5 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-0.5 bg-[hsl(212.43deg_86.02%_10.76%)] rounded-[4px] px-0.5 py-0.5">
-                            <button onClick={e => { e.stopPropagation(); togglePinWs(ws.id); }} className="w-5 h-5 flex items-center justify-center rounded hover:bg-white/[0.12] transition-colors">
-                              <Pin className={cn("w-3 h-3 transition-colors", pinnedWs.includes(ws.id) ? "text-amber-400/80" : "text-white/50 hover:text-white/80")} />
-                            </button>
-                            <button onClick={e => e.stopPropagation()} className="w-5 h-5 flex items-center justify-center rounded hover:bg-white/[0.12] transition-colors">
-                              <X className="w-3 h-3 text-white/50 hover:text-red-400" />
-                            </button>
+                            <ChevronsLeft size={15} />
+                          </motion.button>
+                        </div>
+                        <div className="px-3 mb-3">
+                          <motion.button whileHover={{ scale: 1.01, x: 2 }} whileTap={{ scale: 0.98 }} className="luka-new-thread-btn">
+                            <PlusCircle size={16} /><span>Start new thread</span>
+                          </motion.button>
+                        </div>
+                        <div className="px-3 mb-4">
+                          <div className="relative">
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                            <input type="text" placeholder="Search" value={threadSearchVal} onChange={e => setThreadSearchVal(e.target.value)} className="luka-thread-search" />
                           </div>
                         </div>
-                      );})}
-                    </ScrollArea>
+                        <div className="px-4 mb-1"><span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pinned</span></div>
+                        <div className="px-2 mb-4">
+                          {pinnedThreadsList.map((thread, i) => (
+                            <ThreadRow key={`pinned-${i}`} thread={thread} icon={<Pin size={13} className="text-muted-foreground shrink-0" />} isPinned onPinToggle={() => unpinThread(i)} onDelete={() => deletePinnedThread(i)} />
+                          ))}
+                        </div>
+                        <div className="px-4 mb-1"><span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Recents</span></div>
+                        <div className="px-2">
+                          {recentThreadsList.map((thread, i) => (
+                            <ThreadRow key={`recent-${i}`} thread={thread} icon={<MessageSquare size={13} className="text-muted-foreground shrink-0" />} isPinned={false} onPinToggle={() => pinThread(i)} onDelete={() => deleteRecentThread(i)} />
+                          ))}
+                        </div>
+                        <div className="px-4 pt-3 pb-4">
+                          <motion.button whileHover={{ x: 2 }} className="text-sm font-medium" style={{ color: "hsl(var(--link-color))" }}>View all</motion.button>
+                        </div>
+                      </div>
+                      <div className="border-t" style={{ borderColor: "hsl(var(--border))" }}>
+                        <div className="px-2 pt-2 pb-1">
+                          <motion.button whileHover={{ x: 2, backgroundColor: "hsl(270 60% 55% / 0.06)" }} whileTap={{ scale: 0.99 }} onClick={() => setSettingsOpen(true)} className="luka-thread-item w-full">
+                            <Settings size={14} className="text-muted-foreground shrink-0" /><span className="truncate">AI Settings</span>
+                          </motion.button>
+                        </div>
+                      </div>
+                    </>
                   )}
-
-                  {/* ── Footer ── */}
-                  <div className="px-3 py-2.5 border-t border-white/[0.12]">
-                    <button onClick={() => setShowAllRecent(!showAllRecent)} className="text-xs text-white/35 hover:text-white/60 transition-colors">
-                      {showAllRecent ? "Show less" : "Show more"}
-                    </button>
-                  </div>
-                </>
-              ) : (
-                /* ── COLLAPSED sidebar ── */
-                <>
-                  <div className="flex justify-center pt-3 pb-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={() => setSidebarExpanded(true)}
-                          className="w-8 h-8 rounded-lg bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(265_80%_55%)] flex items-center justify-center hover:opacity-90 transition-opacity"
-                        >
-                          <LukaIcon size={13} />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right"><p>Expand Luka</p></TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <div className="flex justify-center pb-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={() => { setSidebarExpanded(true); if (activeTab !== "threads") cancelAutopilot(); }}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/[0.12] transition-colors"
-                        >
-                          <Plus className="h-4 w-4 text-white/65" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right"><p>{activeTab === "threads" ? "New Thread" : "New Workspace"}</p></TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <div className="mx-auto w-7 border-t border-white/[0.18] mb-1" />
-                  <ScrollArea className="flex-1 py-1">
-                    <div className="flex flex-col items-center gap-0.5 px-1.5">
-                      {allThreads.slice(0, 8).map((thread, i) => (
-                        <Tooltip key={thread.id}>
-                          <TooltipTrigger asChild>
-                            <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/[0.12] transition-colors relative">
-                              <MessageSquare className="h-3.5 w-3.5 text-white/55" />
-                              <div className={cn("absolute top-1 right-1 w-1.5 h-1.5 rounded-full", statusColors[i % statusColors.length])} />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="right"><p>{thread.name}</p></TooltipContent>
-                        </Tooltip>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </>
-              )}
-            </TooltipProvider>
-          </aside>
-
-          {/* ═══ MAIN CONTENT ═══ */}
-          <main className={cn(
-            "flex-1 min-w-0 flex flex-col overflow-hidden transition-all duration-300",
-            (isThinking || aiResponse || autopilotStep)
-              ? "bg-background"
-              : "bg-gradient-to-b from-[hsl(210_60%_97%)] via-[hsl(260_40%_96%)] to-[hsl(300_30%_96%)] dark:from-[hsl(220_20%_12%)] dark:via-[hsl(260_15%_14%)] dark:to-[hsl(280_10%_13%)]"
-          )}>
-            {/* Top header bar */}
-            <div className="h-12 px-4 flex items-center border-b border-border/60 bg-background/60 backdrop-blur-sm shrink-0 gap-2">
-              {/* Left: engagement badges when autopilot active */}
-              <div className="flex items-center gap-2 shrink-0 min-w-0">
-                <div />
-              </div>
-
-              {/* Center: Global-style underline tabs */}
-              <div className="flex-1 flex items-end justify-center h-full">
-                <div className="flex gap-0.5">
-                  {([ { id: "threads", label: "Threads", Icon: MessageSquare }, { id: "workspaces", label: "Workspaces", Icon: Building2 } ] as const).map(({ id, label, Icon }) => (
-                    <button
-                      key={id}
-                      onClick={() => setActiveTab(id as "threads" | "workspaces")}
-                      className={cn(
-                        "flex items-center gap-1.5 px-4 py-2 text-xs font-medium transition-colors relative whitespace-nowrap",
-                        activeTab === id
-                          ? "text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-t"
-                          : "text-foreground hover:text-foreground"
-                      )}
-                    >
-                      <Icon className="w-3 h-3" />
-                      {label}
-                    </button>
-                  ))}
                 </div>
-              </div>
+              </motion.div>
+            )}
 
-              {/* Right: team avatars + file status + window controls */}
-              <div className="flex items-center gap-2.5 shrink-0 justify-end min-w-0 ml-auto">
-                {activeTab === "workspaces" && selectedCompWs && autopilotStep !== null && (
-                  <>
-                    {/* Team avatars — distinct colors per person */}
-                    <div className="flex -space-x-2">
-                      {[
-                        { init: "AB", bg: "bg-[#C4B5FD]", text: "text-[#4C1D95]" },
-                        { init: "TJ", bg: "bg-[#8B5CF6]", text: "text-white" },
-                        { init: "PT", bg: "bg-[#3B82F6]", text: "text-white" },
-                      ].map((av, i) => (
-                        <div
-                          key={i}
-                          className={cn("w-7 h-7 rounded-full border-2 border-background flex items-center justify-center text-[9px] font-bold shrink-0 shadow-sm", av.bg, av.text)}
-                          style={{ zIndex: 3 - i }}
-                        >
-                          {av.init}
-                        </div>
-                      ))}
-                    </div>
-                    {/* FILE status pill */}
-                    {isAutomating ? (
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-destructive border border-destructive/30 bg-destructive/5 rounded-[8px] px-3 py-1.5 shrink-0 shadow-sm animate-pulse">
-                        <Lock className="w-3 h-3" /> FILE LOCKED
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-green-700 border border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-800/40 rounded-[8px] px-3 py-1.5 shrink-0 shadow-sm">
-                        <FolderOpen className="w-3.5 h-3.5" /> FILE OPEN
-                      </span>
-                    )}
-                  </>
-                )}
-              </div>
-
-              <TooltipProvider delayDuration={200}>
-                <div className="flex items-center gap-1 shrink-0 ml-2">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSidebarExpanded(!sidebarExpanded)}>
-                        <PanelLeftClose className="h-4 w-4 text-foreground" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom"><p>Toggle Sidebar</p></TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className={cn("h-8 w-8", viewMode === "full" && "bg-muted")} onClick={() => setViewMode(viewMode === "full" ? "half" : "full")}>
-                        <Maximize2 className="h-4 w-4 text-foreground" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom"><p>{viewMode === "full" ? "Half Mode" : "Full Mode"}</p></TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Minus className="h-4 w-4 text-foreground" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom"><p>Minimize</p></TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onOpenChange(false)}>
-                        <X className="h-4 w-4 text-foreground" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom"><p>Close</p></TooltipContent>
-                  </Tooltip>
+            {/* Main area */}
+            <div className="flex-1 flex flex-col bg-card border-l relative" style={{ borderColor: "hsl(var(--border))" }}>
+              {/* Header */}
+              <div className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: "hsl(var(--border))" }}>
+                <div className="flex items-center gap-1 shrink-0">
+                  {activeTab === "threads" && threadsSidebarCollapsed ? (
+                    <TooltipProvider><Tooltip><TooltipTrigger asChild>
+                      <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setThreadsSidebarCollapsed(false)} className="action-icon" style={{ color: "hsl(0 0% 0%)" }}>
+                        <Menu size={18} />
+                      </motion.button>
+                    </TooltipTrigger><TooltipContent side="bottom"><p>Open Threads</p></TooltipContent></Tooltip></TooltipProvider>
+                  ) : (
+                    <span className="action-icon w-8 h-8 invisible" />
+                  )}
+                  <span className="action-icon w-8 h-8 invisible" />
+                  <span className="action-icon w-8 h-8 invisible" />
+                  <span className="action-icon w-8 h-8 invisible" />
                 </div>
-              </TooltipProvider>
-            </div>
 
-            {/* Body */}
-            {activeTab === "workspaces" ? (
-              <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-
-                {/* ── INIT SCREEN ── */}
-                {autopilotStep === "init" && activeLoan && (
-                  <div className="flex-1 flex flex-col items-center justify-center gap-6 px-8 animate-in fade-in duration-300">
-                    <div className="relative flex items-center justify-center">
-                      <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/20 to-[hsl(265_80%_55%)/20] blur-2xl scale-150" />
-                      <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-[#8649F1] to-[#2355A4] flex items-center justify-center shadow-2xl shadow-primary/30">
-                        <LukaIcon size={40} />
-                      </div>
-                    </div>
-                    <div className="text-center space-y-2">
-                      <h2 className="text-2xl font-bold text-foreground">Automate Engagement?</h2>
-                      <p className="text-sm text-foreground max-w-xs leading-relaxed">
-                        I'll guide you through the setup process and verify everything is ready for a smooth automation run
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => startVerification(activeLoan)}
-                      className="flex items-center gap-2.5 px-8 py-3 rounded-xl bg-gradient-to-r from-[#8649F1] to-[#2355A4] text-white font-semibold text-sm shadow-lg shadow-primary/30 hover:opacity-90 transition-opacity"
-                    >
-                      <Zap className="w-4 h-4" fill="white" strokeWidth={0} />
-                      Initialize Luka
-                    </button>
-                  </div>
-                )}
-
-                {/* ── WIZARD STEPS ── */}
-                {isWizardStep && selectedCompWs && (
-                  <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
-                    {renderTabBar()}
-                    {/* Single scrollable page — all sections, tabs scroll to anchors */}
-                    <div className="flex-1 overflow-y-auto min-h-0 bg-[hsl(220_20%_98%)] dark:bg-[hsl(220_15%_10%)] pb-28">
-                      <div ref={el => { sectionRefs.current["verification"] = el; }}>
-                        {renderVerification()}
-                      </div>
-                      <div className="border-t border-border/30" ref={el => { sectionRefs.current["checklists"] = el; }}>
-                        {renderChecklists()}
-                      </div>
-                      <div className="border-t border-border/30" ref={el => { sectionRefs.current["letters"] = el; }}>
-                        {renderLetters()}
-                      </div>
-                      <div className="border-t border-border/30" ref={el => { sectionRefs.current["workingpapers"] = el; }}>
-                        {renderWorkingPapers()}
-                      </div>
-                      <div className="border-t border-border/30" ref={el => { sectionRefs.current["fsmapping"] = el; }}>
-                        {renderFSMapping()}
-                      </div>
-                      <div className="border-t border-border/30" ref={el => { sectionRefs.current["magic"] = el; }}>
-                        {renderMagic()}
-                      </div>
-                      {/* Scroll anchor — auto-scrolled to as content grows */}
-                      <div ref={scrollAnchorRef} className="h-1" />
-                    </div>
-
-                    {/* ── Floating chat input ── */}
-                    <div className="absolute bottom-4 left-0 right-0 px-6 pointer-events-none z-10">
-                      <div className="max-w-2xl mx-auto pointer-events-auto relative">
-                        <PromptPicker open={showPromptPicker} filter={hashFilter} onSelect={handlePromptSelect} onClose={() => { setShowPromptPicker(false); setHashFilter(""); }} />
-
-                        {/* Outer container */}
-                        <div className="rounded-[10px] bg-background dark:bg-card border border-border/80 shadow-[0_4px_24px_rgba(0,0,0,0.12)] luka-gradient-border overflow-hidden">
-
-                          {/* ── TOP CONTEXT STRIP ── */}
-                          <div className="flex items-center justify-between px-3 py-2">
-                            {/* Left: engagement ref ← active step + QB badge */}
-                            <div className="flex items-center gap-1.5 text-xs text-foreground min-w-0">
-                              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0 text-foreground"><path d="M5 3H3a1 1 0 00-1 1v2a1 1 0 001 1h2a1 1 0 001-1V4a1 1 0 00-1-1zM13 3h-2a1 1 0 00-1 1v2a1 1 0 001 1h2a1 1 0 001-1V4a1 1 0 00-1-1zM5 9H3a1 1 0 00-1 1v2a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 00-1-1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M8 5v6M8 11l3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                              <span className="font-semibold text-foreground truncate">{selectedCompWs?.ref ?? "Workspace"}</span>
-                              <ArrowLeft className="w-3 h-3 opacity-40 shrink-0" />
-                              <span className="truncate">{WIZARD_TABS.find(t => t.id === activeWizardTab)?.label ?? activeWizardTab}</span>
-                              {/* QuickBooks live connection badge */}
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div className="flex items-center gap-0.5 cursor-default ml-1">
-                                    <div className="relative flex items-center justify-center w-4 h-4 rounded-full bg-[#2CA01C] shadow-sm shrink-0">
-                                      <span className="text-white font-black text-[6px] leading-none">QB</span>
-                                      <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 border border-background" />
-                                    </div>
-                                    <button className="w-5 h-5 flex items-center justify-center text-foreground hover:text-foreground transition-colors shrink-0">
-                                      <Plus className="w-3 h-3" />
-                                    </button>
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent side="top">Add connectors</TooltipContent>
-                              </Tooltip>
-                            </div>
-                            {/* Right: action button */}
-                            <div className="flex items-center gap-2 shrink-0">
-                              {lukaIsTyping || (verifyPhase !== "idle" && verifyPhase !== "done") ? (
-                                <button disabled className="flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] border border-border/40 bg-muted/30 text-xs font-medium text-foreground cursor-not-allowed">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-primary/50 animate-pulse" />
-                                  Working…
-                                </button>
-                              ) : activeWizardTab === "magic" ? (
-                                <button onClick={() => startMagic()} className="flex items-center gap-1 px-2.5 py-1 rounded-[6px] border border-border/80 bg-background text-xs font-medium text-foreground hover:bg-muted/50 transition-colors">
-                                  Start Magic
-                                  <ChevronDown className="w-3 h-3 opacity-40" />
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => {
-                                    const tabs = ["verification","checklists","letters","workingpapers","fsmapping","magic"];
-                                    const idx = tabs.indexOf(activeWizardTab);
-                                    const next = tabs[idx + 1] ?? activeWizardTab;
-                                    setActiveWizardTab(next as AutopilotStep);
-                                    sectionRefs.current[next]?.scrollIntoView({ behavior: "smooth", block: "start" });
-                                  }}
-                                  className="flex items-center gap-1 px-2.5 py-1 rounded-[6px] border border-border/80 bg-background text-xs font-medium text-foreground hover:bg-muted/50 transition-colors"
-                                >
-                                  Continue
-                                  <ChevronDown className="w-3 h-3 opacity-40 -rotate-90" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* File strip — only when files attached */}
-                          {attachedFiles.length > 0 && (
-                            <>
-                              <div className="flex items-center gap-1.5 flex-wrap px-3 pt-2.5 pb-2">
-                                {attachedFiles.map(f => (
-                                  <span key={f.id} className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-[6px] bg-muted/80 text-xs text-foreground">
-                                    <FileText className="w-3 h-3 text-foreground shrink-0" />
-                                    {f.name}
-                                    <button onClick={() => removeFile(f.id)} className="ml-0.5 w-4 h-4 rounded flex items-center justify-center text-foreground hover:text-foreground transition-colors">
-                                      <X className="w-3 h-3" />
-                                    </button>
-                                  </span>
-                                ))}
-                              </div>
-                              <div className="px-3"><div className="h-px bg-border/60 rounded-full" /></div>
-                            </>
+                {/* Tabs */}
+                <LayoutGroup><div className="flex-1 flex items-center justify-center">
+                  <div className="relative flex items-center gap-1 rounded-full p-1" style={{ background: "hsl(0 0% 100%)", border: "1px solid hsl(220 20% 92%)", boxShadow: "0 6px 18px -8px hsl(250 40% 40% / 0.18), 0 1px 2px hsl(220 30% 50% / 0.05)" }}>
+                    {([{ id: "threads", label: "Threads", icon: MessageCircle }, { id: "workspaces", label: "Workspace", icon: Zap }] as const).map(tab => {
+                      const isActive = activeTab === tab.id;
+                      const Icon = tab.icon;
+                      return (
+                        <motion.button key={tab.id}
+                          onClick={() => {
+                            setActiveTab(prevTab => {
+                              if (tab.id === "workspaces" && prevTab !== "workspaces") { threadsFullscreenRef.current = isFullscreen; setIsFullscreen(true); setThreadsSidebarCollapsed(true); }
+                              else if (tab.id === "threads" && prevTab === "workspaces") { setIsFullscreen(threadsFullscreenRef.current); }
+                              return tab.id;
+                            });
+                          }}
+                          whileTap={{ scale: 0.96 }}
+                          className="relative z-10 pl-2.5 pr-5 py-1.5 rounded-full text-sm font-semibold transition-colors duration-200 flex items-center gap-2 whitespace-nowrap cursor-pointer"
+                          style={{ color: isActive ? "hsl(0 0% 100%)" : "hsl(222 30% 18%)" }}
+                        >
+                          {isActive && (
+                            <motion.div layoutId="luka-tab-ind" className="absolute inset-0 rounded-full"
+                              style={{ background: "linear-gradient(135deg, #6C2FF2 0%, #8A5BFF 55%, #B084FF 100%)", boxShadow: "0 6px 16px -6px hsl(265 80% 55% / 0.55), inset 0 1px 0 hsl(0 0% 100% / 0.25)" }}
+                              transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                            />
                           )}
-
-                          {/* Text input */}
-                          <div className="border-t border-border/60 rounded-[8px]">
-                            <div className="px-3 pt-2.5 pb-2.5">
-                              <input
-                                ref={inputRef}
-                                type="text"
-                                value={message}
-                                onChange={handleInputChange}
-                                onKeyDown={handleKeyDown}
-                                disabled={lukaIsTyping || (verifyPhase !== "idle" && verifyPhase !== "done")}
-                                placeholder={lukaIsTyping || (verifyPhase !== "idle" && verifyPhase !== "done") ? "Luka is working…" : "Reply..."}
-                                className={cn("w-full bg-transparent h-7 outline-none border-none text-sm", lukaIsTyping || (verifyPhase !== "idle" && verifyPhase !== "done") ? "placeholder:text-foreground cursor-not-allowed" : "placeholder:text-foreground", message.includes("#") ? "text-primary font-medium" : "text-foreground")}
-                              />
-                            </div>
-                          </div>
-
-                          {/* Toolbar */}
-                          <div className="px-2 pb-2 pt-1.5 flex items-center justify-between">
-                            <div className="flex items-center gap-0.5">
-                              <LukaAttachMenu onFilesAdded={addFiles} />
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <button className="flex items-center gap-1.5 px-2 h-7 rounded-[6px] hover:bg-muted/50 transition-colors text-xs text-foreground hover:text-foreground">
-                                    {editMode === 'auto' ? 'Auto accept edits' : 'Ask permissions'}
-                                    <ChevronDown className="w-3 h-3 opacity-40" />
-                                  </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start" className="min-w-[220px]">
-                                  <DropdownMenuItem onSelect={() => setEditMode('ask')} className="flex flex-col items-start gap-0.5 py-2 cursor-pointer">
-                                    <span className="font-medium text-xs text-foreground">Ask permissions</span>
-                                    <span className="text-[11px] text-foreground">Always ask before making changes</span>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onSelect={() => setEditMode('auto')} className="flex flex-col items-start gap-0.5 py-2 cursor-pointer">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="font-mono text-[10px] opacity-60">&lt;/&gt;</span>
-                                      <span className="font-medium text-xs text-foreground">Auto accept edits</span>
-                                    </div>
-                                    <span className="text-[11px] text-foreground">Automatically accept all file edits</span>
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                            <div className="flex items-center gap-0.5">
-                              <button className="flex items-center gap-1.5 px-2 h-7 rounded-[6px] hover:bg-muted/50 transition-colors text-xs text-foreground hover:text-foreground">
-                                <Zap className="w-3 h-3 text-violet-400 shrink-0" />
-                                Luka AI
-                                <ChevronDown className="w-3 h-3 opacity-40" />
-                              </button>
-                              {message.trim() ? (
-                                <Button size="icon" className="h-7 w-7 rounded-[6px] bg-gradient-to-br from-[#8649F1] to-[#2355A4] hover:opacity-90 text-white shadow-sm" onClick={handleSend}>
-                                  <Send className="h-3.5 w-3.5" />
-                                </Button>
-                              ) : (
-                                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-[6px]" onClick={() => setVoiceOpen(true)}>
-                                  <Mic className="h-3.5 w-3.5 text-foreground" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-
-                        </div>
-                      </div>
-                    </div>
+                          <Icon size={14} className="relative z-10" />
+                          <span className="relative z-10">{tab.label}</span>
+                        </motion.button>
+                      );
+                    })}
                   </div>
-                )}
+                </div></LayoutGroup>
 
-                {/* ── AUTOMATION IN PROGRESS ── */}
-                {autopilotStep === "automating" && renderAutomating()}
-
-                {/* ── OBSERVATION MODE ── */}
-                {autopilotStep === "observation" && renderObservation()}
-
-                {/* ── IDLE / NO LOAN ── */}
-                {autopilotStep === null && (
-                  <div className="flex-1 flex flex-col items-center justify-center gap-5 px-8 opacity-70">
-                    <div className="w-14 h-14 rounded-full bg-muted/50 flex items-center justify-center">
-                      <Building2 className="w-7 h-7 text-foreground" />
-                    </div>
-                    <div className="text-center space-y-1.5">
-                      <p className="text-sm font-medium text-foreground">Select a workspace to start</p>
-                      <p className="text-xs text-foreground max-w-[280px] leading-relaxed">
-                        Choose an active workspace from the sidebar and Luka will automatically prepare your engagement, or click New workspace to start a new engagement.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setNewWsModalOpen(true)}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted/60 hover:border-primary/40 transition-all duration-150 shadow-sm"
-                    >
-                      <Plus className="w-3.5 h-3.5 text-foreground" />
-                      New workspace
-                    </button>
-                  </div>
-                )}
+                {/* Window controls */}
+                <div className="flex items-center gap-1 shrink-0">
+                  <TooltipProvider>
+                    <Tooltip><TooltipTrigger asChild>
+                      <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={handleOpenNewWindow} className="action-icon" aria-label="Open in new window"><ExternalLink size={16} /></motion.button>
+                    </TooltipTrigger><TooltipContent side="bottom"><p>Open in new window</p></TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger asChild>
+                      <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setIsFullscreen(p => !p)} className={`action-icon ${isFullscreen ? "action-icon-active" : ""}`} aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}>
+                        {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                      </motion.button>
+                    </TooltipTrigger><TooltipContent side="bottom"><p>{isFullscreen ? "Exit fullscreen" : "Fullscreen"}</p></TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger asChild>
+                      <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setIsMinimized(p => !p)} className="action-icon" aria-label={isMinimized ? "Restore" : "Minimize"}><Minus size={16} /></motion.button>
+                    </TooltipTrigger><TooltipContent side="bottom"><p>{isMinimized ? "Restore" : "Minimize"}</p></TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger asChild>
+                      <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={handleClose} className="action-icon" aria-label="Close"><X size={16} /></motion.button>
+                    </TooltipTrigger><TooltipContent side="bottom"><p>Close</p></TooltipContent></Tooltip>
+                  </TooltipProvider>
+                </div>
               </div>
-            ) : (
-              /* ── THREADS VIEW ── */
-              <div className="flex-1 flex flex-col min-w-0 min-h-0">
+
+              {/* Tab content */}
+              {activeTab === "threads" ? (
+                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                  {/* Context bar */}
+                  <div className="flex items-center gap-3 px-4 py-2.5 border-b relative" style={{ borderColor: "hsl(var(--border))" }}>
+                    <motion.button whileHover={{ backgroundColor: "hsl(var(--muted) / 0.6)" }} whileTap={{ scale: 0.98 }}
+                      onClick={e => { e.stopPropagation(); setShowEngagementTrayCtx(v => !v); }}
+                      className="flex items-center gap-2 px-2 py-1 rounded-lg cursor-pointer transition-colors"
+                    >
+                      <div className="w-6 h-6 rounded-md bg-muted flex items-center justify-center"><Inbox size={14} className="text-muted-foreground" /></div>
+                      <span className="text-sm font-medium text-foreground">{selectedEngagementCtx ? selectedEngagementCtx.id : "Select Engagement"}</span>
+                      {selectedEngagementCtx && <img src={quickbooksLogo} alt="QuickBooks" className="h-[24px] w-auto object-contain" />}
+                      <ChevronDown size={14} className={`text-muted-foreground transition-transform ${showEngagementTrayCtx ? "rotate-180" : ""}`} />
+                    </motion.button>
+                    {(activeFlowPanel === "account-reconciliation" || activeFlowPanel === "tax-payable") && activityMinimized && (
+                      <div className="ml-auto">
+                        <LukaActivityPanel entries={activityEntries} isProcessing={isActivityProcessing} minimized={true} onToggleMinimize={() => setActivityMinimized(false)} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Enhanced Prompt Banner */}
+                  <AnimatePresence>
+                    {(enhancedPrompt || isEnhancing) && (
+                      <motion.div initial={{ opacity: 0, y: -8, height: 0 }} animate={{ opacity: 1, y: 0, height: "auto" }} exit={{ opacity: 0, y: -8, height: 0 }} transition={{ type: "spring", damping: 24, stiffness: 320 }} className="border-b overflow-hidden" style={{ borderColor: "hsl(var(--border))", background: "linear-gradient(135deg, hsl(270 65% 55% / 0.04), hsl(207 71% 38% / 0.04))" }}>
+                        <div className="px-4 py-3 flex items-start gap-3">
+                          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ background: "linear-gradient(135deg, hsl(270 65% 55%), hsl(207 71% 38%))", boxShadow: "0 2px 8px hsl(270 65% 55% / 0.25)" }}>
+                            {isEnhancing ? <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.9, repeat: Infinity, ease: "linear" }}><Loader2 size={14} className="text-white" /></motion.div> : <Wand2 size={14} className="text-white" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "hsl(270 65% 45%)" }}>{isEnhancing ? "Enhancing prompt…" : "Enhanced by Luka"}</span>
+                              {enhanceCount > 0 && !isEnhancing && <span className="text-[9px] font-bold px-1.5 rounded-md" style={{ background: "hsl(270 65% 55%)", color: "white", height: 14, lineHeight: "14px" }}>v{enhanceCount}</span>}
+                            </div>
+                            {isEnhancing ? (
+                              <div className="flex gap-1.5">{[0,1,2].map(i => (<motion.div key={i} className="h-2 rounded-full" style={{ background: "hsl(270 65% 55% / 0.25)", flex: i === 1 ? 2 : 1 }} animate={{ opacity: [0.3, 0.9, 0.3] }} transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.15 }} />))}</div>
+                            ) : (
+                              <p className="text-[12.5px] leading-relaxed text-foreground">{enhancedPrompt}</p>
+                            )}
+                          </div>
+                          {!isEnhancing && enhancedPrompt && (
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }} onClick={handleReplaceWithEnhanced} className="inline-flex items-center gap-1.5 px-3 h-7 rounded-lg text-[11px] font-semibold cursor-pointer" style={{ background: "linear-gradient(135deg, hsl(270 65% 55%), hsl(207 71% 38%))", color: "white", boxShadow: "0 2px 6px hsl(270 65% 55% / 0.3)" }}>
+                                <Check size={12} strokeWidth={2.5} />Replace
+                              </motion.button>
+                              <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} onClick={handleDismissEnhanced} className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer" style={{ color: "hsl(var(--muted-foreground))" }}>
+                                <X size={13} />
+                              </motion.button>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Chat body */}
+                  <div className="relative flex-1 flex flex-col overflow-hidden">
+                    {/* Engagement Tray */}
+                    <AnimatePresence>
+                      {showEngagementTrayCtx && (
+                        <motion.div ref={engagementTrayCtxRef} initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: 0.98 }} transition={{ type: "spring", damping: 28, stiffness: 320, mass: 0.7 }} className="absolute left-4 right-4 bottom-2 z-30" style={{ maxHeight: "60%" }}>
+                          <div className="rounded-2xl overflow-hidden flex flex-col bg-card border border-border shadow-lg">
+                            <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-3">
+                              <h3 className="text-base font-semibold text-foreground">Select Engagement</h3>
+                              <div className="flex items-center gap-2">
+                                <div className="relative"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" /><input value={engagementSearchCtx} onChange={e => setEngagementSearchCtx(e.target.value)} placeholder="Search" className="h-9 w-56 pl-8 pr-3 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" style={{ borderColor: "hsl(var(--border))" }} /></div>
+                                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => { setShowEngagementTrayCtx(false); setEngagementSearchCtx(""); }} className="h-9 w-9 inline-flex items-center justify-center rounded-lg border" style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--background))" }}><X size={14} /></motion.button>
+                              </div>
+                            </div>
+                            <div className="overflow-auto" style={{ maxHeight: "calc(60vh - 70px)" }}>
+                              <table className="w-full text-sm" style={{ minWidth: 720 }}>
+                                <thead><tr className="text-left" style={{ borderBottom: "1px solid hsl(var(--border) / 0.6)" }}>
+                                  {["Client Name", "Engagement ID", "Year End", "Status"].map(h => <th key={h} className="px-5 py-2.5 font-medium text-muted-foreground">{h}</th>)}
+                                </tr></thead>
+                                <tbody>
+                                  {ENGAGEMENTS_PANEL.filter(e => { const q = engagementSearchCtx.toLowerCase(); return !q || e.client.toLowerCase().includes(q) || e.id.toLowerCase().includes(q); }).map((e, i) => (
+                                    <motion.tr key={`${e.client}-${i}`} whileHover={{ backgroundColor: "hsl(270, 80%, 65% / 0.06)" }} onClick={() => { setSelectedEngagementCtx(e); setShowEngagementTrayCtx(false); setEngagementSearchCtx(""); }} className="cursor-pointer" style={{ borderBottom: "1px solid hsl(var(--border) / 0.4)" }}>
+                                      <td className="px-5 py-3 font-semibold">{e.client}</td>
+                                      <td className="px-5 py-3">{e.id}</td>
+                                      <td className="px-5 py-3">{e.yearEnd}</td>
+                                      <td className="px-5 py-3"><span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium" style={{ background: "hsl(142, 70%, 45% / 0.12)", color: "hsl(142, 70%, 35%)", border: "1px solid hsl(142, 70%, 45% / 0.3)" }}>{e.status}</span></td>
+                                    </motion.tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {activeFlowPanel === "account-reconciliation" ? (
+                      <><ReconciliationFlow onActivity={handleActivityUpdate} activityMinimized={activityMinimized} />{!activityMinimized && <LukaActivityPanel entries={activityEntries} isProcessing={isActivityProcessing} minimized={false} onToggleMinimize={() => setActivityMinimized(true)} />}</>
+                    ) : activeFlowPanel === "tax-payable" ? (
+                      <><TaxPayableFlow onActivity={handleActivityUpdate} activityMinimized={activityMinimized} />{!activityMinimized && <LukaActivityPanel entries={activityEntries} isProcessing={isActivityProcessing} minimized={false} onToggleMinimize={() => setActivityMinimized(true)} />}</>
+                    ) : (
+                    /* ── Existing threads content (sentMessage, rich responses, etc.) ── */
+                    <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-y-auto">
                 <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
                   {!sentMessage ? (
                     <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-[60vh]">
@@ -4708,13 +4689,290 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
                     <VoiceRecordingOverlay open={voiceOpen} onClose={() => setVoiceOpen(false)} onComplete={(text) => setMessage(prev => prev ? prev + " " + text : text)} />
                   </div>
                 </div>
-              </div>
-            )}
-          </main>
-        </div>
+                    </div>
+                    )}
+                  </div>
+                  {/* Input area */}
+                  <div className="px-4 pb-4 pt-2 relative">
+                    {/* Prompt Window */}
+                    <AnimatePresence>
+                      {showPromptWindow && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                          transition={{ type: "spring", damping: 22, stiffness: 400 }}
+                          className="absolute bottom-full left-4 right-4 mb-2 z-50"
+                        >
+                          <div className="prompt-window-shimmer-border rounded-2xl">
+                            <div className="rounded-2xl overflow-hidden" style={{ background: "hsl(var(--card))", boxShadow: "0 8px 32px -8px hsla(260, 60%, 40%, 0.18)" }}>
+                              <div className="py-1">
+                                {shellPromptList.map((prompt, i) => (
+                                  <motion.button
+                                    key={prompt}
+                                    initial={{ opacity: 0, x: -8 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: i * 0.03, duration: 0.2 }}
+                                    onClick={() => handleShellPromptSelect(prompt)}
+                                    onMouseEnter={() => setSelectedPromptIndex(i)}
+                                    className="w-full text-left px-5 py-3 text-[15px] font-medium transition-colors duration-150 cursor-pointer flex items-center"
+                                    style={{
+                                      color: selectedPromptIndex === i ? "hsl(var(--foreground))" : "hsl(var(--foreground) / 0.8)",
+                                      background: selectedPromptIndex === i ? "hsl(var(--muted) / 0.6)" : "transparent",
+                                      borderBottom: i < shellPromptList.length - 1 ? "1px solid hsl(var(--border) / 0.4)" : "none",
+                                    }}
+                                  >
+                                    {prompt}
+                                  </motion.button>
+                                ))}
+                              </div>
+                              <div className="flex items-center justify-between px-5 py-2.5 text-xs" style={{ color: "hsl(var(--muted-foreground))", borderTop: "1px solid hsl(var(--border) / 0.4)" }}>
+                                <div className="flex items-center gap-2">
+                                  <span>Use</span>
+                                  <kbd className="inline-flex items-center justify-center w-6 h-6 rounded-md border text-[11px] font-semibold" style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--muted) / 0.5)" }}>↑</kbd>
+                                  <kbd className="inline-flex items-center justify-center w-6 h-6 rounded-md border text-[11px] font-semibold" style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--muted) / 0.5)" }}>↓</kbd>
+                                  <span>to navigate</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span>To close, press</span>
+                                  <kbd className="inline-flex items-center justify-center px-2 h-6 rounded-md border text-[11px] font-semibold" style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--muted) / 0.5)" }}>Esc</kbd>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
-        {/* ── Agentic Loan Amort Wizard ── */}
-        {amortPhase === "wizard" && (
+                    <div className="luka-input-wrapper">
+                      <textarea
+                        ref={shellInputRef}
+                        value={shellInputValue}
+                        onChange={handleShellInputChange}
+                        onKeyDown={handleShellKeyDown}
+                        placeholder="Type / for prompts or just ask anything..."
+                        rows={1}
+                        className="luka-input luka-input-autoresize"
+                      />
+                      <div className="flex items-center justify-between pt-1 px-1">
+                        <div className="flex items-center gap-2">
+                          {/* Plus tray */}
+                          <div ref={plusTrayRef} style={{ position: "relative" }}>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <motion.button
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => setShowPlusTray(p => !p)}
+                                    style={{ width: 30, height: 30, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", background: showPlusTray ? "hsl(var(--muted))" : "hsl(var(--background))", border: `1px solid ${showPlusTray ? "hsl(var(--primary) / 0.3)" : "hsl(var(--border) / 0.6)"}`, color: "hsl(0 0% 0%)", cursor: "pointer" }}
+                                  >
+                                    <motion.div animate={{ rotate: showPlusTray ? 45 : 0 }} transition={{ duration: 0.2 }}>
+                                      <Plus size={15} strokeWidth={2.2} />
+                                    </motion.div>
+                                  </motion.button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" sideOffset={6}>Add files & connectors</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            <AnimatePresence>
+                              {showPlusTray && (
+                                <motion.div
+                                  initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                                  exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                                  transition={{ type: "spring", damping: 24, stiffness: 400 }}
+                                  style={{ position: "absolute", bottom: "calc(100% + 8px)", left: 0, width: 280, background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, zIndex: 100, overflow: "hidden" }}
+                                >
+                                  <div style={{ padding: "6px 0" }}>
+                                    <motion.button
+                                      whileHover={{ backgroundColor: "hsl(var(--muted) / 0.5)" }}
+                                      style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", fontSize: 13, fontWeight: 500, color: "hsl(var(--foreground))", background: "transparent", border: "none", cursor: "pointer" }}
+                                    >
+                                      <div style={{ width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", background: "hsl(207 71% 38% / 0.08)", color: "hsl(207 71% 31%)" }}>
+                                        <Upload size={16} strokeWidth={2} />
+                                      </div>
+                                      <div style={{ textAlign: "left" }}>
+                                        <div style={{ fontWeight: 600, fontSize: 13 }}>Upload from Computer</div>
+                                        <div style={{ fontSize: 11, color: "hsl(var(--muted-foreground))", marginTop: 1 }}>PDF, Excel, CSV, Images</div>
+                                      </div>
+                                    </motion.button>
+                                  </div>
+                                  <div style={{ height: 1, background: "hsl(var(--border) / 0.6)", margin: "0 12px" }} />
+                                  <div style={{ padding: "10px 14px 6px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                    <span style={{ fontSize: 11, fontWeight: 600, color: "hsl(var(--muted-foreground))", textTransform: "uppercase", letterSpacing: "0.05em" }}>Available Connectors</span>
+                                    <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 10, background: "hsl(207 71% 38% / 0.1)", color: "hsl(207 71% 31%)" }}>{availableConnectors.length}</span>
+                                  </div>
+                                  <div style={{ padding: "2px 0 8px", maxHeight: 200, overflowY: "auto", scrollbarWidth: "none" as const }}>
+                                    {availableConnectors.map(connector => (
+                                      <motion.button
+                                        key={connector.id}
+                                        whileHover={{ backgroundColor: "hsl(var(--muted) / 0.4)" }}
+                                        onClick={() => handleConnectConnector(connector.id)}
+                                        style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", fontSize: 13, color: "hsl(var(--foreground))", background: "transparent", border: "none", cursor: "pointer" }}
+                                      >
+                                        <div style={{ width: 28, height: 28, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", background: `${connector.color}14` }}>
+                                          <Globe size={14} style={{ color: connector.color }} />
+                                        </div>
+                                        <span style={{ flex: 1, textAlign: "left" }}>{connector.name}</span>
+                                        <span style={{ fontSize: 10, fontWeight: 500, padding: "3px 8px", borderRadius: 6, background: "hsl(var(--muted) / 0.6)", color: "hsl(var(--muted-foreground))" }}>Connect</span>
+                                      </motion.button>
+                                    ))}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+
+                          {/* Model selector */}
+                          <div ref={modelDropdownRef} style={{ position: "relative" }}>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <motion.button
+                                    whileHover={{ scale: 1.03 }}
+                                    whileTap={{ scale: 0.97 }}
+                                    className="luka-model-badge"
+                                    onClick={() => setShowModelDropdown(p => !p)}
+                                    style={{ cursor: "pointer" }}
+                                  >
+                                    <Sparkles size={12} style={{ color: "hsl(40 90% 50%)" }} />
+                                    <span>{selectedModel}</span>
+                                    <ChevronDown size={14} strokeWidth={2.2} className="ml-0.5 opacity-60" style={{ transform: showModelDropdown ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }} />
+                                  </motion.button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" sideOffset={6}>Change AI model</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            <AnimatePresence>
+                              {showModelDropdown && (
+                                <motion.div
+                                  initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                                  exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                                  transition={{ type: "spring", damping: 24, stiffness: 400 }}
+                                  style={{ position: "absolute", bottom: "calc(100% + 8px)", left: 0, minWidth: 260, background: "hsl(var(--card))", border: "1px solid #0C2D55", borderRadius: 12, zIndex: 100, overflow: "hidden" }}
+                                >
+                                  <div style={{ padding: "10px 12px 6px", fontSize: 11, fontWeight: 600, color: "hsl(var(--muted-foreground))", textTransform: "uppercase", letterSpacing: "0.05em" }}>Select Model</div>
+                                  <div style={{ padding: "0 0 6px", maxHeight: 380, overflowY: "auto", scrollbarWidth: "none" as const }}>
+                                    {modelGroups.map((group, gi) => (
+                                      <div key={group.ecosystem}>
+                                        {gi > 0 && <div style={{ height: 1, background: "hsl(var(--border) / 0.5)", margin: "4px 12px" }} />}
+                                        <div style={{ padding: "6px 12px", margin: "2px 6px", borderRadius: 6, fontSize: 10, fontWeight: 600, color: "hsl(var(--muted-foreground) / 0.7)", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: 5 }}>
+                                          {group.icon}
+                                          {group.ecosystem}
+                                        </div>
+                                        {group.models.map(model => {
+                                          const isSel = selectedModel === model.name;
+                                          return (
+                                            <motion.button
+                                              key={model.name}
+                                              onClick={() => { setSelectedModel(model.name); setShowModelDropdown(false); }}
+                                              style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "7px 12px", fontSize: 13, fontWeight: isSel ? 600 : 400, color: isSel ? "#0C2D55" : "#1a1a1a", background: isSel ? "hsl(var(--muted) / 0.5)" : "transparent", border: "none", cursor: "pointer" }}
+                                            >
+                                              <span style={{ flex: 1, textAlign: "left" }}>{model.name}</span>
+                                              <span style={{ fontSize: 10, fontWeight: 500, padding: "2px 6px", borderRadius: 6, background: "hsl(var(--muted) / 0.6)", color: "#555555", minWidth: 44, textAlign: "center" }}>{model.badge}</span>
+                                              {isSel && <Check size={14} strokeWidth={2.5} style={{ color: "#0C2D55" }} />}
+                                            </motion.button>
+                                          );
+                                        })}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+
+                          {/* Connected connectors */}
+                          <AnimatePresence>
+                            {connectedConnectors.map(connector => (
+                              <motion.div
+                                key={connector.id}
+                                initial={{ opacity: 0, scale: 0.8, width: 0 }}
+                                animate={{ opacity: 1, scale: 1, width: "auto" }}
+                                exit={{ opacity: 0, scale: 0.8, width: 0 }}
+                                transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                                style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px 4px 6px", borderRadius: 7, border: `1px solid ${connector.color}30`, background: `${connector.color}08`, cursor: "default", overflow: "hidden", whiteSpace: "nowrap" }}
+                              >
+                                <div style={{ width: 6, height: 6, borderRadius: "50%", background: connector.color, flexShrink: 0 }} />
+                                <span style={{ fontSize: 11, fontWeight: 600, color: connector.color }}>{connector.abbr}</span>
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <motion.button
+                                  whileHover={shellInputValue.trim() && !isEnhancing ? { scale: 1.1 } : {}}
+                                  whileTap={shellInputValue.trim() && !isEnhancing ? { scale: 0.9 } : {}}
+                                  onClick={handleEnhancePrompt}
+                                  disabled={!shellInputValue.trim() || isEnhancing}
+                                  style={{ position: "relative", width: 30, height: 30, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", background: "hsl(var(--background))", border: "1px solid hsl(var(--border) / 0.6)", color: "hsl(270 65% 55%)", cursor: !shellInputValue.trim() || isEnhancing ? "not-allowed" : "pointer", opacity: !shellInputValue.trim() ? 0.4 : 1 }}
+                                >
+                                  <AnimatePresence mode="wait">
+                                    {isEnhancing
+                                      ? <motion.div key="loader" animate={{ rotate: 360 }} transition={{ rotate: { duration: 0.8, repeat: Infinity, ease: "linear" } }}><Loader2 size={15} strokeWidth={2.2} /></motion.div>
+                                      : <motion.div key="wand"><Wand2 size={15} strokeWidth={2.2} /></motion.div>
+                                    }
+                                  </AnimatePresence>
+                                </motion.button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">Enhance your prompt with Luka</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <motion.button
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  style={{ width: 30, height: 30, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", background: "hsl(var(--background))", border: "1px solid hsl(var(--border) / 0.6)", color: "hsl(0 0% 0%)", cursor: "pointer" }}
+                                >
+                                  <Mic size={15} strokeWidth={2.2} />
+                                </motion.button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" sideOffset={6}>Voice input</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <motion.button
+                                  whileHover={shellInputValue.trim() ? { scale: 1.1 } : {}}
+                                  whileTap={shellInputValue.trim() ? { scale: 0.9 } : {}}
+                                  className={`luka-send-btn ${shellInputValue.trim() ? "enabled" : ""}`}
+                                  disabled={!shellInputValue.trim()}
+                                >
+                                  <Send size={15} strokeWidth={2.2} />
+                                </motion.button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" sideOffset={6}>Send message</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* ── WORKSPACE TAB ── */
+                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                  {!hasWorkspaceEngagement ? (
+                    <>
+                      <WorkspaceEmptyState onAddEngagement={() => setShowAddEngagementModal(true)} />
+                      <AddEngagementModal open={showAddEngagementModal} onClose={() => setShowAddEngagementModal(false)} onSelect={eng => { setWorkspaceEngagement({ name: eng.name, code: eng.code, source: eng.source }); setShowAddEngagementModal(false); setHasWorkspaceEngagement(true); }} />
+                    </>
+                  ) : (
+                    <EngagementWorkspaceShell engagement={workspaceEngagement ?? { name: "", code: "" }} onAddEngagement={() => setShowAddEngagementModal(true)} collapsed={workspaceSidebarCollapsed} onCollapse={() => setWorkspaceSidebarCollapsed(true)} />
+                  )}
+                </div>
+              )}
+              <LukaSettingsOverlay open={settingsOpen} onClose={() => setSettingsOpen(false)} activeTab={activeTab === "workspaces" ? "workspace" : "threads"} onOpenNewWindow={handleOpenNewWindow} onFullscreen={() => setIsFullscreen(p => !p)} onMinimize={() => setIsMinimized(p => !p)} isFullscreen={isFullscreen} isMinimized={isMinimized} />
+            </div>
+          </motion.div>
+
+          {/* ── Agentic Loan Amort Wizard ── */}
+          {amortPhase === "wizard" && (
           <>
             <div className="fixed inset-0 z-[59]" onClick={() => setAmortPhase("found")} />
             <div
@@ -5075,7 +5333,8 @@ export function AskLukaOverlay({ open, onOpenChange }: AskLukaOverlayProps) {
             </div>
           </div>
         )}
-      </div>
-    </>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
