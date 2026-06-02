@@ -460,14 +460,14 @@
   .luka-threads-sidebar ::-webkit-scrollbar { display: none; }
 
   .luka-new-thread-btn {
-    @apply w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer;
+    @apply w-full flex items-center gap-2 px-3 py-2 text-sm font-medium; border-radius: 12px transition-all duration-200 cursor-pointer;
     color: hsl(var(--foreground));
     background: hsl(var(--muted));
   }
   .luka-new-thread-btn:hover { background: hsl(var(--primary) / 0.08); color: hsl(var(--primary)); }
 
   .luka-thread-search {
-    @apply w-full pl-8 pr-3 py-2 rounded-lg border text-sm outline-none transition-all duration-200;
+    @apply w-full pl-8 pr-3 py-2 border text-sm outline-none transition-all duration-200; border-radius: 8px;
     border-color: hsl(var(--border));
     background: hsl(var(--card));
     color: hsl(var(--foreground));
@@ -475,13 +475,13 @@
   .luka-thread-search:focus { border-color: hsl(var(--primary)); box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1); }
 
   .luka-thread-item {
-    @apply w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-all duration-150 cursor-pointer text-left;
+    @apply w-full flex items-center gap-2 px-3 py-2 text-sm transition-all duration-150 cursor-pointer text-left; border-radius: 6px;
     color: hsl(var(--foreground));
   }
   .luka-thread-item:hover { background: hsl(var(--primary) / 0.06); }
 
   .luka-strip-icon {
-    @apply w-9 h-9 flex items-center justify-center rounded-lg transition-all duration-200 cursor-pointer;
+    @apply w-9 h-9 flex items-center justify-center transition-all duration-200 cursor-pointer; border-radius: 8px;
     color: hsl(var(--muted-foreground));
   }
   .luka-strip-icon:hover { background: hsl(var(--primary) / 0.08); color: hsl(var(--primary)); }
@@ -496,7 +496,7 @@
   }
 
   .luka-prompt-chip {
-    @apply px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer;
+    @apply px-4 py-2 text-sm font-medium transition-all duration-200 cursor-pointer; border-radius: 8px;
     border: 1px solid hsl(var(--border));
     background: hsl(var(--card));
     color: hsl(var(--foreground));
@@ -508,8 +508,10 @@
   }
 
   .luka-input-wrapper {
-    @apply rounded-xl border p-3 transition-all duration-200;
-    border-color: hsl(0 0% 35%);
+    border-radius: 12px;
+    border: 1px solid hsl(0 0% 35%);
+    padding: 0.75rem;
+    transition: all 0.2s;
     background: hsl(var(--card));
     box-shadow: 0 2px 12px 0 hsla(0,0%,0%,0.10), 0 1px 4px 0 hsla(0,0%,0%,0.06);
   }
@@ -535,7 +537,7 @@
   .luka-input-action:hover { color: hsl(var(--foreground)); background: hsl(var(--muted)); }
 
   .luka-model-badge {
-    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all duration-200 cursor-pointer;
+    @apply inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium transition-all duration-200 cursor-pointer; border-radius: 6px;
     border: 1px solid hsl(var(--border));
     color: hsl(var(--foreground));
   }

@@ -4781,6 +4781,30 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                             </AnimatePresence>
                           </div>
 
+                          {/* Engagement / Inbox button */}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <motion.button
+                                  whileHover={{ scale: 1.1, boxShadow: "0 2px 8px hsla(0,0%,0%,0.10)" }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={() => setShowEngagementTrayCtx(v => !v)}
+                                  style={{
+                                    width: 30, height: 30, borderRadius: 8,
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    background: showEngagementTrayCtx ? "hsl(var(--muted))" : "hsl(var(--background))",
+                                    border: `1px solid ${showEngagementTrayCtx ? "hsl(var(--primary) / 0.3)" : "hsl(var(--border) / 0.6)"}`,
+                                    boxShadow: "0 1px 3px hsla(0,0%,0%,0.06)",
+                                    color: "hsl(0 0% 0%)", cursor: "pointer",
+                                  }}
+                                >
+                                  <Inbox size={15} strokeWidth={2.2} />
+                                </motion.button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" sideOffset={6}>Select Engagement</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+
                           {/* Model selector */}
                           <div ref={modelDropdownRef} style={{ position: "relative" }}>
                             <TooltipProvider>
