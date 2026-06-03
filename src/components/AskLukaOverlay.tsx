@@ -3426,10 +3426,59 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             return [...prev, ...classified.filter(f => !existing.has(f.name))].slice(0, 15);
                                           });
                                           const validClassified = classified.filter(f => f.kind !== "unsupported" && f.kind !== "oversized" && f.kind !== "ambiguous");
-                                          if (validClassified.length === 0 || invMissingMonthsPrompt !== null) return;
+                                          if (validClassified.length === 0) return;
+
+                                          // ── Continuity check ──────────────────────────────
+                                          // Month order table (month name → 0-based index, year-aware via year suffix)
+                                          const MONTH_NAMES = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+                                          const MONTH_LABELS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+                                          // Extract month+year from filename as a sortable number (YYYYMM)
+                                          const extractMonthYear = (name: string): number | null => {
+                                            const lower = name.toLowerCase();
+                                            // Try to find year (2023, 2024, etc.)
+                                            const yearMatch = lower.match(/20(\d{2})/);
+                                            const year = yearMatch ? parseInt("20" + yearMatch[1]) : new Date().getFullYear();
+                                            for (let mi = 0; mi < MONTH_NAMES.length; mi++) {
+                                              if (lower.includes(MONTH_NAMES[mi])) return year * 100 + mi;
+                                            }
+                                            return null;
+                                          };
+
+                                          // Collect all month-years from ALL uploaded files (including previously uploaded)
+                                          const allUploaded = [...invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized"), ...validClassified];
+                                          const monthYears = allUploaded.map(f => extractMonthYear(f.name)).filter((v): v is number => v !== null);
+                                          const uniqueSorted = [...new Set(monthYears)].sort((a, b) => a - b);
+
+                                          // Check for internal gaps (gaps between consecutive covered months)
+                                          const gaps: string[] = [];
+                                          for (let i = 0; i < uniqueSorted.length - 1; i++) {
+                                            const curr = uniqueSorted[i];
+                                            const next = uniqueSorted[i + 1];
+                                            // Convert back to year/month
+                                            const currYear = Math.floor(curr / 100); const currMon = curr % 100;
+                                            const nextYear = Math.floor(next / 100); const nextMon = next % 100;
+                                            const currTotal = currYear * 12 + currMon;
+                                            const nextTotal = nextYear * 12 + nextMon;
+                                            if (nextTotal - currTotal > 1) {
+                                              // Gap — list missing months
+                                              for (let t = currTotal + 1; t < nextTotal; t++) {
+                                                const gYear = Math.floor(t / 12);
+                                                const gMon = t % 12;
+                                                gaps.push(`${MONTH_LABELS[gMon]} ${gYear}`);
+                                              }
+                                            }
+                                          }
+
+                                          if (gaps.length > 0) {
+                                            // Gap found — block, do not proceed
+                                            setInvMissingMonthsPrompt(gaps);
+                                            return;
+                                          }
+                                          setInvMissingMonthsPrompt([]);
 
                                           // ── Real PDF extraction ──────────────────────────
-                                          const validFiles = fileArray.filter((_, i) => validClassified.some(vc => vc.name === fileArray[i]?.name));
+                                          const validFiles = fileArray.filter(f => validClassified.some(vc => vc.name === f.name));
                                           try {
                                             const parseResults = await Promise.all(validFiles.map(f => extractInvTransactions(f)));
                                             const brokerCheck = validateSingleBroker(parseResults);
@@ -3460,25 +3509,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                 });
                                               });
                                             });
-                                            void rows; // used below
                                             if (rows.length > 0) {
-                                              setInvMissingMonthsPrompt([]);
                                               setInvReviewRows(rows);
                                             } else {
-                                              // PDF parsed but no transactions found — fall back to month check
-                                              const allMonths = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-                                              const covered = new Set(validClassified.flatMap(f => allMonths.filter(m => f.name.toLowerCase().includes(m.toLowerCase().slice(0,3)))));
-                                              const missing = allMonths.slice(0, 10).filter(m => !covered.has(m));
-                                              if (missing.length >= 3) {
-                                                setInvMissingMonthsPrompt(missing);
-                                              } else {
-                                                setInvMissingMonthsPrompt([]);
-                                                setInvReviewRows(INV_MOCK_ROWS);
-                                              }
+                                              // PDF parsed but no transactions found — use mock rows
+                                              setInvReviewRows(INV_MOCK_ROWS);
                                             }
                                           } catch {
-                                            // Parser error — fallback to mock rows
-                                            setInvMissingMonthsPrompt([]);
                                             setInvReviewRows(INV_MOCK_ROWS);
                                           }
                                         };
@@ -3817,82 +3854,25 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               </div>
                                             )}
 
-                                            {/* ── Missing months prompt ── */}
+                                            {/* ── Missing months / gap error ── */}
                                             {invMissingMonthsPrompt !== null && invMissingMonthsPrompt.length > 0 && invReviewRows.length === 0 && (
-                                              <div className="flex items-start gap-3">
-                                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shrink-0 mt-0.5">
-                                                  <Zap className="w-3.5 h-3.5 text-white" />
-                                                </div>
-                                                <div className="flex-1 space-y-3">
-                                                  <div className="rounded-[12px] border border-amber-200 bg-amber-50 px-4 py-3">
-                                                    <p className="text-xs text-amber-900 leading-relaxed">
-                                                      I've found the following months missing from the data you've uploaded:{" "}
-                                                      <strong>{invMissingMonthsPrompt.join(", ")}</strong>.
-                                                      Would you like me to create the schedule with the current data, or re-upload all files including the missing months?
-                                                    </p>
-                                                  </div>
+                                              <div className="space-y-3">
+                                                <div className="rounded-[12px] border border-red-200 bg-red-50 px-4 py-3 space-y-2">
                                                   <div className="flex items-center gap-2">
-                                                    <button
-                                                      onClick={() => { setInvMissingMonthsPrompt([]); setInvReviewRows(INV_MOCK_ROWS); }}
-                                                      className="h-8 px-4 text-xs font-medium rounded-[8px] border border-primary text-primary bg-background hover:bg-primary/5 transition-colors"
-                                                    >
-                                                      Continue
-                                                    </button>
-                                                    <button
-                                                      onClick={() => {
-                                                        const inp = document.createElement("input");
-                                                        inp.type = "file"; inp.accept = ".pdf,.xlsx,.xls,.csv,.zip"; inp.multiple = true;
-                                                        inp.onchange = e => {
-                                                          const files = (e.target as HTMLInputElement).files;
-                                                          if (files) {
-                                                            setInvMissingReUploads(prev => {
-                                                              const existing = new Set(prev.map(f => f.name));
-                                                              return [...prev, ...Array.from(files)
-                                                                .filter(f => !existing.has(f.name))
-                                                                .map(f => ({ id: `mu-${Date.now()}-${Math.random().toString(36).slice(2,5)}`, name: f.name, ext: f.name.split(".").pop()?.toLowerCase() ?? "" }))
-                                                              ].slice(0, 15);
-                                                            });
-                                                          }
-                                                        };
-                                                        inp.click();
-                                                      }}
-                                                      className="h-8 px-4 text-xs font-semibold rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                                                    >
-                                                      Upload
-                                                    </button>
+                                                    <AlertCircle className="h-3.5 w-3.5 text-red-600 shrink-0" />
+                                                    <p className="text-xs font-semibold text-red-900">Statements Not in Continuity — Cannot Proceed</p>
                                                   </div>
-
-                                                  {/* Uploaded file chips */}
-                                                  {invMissingReUploads.length > 0 && (
-                                                    <div className="space-y-2">
-                                                      <div className="flex flex-wrap gap-2">
-                                                        {invMissingReUploads.map(f => (
-                                                          <div key={f.id} className="inline-flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-[10px] border border-border bg-background text-xs max-w-[240px]">
-                                                            <div className="w-6 h-6 rounded-[5px] flex items-center justify-center shrink-0 bg-primary/10">
-                                                              {f.ext === "pdf"
-                                                                ? <FileText className="h-3 w-3 text-primary shrink-0" />
-                                                                : f.ext === "zip"
-                                                                ? <FolderOpen className="h-3 w-3 text-primary shrink-0" />
-                                                                : <FileSpreadsheet className="h-3 w-3 text-primary shrink-0" />}
-                                                            </div>
-                                                            <span className="flex-1 min-w-0 truncate font-medium text-foreground text-[11px]">{f.name}</span>
-                                                            <button
-                                                              onClick={() => setInvMissingReUploads(prev => prev.filter(x => x.id !== f.id))}
-                                                              className="shrink-0 text-muted-foreground/50 hover:text-red-500 transition-colors"
-                                                            >
-                                                              <X className="h-3 w-3" />
-                                                            </button>
-                                                          </div>
-                                                        ))}
-                                                      </div>
-                                                      <button
-                                                        onClick={() => { setInvMissingMonthsPrompt([]); setInvMissingReUploads([]); setInvReviewRows(INV_MOCK_ROWS); }}
-                                                        className="h-8 px-4 text-xs font-semibold rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                                                      >
-                                                        Submit
-                                                      </button>
-                                                    </div>
-                                                  )}
+                                                  <p className="text-xs text-red-800 leading-relaxed">
+                                                    The following month{invMissingMonthsPrompt.length !== 1 ? "s are" : " is"} missing, creating a gap in the statement period. All broker statements must be uploaded in full continuity — no gaps allowed.
+                                                  </p>
+                                                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                                                    {invMissingMonthsPrompt.map(m => (
+                                                      <span key={m} className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-red-100 text-red-700 border-red-200">{m}</span>
+                                                    ))}
+                                                  </div>
+                                                  <p className="text-[10px] text-red-700 pt-0.5">
+                                                    <strong>Note:</strong> The first and last statements may be cut-off (partial month) — this is allowed. All months in between must be present.
+                                                  </p>
                                                 </div>
                                               </div>
                                             )}
