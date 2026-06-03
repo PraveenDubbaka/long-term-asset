@@ -94,11 +94,16 @@ export function defaultTbAccountForActivity(activity: string): string {
     case 'Dividend':
     case 'Reinvested Dividend':
     case 'Distribution':      return '4100';
-    case 'Interest':          return '4150';
+    case 'Interest':
+    case 'Bond Interest':
+    case 'Unit Distribution': return '4150';
     case 'Return of Capital': return '1500';
     case 'Fee/Commission':    return '5200';
-    case 'Transfer':          return '1100';
-    default:                  return '';
+    case 'Withholding Tax':   return '5300';
+    case 'Transfer':
+    case 'Transfer In':
+    case 'Transfer Out':      return '1100';
+    default:                  return '1500';
   }
 }
 

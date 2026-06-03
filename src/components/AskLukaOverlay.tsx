@@ -4249,7 +4249,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                           currency: (r.currency as "CAD" | "USD" | "EUR" | "GBP") || "CAD",
                                                           fxRate: parseFloat(r.fxRate) || 1,
                                                           status: "published" as const,
-                                                          tbAccount: r.account || "",
+                                                          tbAccount: defaultTbAccountForActivity(r.type),
                                                         }));
                                                       setInvSubmittedTxns(txns);
                                                       setInvSchedGenerated(true);
