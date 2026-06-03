@@ -3723,13 +3723,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
                                             {/* ── Bottom actions ── */}
                                             {(invReviewRows.length > 0 || validFiles.length > 0) && !(invMissingMonthsPrompt !== null && invMissingMonthsPrompt.length > 0 && invReviewRows.length === 0) && (
-                                              <div className="flex items-center justify-between gap-2 pt-1">
-                                                <button
-                                                  onClick={() => setInvReviewRows(prev => [...prev, { id: `ir-new-${Date.now()}`, date: "", settlement: "", security: "", ticker: "", type: "Purchase", units: "", price: "", currency: "CAD", account: "", source: "" }])}
-                                                  className="inline-flex items-center gap-1 h-8 px-3 text-xs font-medium border border-border rounded-[8px] bg-background hover:bg-muted transition-colors text-foreground"
-                                                >
-                                                  <Plus className="h-3 w-3" /> Add Manual Entry
-                                                </button>
+                                              <div className="flex items-center justify-end gap-2 pt-1">
                                                 <div className="flex items-center gap-2">
                                                   <span className="text-[11px] text-muted-foreground">{invReviewRows.length} transaction{invReviewRows.length !== 1 ? "s" : ""}</span>
                                                   <button
