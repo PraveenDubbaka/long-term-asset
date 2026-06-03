@@ -606,21 +606,66 @@ interface InvReviewRow {
 
 // Real data extracted from Richardson Wealth Limited (SPM Holdings Ltd.) statements
 const INV_MOCK_ROWS: InvReviewRow[] = [
-  { id:"ir-01", date:"2023-08-31", settlement:"2023-08-31", security:"REGIMEN EQUITY PARTNERS SERIES IV PREFERRED SECURITIES", ticker:"REGPREF", type:"Dividend",          units:"10000", price:"",       amount:"849.32",    fxRate:"", currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_1_Aug_2023.pdf" },
-  { id:"ir-02", date:"2023-08-22", settlement:"2023-08-22", security:"IAA FEE FEE/FRAIS 07/2023",                              ticker:"",        type:"Fee/Commission",    units:"",      price:"",       amount:"-83.88",    fxRate:"", currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_1_Aug_2023.pdf" },
-  { id:"ir-03", date:"2023-08-02", settlement:"2023-08-02", security:"ISHARES MSCI EAFE INDEX ETF",                            ticker:"XEF",     type:"Purchase",          units:"2465",  price:"32.460", amount:"-80013.90", fxRate:"", currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
-  { id:"ir-04", date:"2023-08-02", settlement:"2023-08-02", security:"RBC 1.833% SR UNSECURED 31JUL28",                        ticker:"RY",      type:"Purchase",          units:"58000", price:"86.109", amount:"-49943.22", fxRate:"", currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
-  { id:"ir-05", date:"2023-08-03", settlement:"2023-08-03", security:"ACM COMMERCIAL MORTGAGE FUND CLASS F",                   ticker:"ACMCMF",  type:"Dividend",          units:"",      price:"",       amount:"210.76",    fxRate:"", currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
-  { id:"ir-06", date:"2023-08-08", settlement:"2023-08-08", security:"FOUR QUADRANT GLOBAL REAL ESTATE PARTNERS TRUST CLASS J",ticker:"FQGRE",   type:"Dividend",          units:"",      price:"",       amount:"198.08",    fxRate:"", currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
-  { id:"ir-07", date:"2023-08-28", settlement:"2023-08-28", security:"CIBC 2.35% FXD RT SR NT 28AUG2024",                     ticker:"CM",      type:"Interest",          units:"16000", price:"",       amount:"188.00",    fxRate:"", currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
-  { id:"ir-08", date:"2023-08-31", settlement:"2023-08-31", security:"ISHARES S&P/TSX 60 INDEX ETF",                           ticker:"XIU",     type:"Distribution",      units:"3345",  price:"",       amount:"819.53",    fxRate:"", currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
-  { id:"ir-09", date:"2023-08-31", settlement:"2023-08-31", security:"RISE PROPERTIES TRUST CLASS F",                          ticker:"RISE",    type:"Dividend",          units:"",      price:"",       amount:"113.45",    fxRate:"", currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
-  { id:"ir-10", date:"2023-09-20", settlement:"2023-09-20", security:"IAA FEE FEE/FRAIS 08/2023",                              ticker:"",        type:"Fee/Commission",    units:"",      price:"",       amount:"-82.16",    fxRate:"", currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_2_Sept_2023.pdf" },
-  { id:"ir-11", date:"2023-11-30", settlement:"2023-11-30", security:"REGIMEN EQUITY PARTNERS SERIES IV PREFERRED SECURITIES", ticker:"REGPREF", type:"Dividend",          units:"10000", price:"",       amount:"821.92",    fxRate:"", currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_4_Nov_2023.pdf" },
-  { id:"ir-12", date:"2023-12-29", settlement:"2023-12-29", security:"REGIMEN EQUITY PARTNERS SERIES IV PREFERRED SECURITIES", ticker:"REGPREF", type:"Dividend",          units:"10000", price:"",       amount:"849.30",    fxRate:"", currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_5_Dec_2023.pdf" },
+  // ── August 2023 — IAA Account ──
+  { id:"ir-a01", date:"2023-08-31", settlement:"2023-08-31", security:"REGIMEN EQUITY PARTNERS SERIES IV PREFERRED SECURITIES", ticker:"REGPREF", type:"Dividend",       units:"",         price:"",       amount:"849.32",     fxRate:"",       currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_1_Aug_2023.pdf" },
+  { id:"ir-a02", date:"2023-08-22", settlement:"2023-08-22", security:"IAA FEE FEE/FRAIS 07/2023",                              ticker:"",        type:"Fee/Commission", units:"",         price:"",       amount:"-83.88",     fxRate:"",       currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_1_Aug_2023.pdf" },
+  { id:"ir-a03", date:"2023-08-22", settlement:"2023-08-22", security:"GST FEE/FRAIS 07/2023",                                  ticker:"",        type:"Fee/Commission", units:"",         price:"",       amount:"-4.19",      fxRate:"",       currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_1_Aug_2023.pdf" },
+  // ── August 2023 — PMA Account ──
+  { id:"ir-a04", date:"2023-06-30", settlement:"2023-06-30", security:"REVESCO CANADIAN HOLDINGS LP CLASS B",                   ticker:"REVESCO", type:"Dividend",       units:"",         price:"",       amount:"346.72",     fxRate:"1.3240", currency:"USD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
+  { id:"ir-a05", date:"2023-08-01", settlement:"2023-08-01", security:"PRIMEVESTFUND CLASS F",                                  ticker:"PVF",     type:"Sale",           units:"3800.0000",price:"10.000", amount:"38000.00",   fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
+  { id:"ir-a06", date:"2023-08-02", settlement:"2023-08-02", security:"ISHARES MSCI EAFE INDEX ETF",                           ticker:"XEF",     type:"Purchase",       units:"2465.0000",price:"32.460", amount:"-80013.90",  fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
+  { id:"ir-a07", date:"2023-08-02", settlement:"2023-08-02", security:"RBC 1.833% SR UNSECURED 31JUL28",                       ticker:"RY",      type:"Purchase",       units:"58000.0000",price:"86.109",amount:"-49943.22",  fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
+  { id:"ir-a08", date:"2023-08-03", settlement:"2023-08-03", security:"ACM COMMERCIAL MORTGAGE FUND CLASS F",                  ticker:"ACMCMF",  type:"Dividend",       units:"",         price:"",       amount:"210.76",     fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
+  { id:"ir-a09", date:"2023-08-08", settlement:"2023-08-08", security:"FOUR QUADRANT GLOBAL REAL ESTATE PARTNERS TRUST CLASS J",ticker:"FQGRE",  type:"Dividend",       units:"",         price:"",       amount:"198.08",     fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
+  { id:"ir-a10", date:"2023-08-28", settlement:"2023-08-28", security:"BANK OF NOVA SCOTIA SENIOR FIXED RATE NOTES 1.4% 01NOV2027",ticker:"BNS", type:"Interest",       units:"",         price:"",       amount:"188.00",     fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
+  { id:"ir-a11", date:"2023-08-31", settlement:"2023-08-31", security:"ISHARES S&P/TSX 60 INDEX ETF",                          ticker:"XIU",     type:"Distribution",   units:"3345.0000",price:"",       amount:"819.53",     fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
+  { id:"ir-a12", date:"2023-08-31", settlement:"2023-08-31", security:"RISE PROPERTIES TRUST CLASS F",                         ticker:"RISE",    type:"Return of Capital",units:"",       price:"",       amount:"-113.45",    fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
+  { id:"ir-a13", date:"2023-08-31", settlement:"2023-08-31", security:"RISE PROPERTIES TRUST CLASS F",                         ticker:"RISE",    type:"Dividend",       units:"",         price:"",       amount:"113.45",     fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
+  { id:"ir-a14", date:"2023-08-31", settlement:"2023-08-31", security:"HIGH INTEREST SAVINGS ACCOUNT F",                       ticker:"HISA",    type:"Reinvested Dividend",units:"5.5910",price:"10.000",amount:"55.91",     fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
+  // ── September 2023 ──
+  { id:"ir-b01", date:"2023-09-20", settlement:"2023-09-20", security:"IAA FEE FEE/FRAIS 08/2023",                              ticker:"",        type:"Fee/Commission", units:"",         price:"",       amount:"-82.16",     fxRate:"",       currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_2_Sept_2023.pdf" },
+  { id:"ir-b02", date:"2023-09-20", settlement:"2023-09-20", security:"GST FEE/FRAIS 08/2023",                                  ticker:"",        type:"Fee/Commission", units:"",         price:"",       amount:"-4.11",      fxRate:"",       currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_2_Sept_2023.pdf" },
+  // ── November 2023 ──
+  { id:"ir-c01", date:"2023-10-31", settlement:"2023-10-31", security:"REGIMEN EQUITY PARTNERS SERIES IV PREFERRED SECURITIES", ticker:"REGPREF", type:"Dividend",       units:"",         price:"",       amount:"849.32",     fxRate:"",       currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_4_Nov_2023.pdf" },
+  { id:"ir-c02", date:"2023-11-21", settlement:"2023-11-21", security:"IAA FEE FEE/FRAIS 10/2023",                              ticker:"",        type:"Fee/Commission", units:"",         price:"",       amount:"-83.46",     fxRate:"",       currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_4_Nov_2023.pdf" },
+  { id:"ir-c03", date:"2023-11-30", settlement:"2023-11-30", security:"REGIMEN EQUITY PARTNERS SERIES IV PREFERRED SECURITIES", ticker:"REGPREF", type:"Dividend",       units:"",         price:"",       amount:"821.92",     fxRate:"",       currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_4_Nov_2023.pdf" },
+  { id:"ir-c04", date:"2023-11-28", settlement:"2023-11-28", security:"REVESCO PROPERTIES TRUST CLASS F",                       ticker:"RISE",    type:"Dividend",       units:"",         price:"",       amount:"340.06",     fxRate:"1.3550", currency:"USD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_4_Nov_2023.pdf" },
+  { id:"ir-c05", date:"2023-11-28", settlement:"2023-11-28", security:"REVESCO CANADIAN HOLDINGS LP CLASS B",                   ticker:"REVESCO", type:"Dividend",       units:"",         price:"",       amount:"270.74",     fxRate:"1.3550", currency:"USD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_4_Nov_2023.pdf" },
+  // ── December 2023 ──
+  { id:"ir-d01", date:"2023-12-01", settlement:"2023-12-01", security:"BANK OF NOVA SCOTIA SENIOR FIXED RATE NOTES 1.4% 01NOV2027",ticker:"BNS", type:"Interest",       units:"",         price:"",       amount:"112.00",     fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_5_Dec_2023.pdf" },
+  { id:"ir-d02", date:"2023-12-01", settlement:"2023-12-01", security:"GLOBAL DIVERSIFIED PORTFOLIO (FUND)",                    ticker:"",        type:"Sale",           units:"35.6800",  price:"35.680", amount:"28880.00",   fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_5_Dec_2023.pdf" },
+  { id:"ir-d03", date:"2023-12-01", settlement:"2023-12-01", security:"GLOBAL DIVERSIFIED PORTFOLIO (FUND)",                    ticker:"",        type:"Purchase",       units:"35.6800",  price:"35.680", amount:"-28880.00",  fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_5_Dec_2023.pdf" },
+  { id:"ir-d04", date:"2023-12-02", settlement:"2023-12-02", security:"GIC 2.25% 01APR2025",                                    ticker:"",        type:"Interest",       units:"",         price:"",       amount:"134.22",     fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_5_Dec_2023.pdf" },
+  { id:"ir-d05", date:"2023-12-02", settlement:"2023-12-02", security:"GLOBAL DIVERSIFIED PORTFOLIO — UNIT DISTRIBUTION",       ticker:"",        type:"Distribution",   units:"",         price:"",       amount:"462.92",     fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_5_Dec_2023.pdf" },
+  { id:"ir-d06", date:"2023-12-19", settlement:"2023-12-19", security:"IAA FEE FEE/FRAIS 11/2023",                              ticker:"",        type:"Fee/Commission", units:"",         price:"",       amount:"-81.45",     fxRate:"",       currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_5_Dec_2023.pdf" },
+  { id:"ir-d07", date:"2023-12-29", settlement:"2023-12-29", security:"REGIMEN EQUITY PARTNERS SERIES IV PREFERRED SECURITIES", ticker:"REGPREF", type:"Dividend",       units:"10000.0000",price:"",      amount:"849.30",     fxRate:"",       currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_5_Dec_2023.pdf" },
+  { id:"ir-d08", date:"2023-12-28", settlement:"2023-12-28", security:"REVESCO PROPERTIES TRUST CLASS F",                       ticker:"RISE",    type:"Dividend",       units:"",         price:"",       amount:"340.06",     fxRate:"1.3550", currency:"USD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_5_Dec_2023.pdf" },
+  { id:"ir-d09", date:"2023-12-28", settlement:"2023-12-28", security:"REVESCO CANADIAN HOLDINGS LP CLASS B",                   ticker:"REVESCO", type:"Dividend",       units:"",         price:"",       amount:"270.74",     fxRate:"1.3550", currency:"USD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_5_Dec_2023.pdf" },
+  // ── January 2024 ──
+  { id:"ir-e01", date:"2024-01-01", settlement:"2024-01-01", security:"BANK OF NOVA SCOTIA SENIOR FIXED RATE NOTES 1.4% 01NOV2027",ticker:"BNS", type:"Interest",       units:"",         price:"",       amount:"112.00",     fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_6_Jan_2024.pdf" },
+  { id:"ir-e02", date:"2024-01-02", settlement:"2024-01-02", security:"GIC 2.25% 01APR2025",                                    ticker:"",        type:"Interest",       units:"",         price:"",       amount:"134.22",     fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_6_Jan_2024.pdf" },
+  { id:"ir-e03", date:"2024-01-02", settlement:"2024-01-02", security:"GLOBAL DIVERSIFIED PORTFOLIO — UNIT DISTRIBUTION",       ticker:"",        type:"Distribution",   units:"",         price:"",       amount:"462.92",     fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_6_Jan_2024.pdf" },
+  { id:"ir-e04", date:"2024-01-22", settlement:"2024-01-22", security:"IAA FEE FEE/FRAIS 12/2023",                              ticker:"",        type:"Fee/Commission", units:"",         price:"",       amount:"-81.37",     fxRate:"",       currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_6_Jan_2024.pdf" },
+  { id:"ir-e05", date:"2024-01-22", settlement:"2024-01-22", security:"GST FEE/FRAIS 12/2023",                                  ticker:"",        type:"Fee/Commission", units:"",         price:"",       amount:"-4.07",      fxRate:"",       currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_6_Jan_2024.pdf" },
+  { id:"ir-e06", date:"2024-01-31", settlement:"2024-01-31", security:"REGIMEN EQUITY PARTNERS SERIES IV PREFERRED SECURITIES", ticker:"REGPREF", type:"Dividend",       units:"10000.0000",price:"",      amount:"819.67",     fxRate:"",       currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_6_Jan_2024.pdf" },
+  { id:"ir-e07", date:"2024-01-31", settlement:"2024-01-31", security:"REVESCO PROPERTIES TRUST CLASS F",                       ticker:"RISE",    type:"Dividend",       units:"",         price:"",       amount:"340.06",     fxRate:"1.3550", currency:"USD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_6_Jan_2024.pdf" },
+  { id:"ir-e08", date:"2024-01-31", settlement:"2024-01-31", security:"REVESCO CANADIAN HOLDINGS LP CLASS B",                   ticker:"REVESCO", type:"Dividend",       units:"",         price:"",       amount:"270.74",     fxRate:"1.3550", currency:"USD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_6_Jan_2024.pdf" },
+  // ── May 2024 ──
+  { id:"ir-f01", date:"2024-05-01", settlement:"2024-05-01", security:"BANK OF NOVA SCOTIA SENIOR FIXED RATE NOTES 1.4% 01NOV2027",ticker:"BNS", type:"Interest",       units:"",         price:"",       amount:"112.00",     fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_10_May_ 2024.pdf" },
+  { id:"ir-f02", date:"2024-05-01", settlement:"2024-05-01", security:"GLOBAL DIVERSIFIED PORTFOLIO (FUND)",                    ticker:"",        type:"Sale",           units:"106.7600", price:"106.760",amount:"13238.24",   fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_10_May_ 2024.pdf" },
+  { id:"ir-f03", date:"2024-05-01", settlement:"2024-05-01", security:"GLOBAL DIVERSIFIED PORTFOLIO (FUND)",                    ticker:"",        type:"Purchase",       units:"106.7600", price:"106.760",amount:"-13238.24",  fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_10_May_ 2024.pdf" },
+  { id:"ir-f04", date:"2024-05-02", settlement:"2024-05-02", security:"GIC 2.25% 01APR2025",                                    ticker:"",        type:"Interest",       units:"",         price:"",       amount:"134.22",     fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_10_May_ 2024.pdf" },
+  { id:"ir-f05", date:"2024-05-02", settlement:"2024-05-02", security:"GLOBAL DIVERSIFIED PORTFOLIO — UNIT DISTRIBUTION",       ticker:"",        type:"Distribution",   units:"",         price:"",       amount:"522.29",     fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_10_May_ 2024.pdf" },
+  { id:"ir-f06", date:"2024-05-09", settlement:"2024-05-09", security:"MACKENZIE CDN EQUITY ETF",                               ticker:"QCE",     type:"Sale",           units:"79.1200",  price:"79.120", amount:"25700.60",   fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_10_May_ 2024.pdf" },
+  { id:"ir-f07", date:"2024-05-09", settlement:"2024-05-09", security:"MACKENZIE CDN EQUITY ETF",                               ticker:"QCE",     type:"Purchase",       units:"79.1200",  price:"79.120", amount:"-25700.60",  fxRate:"",       currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_10_May_ 2024.pdf" },
+  { id:"ir-f08", date:"2024-05-21", settlement:"2024-05-21", security:"IAA FEE FEE/FRAIS 04/2024",                              ticker:"",        type:"Fee/Commission", units:"",         price:"",       amount:"-81.37",     fxRate:"",       currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_10_May_ 2024.pdf" },
+  { id:"ir-f09", date:"2024-05-21", settlement:"2024-05-21", security:"GST FEE/FRAIS 04/2024",                                  ticker:"",        type:"Fee/Commission", units:"",         price:"",       amount:"-4.07",      fxRate:"",       currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_10_May_ 2024.pdf" },
+  { id:"ir-f10", date:"2024-05-31", settlement:"2024-05-31", security:"REGIMEN EQUITY PARTNERS SERIES IV PREFERRED SECURITIES", ticker:"REGPREF", type:"Dividend",       units:"10000.0000",price:"",      amount:"846.99",     fxRate:"",       currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_10_May_ 2024.pdf" },
+  { id:"ir-f11", date:"2024-05-31", settlement:"2024-05-31", security:"REVESCO PROPERTIES TRUST CLASS F",                       ticker:"RISE",    type:"Dividend",       units:"",         price:"",       amount:"381.26",     fxRate:"1.3550", currency:"USD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_10_May_ 2024.pdf" },
+  { id:"ir-f12", date:"2024-05-31", settlement:"2024-05-31", security:"REVESCO CANADIAN HOLDINGS LP CLASS B",                   ticker:"REVESCO", type:"Dividend",       units:"",         price:"",       amount:"354.83",     fxRate:"1.3550", currency:"USD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_10_May_ 2024.pdf" },
 ];
 
-const TX_TYPES = ["Opening","Purchase","Sale","Dividend","Interest","Return of Capital","Stock Split","Transfer In","Transfer Out","FX Conversion","Fee/Commission","Withholding Tax","Reinvested Dividend"];
+const TX_TYPES = ["Opening","Purchase","Sale","Dividend","Reinvested Dividend","Distribution","Interest","Return of Capital","Fee/Commission","Withholding Tax","Transfer","Transfer In","Transfer Out","Stock Split","FX Conversion","Bond Interest","Unit Distribution","Other"];
 
 // ── Free-prompt follow-up system ────────────────────────────────────────────
 type FreePromptIntent =
@@ -1055,6 +1100,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [invBrokerError, setInvBrokerError] = useState<string|null>(null);
   const [invContinuityOk, setInvContinuityOk] = useState<boolean>(false); // true when all uploaded files are contiguous
   const [invExtracting, setInvExtracting] = useState(false); // spinner during PDF extraction
+  const [invTableSort, setInvTableSort] = useState<{ field: keyof InvReviewRow; dir: "asc" | "desc" } | null>(null);
   // files uploaded via the "Upload" button in the missing-months prompt
   const [invMissingReUploads, setInvMissingReUploads] = useState<Array<{id:string;name:string;ext:string}>>([]);
   // ── Free-prompt follow-up turns (context-aware after lt-debt summary) ──
@@ -1426,7 +1472,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
     setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
-    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false);
+    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvTableSort(null);
     setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
@@ -3900,18 +3946,46 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                 </div>
                                                 <div className="rounded-[8px] border border-border overflow-hidden">
                                                   <div className="overflow-x-auto">
+                                                    {(() => {
+                                                      const sortedInvRows = invTableSort
+                                                        ? [...invReviewRows].sort((a, b) => {
+                                                            const av = String(a[invTableSort.field] ?? "");
+                                                            const bv = String(b[invTableSort.field] ?? "");
+                                                            const num = (s: string) => parseFloat(s.replace(/[^0-9.-]/g, ""));
+                                                            const aNum = num(av), bNum = num(bv);
+                                                            const cmp = isNaN(aNum) || isNaN(bNum) ? av.localeCompare(bv) : aNum - bNum;
+                                                            return invTableSort.dir === "asc" ? cmp : -cmp;
+                                                          })
+                                                        : invReviewRows;
+                                                      const handleInvSort = (field: keyof InvReviewRow) => {
+                                                        setInvTableSort(prev => prev?.field === field ? { field, dir: prev.dir === "asc" ? "desc" : "asc" } : { field, dir: "asc" });
+                                                      };
+                                                      return (
                                                     <table className="w-full text-[10px]" style={{ minWidth: 1600 }}>
                                                       <thead>
                                                         <tr className="bg-muted/30 border-b border-border">
-                                                          {["Trade Date *","Settlement","Account","Acct Type","Security *","Ticker","Type *","CCY","Units","Price","Amount (CAD)","FX Rate","Source",""].map((h, i) => (
-                                                            <th key={i} className={`px-2 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10 text-left" : "text-left"}`}>
-                                                              {h.endsWith(" *") ? <>{h.slice(0,-2)} <span className="text-red-500">*</span></> : h}
-                                                            </th>
-                                                          ))}
+                                                          {([
+                                                            ["date","Trade Date *"],["settlement","Settlement"],["account","Account"],["accountType","Acct Type"],
+                                                            ["security","Security *"],["ticker","Ticker"],["type","Type *"],["currency","CCY"],
+                                                            ["units","Units"],["price","Price"],["amount","Amount (CAD)"],["fxRate","FX Rate"],["source","Source"],["",""]
+                                                          ] as [keyof InvReviewRow | "", string][]).map(([field, label], i) => {
+                                                            const isSort = field && invTableSort?.field === field;
+                                                            const isLast = label === "";
+                                                            return (
+                                                              <th key={i} className={`px-2 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${isLast ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10 text-left" : "text-left"}`}>
+                                                                {field ? (
+                                                                  <button onClick={() => handleInvSort(field as keyof InvReviewRow)} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">
+                                                                    {label.endsWith(" *") ? <>{label.slice(0,-2)} <span className="text-red-500">*</span></> : label}
+                                                                    {isSort ? (invTableSort!.dir === "asc" ? " ↑" : " ↓") : " ↕"}
+                                                                  </button>
+                                                                ) : label}
+                                                              </th>
+                                                            );
+                                                          })}
                                                         </tr>
                                                       </thead>
                                                       <tbody>
-                                                        {invReviewRows.map((row, ri) => {
+                                                        {sortedInvRows.map((row, ri) => {
                                                           const IC = "h-6 text-[10px] px-1.5 border rounded bg-background focus:outline-none w-full border-border focus:border-primary/40";
                                                           const upd = (field: keyof InvReviewRow, val: string) =>
                                                             setInvReviewRows(prev => prev.map(r => r.id === row.id ? { ...r, [field]: val } : r));
@@ -3938,7 +4012,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                                   {["CAD","USD","EUR","GBP"].map(c => <option key={c}>{c}</option>)}
                                                                 </select>
                                                               </td>
-                                                              <td className="px-1.5 py-1 min-w-[80px]"><input value={row.units} onChange={e => upd("units", e.target.value)} className={cn(IC, "w-20 text-right")} placeholder="0" /></td>
+                                                              <td className="px-1.5 py-1 min-w-[80px]">
+                                                                {row.units ? (
+                                                                  <input value={row.units} onChange={e => upd("units", e.target.value)} className={cn(IC, "w-20 text-right tabular-nums")} placeholder="0.0000" />
+                                                                ) : (
+                                                                  <span className="text-[10px] text-muted-foreground px-1.5">—</span>
+                                                                )}
+                                                              </td>
                                                               <td className="px-1.5 py-1 min-w-[80px]"><input value={row.price} onChange={e => upd("price", e.target.value)} className={cn(IC, "w-20 text-right")} placeholder="0.000" /></td>
                                                               <td className="px-1.5 py-1 min-w-[100px]">
                                                                 <input value={row.amount ?? ""} onChange={e => upd("amount", e.target.value)}
@@ -3969,6 +4049,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         })}
                                                       </tbody>
                                                     </table>
+                                                      );
+                                                    })()}
                                                   </div>
                                                 </div>
                                               </div>
