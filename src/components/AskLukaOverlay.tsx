@@ -4273,14 +4273,6 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                       onEditTransactions={() => { setInvSchedPhase("upload-prompt"); }}
                                       initialTransactions={invSubmittedTxns.length > 0 ? invSubmittedTxns : undefined}
                                     />
-                                    {/* Follow-up chips */}
-                                    <div className="flex flex-wrap gap-2 pt-1">
-                                      {["Export to Excel", "Show unrealized G/L note", "Reconcile to broker statements", "Generate AJEs"].map(chip => (
-                                        <button key={chip} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-primary/25 bg-primary/6 text-xs font-medium text-primary hover:bg-primary/15 transition-colors">
-                                          {chip}
-                                        </button>
-                                      ))}
-                                    </div>
                                   </>
                                 )}
                                 </>
