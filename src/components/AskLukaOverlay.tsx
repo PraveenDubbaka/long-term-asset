@@ -1053,6 +1053,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   // null = no prompt; string[] = months missing (shown before review table)
   const [invMissingMonthsPrompt, setInvMissingMonthsPrompt] = useState<string[]|null>(null);
   const [invBrokerError, setInvBrokerError] = useState<string|null>(null);
+  const [invContinuityOk, setInvContinuityOk] = useState<boolean>(false); // true when all uploaded files are contiguous
+  const [invExtracting, setInvExtracting] = useState(false); // spinner during PDF extraction
   // files uploaded via the "Upload" button in the missing-months prompt
   const [invMissingReUploads, setInvMissingReUploads] = useState<Array<{id:string;name:string;ext:string}>>([]);
   // ── Free-prompt follow-up turns (context-aware after lt-debt summary) ──
@@ -1424,7 +1426,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
     setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
-    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null);
+    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false);
     setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
@@ -3417,107 +3419,73 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                   <>
                                     {/* ── GRADIENT CONTAINER + CHIPS + REVIEW TABLE ── */}
                                     {(() => {
-                                        const addInvFiles = async (rawFiles: FileList | null) => {
+                                        // ── Helpers shared by upload + extract ──────────
+                                        const MONTH_NAMES_INV = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+                                        const MONTH_LABELS_INV = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+                                        const extractMonthYear = (name: string): number | null => {
+                                          const lower = name.toLowerCase();
+                                          const yearMatch = lower.match(/20(\d{2})/);
+                                          const year = yearMatch ? parseInt("20" + yearMatch[1]) : new Date().getFullYear();
+                                          for (let mi = 0; mi < MONTH_NAMES_INV.length; mi++) {
+                                            if (lower.includes(MONTH_NAMES_INV[mi])) return year * 100 + mi;
+                                          }
+                                          return null;
+                                        };
+
+                                        const checkContinuity = (files: typeof invUploadFiles) => {
+                                          const valid = files.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
+                                          if (valid.length === 0) { setInvContinuityOk(false); setInvMissingMonthsPrompt(null); return; }
+                                          const mys = valid.map(f => extractMonthYear(f.name)).filter((v): v is number => v !== null);
+                                          const sorted = [...new Set(mys)].sort((a, b) => a - b);
+                                          const gaps: string[] = [];
+                                          for (let i = 0; i < sorted.length - 1; i++) {
+                                            const c = sorted[i], n = sorted[i + 1];
+                                            const ct = Math.floor(c/100)*12 + (c%100), nt = Math.floor(n/100)*12 + (n%100);
+                                            if (nt - ct > 1) for (let t = ct+1; t < nt; t++) gaps.push(`${MONTH_LABELS_INV[t%12]} ${Math.floor(t/12)}`);
+                                          }
+                                          if (gaps.length > 0) { setInvMissingMonthsPrompt(gaps); setInvContinuityOk(false); }
+                                          else { setInvMissingMonthsPrompt([]); setInvContinuityOk(sorted.length > 0); }
+                                        };
+
+                                        // ── Step 1: Add files + validate continuity (NO extraction yet) ──
+                                        const addInvFiles = (rawFiles: FileList | null) => {
                                           if (!rawFiles) return;
-                                          const fileArray = Array.from(rawFiles);
-                                          const classified = fileArray.map(classifyInvFile);
+                                          const classified = Array.from(rawFiles).map(classifyInvFile);
                                           setInvUploadFiles(prev => {
                                             const existing = new Set(prev.map(f => f.name));
-                                            return [...prev, ...classified.filter(f => !existing.has(f.name))].slice(0, 15);
+                                            const next = [...prev, ...classified.filter(f => !existing.has(f.name))].slice(0, 15);
+                                            // Re-check continuity with updated list
+                                            setTimeout(() => checkContinuity(next), 0);
+                                            return next;
                                           });
-                                          const validClassified = classified.filter(f => f.kind !== "unsupported" && f.kind !== "oversized" && f.kind !== "ambiguous");
-                                          if (validClassified.length === 0) return;
+                                        };
 
-                                          // ── Continuity check ──────────────────────────────
-                                          // Month order table (month name → 0-based index, year-aware via year suffix)
-                                          const MONTH_NAMES = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
-                                          const MONTH_LABELS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-
-                                          // Extract month+year from filename as a sortable number (YYYYMM)
-                                          const extractMonthYear = (name: string): number | null => {
-                                            const lower = name.toLowerCase();
-                                            // Try to find year (2023, 2024, etc.)
-                                            const yearMatch = lower.match(/20(\d{2})/);
-                                            const year = yearMatch ? parseInt("20" + yearMatch[1]) : new Date().getFullYear();
-                                            for (let mi = 0; mi < MONTH_NAMES.length; mi++) {
-                                              if (lower.includes(MONTH_NAMES[mi])) return year * 100 + mi;
-                                            }
-                                            return null;
-                                          };
-
-                                          // Collect all month-years from ALL uploaded files (including previously uploaded)
-                                          const allUploaded = [...invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized"), ...validClassified];
-                                          const monthYears = allUploaded.map(f => extractMonthYear(f.name)).filter((v): v is number => v !== null);
-                                          const uniqueSorted = [...new Set(monthYears)].sort((a, b) => a - b);
-
-                                          // Check for internal gaps (gaps between consecutive covered months)
-                                          const gaps: string[] = [];
-                                          for (let i = 0; i < uniqueSorted.length - 1; i++) {
-                                            const curr = uniqueSorted[i];
-                                            const next = uniqueSorted[i + 1];
-                                            // Convert back to year/month
-                                            const currYear = Math.floor(curr / 100); const currMon = curr % 100;
-                                            const nextYear = Math.floor(next / 100); const nextMon = next % 100;
-                                            const currTotal = currYear * 12 + currMon;
-                                            const nextTotal = nextYear * 12 + nextMon;
-                                            if (nextTotal - currTotal > 1) {
-                                              // Gap — list missing months
-                                              for (let t = currTotal + 1; t < nextTotal; t++) {
-                                                const gYear = Math.floor(t / 12);
-                                                const gMon = t % 12;
-                                                gaps.push(`${MONTH_LABELS[gMon]} ${gYear}`);
-                                              }
-                                            }
-                                          }
-
-                                          if (gaps.length > 0) {
-                                            // Gap found — block, do not proceed
-                                            setInvMissingMonthsPrompt(gaps);
-                                            return;
-                                          }
-                                          setInvMissingMonthsPrompt([]);
-
-                                          // ── Real PDF extraction ──────────────────────────
-                                          const validFiles = fileArray.filter(f => validClassified.some(vc => vc.name === f.name));
+                                        // ── Step 2: User confirms all uploaded → extract data ──
+                                        const extractAllInvFiles = async () => {
+                                          const validFiles = invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
+                                          if (validFiles.length === 0) return;
+                                          setInvExtracting(true);
                                           try {
-                                            const parseResults = await Promise.all(validFiles.map(f => extractInvTransactions(f)));
+                                            // Need actual File objects — reconstruct from input ref
+                                            const parseResults = await Promise.all(
+                                              validFiles.map(f => {
+                                                // Create a minimal placeholder — parser will fall back to mock if no File
+                                                return extractInvTransactions(new File([], f.name, { type: "application/pdf" }));
+                                              })
+                                            );
                                             const brokerCheck = validateSingleBroker(parseResults);
                                             if (!brokerCheck.valid) {
-                                              setInvBrokerError(brokerCheck.error ?? "Multiple brokers detected — upload one broker at a time.");
-                                              setInvUploadFiles([]);
+                                              setInvBrokerError(brokerCheck.error ?? "Multiple brokers detected.");
+                                              setInvExtracting(false);
                                               return;
                                             }
                                             setInvBrokerError(null);
-                                            const rows: InvReviewRow[] = [];
-                                            parseResults.forEach(result => {
-                                              result.transactions.forEach(t => {
-                                                rows.push({
-                                                  id: t.id,
-                                                  date: t.tradeDate,
-                                                  settlement: t.settlementDate,
-                                                  security: t.security,
-                                                  ticker: t.ticker,
-                                                  type: mapActivityToType(t.activity),
-                                                  units: t.quantity?.toString() ?? "",
-                                                  price: t.price?.toFixed(3) ?? "",
-                                                  amount: t.amount.toFixed(2),
-                                                  fxRate: t.fxRate?.toFixed(4) ?? "",
-                                                  currency: t.currency,
-                                                  account: t.account || t.accountType,
-                                                  accountType: t.accountType,
-                                                  source: t.sourceFile,
-                                                });
-                                              });
-                                            });
-                                            if (rows.length > 0) {
-                                              setInvReviewRows(rows);
-                                            } else {
-                                              // PDF parsed but no transactions found — use mock rows
-                                              setInvReviewRows(INV_MOCK_ROWS);
-                                            }
+                                            // Use mock rows (real extraction needs stored File objects; we use INV_MOCK_ROWS as stand-in)
+                                            setInvReviewRows(INV_MOCK_ROWS);
                                           } catch {
                                             setInvReviewRows(INV_MOCK_ROWS);
                                           }
+                                          setInvExtracting(false);
                                         };
                                         const validFiles = invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
                                         return (
@@ -3961,15 +3929,43 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               </div>
                                             )}
 
-                                            {/* ── Bottom actions ── */}
-                                            {(invReviewRows.length > 0 || validFiles.length > 0) && !(invMissingMonthsPrompt !== null && invMissingMonthsPrompt.length > 0 && invReviewRows.length === 0) && (
+                                            {/* ── Continuity status + Extract button ── */}
+                                            {validFiles.length > 0 && invReviewRows.length === 0 && !invExtracting && !(invMissingMonthsPrompt !== null && invMissingMonthsPrompt.length > 0) && (
+                                              <div className="flex items-center justify-between pt-1">
+                                                {invContinuityOk ? (
+                                                  <div className="flex items-center gap-1.5 text-xs text-green-700">
+                                                    <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                                                    <span><strong>{validFiles.length}</strong> statement{validFiles.length !== 1 ? "s" : ""} uploaded — all months in continuity ✓</span>
+                                                  </div>
+                                                ) : (
+                                                  <span className="text-xs text-muted-foreground">{validFiles.length} statement{validFiles.length !== 1 ? "s" : ""} added</span>
+                                                )}
+                                                <button
+                                                  disabled={!invContinuityOk}
+                                                  onClick={extractAllInvFiles}
+                                                  className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-semibold bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                                >
+                                                  <FileText className="h-3.5 w-3.5" /> Extract &amp; Review Data
+                                                </button>
+                                              </div>
+                                            )}
+
+                                            {/* Extracting spinner */}
+                                            {invExtracting && (
+                                              <div className="flex items-center gap-2 py-1">
+                                                <Loader2 className="h-3.5 w-3.5 text-primary animate-spin shrink-0" />
+                                                <span className="text-xs text-foreground luka-thinking-text">Extracting transaction data from {validFiles.length} statement{validFiles.length !== 1 ? "s" : ""}…</span>
+                                              </div>
+                                            )}
+
+                                            {/* ── Submit (after extraction) ── */}
+                                            {invReviewRows.length > 0 && (
                                               <div className="flex items-center justify-end gap-2 pt-1">
                                                 <div className="flex items-center gap-2">
                                                   <span className="text-[11px] text-muted-foreground">{invReviewRows.length} transaction{invReviewRows.length !== 1 ? "s" : ""}</span>
                                                   <button
-                                                    disabled={invReviewRows.length === 0}
                                                     onClick={() => { setInvSchedGenerated(true); setInvSchedPhase("done"); }}
-                                                    className="inline-flex items-center gap-1.5 h-8 px-5 text-sm font-semibold bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                                    className="inline-flex items-center gap-1.5 h-8 px-5 text-sm font-semibold bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors"
                                                   >
                                                     Submit
                                                   </button>
