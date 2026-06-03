@@ -2590,7 +2590,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                     >
                       <div className="w-6 h-6 rounded-md bg-muted flex items-center justify-center"><Inbox size={14} className="text-muted-foreground" /></div>
                       <span className="text-sm font-medium text-foreground">{selectedEngagementCtx ? selectedEngagementCtx.id : "Select Engagement"}</span>
-                      {selectedEngagementCtx && <img src={quickbooksLogo} alt="QuickBooks" className="h-[24px] w-auto object-contain" />}
+                      {selectedEngagementCtx && (selectedEngagementCtx as { source?: string | null }).source && <img src={quickbooksLogo} alt="QuickBooks" className="h-[24px] w-auto object-contain" />}
                       <ChevronDown size={14} className={`text-muted-foreground transition-transform ${showEngagementTrayCtx ? "rotate-180" : ""}`} />
                     </motion.button>
                     {(activeFlowPanel === "account-reconciliation" || activeFlowPanel === "tax-payable") && activityMinimized && (
