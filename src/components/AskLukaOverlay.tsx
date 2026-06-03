@@ -3235,13 +3235,41 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                   </div>
                                 )}
 
-                                {/* ── TB Check: past → compact summary ── */}
+                                {/* ── TB Check: past → keep full analysis visible ── */}
                                 {reached("tb-check") && past("tb-check") && invTBAnalysis && (
-                                  <div className="space-y-1.5">
-                                    <p className="text-xs text-muted-foreground">Trial Balance Analysis</p>
-                                    <div className="rounded-[8px] border border-green-200 bg-green-50 px-3 py-2 space-y-1">
-                                      <div className="flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3 text-green-600 shrink-0" /><span className="text-[11px] text-green-800 font-medium">{invTBAnalysis.years} · {invTBAnalysis.investmentAccounts.length} investment account{invTBAnalysis.investmentAccounts.length !== 1 ? "s" : ""} · {invTBAnalysis.bankAccounts.length} bank account{invTBAnalysis.bankAccounts.length !== 1 ? "s" : ""}</span></div>
-                                      <p className="text-[10px] text-green-700 pl-4">{invTBAnalysis.recordingMethod}</p>
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                                      <span className="text-sm text-foreground font-medium">Trial Balance found in <strong>{invSelectedEngId}</strong></span>
+                                    </div>
+                                    <p className="text-xs font-semibold text-foreground">Trial Balance Analysis</p>
+                                    <div className="space-y-1.5">
+                                      <div className="flex items-start gap-2">
+                                        <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold shrink-0">1</span>
+                                        <div><p className="text-[11px] font-medium text-foreground">Years of TB detected</p><p className="text-[11px] text-muted-foreground">{invTBAnalysis.years}</p></div>
+                                      </div>
+                                      <div className="flex items-start gap-2">
+                                        <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-green-100 text-green-700 text-[9px] font-bold shrink-0">2</span>
+                                        <div>
+                                          <p className="text-[11px] font-medium text-foreground">Investment accounts ({invTBAnalysis.investmentAccounts.length})</p>
+                                          <div className="flex flex-wrap gap-1 mt-0.5">
+                                            {invTBAnalysis.investmentAccounts.map(a => <span key={a} className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[9px] font-medium bg-primary/[0.08] text-primary border border-primary/15">{a}</span>)}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-start gap-2">
+                                        <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-100 text-blue-700 text-[9px] font-bold shrink-0">3</span>
+                                        <div>
+                                          <p className="text-[11px] font-medium text-foreground">Bank accounts ({invTBAnalysis.bankAccounts.length})</p>
+                                          <div className="flex flex-wrap gap-1 mt-0.5">
+                                            {invTBAnalysis.bankAccounts.map(a => <span key={a} className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[9px] font-medium bg-muted text-muted-foreground border border-border">{a}</span>)}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-start gap-2">
+                                        <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-100 text-amber-700 text-[9px] font-bold shrink-0">4</span>
+                                        <div><p className="text-[11px] font-medium text-foreground">Recording method</p><p className="text-[11px] text-muted-foreground">{invTBAnalysis.recordingMethod}</p></div>
+                                      </div>
                                     </div>
                                   </div>
                                 )}
