@@ -2564,32 +2564,6 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                   )}
                 </div>
 
-                {/* OR divider */}
-                <div className="flex flex-col items-center justify-center px-3 gap-1.5">
-                  <div className="w-px flex-1 bg-gradient-to-b from-transparent via-border to-transparent" />
-                  <span className="text-[10px] font-bold text-muted-foreground/50">or</span>
-                  <div className="w-px flex-1 bg-gradient-to-b from-transparent via-border to-transparent" />
-                </div>
-
-                {/* Manual entry card */}
-                <div
-                  className="flex-1 flex flex-col items-center gap-2.5 p-4 rounded-[10px] border border-dashed border-violet-300/40 bg-violet-50/20 cursor-pointer hover:bg-violet-50/50 hover:border-violet-400/50 transition-all group text-center"
-                  onClick={() => setPendingTxns(prev => [...prev, EMPTY_INV_ADD_ROW()])}
-                >
-                  <div className="relative">
-                    <div className="absolute inset-0 rounded-full bg-violet-400/20 blur-md group-hover:bg-violet-400/30 transition-all" />
-                    <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shadow-sm">
-                      <Plus className="w-4 h-4 text-white" />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-semibold text-foreground">Enter manually</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">Add a blank row and type<br />transaction details directly in the table</p>
-                  </div>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-violet-600 group-hover:underline">
-                    Add a new entry row
-                  </span>
-                </div>
               </div>
             </div>
 
