@@ -247,12 +247,60 @@ function TransactionsPanel({
   const [editDraft, setEditDraft] = useState<TxDraft>(EMPTY_TX_DRAFT());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "published">("all");
+  const [txSearch,     setTxSearch]     = useState("");
+  const [txTypeFilter, setTxTypeFilter] = useState("all");
+  const [txCcyFilter,  setTxCcyFilter]  = useState("all");
+  type TxSortField = "date"|"settlementDate"|"sourceId"|"security"|"ticker"|"currency"|"type"|"units"|"price"|"fxRate"|"net"|"tbAccount"|"status";
+  const [txSortField, setTxSortField] = useState<TxSortField>("date");
+  const [txSortDir,   setTxSortDir]   = useState<"asc"|"desc">("asc");
 
-  const visible = effectiveTxns.filter(t => {
+  const handleTxSort = (field: TxSortField) => {
+    if (txSortField === field) setTxSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setTxSortField(field); setTxSortDir("asc"); }
+  };
+  const txSortIcon = (field: TxSortField) => {
+    if (txSortField !== field) return <ArrowUpDown className="h-2.5 w-2.5 text-muted-foreground/40 ml-0.5" />;
+    return txSortDir === "asc"
+      ? <ArrowUp className="h-2.5 w-2.5 text-primary ml-0.5" />
+      : <ArrowDown className="h-2.5 w-2.5 text-primary ml-0.5" />;
+  };
+
+  const uniqueTypes = useMemo(() => ["all", ...Array.from(new Set(effectiveTxns.map(t => t.type))).sort()], [effectiveTxns]);
+  const uniqueCcys  = useMemo(() => ["all", ...Array.from(new Set(effectiveTxns.map(t => t.currency))).sort()], [effectiveTxns]);
+
+  const filtered = effectiveTxns.filter(t => {
     if (hiddenTxIds.has(t.id)) return false;
     if (statusFilter !== "all" && (t.status ?? "pending") !== statusFilter) return false;
+    if (txTypeFilter !== "all" && t.type !== txTypeFilter) return false;
+    if (txCcyFilter  !== "all" && t.currency !== txCcyFilter) return false;
+    if (txSearch) {
+      const q = txSearch.toLowerCase();
+      if (![t.security, t.ticker, t.sourceId, t.date, t.type, t.currency].some(v => v?.toLowerCase().includes(q))) return false;
+    }
     return true;
   });
+
+  const visible = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      let cmp = 0;
+      switch (txSortField) {
+        case "date":           cmp = (a.date ?? "").localeCompare(b.date ?? ""); break;
+        case "settlementDate": cmp = (a.settlementDate ?? "").localeCompare(b.settlementDate ?? ""); break;
+        case "sourceId":       cmp = (a.sourceId ?? "").localeCompare(b.sourceId ?? ""); break;
+        case "security":       cmp = (a.security ?? "").localeCompare(b.security ?? ""); break;
+        case "ticker":         cmp = (a.ticker ?? "").localeCompare(b.ticker ?? ""); break;
+        case "currency":       cmp = (a.currency ?? "").localeCompare(b.currency ?? ""); break;
+        case "type":           cmp = (a.type ?? "").localeCompare(b.type ?? ""); break;
+        case "units":          cmp = (a.units ?? 0) - (b.units ?? 0); break;
+        case "price":          cmp = (a.price ?? 0) - (b.price ?? 0); break;
+        case "fxRate":         cmp = (a.fxRate ?? 1) - (b.fxRate ?? 1); break;
+        case "net":            cmp = (a.net ?? 0) - (b.net ?? 0); break;
+        case "tbAccount":      cmp = (a.tbAccount ?? "").localeCompare(b.tbAccount ?? ""); break;
+        case "status":         cmp = (a.status ?? "").localeCompare(b.status ?? ""); break;
+      }
+      return txSortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filtered, txSortField, txSortDir]);
   const allSelected = visible.length > 0 && visible.every(t => selectedIds.has(t.id));
 
   const toggleAll = () => {
@@ -479,6 +527,32 @@ function TransactionsPanel({
         </div>
       </div>
 
+      {/* Filter bar */}
+      {!batchEditMode && (
+        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-muted/20 flex-wrap">
+          <div className="relative flex-1 min-w-[140px] max-w-[220px]">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+            <input value={txSearch} onChange={e => setTxSearch(e.target.value)} placeholder="Search security, ticker…"
+              className="h-6 pl-6 pr-2 w-full text-[11px] border border-border rounded-[6px] bg-background focus:outline-none focus:border-primary/50" />
+          </div>
+          <select value={txTypeFilter} onChange={e => setTxTypeFilter(e.target.value)}
+            className="h-6 px-1.5 text-[11px] border border-border rounded-[6px] bg-background focus:outline-none appearance-none cursor-pointer">
+            {uniqueTypes.map(t => <option key={t} value={t}>{t === "all" ? "All types" : t}</option>)}
+          </select>
+          <select value={txCcyFilter} onChange={e => setTxCcyFilter(e.target.value)}
+            className="h-6 px-1.5 text-[11px] border border-border rounded-[6px] bg-background focus:outline-none appearance-none cursor-pointer">
+            {uniqueCcys.map(c => <option key={c} value={c}>{c === "all" ? "All CCY" : c}</option>)}
+          </select>
+          {(txSearch || txTypeFilter !== "all" || txCcyFilter !== "all") && (
+            <button onClick={() => { setTxSearch(""); setTxTypeFilter("all"); setTxCcyFilter("all"); }}
+              className="inline-flex items-center gap-0.5 h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground border border-border rounded-[6px] bg-background transition-colors">
+              <X className="h-2.5 w-2.5" /> Clear
+            </button>
+          )}
+          <span className="ml-auto text-[10px] text-muted-foreground">{visible.length} row{visible.length !== 1 ? "s" : ""}</span>
+        </div>
+      )}
+
       {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-[11px]" style={{ minWidth: 1100 }}>
@@ -486,19 +560,18 @@ function TransactionsPanel({
             <tr className="bg-muted/30 border-b border-border">
               {/* Checkbox all */}
               <th className="px-3 py-2 w-7">
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  onChange={toggleAll}
-                  className="w-3.5 h-3.5 accent-primary rounded"
-                />
+                <input type="checkbox" checked={allSelected} onChange={toggleAll} className="w-3.5 h-3.5 accent-primary rounded" />
               </th>
-              {TX_COLS.slice(1).map((h, i) => (
-                <th
-                  key={h}
-                  className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${TX_LEFT.has(i + 1) ? "text-left" : "text-right"}`}
-                >
-                  {h}
+              {([
+                ["date","Trade Date","left"],["settlementDate","Settlement","left"],["sourceId","Source","left"],
+                ["security","Security","left"],["ticker","Ticker","left"],["currency","CCY","right"],
+                ["type","Type","right"],["units","Units","right"],["price","Price","right"],
+                ["fxRate","FX","right"],["net","Amount","right"],["tbAccount","TB Account","right"],["status","Status","right"],
+              ] as [TxSortField, string, string][]).map(([field, label, align]) => (
+                <th key={field} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-${align}`}>
+                  <button onClick={() => handleTxSort(field)} className={`inline-flex items-center gap-0.5 hover:text-foreground transition-colors ${align === "right" ? "justify-end w-full" : ""}`}>
+                    {label}{txSortIcon(field)}
+                  </button>
                 </th>
               ))}
             </tr>
