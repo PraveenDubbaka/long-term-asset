@@ -1023,9 +1023,21 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [invEngSearch, setInvEngSearch] = useState("");
   const [invTBChecking, setInvTBChecking] = useState(false);
   const [invTBFound, setInvTBFound] = useState<boolean|null>(null);
+  const [invTBAnalyzing, setInvTBAnalyzing] = useState(false);
+  const [invTBAnalysisStep, setInvTBAnalysisStep] = useState(0); // 0=none, 1-4=progressive reveal
+  interface InvTBAnalysis { years: string; investmentAccounts: string[]; bankAccounts: string[]; recordingMethod: string; }
+  const [invTBAnalysis, setInvTBAnalysis] = useState<InvTBAnalysis | null>(null);
 
   // Mock: engagements that have a TB already uploaded
-  const MOCK_ENG_WITH_TB = new Set(["COM-CON-Dec312024","COM-TES-Dec312024","COM-KAU-Dec312024"]);
+  const MOCK_ENG_WITH_TB = new Set(["COM-CON-Dec312024","COM-TES-Dec312024","COM-KAU-Dec312024","COM-DEF-May312024"]);
+
+  // Mock TB analysis results per engagement
+  const MOCK_TB_ANALYSIS: Record<string, InvTBAnalysis> = {
+    "COM-DEF-May312024":  { years: "1 year (FY 2024)", investmentAccounts: ["1310 · Investments at Cost", "1320 · Unrealized Gain/Loss", "4800 · Realized Gain on Investments", "4810 · Unrealized Gain on Investments"], bankAccounts: ["1100 · Cash — BMO Operating", "1110 · Cash — RBC USD", "1120 · Cash — TD Savings"], recordingMethod: "Accrual basis · monthly journal entries · investment income recorded separately" },
+    "COM-CON-Dec312024":  { years: "2 years (FY 2023, FY 2024)", investmentAccounts: ["1310 · Investments at Cost", "4800 · Realized Gain on Investments"], bankAccounts: ["1100 · Cash — BMO Operating", "1110 · Cash — RBC USD"], recordingMethod: "Accrual basis · quarterly entries" },
+    "COM-TES-Dec312024":  { years: "1 year (FY 2024)", investmentAccounts: ["1300 · Investment Portfolio"], bankAccounts: ["1100 · Cash — Operating"], recordingMethod: "Cash basis · annual entries" },
+    "COM-KAU-Dec312024":  { years: "3 years (FY 2022, FY 2023, FY 2024)", investmentAccounts: ["1310 · Investments", "1315 · Marketable Securities", "4800 · Investment Income"], bankAccounts: ["1100 · Main Operating", "1105 · USD Account", "1110 · Savings"], recordingMethod: "Accrual basis · monthly · IFRS-compliant" },
+  };
   const [invReviewRows, setInvReviewRows] = useState<InvReviewRow[]>([]);
   // ── Investment — Plaid connect flow ──
   const [invPlaidOpen, setInvPlaidOpen] = useState(false);
@@ -1412,7 +1424,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
     setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
-    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null);
+    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null);
     setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
@@ -2672,11 +2684,28 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                           // No source → proceed to TB check
                                           setInvTBChecking(true);
                                           setInvTBFound(null);
+                                          setInvTBAnalysis(null);
+                                          setInvTBAnalysisStep(0);
                                           setInvSchedPhase("tb-check");
+                                          const engId = e.id;
                                           setTimeout(() => {
+                                            const hasTB = MOCK_ENG_WITH_TB.has(engId);
                                             setInvTBChecking(false);
-                                            setInvTBFound(true);
-                                            setTimeout(() => setInvSchedPhase("upload-prompt"), 1200);
+                                            setInvTBFound(hasTB);
+                                            if (!hasTB) return; // block — no upload prompt
+                                            // Start analysis
+                                            setInvTBAnalyzing(true);
+                                            const analysis = MOCK_TB_ANALYSIS[engId] ?? MOCK_TB_ANALYSIS["COM-DEF-May312024"];
+                                            setTimeout(() => {
+                                              setInvTBAnalysis(analysis);
+                                              setInvTBAnalyzing(false);
+                                              // Reveal findings one by one
+                                              [1, 2, 3, 4].forEach((step, i) =>
+                                                setTimeout(() => setInvTBAnalysisStep(step), i * 600)
+                                              );
+                                              // Advance to upload after all findings shown
+                                              setTimeout(() => setInvSchedPhase("upload-prompt"), 4 * 600 + 1000);
+                                            }, 2000);
                                           }, 1800);
                                         }
                                       }
@@ -3207,20 +3236,20 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                 )}
 
                                 {/* ── TB Check: past → compact summary ── */}
-                                {reached("tb-check") && past("tb-check") && (
+                                {reached("tb-check") && past("tb-check") && invTBAnalysis && (
                                   <div className="space-y-1.5">
-                                    <p className="text-xs text-muted-foreground">Trial Balance Check</p>
-                                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[8px] border bg-green-50 border-green-200">
-                                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-600" />
-                                      <span className="text-xs font-medium text-green-800">Trial Balance found — proceeding to upload documents</span>
+                                    <p className="text-xs text-muted-foreground">Trial Balance Analysis</p>
+                                    <div className="rounded-[8px] border border-green-200 bg-green-50 px-3 py-2 space-y-1">
+                                      <div className="flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3 text-green-600 shrink-0" /><span className="text-[11px] text-green-800 font-medium">{invTBAnalysis.years} · {invTBAnalysis.investmentAccounts.length} investment account{invTBAnalysis.investmentAccounts.length !== 1 ? "s" : ""} · {invTBAnalysis.bankAccounts.length} bank account{invTBAnalysis.bankAccounts.length !== 1 ? "s" : ""}</span></div>
+                                      <p className="text-[10px] text-green-700 pl-4">{invTBAnalysis.recordingMethod}</p>
                                     </div>
                                   </div>
                                 )}
 
                                 {/* ── TB Check active ── */}
                                 {at("tb-check") && (
-                                  <div className="space-y-2">
-                                    {/* Searching */}
+                                  <div className="space-y-3">
+                                    {/* Step 1: Searching */}
                                     {invTBChecking && (
                                       <div className="flex items-center gap-2 py-1">
                                         <Loader2 className="h-3.5 w-3.5 text-primary shrink-0 animate-spin" />
@@ -3229,15 +3258,83 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                         </span>
                                       </div>
                                     )}
-                                    {/* Found — auto-advances to upload */}
-                                    {!invTBChecking && (
-                                      <div className="flex items-center gap-2 py-1">
-                                        <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
-                                        <span className="text-sm text-foreground font-medium">
-                                          Trial Balance found — please upload your investment documents to continue.
-                                        </span>
+
+                                    {/* TB not found — block */}
+                                    {!invTBChecking && invTBFound === false && (
+                                      <div className="space-y-2">
+                                        <div className="rounded-[12px] border border-red-200 bg-red-50 px-4 py-3 space-y-1">
+                                          <div className="flex items-center gap-2"><AlertCircle className="h-4 w-4 text-red-600 shrink-0" /><p className="text-sm font-semibold text-red-900">No Trial Balance Found</p></div>
+                                          <p className="text-xs text-red-800 leading-relaxed">No Trial Balance was found in <strong>{invSelectedEngId}</strong>. The Investment Schedule workpaper requires a Trial Balance to proceed. Please upload the TB to the engagement first.</p>
+                                        </div>
+                                        <button onClick={() => { setInvSelectedEngId(null); setInvEngagementConnected(false); setInvSchedPhase("engagement-check"); }} className="h-8 px-4 text-xs font-medium rounded-[8px] border border-border bg-background text-foreground hover:bg-muted transition-colors">← Choose a different engagement</button>
                                       </div>
                                     )}
+
+                                    {/* Step 2: Found → analyzing */}
+                                    {!invTBChecking && invTBFound === true && (
+                                      <div className="flex items-center gap-2">
+                                        <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                                        <span className="text-sm text-foreground font-medium">Trial Balance found in <strong>{invSelectedEngId}</strong></span>
+                                      </div>
+                                    )}
+
+                                    {/* Step 3: Analyzing */}
+                                    {invTBAnalyzing && (
+                                      <div className="flex items-center gap-2">
+                                        <Loader2 className="h-3.5 w-3.5 text-primary shrink-0 animate-spin" />
+                                        <span className="text-sm text-foreground luka-thinking-text">Analysing Trial Balance structure…</span>
+                                      </div>
+                                    )}
+
+                                    {/* Step 4: Analysis findings — revealed sequentially */}
+                                    {invTBAnalysis && !invTBAnalyzing && (
+                                      <div className="space-y-2">
+                                        <p className="text-xs font-semibold text-foreground">Trial Balance Analysis</p>
+                                        <div className="space-y-1.5">
+                                          {invTBAnalysisStep >= 1 && (
+                                            <div className="flex items-start gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
+                                              <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold shrink-0">1</span>
+                                              <div><p className="text-[11px] font-medium text-foreground">Years of TB detected</p><p className="text-[11px] text-muted-foreground">{invTBAnalysis.years}</p></div>
+                                            </div>
+                                          )}
+                                          {invTBAnalysisStep >= 2 && (
+                                            <div className="flex items-start gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
+                                              <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-green-100 text-green-700 text-[9px] font-bold shrink-0">2</span>
+                                              <div>
+                                                <p className="text-[11px] font-medium text-foreground">Investment accounts present ({invTBAnalysis.investmentAccounts.length})</p>
+                                                <div className="flex flex-wrap gap-1 mt-0.5">
+                                                  {invTBAnalysis.investmentAccounts.map(a => <span key={a} className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[9px] font-medium bg-primary/8 text-primary border border-primary/15">{a}</span>)}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          )}
+                                          {invTBAnalysisStep >= 3 && (
+                                            <div className="flex items-start gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
+                                              <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-100 text-blue-700 text-[9px] font-bold shrink-0">3</span>
+                                              <div>
+                                                <p className="text-[11px] font-medium text-foreground">Bank accounts ({invTBAnalysis.bankAccounts.length})</p>
+                                                <div className="flex flex-wrap gap-1 mt-0.5">
+                                                  {invTBAnalysis.bankAccounts.map(a => <span key={a} className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[9px] font-medium bg-muted text-muted-foreground border border-border">{a}</span>)}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          )}
+                                          {invTBAnalysisStep >= 4 && (
+                                            <div className="flex items-start gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
+                                              <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-100 text-amber-700 text-[9px] font-bold shrink-0">4</span>
+                                              <div><p className="text-[11px] font-medium text-foreground">Recording method</p><p className="text-[11px] text-muted-foreground">{invTBAnalysis.recordingMethod}</p></div>
+                                            </div>
+                                          )}
+                                        </div>
+                                        {invTBAnalysisStep >= 4 && (
+                                          <div className="flex items-center gap-2 pt-1 animate-in fade-in duration-300">
+                                            <Loader2 className="h-3 w-3 text-primary animate-spin shrink-0" />
+                                            <span className="text-xs text-muted-foreground luka-thinking-text">Preparing upload prompt…</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+
                                   </div>
                                 )}
 
