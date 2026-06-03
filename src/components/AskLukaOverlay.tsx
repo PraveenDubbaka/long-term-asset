@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect, useLayoutEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect, useLayoutEffect, Fragment } from "react";
 import ReactDOM from "react-dom";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { accountMappings as allGLAccounts } from "@/data/mockData";
@@ -602,6 +602,9 @@ interface InvReviewRow {
   account: string;
   accountType: string;  // IAA / PMA
   source: string;
+  voided?: boolean;     // soft-delete: entry still visible, excluded from balance
+  voidedAt?: string;    // ISO timestamp when voided
+  isManual?: boolean;   // true = user-entered, false = scanned from PDF
 }
 
 // Real data extracted from Richardson Wealth Limited (SPM Holdings Ltd.) statements
@@ -3967,12 +3970,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                           {([
                                                             ["date","Trade Date *"],["settlement","Settlement"],["account","Account"],["accountType","Acct Type"],
                                                             ["security","Security *"],["ticker","Ticker"],["type","Type *"],["currency","CCY"],
-                                                            ["units","Units"],["price","Price"],["amount","Amount (CAD)"],["fxRate","FX Rate"],["source","Source"],["",""]
+                                                            ["units","Units"],["price","Price"],["amount","Amount (CAD)"],["fxRate","FX Rate"],["source","Source"],["","Balance"],["",""]
                                                           ] as [keyof InvReviewRow | "", string][]).map(([field, label], i) => {
                                                             const isSort = field && invTableSort?.field === field;
                                                             const isLast = label === "";
+                                                            const isBalance = label === "Balance";
                                                             return (
-                                                              <th key={i} className={`px-2 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${isLast ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10 text-left" : "text-left"}`}>
+                                                              <th key={i} className={`px-2 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${isLast ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10 text-left" : isBalance ? "text-right" : "text-left"}`}>
                                                                 {field ? (
                                                                   <button onClick={() => handleInvSort(field as keyof InvReviewRow)} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">
                                                                     {label.endsWith(" *") ? <>{label.slice(0,-2)} <span className="text-red-500">*</span></> : label}
@@ -3985,12 +3989,32 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         </tr>
                                                       </thead>
                                                       <tbody>
-                                                        {sortedInvRows.map((row, ri) => {
+                                                        {(() => {
+                                                          // Compute running balance (excludes voided rows)
+                                                          let runBal = 0;
+                                                          return sortedInvRows.map((row, ri) => {
+                                                          if (!row.voided) runBal += parseFloat(row.amount || "0");
+                                                          const rowBal = runBal;
                                                           const IC = "h-6 text-[10px] px-1.5 border rounded bg-background focus:outline-none w-full border-border focus:border-primary/40";
                                                           const upd = (field: keyof InvReviewRow, val: string) =>
                                                             setInvReviewRows(prev => prev.map(r => r.id === row.id ? { ...r, [field]: val } : r));
+                                                          const voidRow = () => {
+                                                            const isScanned = row.source && !row.isManual;
+                                                            if (isScanned && !row.voided) {
+                                                              setInvReviewRows(prev => prev.map(r => r.id === row.id ? { ...r, voided: true, voidedAt: new Date().toISOString() } : r));
+                                                            } else {
+                                                              setInvReviewRows(prev => prev.map(r => r.id === row.id ? { ...r, voided: true, voidedAt: new Date().toISOString() } : r));
+                                                            }
+                                                          };
+                                                          const restoreRow = () => setInvReviewRows(prev => prev.map(r => r.id === row.id ? { ...r, voided: false, voidedAt: undefined } : r));
+                                                          const insertAfter = () => setInvReviewRows(prev => {
+                                                            const idx = prev.findIndex(r => r.id === row.id);
+                                                            const newRow: InvReviewRow = { id: `ir-manual-${Date.now()}`, date: row.date, settlement: row.date, security: "", ticker: "", type: "Purchase", units: "", price: "", amount: "", fxRate: "", currency: row.currency, account: row.account, accountType: row.accountType, source: "", isManual: true };
+                                                            return [...prev.slice(0, idx + 1), newRow, ...prev.slice(idx + 1)];
+                                                          });
                                                           return (
-                                                            <tr key={row.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
+                                                            <Fragment key={row.id}>
+                                                            <tr className={`border-b border-border/40 transition-all ${row.voided ? "opacity-50 bg-red-50/30 line-through-row" : ri % 2 === 1 ? "bg-muted/10" : ""}`}>
                                                               <td className="px-1.5 py-1 min-w-[110px]"><input value={row.date} onChange={e => upd("date", e.target.value)} type="date" className={IC} /></td>
                                                               <td className="px-1.5 py-1 min-w-[110px]"><input value={row.settlement ?? ""} onChange={e => upd("settlement", e.target.value)} type="date" className={IC} /></td>
                                                               <td className="px-1.5 py-1 min-w-[110px]"><input value={row.account} onChange={e => upd("account", e.target.value)} className={cn(IC, "w-24 font-mono text-[10px]")} placeholder="H11-YLF0-E" /></td>
@@ -4036,16 +4060,51 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                                   <span className="text-[9px] text-muted-foreground">—</span>
                                                                 )}
                                                               </td>
+                                                              {/* Running balance */}
+                                                              <td className="px-2 py-1 text-right tabular-nums text-[10px] font-semibold whitespace-nowrap">
+                                                                {row.voided
+                                                                  ? <span className="text-[9px] text-muted-foreground italic">voided</span>
+                                                                  : <span className="text-foreground">{rowBal.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>}
+                                                              </td>
+                                                              {/* Actions: void / restore + insert */}
                                                               <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
-                                                                <div className="flex items-center justify-end">
-                                                                  <button onClick={() => setInvReviewRows(prev => prev.filter(r => r.id !== row.id))} className="p-1 rounded hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors">
-                                                                    <Trash2 className="h-3 w-3" />
+                                                                <div className="flex items-center gap-0.5">
+                                                                  {row.voided ? (
+                                                                    <button onClick={restoreRow} title="Restore entry" className="p-1 rounded hover:bg-green-50 text-green-600 hover:text-green-700 transition-colors">
+                                                                      <RotateCcw className="h-3 w-3" />
+                                                                    </button>
+                                                                  ) : (
+                                                                    <button onClick={voidRow} title={row.source && !row.isManual ? `Void — re-upload ${row.source} to restore` : "Void entry"} className="p-1 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors">
+                                                                      <Trash2 className="h-3 w-3" />
+                                                                    </button>
+                                                                  )}
+                                                                  <button onClick={insertAfter} title="Insert row after" className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors">
+                                                                    <Plus className="h-3 w-3" />
                                                                   </button>
                                                                 </div>
                                                               </td>
                                                             </tr>
+                                                            {/* Voided banner below the row */}
+                                                            {row.voided && (
+                                                              <tr className="border-b border-red-100">
+                                                                <td colSpan={16} className="px-3 py-1 bg-red-50/50">
+                                                                  <div className="flex items-center gap-2">
+                                                                    <AlertCircle className="h-3 w-3 text-red-500 shrink-0" />
+                                                                    <span className="text-[9px] text-red-600">
+                                                                      Entry voided — excluded from running balance.
+                                                                      {row.source && !row.isManual && <> Re-upload <strong>{row.source}</strong> to restore this scanned transaction.</>}
+                                                                    </span>
+                                                                    <button onClick={insertAfter} className="ml-auto inline-flex items-center gap-0.5 text-[9px] text-primary hover:underline">
+                                                                      <Plus className="h-2.5 w-2.5" /> Add replacement entry here
+                                                                    </button>
+                                                                  </div>
+                                                                </td>
+                                                              </tr>
+                                                            )}
+                                                            </Fragment>
                                                           );
-                                                        })}
+                                                          });
+                                                        })()}
                                                       </tbody>
                                                     </table>
                                                       );
