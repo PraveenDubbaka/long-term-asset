@@ -792,6 +792,17 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
   const handleConnectConnector = useCallback((id: string) => {
     setConnectors(prev => prev.map(c => c.id === id ? { ...c, connected: true } : c));
+    // If Plaid is connected during investment upload-prompt, auto-pull data
+    if (id === "plaid") {
+      setInvSchedSrcLabel(`Plaid — Richardson Wealth`);
+      setInvExtracting(true);
+      setTimeout(() => {
+        setInvReviewRows(INV_MOCK_ROWS);
+        setInvExtracting(false);
+        setInvMissingMonthsPrompt([]);
+        setInvContinuityOk(true);
+      }, 2000);
+    }
   }, []);
 
   // Thread pin/unpin/delete
@@ -3843,6 +3854,33 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                           </button>
                                                         </>
                                                       )}
+                                                    </div>
+                                                  </div>
+                                                ) : invExtracting && invSchedSrcLabel?.startsWith("Plaid") ? (
+                                                  /* Plaid — pulling data */
+                                                  <div className="flex-1 flex flex-col items-center justify-center gap-2 p-4 rounded-[10px] border border-violet-300/40 bg-violet-50/20 text-center">
+                                                    <div className="relative">
+                                                      <div className="absolute inset-0 rounded-full bg-violet-400/20 blur-md animate-pulse" />
+                                                      <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shadow-sm">
+                                                        <Loader2 className="w-4 h-4 text-white animate-spin" />
+                                                      </div>
+                                                    </div>
+                                                    <div>
+                                                      <p className="text-[11px] font-semibold text-foreground">Pulling from Plaid…</p>
+                                                      <p className="text-[10px] text-muted-foreground luka-thinking-text mt-0.5">Extracting transactions from {invSchedSrcLabel.replace("Plaid — ", "")}</p>
+                                                    </div>
+                                                  </div>
+                                                ) : invSchedSrcLabel?.startsWith("Plaid") && invReviewRows.length > 0 ? (
+                                                  /* Plaid — connected + data pulled */
+                                                  <div className="flex-1 flex flex-col items-center justify-center gap-2 p-4 rounded-[10px] border border-green-200 bg-green-50/40 text-center">
+                                                    <div className="relative">
+                                                      <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shadow-sm">
+                                                        <CheckCircle2 className="w-4 h-4 text-white" />
+                                                      </div>
+                                                    </div>
+                                                    <div>
+                                                      <p className="text-[11px] font-semibold text-green-800">Connected via Plaid</p>
+                                                      <p className="text-[10px] text-green-700 mt-0.5">{invSchedSrcLabel.replace("Plaid — ", "")} · {invReviewRows.length} transactions pulled</p>
                                                     </div>
                                                   </div>
                                                 ) : (
