@@ -11,7 +11,7 @@ import {
   Bell, Settings, ArrowLeft, Lock, Upload, FileText, Mail, Square,
   FolderOpen, RotateCcw, Sparkles, Eye, EyeOff, Pin, PinOff, LayoutList, CalendarDays, CalendarRange,
   ArrowUpDown, Check, BookOpen, HardDrive, FileSpreadsheet, ShieldCheck,
-  AlertTriangle, TrendingUp, TrendingDown, Info, Table2, RefreshCw,
+  AlertTriangle, AlertCircle, TrendingUp, TrendingDown, Info, Table2, RefreshCw,
   Calendar, Receipt, Download, Trash2, BarChart2, Pencil, Loader2,
   PlusCircle, ChevronsLeft, ChevronsRight, Wand2, GitBranch, Database,
   Cloud, Globe, CreditCard, BarChart3, MoreVertical, MessageCircle, Trello,
@@ -22,6 +22,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/wp-ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { setLukaOpen } from "@/lib/lukaOpenStore";
+import { extractInvTransactions, validateSingleBroker, mapActivityToType, defaultTbAccountForActivity } from "@/lib/invPdfParser";
 import { PromptPicker } from "@/components/luka/PromptPicker";
 import { GrossMarginResponse } from "@/components/luka/GrossMarginResponse";
 import { LoanAmortizationPrompt } from "@/components/luka/LoanAmortizationPrompt";
@@ -595,24 +596,28 @@ interface InvReviewRow {
   type: string;
   units: string;
   price: string;
+  amount: string;       // net CAD amount
+  fxRate: string;       // USD→CAD rate if applicable
   currency: string;
   account: string;
+  accountType: string;  // IAA / PMA
   source: string;
 }
 
+// Real data extracted from Richardson Wealth Limited (SPM Holdings Ltd.) statements
 const INV_MOCK_ROWS: InvReviewRow[] = [
-  { id: "ir-01", date: "2024-03-15", settlement: "2024-03-18", security: "Royal Bank of Canada",   ticker: "RY",    type: "Purchase",   units: "100",  price: "132.50", currency: "CAD", account: "TD Waterhouse",  source: "TD Statement" },
-  { id: "ir-02", date: "2024-06-30", settlement: "2024-07-03", security: "Enbridge Inc.",           ticker: "ENB",   type: "Sale",       units: "200",  price: "49.80",  currency: "CAD", account: "TD Waterhouse",  source: "TD Statement" },
-  { id: "ir-03", date: "2024-08-20", settlement: "2024-08-23", security: "Shopify Inc.",            ticker: "SHOP",  type: "Purchase",   units: "300",  price: "95.20",  currency: "CAD", account: "TD Waterhouse",  source: "TD Statement" },
-  { id: "ir-04", date: "2024-11-15", settlement: "2024-11-18", security: "Shopify Inc.",            ticker: "SHOP",  type: "Sale",       units: "80",   price: "108.75", currency: "CAD", account: "TD Waterhouse",  source: "TD Statement" },
-  { id: "ir-05", date: "2024-05-10", settlement: "2024-05-13", security: "Royal Bank of Canada",   ticker: "RY",    type: "Dividend",   units: "600",  price: "1.38",   currency: "CAD", account: "TD Waterhouse",  source: "TD Statement" },
-  { id: "ir-06", date: "2024-02-05", settlement: "2024-02-08", security: "Apple Inc.",              ticker: "AAPL",  type: "Purchase",   units: "50",   price: "188.40", currency: "USD", account: "RBC Direct",     source: "RBC Statement" },
-  { id: "ir-07", date: "2024-04-18", settlement: "2024-04-21", security: "Microsoft Corp.",         ticker: "MSFT",  type: "Purchase",   units: "25",   price: "415.00", currency: "USD", account: "RBC Direct",     source: "RBC Statement" },
-  { id: "ir-08", date: "2024-07-22", settlement: "2024-07-25", security: "NVIDIA Corp.",            ticker: "NVDA",  type: "Purchase",   units: "100",  price: "121.50", currency: "USD", account: "RBC Direct",     source: "RBC Statement" },
-  { id: "ir-09", date: "2024-09-15", settlement: "2024-09-18", security: "Apple Inc.",              ticker: "AAPL",  type: "Sale",       units: "75",   price: "224.10", currency: "USD", account: "RBC Direct",     source: "RBC Statement" },
-  { id: "ir-10", date: "2024-06-12", settlement: "2024-06-12", security: "Apple Inc.",              ticker: "AAPL",  type: "Dividend",   units: "250",  price: "0.25",   currency: "USD", account: "RBC Direct",     source: "RBC Statement" },
-  { id: "ir-11", date: "2024-09-25", settlement: "2024-09-28", security: "Apple Inc.",              ticker: "AAPL",  type: "Purchase",   units: "30",   price: "226.50", currency: "USD", account: "RBC Direct",     source: "RBC Statement" },
-  { id: "ir-12", date: "2024-10-30", settlement: "2024-11-02", security: "NVIDIA Corp.",            ticker: "NVDA",  type: "Sale",       units: "40",   price: "139.20", currency: "USD", account: "RBC Direct",     source: "RBC Statement" },
+  { id:"ir-01", date:"2023-08-31", settlement:"2023-08-31", security:"REGIMEN EQUITY PARTNERS SERIES IV PREFERRED SECURITIES", ticker:"REGPREF", type:"Dividend",          units:"10000", price:"",       amount:"849.32",    fxRate:"", currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_1_Aug_2023.pdf" },
+  { id:"ir-02", date:"2023-08-22", settlement:"2023-08-22", security:"IAA FEE FEE/FRAIS 07/2023",                              ticker:"",        type:"Fee/Commission",    units:"",      price:"",       amount:"-83.88",    fxRate:"", currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_1_Aug_2023.pdf" },
+  { id:"ir-03", date:"2023-08-02", settlement:"2023-08-02", security:"ISHARES MSCI EAFE INDEX ETF",                            ticker:"XEF",     type:"Purchase",          units:"2465",  price:"32.460", amount:"-80013.90", fxRate:"", currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
+  { id:"ir-04", date:"2023-08-02", settlement:"2023-08-02", security:"RBC 1.833% SR UNSECURED 31JUL28",                        ticker:"RY",      type:"Purchase",          units:"58000", price:"86.109", amount:"-49943.22", fxRate:"", currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
+  { id:"ir-05", date:"2023-08-03", settlement:"2023-08-03", security:"ACM COMMERCIAL MORTGAGE FUND CLASS F",                   ticker:"ACMCMF",  type:"Dividend",          units:"",      price:"",       amount:"210.76",    fxRate:"", currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
+  { id:"ir-06", date:"2023-08-08", settlement:"2023-08-08", security:"FOUR QUADRANT GLOBAL REAL ESTATE PARTNERS TRUST CLASS J",ticker:"FQGRE",   type:"Dividend",          units:"",      price:"",       amount:"198.08",    fxRate:"", currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
+  { id:"ir-07", date:"2023-08-28", settlement:"2023-08-28", security:"CIBC 2.35% FXD RT SR NT 28AUG2024",                     ticker:"CM",      type:"Interest",          units:"16000", price:"",       amount:"188.00",    fxRate:"", currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
+  { id:"ir-08", date:"2023-08-31", settlement:"2023-08-31", security:"ISHARES S&P/TSX 60 INDEX ETF",                           ticker:"XIU",     type:"Distribution",      units:"3345",  price:"",       amount:"819.53",    fxRate:"", currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
+  { id:"ir-09", date:"2023-08-31", settlement:"2023-08-31", security:"RISE PROPERTIES TRUST CLASS F",                          ticker:"RISE",    type:"Dividend",          units:"",      price:"",       amount:"113.45",    fxRate:"", currency:"CAD", account:"H11-YLG0-E", accountType:"PMA", source:"Investement_1_Aug_2023.pdf" },
+  { id:"ir-10", date:"2023-09-20", settlement:"2023-09-20", security:"IAA FEE FEE/FRAIS 08/2023",                              ticker:"",        type:"Fee/Commission",    units:"",      price:"",       amount:"-82.16",    fxRate:"", currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_2_Sept_2023.pdf" },
+  { id:"ir-11", date:"2023-11-30", settlement:"2023-11-30", security:"REGIMEN EQUITY PARTNERS SERIES IV PREFERRED SECURITIES", ticker:"REGPREF", type:"Dividend",          units:"10000", price:"",       amount:"821.92",    fxRate:"", currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_4_Nov_2023.pdf" },
+  { id:"ir-12", date:"2023-12-29", settlement:"2023-12-29", security:"REGIMEN EQUITY PARTNERS SERIES IV PREFERRED SECURITIES", ticker:"REGPREF", type:"Dividend",          units:"10000", price:"",       amount:"849.30",    fxRate:"", currency:"CAD", account:"H11-YLF0-E", accountType:"IAA", source:"Investement_5_Dec_2023.pdf" },
 ];
 
 const TX_TYPES = ["Opening","Purchase","Sale","Dividend","Interest","Return of Capital","Stock Split","Transfer In","Transfer Out","FX Conversion","Fee/Commission","Withholding Tax","Reinvested Dividend"];
@@ -1034,6 +1039,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [invUploadFiles, setInvUploadFiles] = useState<InvUploadFile[]>([]);
   // null = no prompt; string[] = months missing (shown before review table)
   const [invMissingMonthsPrompt, setInvMissingMonthsPrompt] = useState<string[]|null>(null);
+  const [invBrokerError, setInvBrokerError] = useState<string|null>(null);
   // files uploaded via the "Upload" button in the missing-months prompt
   const [invMissingReUploads, setInvMissingReUploads] = useState<Array<{id:string;name:string;ext:string}>>([]);
   // ── Free-prompt follow-up turns (context-aware after lt-debt summary) ──
@@ -1405,7 +1411,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
     setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
-    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null);
+    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null);
     setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
@@ -3236,26 +3242,69 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                   <>
                                     {/* ── GRADIENT CONTAINER + CHIPS + REVIEW TABLE ── */}
                                     {(() => {
-                                        const addInvFiles = (rawFiles: FileList | null) => {
+                                        const addInvFiles = async (rawFiles: FileList | null) => {
                                           if (!rawFiles) return;
-                                          const classified = Array.from(rawFiles).map(classifyInvFile);
+                                          const fileArray = Array.from(rawFiles);
+                                          const classified = fileArray.map(classifyInvFile);
                                           setInvUploadFiles(prev => {
                                             const existing = new Set(prev.map(f => f.name));
                                             return [...prev, ...classified.filter(f => !existing.has(f.name))].slice(0, 15);
                                           });
-                                          const valid = classified.filter(f => f.kind !== "unsupported" && f.kind !== "oversized" && f.kind !== "ambiguous");
-                                          if (valid.length > 0 && invMissingMonthsPrompt === null) {
-                                            // Mock: detect "missing" months based on file name containing just one month
-                                            const allMonths = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-                                            const covered = new Set(valid.flatMap(f => allMonths.filter(m => f.name.toLowerCase().includes(m.toLowerCase().slice(0,3)))));
-                                            const missing = allMonths.slice(0, 10).filter(m => !covered.has(m));
-                                            if (missing.length >= 3) {
-                                              setInvMissingMonthsPrompt(missing);
-                                            } else {
-                                              // All months covered — skip prompt, populate rows directly
-                                              setInvMissingMonthsPrompt([]);
-                                              setInvReviewRows(INV_MOCK_ROWS);
+                                          const validClassified = classified.filter(f => f.kind !== "unsupported" && f.kind !== "oversized" && f.kind !== "ambiguous");
+                                          if (validClassified.length === 0 || invMissingMonthsPrompt !== null) return;
+
+                                          // ── Real PDF extraction ──────────────────────────
+                                          const validFiles = fileArray.filter((_, i) => validClassified.some(vc => vc.name === fileArray[i]?.name));
+                                          try {
+                                            const parseResults = await Promise.all(validFiles.map(f => extractInvTransactions(f)));
+                                            const brokerCheck = validateSingleBroker(parseResults);
+                                            if (!brokerCheck.valid) {
+                                              setInvBrokerError(brokerCheck.error ?? "Multiple brokers detected — upload one broker at a time.");
+                                              setInvUploadFiles([]);
+                                              return;
                                             }
+                                            setInvBrokerError(null);
+                                            const rows: InvReviewRow[] = [];
+                                            parseResults.forEach(result => {
+                                              result.transactions.forEach(t => {
+                                                rows.push({
+                                                  id: t.id,
+                                                  date: t.tradeDate,
+                                                  settlement: t.settlementDate,
+                                                  security: t.security,
+                                                  ticker: t.ticker,
+                                                  type: mapActivityToType(t.activity),
+                                                  units: t.quantity?.toString() ?? "",
+                                                  price: t.price?.toFixed(3) ?? "",
+                                                  amount: t.amount.toFixed(2),
+                                                  fxRate: t.fxRate?.toFixed(4) ?? "",
+                                                  currency: t.currency,
+                                                  account: t.account || t.accountType,
+                                                  accountType: t.accountType,
+                                                  source: t.sourceFile,
+                                                });
+                                              });
+                                            });
+                                            void rows; // used below
+                                            if (rows.length > 0) {
+                                              setInvMissingMonthsPrompt([]);
+                                              setInvReviewRows(rows);
+                                            } else {
+                                              // PDF parsed but no transactions found — fall back to month check
+                                              const allMonths = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+                                              const covered = new Set(validClassified.flatMap(f => allMonths.filter(m => f.name.toLowerCase().includes(m.toLowerCase().slice(0,3)))));
+                                              const missing = allMonths.slice(0, 10).filter(m => !covered.has(m));
+                                              if (missing.length >= 3) {
+                                                setInvMissingMonthsPrompt(missing);
+                                              } else {
+                                                setInvMissingMonthsPrompt([]);
+                                                setInvReviewRows(INV_MOCK_ROWS);
+                                              }
+                                            }
+                                          } catch {
+                                            // Parser error — fallback to mock rows
+                                            setInvMissingMonthsPrompt([]);
+                                            setInvReviewRows(INV_MOCK_ROWS);
                                           }
                                         };
                                         const validFiles = invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
@@ -3545,6 +3594,14 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               </div>
                                             </div>
 
+                                            {/* ── Broker error ── */}
+                                            {invBrokerError && (
+                                              <div className="flex items-start gap-2 px-3 py-2 rounded-[8px] bg-red-50 border border-red-200">
+                                                <AlertCircle className="h-3.5 w-3.5 text-red-600 shrink-0 mt-0.5" />
+                                                <p className="text-xs text-red-700">{invBrokerError}</p>
+                                              </div>
+                                            )}
+
                                             {/* ── File chips ── */}
                                             {invUploadFiles.length > 0 && (
                                               <div className="flex flex-wrap gap-2">
@@ -3675,10 +3732,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                 </div>
                                                 <div className="rounded-[8px] border border-border overflow-hidden">
                                                   <div className="overflow-x-auto">
-                                                    <table className="w-full text-[10px]" style={{ minWidth: 1260 }}>
+                                                    <table className="w-full text-[10px]" style={{ minWidth: 1600 }}>
                                                       <thead>
                                                         <tr className="bg-muted/30 border-b border-border">
-                                                          {["Trade Date *","Settlement","Security *","Ticker","Type *","CCY","Units *","Price *","Account","Source",""].map((h, i) => (
+                                                          {["Trade Date *","Settlement","Account","Acct Type","Security *","Ticker","Type *","CCY","Units","Price","Amount (CAD)","FX Rate","Source",""].map((h, i) => (
                                                             <th key={i} className={`px-2 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10 text-left" : "text-left"}`}>
                                                               {h.endsWith(" *") ? <>{h.slice(0,-2)} <span className="text-red-500">*</span></> : h}
                                                             </th>
@@ -3694,22 +3751,35 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                             <tr key={row.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
                                                               <td className="px-1.5 py-1 min-w-[110px]"><input value={row.date} onChange={e => upd("date", e.target.value)} type="date" className={IC} /></td>
                                                               <td className="px-1.5 py-1 min-w-[110px]"><input value={row.settlement ?? ""} onChange={e => upd("settlement", e.target.value)} type="date" className={IC} /></td>
-                                                              <td className="px-1.5 py-1 min-w-[160px]"><input value={row.security} onChange={e => upd("security", e.target.value)} className={cn(IC, "w-40")} placeholder="Security name" /></td>
+                                                              <td className="px-1.5 py-1 min-w-[110px]"><input value={row.account} onChange={e => upd("account", e.target.value)} className={cn(IC, "w-24 font-mono text-[10px]")} placeholder="H11-YLF0-E" /></td>
+                                                              <td className="px-1.5 py-1 min-w-[60px]">
+                                                                <select value={row.accountType ?? ""} onChange={e => upd("accountType", e.target.value)} className={cn(IC, "w-16 appearance-none")}>
+                                                                  <option value="">—</option>
+                                                                  {["IAA","PMA","Other"].map(t => <option key={t}>{t}</option>)}
+                                                                </select>
+                                                              </td>
+                                                              <td className="px-1.5 py-1 min-w-[200px]"><input value={row.security} onChange={e => upd("security", e.target.value)} className={cn(IC, "w-52")} placeholder="Security name" /></td>
                                                               <td className="px-1.5 py-1 min-w-[70px]"><input value={row.ticker} onChange={e => upd("ticker", e.target.value)} className={cn(IC, "w-16 font-mono uppercase")} placeholder="TICK" /></td>
                                                               <td className="px-1.5 py-1 min-w-[130px]">
-                                                                <select value={row.type} onChange={e => upd("type", e.target.value)} className={cn(IC, "w-32 appearance-none")}>
+                                                                <select value={row.type} onChange={e => upd("type", e.target.value)} className={cn(IC, "w-36 appearance-none")}>
                                                                   {TX_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                                                                 </select>
                                                               </td>
-                                                              <td className="px-1.5 py-1 min-w-[65px]">
+                                                              <td className="px-1.5 py-1 min-w-[55px]">
                                                                 <select value={row.currency} onChange={e => upd("currency", e.target.value)} className={cn(IC, "w-14 appearance-none")}>
                                                                   {["CAD","USD","EUR","GBP"].map(c => <option key={c}>{c}</option>)}
                                                                 </select>
                                                               </td>
                                                               <td className="px-1.5 py-1 min-w-[80px]"><input value={row.units} onChange={e => upd("units", e.target.value)} className={cn(IC, "w-20 text-right")} placeholder="0" /></td>
-                                                              <td className="px-1.5 py-1 min-w-[85px]"><input value={row.price} onChange={e => upd("price", e.target.value)} className={cn(IC, "w-20 text-right")} placeholder="0.00" /></td>
-                                                              <td className="px-1.5 py-1 min-w-[120px]"><input value={row.account} onChange={e => upd("account", e.target.value)} className={cn(IC, "w-28")} placeholder="Account" /></td>
-                                                              <td className="px-1.5 py-1 min-w-[110px]"><input value={row.source} onChange={e => upd("source", e.target.value)} className={cn(IC, "w-28")} placeholder="Source" /></td>
+                                                              <td className="px-1.5 py-1 min-w-[80px]"><input value={row.price} onChange={e => upd("price", e.target.value)} className={cn(IC, "w-20 text-right")} placeholder="0.000" /></td>
+                                                              <td className="px-1.5 py-1 min-w-[100px]">
+                                                                <input value={row.amount ?? ""} onChange={e => upd("amount", e.target.value)}
+                                                                  className={cn(IC, "w-24 text-right font-medium tabular-nums",
+                                                                    row.amount && parseFloat(row.amount) < 0 ? "text-red-600" : row.amount && parseFloat(row.amount) > 0 ? "text-green-700" : "")}
+                                                                  placeholder="0.00" />
+                                                              </td>
+                                                              <td className="px-1.5 py-1 min-w-[75px]"><input value={row.fxRate ?? ""} onChange={e => upd("fxRate", e.target.value)} className={cn(IC, "w-20 text-right font-mono")} placeholder="1.0000" /></td>
+                                                              <td className="px-1.5 py-1 min-w-[100px]"><input value={row.source} onChange={e => upd("source", e.target.value)} className={cn(IC, "w-24 text-[9px]")} placeholder="Source" /></td>
                                                               <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
                                                                 <div className="flex items-center justify-end">
                                                                   <button onClick={() => setInvReviewRows(prev => prev.filter(r => r.id !== row.id))} className="p-1 rounded hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors">
