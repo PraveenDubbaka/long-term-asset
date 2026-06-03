@@ -3432,9 +3432,43 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                           return null;
                                         };
 
+                                        // ── Broker fingerprint from filename ──────────────
+                                        const BROKER_PATTERNS: [RegExp, string][] = [
+                                          [/investement_|richardson|richwealth|jsk|seko/i, "Richardson Wealth"],
+                                          [/\btd[_\s-]/i,                                  "TD Direct Investing"],
+                                          [/\brbc[_\s-]|rbc\s*direct/i,                   "RBC Direct Investing"],
+                                          [/\bbmo[_\s-]|bmo\s*invest/i,                   "BMO InvestorLine"],
+                                          [/\bcibc[_\s-]|cibc\s*investor/i,               "CIBC Investor's Edge"],
+                                          [/\bnbfm|national\s*bank/i,                     "National Bank Financial"],
+                                          [/\bscotia|itrade/i,                            "Scotia iTrade"],
+                                          [/\bdisnat|desjardins/i,                        "Disnat"],
+                                          [/\bquestrade/i,                                "Questrade"],
+                                          [/\bwealthsimple|wstrade/i,                     "Wealthsimple Trade"],
+                                          [/\binteractive|ibkr/i,                        "Interactive Brokers"],
+                                          [/\bfidelity/i,                                 "Fidelity"],
+                                        ];
+                                        const detectBroker = (name: string): string => {
+                                          for (const [pat, label] of BROKER_PATTERNS) {
+                                            if (pat.test(name)) return label;
+                                          }
+                                          return "unknown";
+                                        };
+
                                         const checkContinuity = (files: typeof invUploadFiles) => {
                                           const valid = files.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
-                                          if (valid.length === 0) { setInvContinuityOk(false); setInvMissingMonthsPrompt(null); return; }
+                                          if (valid.length === 0) { setInvContinuityOk(false); setInvMissingMonthsPrompt(null); setInvBrokerError(null); return; }
+
+                                          // ── Broker consistency check (filename-based) ──
+                                          const brokers = valid.map(f => detectBroker(f.name));
+                                          const uniqueBrokers = [...new Set(brokers.filter(b => b !== "unknown"))];
+                                          if (uniqueBrokers.length > 1) {
+                                            setInvBrokerError(`Conflicting broker agreements detected: ${uniqueBrokers.join(" and ")}. Please upload all statements for one broker at a time.`);
+                                            setInvContinuityOk(false);
+                                            return;
+                                          }
+                                          setInvBrokerError(null);
+
+                                          // ── Continuity (month gap) check ──
                                           const mys = valid.map(f => extractMonthYear(f.name)).filter((v): v is number => v !== null);
                                           const sorted = [...new Set(mys)].sort((a, b) => a - b);
                                           const gaps: string[] = [];
@@ -3933,12 +3967,21 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             {validFiles.length > 0 && invReviewRows.length === 0 && !invExtracting && !(invMissingMonthsPrompt !== null && invMissingMonthsPrompt.length > 0) && (
                                               <div className="flex items-center justify-between pt-1">
                                                 {invContinuityOk ? (
-                                                  <div className="flex items-center gap-1.5 text-xs text-green-700">
-                                                    <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
-                                                    <span><strong>{validFiles.length}</strong> statement{validFiles.length !== 1 ? "s" : ""} uploaded — all months in continuity ✓</span>
+                                                  <div className="space-y-0.5">
+                                                    <div className="flex items-center gap-1.5 text-xs text-green-700">
+                                                      <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                                                      <span><strong>{validFiles.length}</strong> statement{validFiles.length !== 1 ? "s" : ""} — all months in continuity ✓</span>
+                                                    </div>
+                                                    {(() => {
+                                                      const detected = [...new Set(validFiles.map(f => {
+                                                        for (const [pat, label] of BROKER_PATTERNS) { if (pat.test(f.name)) return label; }
+                                                        return null;
+                                                      }).filter(Boolean))];
+                                                      return detected.length > 0 ? <p className="text-[10px] text-muted-foreground pl-5">Broker: {detected[0]} · Each broker is processed with its own adjusting entry</p> : null;
+                                                    })()}
                                                   </div>
                                                 ) : (
-                                                  <span className="text-xs text-muted-foreground">{validFiles.length} statement{validFiles.length !== 1 ? "s" : ""} added</span>
+                                                  <span className="text-xs text-muted-foreground">{validFiles.length} statement{validFiles.length !== 1 ? "s" : ""} added — {invBrokerError ? "broker conflict" : "checking continuity…"}</span>
                                                 )}
                                                 <button
                                                   disabled={!invContinuityOk}
