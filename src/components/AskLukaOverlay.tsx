@@ -3249,7 +3249,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             const allMonths = ["January","February","March","April","May","June","July","August","September","October","November","December"];
                                             const covered = new Set(valid.flatMap(f => allMonths.filter(m => f.name.toLowerCase().includes(m.toLowerCase().slice(0,3)))));
                                             const missing = allMonths.slice(0, 10).filter(m => !covered.has(m));
-                                            setInvMissingMonthsPrompt(missing.length >= 3 ? missing : []);
+                                            if (missing.length >= 3) {
+                                              setInvMissingMonthsPrompt(missing);
+                                            } else {
+                                              // All months covered — skip prompt, populate rows directly
+                                              setInvMissingMonthsPrompt([]);
+                                              setInvReviewRows(INV_MOCK_ROWS);
+                                            }
                                           }
                                         };
                                         const validFiles = invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
