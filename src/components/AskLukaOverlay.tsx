@@ -3478,7 +3478,18 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             if (nt - ct > 1) for (let t = ct+1; t < nt; t++) gaps.push(`${MONTH_LABELS_INV[t%12]} ${Math.floor(t/12)}`);
                                           }
                                           if (gaps.length > 0) { setInvMissingMonthsPrompt(gaps); setInvContinuityOk(false); }
-                                          else { setInvMissingMonthsPrompt([]); setInvContinuityOk(sorted.length > 0); }
+                                          else {
+                                            setInvMissingMonthsPrompt([]);
+                                            setInvContinuityOk(sorted.length > 0);
+                                            // Auto-extract immediately when continuity is confirmed
+                                            if (sorted.length > 0) {
+                                              setInvExtracting(true);
+                                              setTimeout(() => {
+                                                setInvReviewRows(INV_MOCK_ROWS);
+                                                setInvExtracting(false);
+                                              }, 1400);
+                                            }
+                                          }
                                         };
 
                                         // ── Step 1: Add files + validate continuity (NO extraction yet) ──
@@ -3963,9 +3974,9 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               </div>
                                             )}
 
-                                            {/* ── Continuity status + Extract button ── */}
+                                            {/* ── Continuity status (no manual button — extraction is automatic) ── */}
                                             {validFiles.length > 0 && invReviewRows.length === 0 && !invExtracting && !(invMissingMonthsPrompt !== null && invMissingMonthsPrompt.length > 0) && (
-                                              <div className="flex items-center justify-between pt-1">
+                                              <div className="pt-1">
                                                 {invContinuityOk ? (
                                                   <div className="space-y-0.5">
                                                     <div className="flex items-center gap-1.5 text-xs text-green-700">
@@ -3981,15 +3992,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     })()}
                                                   </div>
                                                 ) : (
-                                                  <span className="text-xs text-muted-foreground">{validFiles.length} statement{validFiles.length !== 1 ? "s" : ""} added — {invBrokerError ? "broker conflict" : "checking continuity…"}</span>
+                                                  <span className="text-xs text-muted-foreground">{validFiles.length} statement{validFiles.length !== 1 ? "s" : ""} added</span>
                                                 )}
-                                                <button
-                                                  disabled={!invContinuityOk}
-                                                  onClick={extractAllInvFiles}
-                                                  className="inline-flex items-center gap-1.5 h-8 px-4 text-xs font-semibold bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                                >
-                                                  <FileText className="h-3.5 w-3.5" /> Extract &amp; Review Data
-                                                </button>
                                               </div>
                                             )}
 
