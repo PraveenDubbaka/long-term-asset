@@ -2357,7 +2357,14 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
 
   // ── Prior-year lots ────────────────────────────────────────────────────────
   const [importedLots] = useState<PriorYearLot[] | null>(null);
-  const effectivePY = useMemo(() => importedLots ?? priorYearLots, [importedLots]);
+  // When real uploaded transactions are provided, use no prior-year mock lots —
+  // the uploaded transactions are the complete source of truth for this workpaper.
+  const effectivePY = useMemo(
+    () => (initialTransactions && initialTransactions.length > 0)
+      ? (importedLots ?? [])       // real data: start fresh — no mock prior-year positions
+      : (importedLots ?? priorYearLots), // demo mode: use mock prior-year data
+    [importedLots, initialTransactions]
+  );
 
   // ── Transaction state ──────────────────────────────────────────────────────
   const [importedTxnsBySource] = useState<Record<string, Transaction[]>>({});
