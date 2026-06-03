@@ -274,8 +274,13 @@ function TransactionsPanel({
     if (txTypeFilter !== "all" && t.type !== txTypeFilter) return false;
     if (txCcyFilter  !== "all" && t.currency !== txCcyFilter) return false;
     if (txSearch) {
-      const q = txSearch.toLowerCase();
-      if (![t.security, t.ticker, t.sourceId, t.date, t.type, t.currency].some(v => v?.toLowerCase().includes(q))) return false;
+      if (txSearch.startsWith("src:")) {
+        const q = txSearch.slice(4).toLowerCase();
+        if (q && !t.sourceId?.toLowerCase().includes(q)) return false;
+      } else {
+        const q = txSearch.toLowerCase();
+        if (![t.security, t.ticker].some(v => v?.toLowerCase().includes(q))) return false;
+      }
     }
     return true;
   });
@@ -527,31 +532,6 @@ function TransactionsPanel({
         </div>
       </div>
 
-      {/* Filter bar */}
-      {!batchEditMode && (
-        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-muted/20 flex-wrap">
-          <div className="relative flex-1 min-w-[140px] max-w-[220px]">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
-            <input value={txSearch} onChange={e => setTxSearch(e.target.value)} placeholder="Search security, ticker…"
-              className="h-6 pl-6 pr-2 w-full text-[11px] border border-border rounded-[6px] bg-background focus:outline-none focus:border-primary/50" />
-          </div>
-          <select value={txTypeFilter} onChange={e => setTxTypeFilter(e.target.value)}
-            className="h-6 px-1.5 text-[11px] border border-border rounded-[6px] bg-background focus:outline-none appearance-none cursor-pointer">
-            {uniqueTypes.map(t => <option key={t} value={t}>{t === "all" ? "All types" : t}</option>)}
-          </select>
-          <select value={txCcyFilter} onChange={e => setTxCcyFilter(e.target.value)}
-            className="h-6 px-1.5 text-[11px] border border-border rounded-[6px] bg-background focus:outline-none appearance-none cursor-pointer">
-            {uniqueCcys.map(c => <option key={c} value={c}>{c === "all" ? "All CCY" : c}</option>)}
-          </select>
-          {(txSearch || txTypeFilter !== "all" || txCcyFilter !== "all") && (
-            <button onClick={() => { setTxSearch(""); setTxTypeFilter("all"); setTxCcyFilter("all"); }}
-              className="inline-flex items-center gap-0.5 h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground border border-border rounded-[6px] bg-background transition-colors">
-              <X className="h-2.5 w-2.5" /> Clear
-            </button>
-          )}
-          <span className="ml-auto text-[10px] text-muted-foreground">{visible.length} row{visible.length !== 1 ? "s" : ""}</span>
-        </div>
-      )}
 
       {/* Table */}
       <div className="overflow-x-auto">
@@ -562,18 +542,64 @@ function TransactionsPanel({
               <th className="px-3 py-2 w-7">
                 <input type="checkbox" checked={allSelected} onChange={toggleAll} className="w-3.5 h-3.5 accent-primary rounded" />
               </th>
-              {([
-                ["date","Trade Date","left"],["settlementDate","Settlement","left"],["sourceId","Source","left"],
-                ["security","Security","left"],["ticker","Ticker","left"],["currency","CCY","right"],
-                ["type","Type","right"],["units","Units","right"],["price","Price","right"],
-                ["fxRate","FX","right"],["net","Amount","right"],["tbAccount","TB Account","right"],["status","Status","right"],
-              ] as [TxSortField, string, string][]).map(([field, label, align]) => (
-                <th key={field} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-${align}`}>
-                  <button onClick={() => handleTxSort(field)} className={`inline-flex items-center gap-0.5 hover:text-foreground transition-colors ${align === "right" ? "justify-end w-full" : ""}`}>
-                    {label}{txSortIcon(field)}
-                  </button>
-                </th>
-              ))}
+              {/* Trade Date */}
+              <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left">
+                <button onClick={() => handleTxSort("date")} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">Trade Date {txSortIcon("date")}</button>
+              </th>
+              {/* Settlement */}
+              <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left">
+                <button onClick={() => handleTxSort("settlementDate")} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">Settlement {txSortIcon("settlementDate")}</button>
+              </th>
+              {/* Source — SearchFilter */}
+              <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left">
+                <span className="flex items-center gap-1">
+                  <button onClick={() => handleTxSort("sourceId")} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">Source {txSortIcon("sourceId")}</button>
+                  <SearchFilter label="" value={txSearch.startsWith("src:") ? txSearch.slice(4) : ""} onChange={v => setTxSearch(v ? `src:${v}` : "")} placeholder="Filter source…" />
+                </span>
+              </th>
+              {/* Security — SearchFilter */}
+              <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left">
+                <span className="flex items-center gap-1">
+                  <button onClick={() => handleTxSort("security")} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">Security {txSortIcon("security")}</button>
+                  <SearchFilter label="" value={txSearch.startsWith("src:") ? "" : txSearch} onChange={v => setTxSearch(v)} placeholder="Security or ticker…" />
+                </span>
+              </th>
+              {/* Ticker */}
+              <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left">
+                <button onClick={() => handleTxSort("ticker")} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">Ticker {txSortIcon("ticker")}</button>
+              </th>
+              {/* CCY — ColFilter */}
+              <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
+                <ColFilter label="CCY" options={uniqueCcys.filter(c => c !== "all")} value={txCcyFilter === "all" ? "" : txCcyFilter} onChange={v => setTxCcyFilter(v || "all")} />
+              </th>
+              {/* Type — ColFilter */}
+              <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
+                <ColFilter label="Type" options={uniqueTypes.filter(t => t !== "all")} value={txTypeFilter === "all" ? "" : txTypeFilter} onChange={v => setTxTypeFilter(v || "all")} />
+              </th>
+              {/* Units */}
+              <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
+                <button onClick={() => handleTxSort("units")} className="inline-flex items-center justify-end gap-0.5 w-full hover:text-foreground transition-colors">Units {txSortIcon("units")}</button>
+              </th>
+              {/* Price */}
+              <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
+                <button onClick={() => handleTxSort("price")} className="inline-flex items-center justify-end gap-0.5 w-full hover:text-foreground transition-colors">Price {txSortIcon("price")}</button>
+              </th>
+              {/* FX */}
+              <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
+                <button onClick={() => handleTxSort("fxRate")} className="inline-flex items-center justify-end gap-0.5 w-full hover:text-foreground transition-colors">FX {txSortIcon("fxRate")}</button>
+              </th>
+              {/* Amount */}
+              <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
+                <button onClick={() => handleTxSort("net")} className="inline-flex items-center justify-end gap-0.5 w-full hover:text-foreground transition-colors">Amount {txSortIcon("net")}</button>
+              </th>
+              {/* TB Account */}
+              <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
+                <button onClick={() => handleTxSort("tbAccount")} className="inline-flex items-center justify-end gap-0.5 w-full hover:text-foreground transition-colors">TB Account {txSortIcon("tbAccount")}</button>
+              </th>
+              {/* Status — ColFilter */}
+              <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
+                <ColFilter label="Status" options={["pending","approved","published"]} value={statusFilter === "all" ? "" : statusFilter} onChange={v => setStatusFilter((v || "all") as typeof statusFilter)} />
+              </th>
             </tr>
           </thead>
           <tbody>
