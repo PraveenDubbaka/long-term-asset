@@ -4060,7 +4060,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       <thead>
                                                         <tr className="bg-muted/30 border-b border-border">
                                                           {([
-                                                            ["date","Trade Date *"],["settlement","Settlement"],["account","Account"],["accountType","Acct Type"],
+                                                            ["date","Trade Date *"],["settlement","Settlement"],
                                                             ["security","Security *"],["ticker","Ticker"],["type","Type *"],["currency","CCY"],
                                                             ["units","Units"],["price","Price"],["amount","Amount (CAD)"],["fxRate","FX Rate"],["","Balance"],["",""]
                                                           ] as [keyof InvReviewRow | "", string][]).map(([field, label], i) => {
@@ -4109,19 +4109,15 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                             <tr className={`border-b border-border/40 transition-all ${row.voided ? "opacity-50 bg-red-50/30 line-through-row" : ri % 2 === 1 ? "bg-muted/10" : ""}`}>
                                                               <td className="px-1.5 py-1 min-w-[110px]"><input value={row.date} onChange={e => upd("date", e.target.value)} type="date" className={IC} /></td>
                                                               <td className="px-1.5 py-1 min-w-[110px]"><input value={row.settlement ?? ""} onChange={e => upd("settlement", e.target.value)} type="date" className={IC} /></td>
-                                                              <td className="px-1.5 py-1 min-w-[110px]"><input value={row.account} onChange={e => upd("account", e.target.value)} className={cn(IC, "w-24 font-mono text-[10px]")} placeholder="H11-YLF0-E" /></td>
-                                                              <td className="px-1.5 py-1 min-w-[60px]">
-                                                                <select value={row.accountType ?? ""} onChange={e => upd("accountType", e.target.value)} className={cn(IC, "w-16 appearance-none")}>
-                                                                  <option value="">—</option>
-                                                                  {["IAA","PMA","Other"].map(t => <option key={t}>{t}</option>)}
-                                                                </select>
-                                                              </td>
                                                               <td className="px-1.5 py-1 min-w-[200px]"><input value={row.security} onChange={e => upd("security", e.target.value)} className={cn(IC, "w-52")} placeholder="Security name" /></td>
                                                               <td className="px-1.5 py-1 min-w-[70px]"><input value={row.ticker} onChange={e => upd("ticker", e.target.value)} className={cn(IC, "w-16 font-mono uppercase")} placeholder="TICK" /></td>
                                                               <td className="px-1.5 py-1 min-w-[130px]">
-                                                                <select value={row.type} onChange={e => upd("type", e.target.value)} className={cn(IC, "w-36 appearance-none")}>
-                                                                  {TX_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                                                                </select>
+                                                                <div className="relative">
+                                                                  <select value={row.type} onChange={e => upd("type", e.target.value)} className={cn(IC, "w-36 appearance-none pr-6 cursor-pointer")}>
+                                                                    {TX_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                                                                  </select>
+                                                                  <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                                                                </div>
                                                               </td>
                                                               <td className="px-1.5 py-1 min-w-[55px]">
                                                                 <select value={row.currency} onChange={e => upd("currency", e.target.value)} className={cn(IC, "w-14 appearance-none")}>
