@@ -899,7 +899,7 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
             <thead className="sticky top-0 z-10">
               <tr className="bg-[#f0f2f5] border-b-2 border-border">
                 {/* Security — sort + SearchFilter */}
-                <th className="text-left min-w-[150px] px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                <th className="text-left min-w-[100px] max-w-[180px] px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
                   <span className="flex items-center gap-1">
                     <button onClick={() => handleSort("security")} className="flex items-center gap-1 hover:text-foreground transition-colors">Security {sortIcon("security")}</button>
                     <SearchFilter label="" value={filterSecurity} onChange={setFilterSecurity} placeholder="Ticker or name…" />
@@ -963,9 +963,9 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                       return (
                         <tr key={eKey} className={`border-b border-border/30 hover:bg-primary/[0.03] transition-colors ${rowBg}`}>
                           {/* Security */}
-                          <td className="px-2.5 py-1.5 border-r border-border/20 whitespace-nowrap">
+                          <td className="px-2.5 py-1.5 border-r border-border/20 max-w-[180px]">
                             {rowI === 0
-                              ? <span className="font-semibold text-foreground">{s.security}</span>
+                              ? <span className="font-semibold text-foreground truncate block overflow-hidden text-ellipsis" title={s.security}>{s.security}</span>
                               : <span className="text-muted-foreground/30 text-[10px] italic select-none">{s.ticker}</span>}
                           </td>
                           {/* Ticker */}
@@ -1055,7 +1055,7 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
 
                     {/* Closing balance row */}
                     <tr className="border-b border-border font-semibold bg-[#f0f2f5]">
-                      <td className="px-2.5 py-2 border-r border-border/30 text-[11px] font-bold">{s.security}</td>
+                      <td className="px-2.5 py-2 border-r border-border/30 text-[11px] font-bold max-w-[180px] truncate overflow-hidden text-ellipsis" title={s.security}>{s.security}</td>
                       <td className="px-2.5 py-2 border-r border-border/30 font-mono font-bold">{s.ticker}</td>
                       <td className="px-2.5 py-2 border-r border-border/30 font-mono text-muted-foreground text-[10px]">
                         {allRows[allRows.length - 1]?.date ? fmtDate(allRows[allRows.length - 1].date) : "—"}
