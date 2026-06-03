@@ -2227,7 +2227,7 @@ function HoldingsPanel({ schedules }: { schedules: SecuritySchedule[] }) {
 }
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
-export function InvestmentScheduleResponse({ onEditTransactions }: { onEditTransactions?: () => void } = {}) {
+export function InvestmentScheduleResponse({ onEditTransactions, initialTransactions }: { onEditTransactions?: () => void; initialTransactions?: import("@/lib/luka/types").Transaction[] } = {}) {
   const settings = useStore(s => s.settings);
   const [activeTab, setActiveTab] = useState<TabId>("transactions");
   const [invMode, setInvMode] = useState<"view" | "edit" | "add">("view");
@@ -2261,6 +2261,13 @@ export function InvestmentScheduleResponse({ onEditTransactions }: { onEditTrans
   const [plaidTxns]            = useState<Transaction[]>([]);
   const [hiddenTxIds,  setHiddenTxIds]  = useState<Set<string>>(new Set());
   const [manualTxns,   setManualTxns]   = useState<Transaction[]>([]);
+  // Populate from parent-submitted transactions (uploaded PDF data)
+  useEffect(() => {
+    if (initialTransactions && initialTransactions.length > 0) {
+      setManualTxns(initialTransactions);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [txEdits,      setTxEdits]      = useState<Record<string, Partial<Transaction>>>({});
 
   const allInvSources = useMemo(() => [...baseSources, ...plaidSources], [plaidSources]);

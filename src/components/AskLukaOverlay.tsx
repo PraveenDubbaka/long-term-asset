@@ -1087,6 +1087,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
     "COM-KAU-Dec312024":  { years: "3 years (FY 2022, FY 2023, FY 2024)", investmentAccounts: ["1310 · Investments", "1315 · Marketable Securities", "4800 · Investment Income"], bankAccounts: ["1100 · Main Operating", "1105 · USD Account", "1110 · Savings"], recordingMethod: "Accrual basis · monthly · IFRS-compliant" },
   };
   const [invReviewRows, setInvReviewRows] = useState<InvReviewRow[]>([]);
+  const [invSubmittedTxns, setInvSubmittedTxns] = useState<import("@/lib/luka/types").Transaction[]>([]);
   // ── Investment — Plaid connect flow ──
   const [invPlaidOpen, setInvPlaidOpen] = useState(false);
   const [invPlaidStep, setInvPlaidStep] = useState<'select'|'login'|'verifying'|'success'>('select');
@@ -1475,7 +1476,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
     setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
-    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvTableSort(null);
+    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvTableSort(null); setInvSubmittedTxns([]);
     setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
@@ -4151,7 +4152,32 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                 <div className="flex items-center gap-2">
                                                   <span className="text-[11px] text-muted-foreground">{invReviewRows.length} transaction{invReviewRows.length !== 1 ? "s" : ""}</span>
                                                   <button
-                                                    onClick={() => { setInvSchedGenerated(true); setInvSchedPhase("done"); }}
+                                                    onClick={() => {
+                                                      // Convert review rows to Transaction[] for the schedule workpaper
+                                                      const txns: import("@/lib/luka/types").Transaction[] = invReviewRows
+                                                        .filter(r => !r.voided)
+                                                        .map(r => ({
+                                                          id: r.id,
+                                                          sourceId: r.account || "manual",
+                                                          date: r.date,
+                                                          settlementDate: r.settlement || r.date,
+                                                          security: r.security,
+                                                          ticker: r.ticker,
+                                                          type: r.type as import("@/lib/luka/types").TxType,
+                                                          units: parseFloat(r.units) || 0,
+                                                          price: parseFloat(r.price) || 0,
+                                                          gross: Math.abs(parseFloat(r.amount) || 0),
+                                                          fees: 0,
+                                                          net: parseFloat(r.amount) || 0,
+                                                          currency: (r.currency as "CAD" | "USD" | "EUR" | "GBP") || "CAD",
+                                                          fxRate: parseFloat(r.fxRate) || 1,
+                                                          status: "published" as const,
+                                                          tbAccount: r.account || "",
+                                                        }));
+                                                      setInvSubmittedTxns(txns);
+                                                      setInvSchedGenerated(true);
+                                                      setInvSchedPhase("done");
+                                                    }}
                                                     className="inline-flex items-center gap-1.5 h-8 px-5 text-sm font-semibold bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors"
                                                   >
                                                     Submit
@@ -4166,7 +4192,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                 ) : (
                                   /* ── DONE / SCHEDULE VIEW ── */
                                   <>
-                                    <InvestmentScheduleResponse onEditTransactions={() => { setInvSchedPhase("upload-prompt"); }} />
+                                    <InvestmentScheduleResponse
+                                      onEditTransactions={() => { setInvSchedPhase("upload-prompt"); }}
+                                      initialTransactions={invSubmittedTxns.length > 0 ? invSubmittedTxns : undefined}
+                                    />
                                     {/* Follow-up chips */}
                                     <div className="flex flex-wrap gap-2 pt-1">
                                       {["Export to Excel", "Show unrealized G/L note", "Reconcile to broker statements", "Generate AJEs"].map(chip => (
