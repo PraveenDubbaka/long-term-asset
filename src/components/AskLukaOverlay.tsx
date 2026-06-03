@@ -4022,8 +4022,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                               <td className="px-1.5 py-1 min-w-[80px]"><input value={row.price} onChange={e => upd("price", e.target.value)} className={cn(IC, "w-20 text-right")} placeholder="0.000" /></td>
                                                               <td className="px-1.5 py-1 min-w-[100px]">
                                                                 <input value={row.amount ?? ""} onChange={e => upd("amount", e.target.value)}
-                                                                  className={cn(IC, "w-24 text-right font-medium tabular-nums",
-                                                                    row.amount && parseFloat(row.amount) < 0 ? "text-red-600" : row.amount && parseFloat(row.amount) > 0 ? "text-green-700" : "")}
+                                                                  className={cn(IC, "w-24 text-right font-medium tabular-nums")}
                                                                   placeholder="0.00" />
                                                               </td>
                                                               <td className="px-1.5 py-1 min-w-[75px]"><input value={row.fxRate ?? ""} onChange={e => upd("fxRate", e.target.value)} className={cn(IC, "w-20 text-right font-mono")} placeholder="1.0000" /></td>
