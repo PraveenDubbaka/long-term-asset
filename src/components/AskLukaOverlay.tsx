@@ -4062,7 +4062,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                           {([
                                                             ["date","Trade Date *"],["settlement","Settlement"],["account","Account"],["accountType","Acct Type"],
                                                             ["security","Security *"],["ticker","Ticker"],["type","Type *"],["currency","CCY"],
-                                                            ["units","Units"],["price","Price"],["amount","Amount (CAD)"],["fxRate","FX Rate"],["source","Source"],["","Balance"],["",""]
+                                                            ["units","Units"],["price","Price"],["amount","Amount (CAD)"],["fxRate","FX Rate"],["","Balance"],["",""]
                                                           ] as [keyof InvReviewRow | "", string][]).map(([field, label], i) => {
                                                             const isSort = field && invTableSort?.field === field;
                                                             const isLast = label === "";
@@ -4142,16 +4142,6 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                                   placeholder="0.00" />
                                                               </td>
                                                               <td className="px-1.5 py-1 min-w-[75px]"><input value={row.fxRate ?? ""} onChange={e => upd("fxRate", e.target.value)} className={cn(IC, "w-20 text-right font-mono")} placeholder="1.0000" /></td>
-                                                              <td className="px-1.5 py-1 min-w-[120px]">
-                                                                {row.source ? (
-                                                                  <span className="inline-flex items-center gap-1 max-w-[140px]">
-                                                                    <FileText className="h-3 w-3 text-primary shrink-0" />
-                                                                    <span className="truncate text-[9px] text-primary underline underline-offset-2 cursor-pointer">{row.source}</span>
-                                                                  </span>
-                                                                ) : (
-                                                                  <span className="text-[9px] text-muted-foreground">—</span>
-                                                                )}
-                                                              </td>
                                                               {/* Running balance */}
                                                               <td className="px-2 py-1 text-right tabular-nums text-[10px] font-semibold whitespace-nowrap">
                                                                 {row.voided
