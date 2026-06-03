@@ -729,14 +729,14 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   ]);
 
   const ENGAGEMENTS_PANEL = [
-    { client: "Phoenix Marie",  id: "COM-DEF-May312024", yearEnd: "22 Jan 2022", status: "Active" },
-    { client: "Circooles",      id: "COM-DEF-Dec312024", yearEnd: "20 Jan 2022", status: "Active" },
-    { client: "Command+R",      id: "COM-DEF-Dec312024", yearEnd: "24 Jan 2022", status: "Active" },
-    { client: "Hourglass",      id: "REV-DEF-Dec312024", yearEnd: "26 Jan 2022", status: "Active" },
-    { client: "Layers",         id: "REV-DEF-Dec312024", yearEnd: "18 Jan 2022", status: "Active" },
-    { client: "Quotient",       id: "COM-DEF-Dec312024", yearEnd: "28 Jan 2022", status: "Active" },
-    { client: "Sisyphus",       id: "REV-DEF-Dec312024", yearEnd: "16 Jan 2022", status: "Active" },
-    { client: "Catalog",        id: "COM-DEF-Dec312024", yearEnd: "12 Jan 2022", status: "Active" },
+    { client: "Phoenix Marie",  id: "COM-DEF-May312024", yearEnd: "22 Jan 2022", status: "Active", source: null            },
+    { client: "Circooles",      id: "COM-DEF-Dec312024", yearEnd: "20 Jan 2022", status: "Active", source: "quickbooks"     },
+    { client: "Command+R",      id: "COM-DEF-Dec312024", yearEnd: "24 Jan 2022", status: "Active", source: "quickbooks"     },
+    { client: "Hourglass",      id: "REV-DEF-Dec312024", yearEnd: "26 Jan 2022", status: "Active", source: "xero"           },
+    { client: "Layers",         id: "REV-DEF-Dec312024", yearEnd: "18 Jan 2022", status: "Active", source: "quickbooks"     },
+    { client: "Quotient",       id: "COM-DEF-Dec312024", yearEnd: "28 Jan 2022", status: "Active", source: "xero"           },
+    { client: "Sisyphus",       id: "REV-DEF-Dec312024", yearEnd: "16 Jan 2022", status: "Active", source: null             },
+    { client: "Catalog",        id: "COM-DEF-Dec312024", yearEnd: "12 Jan 2022", status: "Active", source: "quickbooks"     },
   ];
 
   const connectedConnectors = connectors.filter(c => c.connected);
@@ -1014,7 +1014,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [addMoreProcessedIds, setAddMoreProcessedIds] = useState<Set<string>>(new Set());
   const [addMoreDone,         setAddMoreDone]         = useState(false);
   // ── Investment Schedule (chat-based) ──
-  const [invSchedPhase, setInvSchedPhase] = useState<"idle"|"thinking"|"engagement-check"|"tb-check"|"upload-prompt"|"review"|"done">("idle");
+  const [invSchedPhase, setInvSchedPhase] = useState<"idle"|"thinking"|"engagement-check"|"source-check"|"tb-check"|"upload-prompt"|"review"|"done">("idle");
+  const [invSourceConnected, setInvSourceConnected] = useState<string|null>(null); // "quickbooks" | "xero" | null
   const [invSchedGenerated, setInvSchedGenerated] = useState(false);
   const [invSchedSrcLabel, setInvSchedSrcLabel] = useState<string|null>(null);
   const [invEngagementConnected, setInvEngagementConnected] = useState(false);
@@ -1411,7 +1412,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
     setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
-    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null);
+    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null);
     setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
@@ -2650,7 +2651,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                             <div className="overflow-auto" style={{ maxHeight: "calc(60vh - 70px)" }}>
                               <table className="w-full text-sm" style={{ minWidth: 720 }}>
                                 <thead><tr className="text-left" style={{ borderBottom: "1px solid hsl(var(--border) / 0.6)" }}>
-                                  {["Client Name", "Engagement ID", "Year End", "Status"].map(h => <th key={h} className="px-5 py-2.5 font-medium text-muted-foreground">{h}</th>)}
+                                  {["Client Name", "Engagement ID", "Year End", "Status", "Source"].map(h => <th key={h} className="px-5 py-2.5 font-medium text-muted-foreground">{h}</th>)}
                                 </tr></thead>
                                 <tbody>
                                   {ENGAGEMENTS_PANEL.filter(e => { const q = engagementSearchCtx.toLowerCase(); return !q || e.client.toLowerCase().includes(q) || e.id.toLowerCase().includes(q); }).map((e, i) => (
@@ -2662,20 +2663,33 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                       if (invSchedPhase === "engagement-check") {
                                         setInvSelectedEngId(e.id);
                                         setInvEngagementConnected(true);
-                                        setInvTBChecking(true);
-                                        setInvTBFound(null);
-                                        setInvSchedPhase("tb-check");
-                                        setTimeout(() => {
-                                          setInvTBChecking(false);
-                                          setInvTBFound(true);
-                                          setTimeout(() => setInvSchedPhase("upload-prompt"), 1200);
-                                        }, 1800);
+                                        const src = (e as { source?: string | null }).source ?? null;
+                                        setInvSourceConnected(src);
+                                        if (src) {
+                                          // Source connected → show blocking message
+                                          setInvSchedPhase("source-check");
+                                        } else {
+                                          // No source → proceed to TB check
+                                          setInvTBChecking(true);
+                                          setInvTBFound(null);
+                                          setInvSchedPhase("tb-check");
+                                          setTimeout(() => {
+                                            setInvTBChecking(false);
+                                            setInvTBFound(true);
+                                            setTimeout(() => setInvSchedPhase("upload-prompt"), 1200);
+                                          }, 1800);
+                                        }
                                       }
                                     }} className="cursor-pointer" style={{ borderBottom: "1px solid hsl(var(--border) / 0.4)" }}>
                                       <td className="px-5 py-3 font-semibold">{e.client}</td>
                                       <td className="px-5 py-3">{e.id}</td>
                                       <td className="px-5 py-3">{e.yearEnd}</td>
                                       <td className="px-5 py-3"><span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium" style={{ background: "hsl(142, 70%, 45% / 0.12)", color: "hsl(142, 70%, 35%)", border: "1px solid hsl(142, 70%, 45% / 0.3)" }}>{e.status}</span></td>
+                                      <td className="px-5 py-3">
+                                        {e.source
+                                          ? <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[5px] text-[10px] font-semibold border bg-orange-50 text-orange-700 border-orange-200 capitalize">{e.source === "quickbooks" ? "QBO" : e.source === "xero" ? "Xero" : e.source}</span>
+                                          : <span className="text-[10px] text-muted-foreground">—</span>}
+                                      </td>
                                     </motion.tr>
                                   ))}
                                 </tbody>
@@ -3121,7 +3135,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                             ) : richResponseType === "investment" ? (
                               <div className="space-y-3 py-0.5 max-w-full">
                                 {(() => {
-                                  const INV_PHASES = ["idle","thinking","engagement-check","tb-check","upload-prompt","review","done"] as const;
+                                  const INV_PHASES = ["idle","thinking","engagement-check","source-check","tb-check","upload-prompt","review","done"] as const;
                                   const phaseIdx = INV_PHASES.indexOf(invSchedPhase as typeof INV_PHASES[number]);
                                   const past  = (p: typeof INV_PHASES[number]) => phaseIdx > INV_PHASES.indexOf(p);
                                   const at    = (p: typeof INV_PHASES[number]) => invSchedPhase === p;
@@ -3162,6 +3176,33 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                       </span>
                                       {" "}in the toolbar to proceed with it. This action cannot be performed without an engagement selection.
                                     </p>
+                                  </div>
+                                )}
+
+                                {/* ── Source Check: blocked ── */}
+                                {at("source-check") && invSourceConnected && (
+                                  <div className="space-y-3">
+                                    <div className="rounded-[12px] border border-red-200 bg-red-50 px-4 py-3 space-y-2">
+                                      <div className="flex items-center gap-2">
+                                        <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
+                                        <p className="text-sm font-semibold text-red-900">Source Connection Detected</p>
+                                      </div>
+                                      <p className="text-xs text-red-800 leading-relaxed">
+                                        The engagement <strong>{invSelectedEngId}</strong> is connected to{" "}
+                                        <strong className="capitalize">{invSourceConnected}</strong>. The Investment Schedule
+                                        workpaper cannot be generated for source-connected engagements — data must be imported
+                                        directly from brokerage statements.
+                                      </p>
+                                      <div className="pt-1 flex items-center gap-2 text-xs text-red-700 font-medium">
+                                        <span>To proceed, select a non-source engagement (e.g. <strong>Phoenix Marie / COM-DEF-May312024</strong>)</span>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => { setInvSelectedEngId(null); setInvEngagementConnected(false); setInvSourceConnected(null); setInvSchedPhase("engagement-check"); }}
+                                      className="h-8 px-4 text-xs font-medium rounded-[8px] border border-border bg-background text-foreground hover:bg-muted transition-colors"
+                                    >
+                                      ← Choose a different engagement
+                                    </button>
                                   </div>
                                 )}
 
