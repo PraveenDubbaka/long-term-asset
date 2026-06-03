@@ -2273,6 +2273,10 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
   const allInvSources = useMemo(() => [...baseSources, ...plaidSources], [plaidSources]);
 
   const baseTxns = useMemo(() => {
+    // When real uploaded transactions are provided via prop, use ONLY those — exclude mock defaults
+    if (manualTxns.length > 0 && initialTransactions && initialTransactions.length > 0) {
+      return manualTxns.filter(t => !hiddenTxIds.has(t.id));
+    }
     const overriddenIds = new Set(Object.keys(importedTxnsBySource));
     const kept = currentYearTransactions.filter(
       t => !overriddenIds.has(t.sourceId) && !hiddenTxIds.has(t.id),
@@ -2288,7 +2292,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
       ...plaidTxns.filter(t => !hiddenTxIds.has(t.id)),
       ...manualTxns,
     ];
-  }, [importedTxnsBySource, plaidTxns, hiddenTxIds, manualTxns]);
+  }, [importedTxnsBySource, plaidTxns, hiddenTxIds, manualTxns, initialTransactions]);
 
   const effectiveTxns = useMemo(
     () => baseTxns.map(t => ({ ...t, ...txEdits[t.id] })),
