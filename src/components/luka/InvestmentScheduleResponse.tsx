@@ -608,7 +608,7 @@ function TransactionsPanel({
                       ? <input type="number" value={d.qty || ""} onChange={e => setD("qty", parseFloat(e.target.value) || 0)} className={`${IC} w-20 text-right`} placeholder="0" />
                       : isBatchEditing
                       ? <input type="number" value={String(bv?.units ?? t.units)} onChange={e => bSet("units", parseFloat(e.target.value) || 0)} className={`${IC} w-20 text-right`} placeholder="0" />
-                      : <span className="tabular-nums">{fmt2(t.units)}</span>}
+                      : t.units > 0 ? <span className="tabular-nums">{fmt2(t.units)}</span> : <span className="text-muted-foreground">—</span>}
                   </td>
 
                   {/* Price */}
