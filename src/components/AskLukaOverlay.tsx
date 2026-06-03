@@ -3846,24 +3846,21 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     </div>
                                                   </div>
                                                 ) : (
-                                                  /* Static Plaid card */
-                                                  <div
-                                                    className="flex-1 flex flex-col items-center gap-2.5 p-4 rounded-[10px] border border-dashed border-violet-300/40 bg-violet-50/20 cursor-pointer hover:bg-violet-50/50 hover:border-violet-400/50 transition-all group text-center"
-                                                    onClick={() => setInvPlaidOpen(true)}
-                                                  >
+                                                  /* Plaid — point to toolbar */
+                                                  <div className="flex-1 flex flex-col items-center justify-center gap-2 p-4 rounded-[10px] border border-dashed border-violet-300/30 bg-violet-50/10 text-center">
                                                     <div className="relative">
-                                                      <div className="absolute inset-0 rounded-full bg-violet-400/20 blur-md group-hover:bg-violet-400/30 transition-all" />
-                                                      <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center shadow-sm">
+                                                      <div className="absolute inset-0 rounded-full bg-violet-400/10 blur-md" />
+                                                      <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-violet-500/60 to-blue-500/60 flex items-center justify-center shadow-sm">
                                                         <Zap className="w-4 h-4 text-white" />
                                                       </div>
                                                     </div>
-                                                    <div>
-                                                      <p className="text-[11px] font-semibold text-foreground">Connect via Plaid</p>
-                                                      <p className="text-[10px] text-muted-foreground mt-0.5">Auto-sync from TD, RBC, BMO<br />Fidelity &amp; 12,000+ institutions</p>
-                                                    </div>
-                                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-violet-600 group-hover:underline">
-                                                      Select your institution
-                                                    </span>
+                                                    <p className="text-[11px] text-muted-foreground leading-relaxed max-w-[180px]">
+                                                      To connect Plaid for this Investment Schedule, select{" "}
+                                                      <span className="inline-flex items-center gap-0.5 font-semibold text-foreground">
+                                                        <Plus className="h-2.5 w-2.5" /> then connect Plaid
+                                                      </span>{" "}
+                                                      in the toolbar below.
+                                                    </p>
                                                   </div>
                                                 )}
                                               </div>
