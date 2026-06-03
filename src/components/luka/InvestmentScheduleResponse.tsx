@@ -61,6 +61,9 @@ const fmtGL = (n: number) =>
 // WAC-panel helpers (mirrors InvWACTab / InvHoldingsTab)
 const fmtNum = (n: number, dec = 2) =>
   n.toLocaleString("en-CA", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+// Smart unit display: integers show no dp, fractionals show 4dp
+const fmtUnits = (n: number) =>
+  Number.isInteger(n) ? n.toLocaleString("en-CA") : fmtNum(n, 4);
 const fmtCAD = (n: number) =>
   n.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -924,7 +927,7 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                 </th>
                 {/* Cum Units */}
                 <th className="text-right w-24 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
-                  <button onClick={() => handleSort("cumUnits")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Cum Units {sortIcon("cumUnits")}</button>
+                  <button onClick={() => handleSort("cumUnits")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Cumulative Units {sortIcon("cumUnits")}</button>
                 </th>
                 {/* Cost In */}
                 <th className="text-right w-28 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
@@ -936,7 +939,7 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                 </th>
                 {/* Cum Cost */}
                 <th className="text-right w-28 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
-                  <button onClick={() => handleSort("cumCost")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Cum Cost {sortIcon("cumCost")}</button>
+                  <button onClick={() => handleSort("cumCost")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Cumulative Cost {sortIcon("cumCost")}</button>
                 </th>
                 {/* WAC */}
                 <th className="text-right w-24 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
@@ -991,19 +994,19 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                           <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
                             {isEditing
                               ? <input type="number" value={editData.unitsIn ?? r.unitsIn} onChange={e => setEditData(d => ({...d, unitsIn: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} />
-                              : fmtNum(r.unitsIn, 4)}
+                              : fmtUnits(r.unitsIn)}
                           </td>
                           {/* Units Out */}
                           <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
                             {isEditing
                               ? <input type="number" value={editData.unitsOut ?? r.unitsOut} onChange={e => setEditData(d => ({...d, unitsOut: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} />
-                              : fmtNum(r.unitsOut, 4)}
+                              : fmtUnits(r.unitsOut)}
                           </td>
                           {/* Cum Units */}
                           <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold border-r border-border/20">
                             {isEditing
                               ? <input type="number" value={editData.cumUnits ?? r.cumUnits} onChange={e => setEditData(d => ({...d, cumUnits: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} />
-                              : fmtNum(r.cumUnits, 4)}
+                              : fmtUnits(r.cumUnits)}
                           </td>
                           {/* Cost In */}
                           <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
@@ -1060,9 +1063,9 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                       <td className="px-2.5 py-2 border-r border-border/30">
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap bg-primary/10 text-primary border-primary/25">Closing Balance</span>
                       </td>
-                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">0.0000</td>
-                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">0.0000</td>
-                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30">{fmtNum(s.closingUnits, 4)}</td>
+                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">—</td>
+                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">—</td>
+                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30">{fmtUnits(s.closingUnits)}</td>
                       <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">0.00</td>
                       <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">0.00</td>
                       <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30">{fmtCAD(s.closingCostCAD)}</td>
@@ -1080,9 +1083,9 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                           <td className="px-2.5 py-1.5 border-r border-border/30" colSpan={4}>
                             <span className="text-[10px] font-bold uppercase tracking-wide text-foreground">Totals</span>
                           </td>
-                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtNum(totUnitsIn,  4)}</td>
-                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtNum(totUnitsOut, 4)}</td>
-                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtNum(s.closingUnits, 4)}</td>
+                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtUnits(totUnitsIn)}</td>
+                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtUnits(totUnitsOut)}</td>
+                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtUnits(s.closingUnits)}</td>
                           <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtCAD(totCostIn)}</td>
                           <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtCAD(totCostOut)}</td>
                           <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/30 font-bold">{fmtCAD(s.closingCostCAD)}</td>
@@ -1200,7 +1203,7 @@ function GainLossPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                 <td className="px-3 py-1.5 font-medium">{s.security}</td>
                 <td className="px-3 py-1.5 font-mono">{s.ticker}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{yearEndStr}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmtNum(s.closingUnits, 4)}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">{fmtUnits(s.closingUnits)}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums font-medium">{fmtCAD(s.fmvCAD)}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">{fmtGL(s.unrealizedGL)}</td>
                 <td className="px-3 py-1.5 text-right">
