@@ -731,7 +731,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const ENGAGEMENTS_PANEL = [
     { client: "Phoenix Marie",  id: "COM-DEF-May312024", yearEnd: "22 Jan 2022", status: "Active", source: null            },
     { client: "Circooles",      id: "COM-DEF-Dec312024", yearEnd: "20 Jan 2022", status: "Active", source: "quickbooks"     },
-    { client: "Command+R",      id: "COM-DEF-Dec312024", yearEnd: "24 Jan 2022", status: "Active", source: "quickbooks"     },
+    { client: "Command+R",      id: "COM-DEF-Dec312024", yearEnd: "24 Jan 2022", status: "Active", source: null             },
     { client: "Hourglass",      id: "REV-DEF-Dec312024", yearEnd: "26 Jan 2022", status: "Active", source: "xero"           },
     { client: "Layers",         id: "REV-DEF-Dec312024", yearEnd: "18 Jan 2022", status: "Active", source: "quickbooks"     },
     { client: "Quotient",       id: "COM-DEF-Dec312024", yearEnd: "28 Jan 2022", status: "Active", source: "xero"           },
@@ -3292,7 +3292,16 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                       <div className="space-y-2">
                                         <div className="rounded-[12px] border border-red-200 bg-red-50 px-4 py-3 space-y-1">
                                           <div className="flex items-center gap-2"><AlertCircle className="h-4 w-4 text-red-600 shrink-0" /><p className="text-sm font-semibold text-red-900">No Trial Balance Found</p></div>
-                                          <p className="text-xs text-red-800 leading-relaxed">No Trial Balance was found in <strong>{invSelectedEngId}</strong>. The Investment Schedule workpaper requires a Trial Balance to proceed. Please upload the TB to the engagement first.</p>
+                                          <p className="text-xs text-red-800 leading-relaxed">No Trial Balance was found in <strong>{invSelectedEngId}</strong>. The Investment Schedule workpaper requires a Trial Balance to reconcile investment account balances.</p>
+                                          <div className="pt-1 space-y-1">
+                                            <p className="text-xs text-red-700 font-semibold">To proceed:</p>
+                                            <ol className="text-xs text-red-700 space-y-0.5 pl-4 list-decimal">
+                                              <li>Go to <strong>Engagements → {invSelectedEngId}</strong></li>
+                                              <li>Navigate to <strong>TB / Trial Balance</strong> section</li>
+                                              <li>Upload or generate a Trial Balance for the engagement</li>
+                                              <li>Return here and select the same engagement to continue</li>
+                                            </ol>
+                                          </div>
                                         </div>
                                         <button onClick={() => { setInvSelectedEngId(null); setInvEngagementConnected(false); setInvSchedPhase("engagement-check"); }} className="h-8 px-4 text-xs font-medium rounded-[8px] border border-border bg-background text-foreground hover:bg-muted transition-colors">← Choose a different engagement</button>
                                       </div>
