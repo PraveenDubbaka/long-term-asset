@@ -13,7 +13,7 @@ import {
 import { sources as baseSources, priorYearLots, currentYearTransactions, fxRates as mockFxRates } from "@/lib/luka/mockData";
 import type { Source, Transaction, PriorYearLot } from "@/lib/luka/types";
 import { defaultTbAccount } from "@/lib/luka/coa";
-import { Pencil, Trash2, Plus, Check, X, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, ChevronRight, Send, RotateCcw, FileDown, BarChart2, Upload, Loader2, FolderOpen, FileText, FileSpreadsheet, Copy, Download, Save, Search, Clock, GitCommit, FilePlus, PenLine, FileCheck, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Pencil, Trash2, Plus, Check, X, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, Send, RotateCcw, BarChart2, Upload, Loader2, FolderOpen, FileText, FileSpreadsheet, Copy, Download, Save, Search, FileCheck, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { SearchFilter, ColFilter } from "@/pages/InvTableFilters";
 import { CHART_OF_ACCOUNTS } from "@/lib/luka/coa";
 
