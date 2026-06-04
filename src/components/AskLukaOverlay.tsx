@@ -2859,7 +2859,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                   </AnimatePresence>
 
                   {/* Chat body */}
-                  <div className="relative flex-1 flex flex-col min-w-0 overflow-y-auto">
+                  <div className="relative flex-1 flex flex-col min-w-0 min-h-0">
                     {/* Engagement Tray */}
                     <AnimatePresence>
                       {showEngagementTrayCtx && (
@@ -2947,7 +2947,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                       <><TaxPayableFlow onActivity={handleActivityUpdate} activityMinimized={activityMinimized} />{!activityMinimized && <LukaActivityPanel entries={activityEntries} isProcessing={isActivityProcessing} minimized={false} onToggleMinimize={() => setActivityMinimized(true)} />}</>
                     ) : (
                     /* ── Existing threads content (sentMessage, rich responses, etc.) ── */
-                    <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-y-auto">
+                    <div className="flex-1 flex flex-col min-w-0 min-h-0">
                 <div className="flex-1 min-w-0 overflow-y-auto">
                   {!sentMessage ? (
                     <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-[60vh]">
