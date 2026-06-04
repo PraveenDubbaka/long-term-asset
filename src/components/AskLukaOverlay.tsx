@@ -882,6 +882,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [threadsSidebarCollapsed, setThreadsSidebarCollapsed] = useState(true);
+  const [vpw, setVpw] = useState(() => typeof window !== 'undefined' ? window.innerWidth : 1440);
   const [workspaceSidebarCollapsed, setWorkspaceSidebarCollapsed] = useState(false);
   const [pinnedThreadsList, setPinnedThreadsList] = useState<ThreadItem[]>(initialPinnedThreads);
   const [recentThreadsList, setRecentThreadsList] = useState<ThreadItem[]>(initialRecentThreads);
@@ -1089,6 +1090,18 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
   // Sync lukaOpenStore
   useEffect(() => { setLukaOpen(open); }, [open]);
+
+  // Viewport width tracking — keeps panel widths viewport-aware on resize
+  useEffect(() => {
+    const onResize = () => setVpw(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  // Auto-collapse threads sidebar on narrow viewports
+  useEffect(() => {
+    if (vpw < 820) setThreadsSidebarCollapsed(true);
+  }, [vpw]);
 
   // Close engagement tray on outside click
   useEffect(() => {
@@ -2618,6 +2631,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   );
 
   const isWorkspaceTab = activeTab === "workspaces";
+  const PANEL_W_COLLAPSED = Math.min(640, Math.floor(vpw * 0.98));
+  const PANEL_W_EXPANDED  = Math.min(909, Math.floor(vpw * 0.98));
 
   return (
     <AnimatePresence>
@@ -2640,8 +2655,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
               isFullscreen
                 ? { x: 0, y: 0, opacity: 1, width: "100vw" }
                 : isMinimized
-                ? { x: 0, y: "calc(100% - 56px)", opacity: 1, width: threadsSidebarCollapsed ? 640 : 909 }
-                : { x: 0, y: 0, opacity: 1, width: threadsSidebarCollapsed ? 640 : 909 }
+                ? { x: 0, y: "calc(100% - 56px)", opacity: 1, width: threadsSidebarCollapsed ? PANEL_W_COLLAPSED : PANEL_W_EXPANDED }
+                : { x: 0, y: 0, opacity: 1, width: threadsSidebarCollapsed ? PANEL_W_COLLAPSED : PANEL_W_EXPANDED }
             }
             exit={{ x: "100%", opacity: 0.6 }}
             transition={{ type: "spring", damping: 32, stiffness: 280, mass: 0.85 }}
@@ -2733,8 +2748,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
             {/* Main area */}
             <div className="flex-1 min-w-0 flex flex-col bg-card border-l relative" style={{ borderColor: "hsl(var(--border))" }}>
               {/* Header */}
-              <div className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: "hsl(var(--border))" }}>
-                <div className="flex items-center gap-1 shrink-0">
+              <div className="grid items-center px-4 py-3 border-b" style={{ borderColor: "hsl(var(--border))", gridTemplateColumns: "auto 1fr auto" }}>
+                <div className="flex items-center gap-1">
                   {activeTab === "threads" && threadsSidebarCollapsed ? (
                     <TooltipProvider><Tooltip><TooltipTrigger asChild>
                       <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setThreadsSidebarCollapsed(false)} className="action-icon" style={{ color: "hsl(0 0% 0%)" }}>
@@ -2742,15 +2757,12 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                       </motion.button>
                     </TooltipTrigger><TooltipContent side="bottom"><p>Open Threads</p></TooltipContent></Tooltip></TooltipProvider>
                   ) : (
-                    <span className="action-icon w-8 h-8 invisible" />
+                    <span className="w-8 h-8" />
                   )}
-                  <span className="action-icon w-8 h-8 invisible" />
-                  <span className="action-icon w-8 h-8 invisible" />
-                  <span className="action-icon w-8 h-8 invisible" />
                 </div>
 
                 {/* Tabs */}
-                <LayoutGroup><div className="flex-1 flex items-center justify-center">
+                <LayoutGroup><div className="flex items-center justify-center">
                   <div className="relative flex items-center gap-1 rounded-full p-1" style={{ background: "hsl(0 0% 100%)", border: "1px solid hsl(220 20% 92%)", boxShadow: "0 6px 18px -8px hsl(250 40% 40% / 0.18), 0 1px 2px hsl(220 30% 50% / 0.05)" }}>
                     {([{ id: "threads", label: "Threads", icon: MessageCircle }, { id: "workspaces", label: "Workspace", icon: Zap }] as const).map(tab => {
                       const isActive = activeTab === tab.id;
@@ -2783,7 +2795,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                 </div></LayoutGroup>
 
                 {/* Window controls */}
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1 justify-end">
                   <TooltipProvider>
                     <Tooltip><TooltipTrigger asChild>
                       <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={handleOpenNewWindow} className="action-icon" aria-label="Open in new window"><ExternalLink size={16} /></motion.button>
