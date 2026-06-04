@@ -2487,7 +2487,7 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
       </div>
 
       {/* Tab content — shimmer overlay while re-running */}
-      <div className="w-full min-w-0 overflow-x-hidden relative">
+      <div className="w-full min-w-0 relative">
         {isRerunning && (
           <div className="absolute inset-0 z-20 rounded-[8px] overflow-hidden pointer-events-none">
             {/* Frosted base */}
