@@ -753,7 +753,7 @@ function LoansTab({
                 </span>
               </div>
               <div className="rounded-[8px] border border-border overflow-hidden">
-                <div className="overflow-x-auto">
+                <div className="w-full overflow-x-auto">
                   <table className="w-full text-[10px]" style={{ minWidth: 2400 }}>
                     <thead>
                       <tr className="bg-muted/30 border-b border-border">
@@ -901,7 +901,7 @@ function LoansTab({
         )}
 
         {/* Both modes scroll — compact uses narrower text cols; numbers always fully visible */}
-        <div className="overflow-x-auto">
+        <div className="w-full overflow-x-auto">
           <table
             className="text-[11px]"
             style={{ minWidth: fit ? "1400px" : "1900px" }}
@@ -1242,7 +1242,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
               <span className="text-sm font-semibold text-foreground">Continuity Roll-Forward</span>
               <span className="text-[10px] text-muted-foreground ml-2">Opening → movements → closing by period</span>
             </div>
-            <div className="overflow-x-auto">
+            <div className="w-full overflow-x-auto">
               <table className="w-full text-[11px]">
                 <thead>
                   <tr className="bg-muted/20 border-b border-border">
@@ -1303,7 +1303,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
               <span className="text-sm font-semibold text-foreground">Balance Sheet Classification</span>
               <span className="text-[10px] text-muted-foreground ml-2">Current portion + maturity ladder by year (CAD equiv.)</span>
             </div>
-            <div className="overflow-x-auto">
+            <div className="w-full overflow-x-auto">
               <table className="w-full text-[11px]">
                 <thead>
                   <tr className="bg-muted/20 border-b border-border">
@@ -1361,7 +1361,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
             <span className="text-sm font-semibold text-foreground">Repayment Schedule</span>
             <span className="text-[10px] text-muted-foreground ml-2">Scheduled principal repayments by year (CAD equiv.)</span>
           </div>
-          <div className="overflow-x-auto">
+          <div className="w-full overflow-x-auto">
             <table className="w-full text-[11px]">
               <thead>
                 <tr className="bg-muted/20 border-b border-border">
@@ -2221,7 +2221,7 @@ function NotesTabPanel({ loans, continuity, reconciliation, settings }: {
           <span className="text-sm font-semibold text-foreground">Principal Repayment Schedule — Next Five Fiscal Years</span>
           <span className="text-[10px] text-muted-foreground">Derived from maturity dates in loan register</span>
         </div>
-        <div className="overflow-x-auto">
+        <div className="w-full overflow-x-auto">
           <table className="w-full text-[11px]">
             <thead>
               <tr className="bg-muted/20 border-b border-border">
@@ -2487,7 +2487,7 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
       </div>
 
       {/* Tab content — shimmer overlay while re-running */}
-      <div className="min-w-0 relative">
+      <div className="w-full min-w-0 overflow-x-hidden relative">
         {isRerunning && (
           <div className="absolute inset-0 z-20 rounded-[8px] overflow-hidden pointer-events-none">
             {/* Frosted base */}

@@ -2968,7 +2968,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                       </div>
                     </div>
                   ) : (
-                    <div className="px-6 py-4 space-y-4 min-w-0 max-w-full overflow-hidden">
+                    <div className="px-6 py-4 space-y-4 min-w-0 max-w-full overflow-x-hidden">
                       <div className="flex justify-end">
                         <div className="max-w-[80%] px-4 py-3 rounded-[12px] bg-primary text-primary-foreground text-base">{sentMessage}</div>
                       </div>
@@ -2977,7 +2977,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                           <div className={cn("w-9 h-9 rounded-full bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(265_80%_55%)] flex items-center justify-center shrink-0", isThinking && "luka-thinking-spin")}>
                             <LukaIcon size={16} />
                           </div>
-                          <div className="flex-1 pt-1.5 min-h-[28px] min-w-0 overflow-x-auto">
+                          <div className="flex-1 pt-1.5 min-h-[28px] min-w-0 overflow-x-hidden">
                             {isThinking ? (
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-medium text-foreground luka-thinking-text">Thinking</span>
@@ -4457,7 +4457,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                             )}>
                               <LukaIcon size={16} />
                             </div>
-                            <div className="flex-1 pt-1.5 min-h-[28px] min-w-0 overflow-x-auto">
+                            <div className="flex-1 pt-1.5 min-h-[28px] min-w-0 overflow-x-hidden">
                               {loanAmortStep === "thinking" ? (
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-medium text-foreground luka-thinking-text">Analysing Long-term Asset workpaper</span>

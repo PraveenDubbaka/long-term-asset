@@ -125,7 +125,7 @@ function TableWrap({ title, subtitle, onAdd, addLabel, children }: {
           )}
         </div>
       </div>
-      <div className="overflow-x-auto">{children}</div>
+      <div className="w-full overflow-x-auto">{children}</div>
     </div>
   );
 }
@@ -537,7 +537,7 @@ function TransactionsPanel({
 
 
       {/* Table */}
-      <div className="overflow-x-auto">
+      <div className="w-full overflow-x-auto">
         <table className="w-full text-[11px]" style={{ minWidth: 1100 }}>
           <thead>
             <tr className="bg-muted/30 border-b border-border">
@@ -894,7 +894,7 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
 
       {/* Spreadsheet table */}
       <div className="rounded-[8px] border border-border overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="w-full overflow-x-auto">
           <table className="w-full border-collapse text-[11px]" style={{ minWidth: 900 }}>
             <thead className="sticky top-0 z-10">
               <tr className="bg-[#f0f2f5] border-b-2 border-border">
@@ -1585,7 +1585,7 @@ function BrokerReconPanel({
 
             {/* ── Section 1: Opening Balance ── */}
             <SectionHead title="Opening Balance" />
-            <div className="overflow-x-auto">
+            <div className="w-full overflow-x-auto">
               <table className="w-full text-[11px]">
                 <tbody>
                   <tr className="border-b border-border/40 bg-amber-50/40">
@@ -1700,7 +1700,7 @@ function BrokerReconPanel({
 
             {/* ── Section 4: Closing Balance ── */}
             <SectionHead title="Closing Balances" />
-            <div className="overflow-x-auto">
+            <div className="w-full overflow-x-auto">
               <table className="w-full text-[11px]">
                 <thead>
                   <tr className="bg-muted/20 border-b border-border">
@@ -1746,7 +1746,7 @@ function BrokerReconPanel({
 
             {/* ── Section 5: Closing Position Detail ── */}
             <SectionHead title="Closing Position Detail — Per Security" />
-            <div className="overflow-x-auto">
+            <div className="w-full overflow-x-auto">
               <table className="w-full text-[11px]">
                 <thead>
                   <tr className="bg-muted/10 border-b border-border">
@@ -2711,7 +2711,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                   </span>
                 </div>
                 <div className="rounded-[8px] border border-border overflow-hidden">
-                  <div className="overflow-x-auto">
+                  <div className="w-full overflow-x-auto">
                     <table className="w-full text-[10px]" style={{ minWidth: 1400 }}>
                       <thead>
                         <tr className="bg-muted/30 border-b border-border">
