@@ -897,6 +897,17 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
         <div className="w-full overflow-x-auto">
           <table className="w-full border-collapse text-[11px]" style={{ minWidth: 900 }}>
             <thead className="sticky top-0 z-10">
+              {/* Group header row */}
+              <tr className="bg-[#e8eaed] border-b border-border/60 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
+                <th colSpan={4} className="px-2.5 py-1 text-left border-r border-border/40" />
+                <th colSpan={3} className="px-2.5 py-1 text-center border-r-2 border-primary/30 bg-blue-50/40">
+                  Units
+                </th>
+                <th colSpan={3} className="px-2.5 py-1 text-center border-r border-border/40 bg-violet-50/40">
+                  Cost
+                </th>
+                <th className="px-2.5 py-1 text-center" />
+              </tr>
               <tr className="bg-[#f0f2f5] border-b-2 border-border">
                 {/* Security — sort + SearchFilter */}
                 <th className="text-left min-w-[100px] max-w-[180px] px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
@@ -926,11 +937,11 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                   <button onClick={() => handleSort("unitsOut")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Units Out {sortIcon("unitsOut")}</button>
                 </th>
                 {/* Cum Units */}
-                <th className="text-right w-24 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                <th className="text-right w-24 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r-2 border-primary/30 bg-blue-50/20">
                   <button onClick={() => handleSort("cumUnits")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Cumulative Units {sortIcon("cumUnits")}</button>
                 </th>
                 {/* Cost In */}
-                <th className="text-right w-28 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                <th className="text-right w-28 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-violet-50/20">
                   <button onClick={() => handleSort("costIn")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Cost In {sortIcon("costIn")}</button>
                 </th>
                 {/* Cost Out */}
