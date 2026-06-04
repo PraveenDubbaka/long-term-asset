@@ -2645,7 +2645,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
             }
             exit={{ x: "100%", opacity: 0.6 }}
             transition={{ type: "spring", damping: 32, stiffness: 280, mass: 0.85 }}
-            className={`fixed top-0 right-0 z-50 flex ${isFullscreen ? "w-full h-full" : "h-full rounded-l-2xl overflow-hidden"}`}
+            className={`fixed top-0 right-0 z-50 flex ${isFullscreen ? "w-full h-full" : "h-full rounded-l-2xl luka-panel-clip"}`}
             style={isFullscreen ? undefined : { maxWidth: "98vw" }}
           >
             {/* LHS threads sidebar */}
@@ -2731,7 +2731,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
             )}
 
             {/* Main area */}
-            <div className="flex-1 flex flex-col bg-card border-l relative" style={{ borderColor: "hsl(var(--border))" }}>
+            <div className="flex-1 min-w-0 flex flex-col bg-card border-l relative" style={{ borderColor: "hsl(var(--border))" }}>
               {/* Header */}
               <div className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: "hsl(var(--border))" }}>
                 <div className="flex items-center gap-1 shrink-0">
@@ -2805,7 +2805,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
               {/* Tab content */}
               {activeTab === "threads" ? (
-                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                <div className="flex-1 flex flex-col min-h-0 min-w-0">
                   {/* Context bar */}
                   <div className="flex items-center gap-3 px-4 py-2.5 border-b relative" style={{ borderColor: "hsl(var(--border))" }}>
                     <motion.button whileHover={{ backgroundColor: "hsl(var(--muted) / 0.6)" }} whileTap={{ scale: 0.98 }}
@@ -2859,7 +2859,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                   </AnimatePresence>
 
                   {/* Chat body */}
-                  <div className="relative flex-1 flex flex-col overflow-hidden">
+                  <div className="relative flex-1 flex flex-col min-w-0 overflow-y-auto">
                     {/* Engagement Tray */}
                     <AnimatePresence>
                       {showEngagementTrayCtx && (

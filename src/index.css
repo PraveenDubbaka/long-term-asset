@@ -765,3 +765,7 @@ table tfoot td {
 .cov-select-pop .cov-lbl    { font-size: 15px !important; line-height: 1.4 !important; font-weight: 400 !important; }
 .cov-select-pop .cov-search { font-size: 15px !important; line-height: 1.4 !important; font-weight: 400 !important; }
 .cov-select-pop .cov-empty  { font-size: 15px !important; font-weight: 400 !important; }
+
+/* ── Luka overlay: clip paint at border-box for rounded corners but do NOT
+      create a scroll container — child overflow-x-auto tables scroll freely ── */
+.luka-panel-clip { overflow: clip; }
