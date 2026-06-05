@@ -1157,6 +1157,7 @@ function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; 
                 { label: "Year-End Date",     align: "right" },
                 { label: "Units Outstanding", align: "right" },
                 { label: "Fair Market Value", align: "right" },
+                { label: "Book Value",        align: "right" },
                 { label: "Unrealized G/L",    align: "right" },
                 { label: "TB Account",        align: "right" },
               ].map(h => (
@@ -1172,6 +1173,7 @@ function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; 
                 <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{yearEndStr}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">{fmtUnits(s.closingUnits)}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums font-medium">{fmtCAD(s.fmvCAD)}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">{fmtCAD(s.closingCostCAD)}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">{fmtGL(s.unrealizedGL)}</td>
                 <td className="px-3 py-1.5 text-right">
                   <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border bg-muted text-foreground border-border whitespace-nowrap">
@@ -1186,6 +1188,7 @@ function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; 
               <td className="px-3 py-2 text-[11px]" colSpan={3}>Total</td>
               <td className="px-3 py-2 text-right tabular-nums text-[11px]">{fmtNum(schedules.reduce((a, s) => a + s.closingUnits, 0), 4)}</td>
               <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">{fmtCAD(schedules.reduce((a, s) => a + s.fmvCAD, 0))}</td>
+              <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">{fmtCAD(schedules.reduce((a, s) => a + s.closingCostCAD, 0))}</td>
               <td className="px-3 py-2 text-right tabular-nums text-[11px]">{fmtGL(totUnrealized)}</td>
               <td className="px-3 py-2" />
             </tr>
