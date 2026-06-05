@@ -10,7 +10,7 @@ import {
   Zap, Building2, CheckCircle2, ChevronDown, SlidersHorizontal,
   Bell, Settings, ArrowLeft, Lock, Upload, FileText, Mail, Square,
   FolderOpen, RotateCcw, Sparkles, Eye, EyeOff, Pin, PinOff, LayoutList, CalendarDays, CalendarRange,
-  ArrowUpDown, Check, BookOpen, HardDrive, FileSpreadsheet, ShieldCheck,
+  ArrowUpDown, ArrowUp, ArrowDown, Check, BookOpen, HardDrive, FileSpreadsheet, ShieldCheck,
   AlertTriangle, AlertCircle, TrendingUp, TrendingDown, Info, Table2, RefreshCw,
   Calendar, Receipt, Download, Trash2, BarChart2, Pencil, Loader2,
   PlusCircle, ChevronsLeft, ChevronsRight, Wand2, GitBranch, Database,
@@ -4097,7 +4097,11 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                                 {field ? (
                                                                   <button onClick={() => handleInvSort(field as keyof InvReviewRow)} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">
                                                                     {label.endsWith(" *") ? <>{label.slice(0,-2)} <span className="text-red-500">*</span></> : label}
-                                                                    {isSort ? (invTableSort!.dir === "asc" ? " ↑" : " ↓") : " ↕"}
+                                                                    {isSort
+                                                                      ? invTableSort!.dir === "asc"
+                                                                        ? <ArrowUp className="h-2.5 w-2.5 text-primary ml-0.5" />
+                                                                        : <ArrowDown className="h-2.5 w-2.5 text-primary ml-0.5" />
+                                                                      : <ArrowUpDown className="h-2.5 w-2.5 text-muted-foreground/40 ml-0.5" />}
                                                                   </button>
                                                                 ) : label}
                                                               </th>
