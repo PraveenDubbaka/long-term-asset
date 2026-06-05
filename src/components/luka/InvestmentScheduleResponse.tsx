@@ -775,7 +775,7 @@ function TransactionsPanel({
 }
 
 // ─── Tab 2: WAC Schedule ──────────────────────────────────────────────────────
-function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
+function WACPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; yearEnd?: string }) {
   const [filterSecurity, setFilterSecurity] = useState("");
   const [filterType,     setFilterType]     = useState("");
   const [rowOverrides,   setRowOverrides]   = useState<Record<string, WacRow[]>>({});
@@ -784,7 +784,7 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
   const [addingFor,      setAddingFor]      = useState<string | null>(null);
   const [newRow,         setNewRow]         = useState<Partial<WacRow>>({});
   const settings     = useStore(s => s.settings);
-  const yearEndDate  = settings.fiscalYearEnd ? fmtDate(settings.fiscalYearEnd.slice(0, 10)) : "—";
+  const yearEndDate  = yearEnd || (settings.fiscalYearEnd ? fmtDate(settings.fiscalYearEnd.slice(0, 10)) : "—");
 
   const getRows = (s: SecuritySchedule): WacRow[] => rowOverrides[s.key] ?? s.rows;
 
@@ -1085,9 +1085,9 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
 }
 
 // ─── Tab 3: Gain / Loss ───────────────────────────────────────────────────────
-function GainLossPanel({ schedules }: { schedules: SecuritySchedule[] }) {
+function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; yearEnd?: string }) {
   const settings   = useStore(s => s.settings);
-  const yearEndStr = settings.fiscalYearEnd ? fmtDate(settings.fiscalYearEnd.slice(0, 10)) : "—";
+  const yearEndStr = yearEnd || (settings.fiscalYearEnd ? fmtDate(settings.fiscalYearEnd.slice(0, 10)) : "—");
 
   const disposals = schedules.flatMap(s =>
     s.rows
@@ -1376,15 +1376,17 @@ function SectionHead({ title }: { title: string }) {
 }
 
 function BrokerReconPanel({
-  invRecon, schedules, effectiveTxns,
+  invRecon, schedules, effectiveTxns, yearEnd: yearEndProp,
 }: {
   invRecon: ReturnType<typeof buildInvestmentRecon>;
   schedules: SecuritySchedule[];
   effectiveTxns: ReturnType<typeof buildIncomeMatrix> extends never ? never : import("@/lib/luka/types").Transaction[];
+  yearEnd?: string;
 }) {
   const settings  = useStore(s => s.settings);
-  const yearEnd   = settings.fiscalYearEnd ? fmtDate(settings.fiscalYearEnd.slice(0, 10)) : "Dec 31, 2024";
-  const fiscalYear = settings.fiscalYearEnd ? settings.fiscalYearEnd.slice(0, 4) : "2024";
+  const yearEnd   = yearEndProp || (settings.fiscalYearEnd ? fmtDate(settings.fiscalYearEnd.slice(0, 10)) : "Dec 31, 2024");
+  const fiscalYear = yearEndProp ? yearEndProp.split(", ")[1] || "2024"
+    : settings.fiscalYearEnd ? settings.fiscalYearEnd.slice(0, 4) : "2024";
   const yearStart = settings.fiscalYearEnd
     ? fmtDate(settings.fiscalYearEnd.slice(0, 4) + "-01-01")
     : "Jan 1, 2024";
@@ -2298,7 +2300,7 @@ function HoldingsPanel({ schedules }: { schedules: SecuritySchedule[] }) {
 }
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
-export function InvestmentScheduleResponse({ onEditTransactions, initialTransactions }: { onEditTransactions?: () => void; initialTransactions?: import("@/lib/luka/types").Transaction[] } = {}) {
+export function InvestmentScheduleResponse({ onEditTransactions, initialTransactions, engagementYearEnd }: { onEditTransactions?: () => void; initialTransactions?: import("@/lib/luka/types").Transaction[]; engagementYearEnd?: string } = {}) {
   const settings = useStore(s => s.settings);
   const [activeTab, setActiveTab] = useState<TabId>("transactions");
   const [invMode, setInvMode] = useState<"view" | "edit" | "add">("view");
@@ -2311,9 +2313,9 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
   useEffect(() => { if (invMode !== "add") setAddUploadedFiles([]); }, [invMode]);
 
   const client  = settings.client || "this engagement";
-  const dateStr = settings.fiscalYearEnd
-    ? fmtDate(settings.fiscalYearEnd.slice(0, 10))
-    : "—";
+  // Use engagement year-end passed from the Luka flow; fall back to settings
+  const resolvedYearEnd = engagementYearEnd || (settings.fiscalYearEnd ? settings.fiscalYearEnd.slice(0, 10) : null);
+  const dateStr = resolvedYearEnd ? fmtDate(resolvedYearEnd) : "—";
 
   // ── Compute options ────────────────────────────────────────────────────────
   const [opts] = useState<ComputeOptions>({
@@ -2778,16 +2780,16 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
           />
         </div>
         <div className={activeTab === "wac" ? "" : "hidden"}>
-          <WACPanel schedules={schedules} />
+          <WACPanel schedules={schedules} yearEnd={dateStr} />
         </div>
         <div className={activeTab === "gainloss" ? "" : "hidden"}>
-          <GainLossPanel schedules={schedules} />
+          <GainLossPanel schedules={schedules} yearEnd={dateStr} />
         </div>
         <div className={activeTab === "income" ? "" : "hidden"}>
           <IncomePanel incomeMatrix={incomeMatrix} />
         </div>
         <div className={activeTab === "brokerrecon" ? "" : "hidden"}>
-          <BrokerReconPanel invRecon={invRecon} schedules={schedules} effectiveTxns={effectiveTxns} />
+          <BrokerReconPanel invRecon={invRecon} schedules={schedules} effectiveTxns={effectiveTxns} yearEnd={dateStr} />
         </div>
         <div className={activeTab === "ajes" ? "" : "hidden"}>
           <AJEsPanel ajes={ajes} ajeQueue={ajeQueue} clearAjeQueue={clearAjeQueue} />

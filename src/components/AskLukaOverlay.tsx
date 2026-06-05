@@ -4297,6 +4297,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                     <InvestmentScheduleResponse
                                       onEditTransactions={() => { setInvSchedPhase("upload-prompt"); }}
                                       initialTransactions={invSubmittedTxns.length > 0 ? invSubmittedTxns : undefined}
+                                      engagementYearEnd={ENGAGEMENTS_PANEL.find(e => e.id === invSelectedEngId)?.yearEnd}
                                     />
                                   </>
                                 )}
