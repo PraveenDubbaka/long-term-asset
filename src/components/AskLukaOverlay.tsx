@@ -5124,7 +5124,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: 8, scale: 0.98 }}
                           transition={{ type: "spring", damping: 28, stiffness: 320, mass: 0.7 }}
-                          className="absolute bottom-full left-0 right-0 z-40"
+                          className="absolute bottom-full left-4 right-4 z-40"
                           style={{ marginBottom: 4, maxHeight: "min(420px, 60vh)" }}
                         >
                           <div className="overflow-hidden flex flex-col bg-card" style={{ borderRadius: 12, border: "1px solid hsl(0 0% 35%)", boxShadow: "0 2px 12px 0 hsla(0,0%,0%,0.10), 0 1px 4px 0 hsla(0,0%,0%,0.06)" }}>
