@@ -5127,7 +5127,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                           className="absolute bottom-full left-0 right-0 z-40"
                           style={{ marginBottom: 4, maxHeight: "min(420px, 60vh)" }}
                         >
-                          <div className="rounded-2xl overflow-hidden flex flex-col bg-card border border-border shadow-lg">
+                          <div className="overflow-hidden flex flex-col bg-card" style={{ borderRadius: 12, border: "1px solid hsl(0 0% 35%)", boxShadow: "0 2px 12px 0 hsla(0,0%,0%,0.10), 0 1px 4px 0 hsla(0,0%,0%,0.06)" }}>
                             <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-3">
                               <h3 className="text-base font-semibold text-foreground">Select Engagement</h3>
                               <div className="flex items-center gap-2">
