@@ -2576,38 +2576,73 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
             );
           })}
         </div>
-        {/* Schedule / Edit / Add button group */}
-        <div className="shrink-0 ml-3 mb-px flex items-center gap-0 rounded-[8px] border border-border bg-muted/40 p-0.5">
-          <button
-            disabled={invMode !== "view"}
-            className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] transition-all ${
-              invMode === "view"
-                ? "font-semibold bg-background text-foreground shadow-sm border border-border/60"
-                : "font-medium text-muted-foreground/40 cursor-not-allowed"
-            }`}
-          >
-            <BarChart2 className="w-3 h-3" /> Schedule
-          </button>
-          <button
-            onClick={() => { setInvMode("edit"); setActiveTab("transactions"); setTxEdits({}); }}
-            className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] transition-all ${
-              invMode === "edit"
-                ? "font-semibold bg-background text-primary shadow-sm border border-primary/30"
-                : "font-medium text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Pencil className="w-3 h-3" /> Edit
-          </button>
-          <button
-            onClick={() => { setInvMode("add"); setActiveTab("transactions"); setPendingTxns([]); }}
-            className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] transition-all ${
-              invMode === "add"
-                ? "font-semibold bg-background text-primary shadow-sm border border-primary/30"
-                : "font-medium text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Plus className="w-3 h-3" /> Add
-          </button>
+        {/* Schedule / Edit / Add button group + Discard */}
+        <div className="shrink-0 ml-3 mb-px flex items-center gap-1.5">
+          <div className="flex items-center gap-0 rounded-[8px] border border-border bg-muted/40 p-0.5">
+            {/* Schedule — in edit/add mode acts as Submit & Rerun */}
+            {(() => {
+              const canSubmit = invMode === "edit" ? canSubmitEdit : invMode === "add" ? canSubmitAdd : false;
+              const handleScheduleClick = invMode !== "view"
+                ? (canSubmit ? (invMode === "edit" ? submitEdits : submitAdd) : undefined)
+                : undefined;
+              const tooltip = invMode !== "view" && !canSubmit
+                ? invMode === "edit"
+                  ? "Make at least one change to enable"
+                  : "Add at least one transaction to enable"
+                : null;
+              return (
+                <div className="relative group/sched">
+                  <button
+                    onClick={handleScheduleClick}
+                    disabled={invMode !== "view" && !canSubmit}
+                    className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] transition-all ${
+                      invMode === "view"
+                        ? "font-semibold bg-background text-foreground shadow-sm border border-border/60"
+                        : canSubmit
+                          ? "font-semibold bg-primary text-primary-foreground shadow-sm cursor-pointer hover:bg-primary/90"
+                          : "font-medium text-muted-foreground/40 cursor-not-allowed"
+                    }`}
+                  >
+                    <BarChart2 className="w-3 h-3" /> Schedule
+                  </button>
+                  {tooltip && (
+                    <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-1 rounded-[6px] bg-foreground text-background text-[10px] font-medium opacity-0 group-hover/sched:opacity-100 transition-opacity pointer-events-none z-50">
+                      {tooltip}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+            <button
+              onClick={() => { setInvMode("edit"); setActiveTab("transactions"); setTxEdits({}); }}
+              className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] transition-all ${
+                invMode === "edit"
+                  ? "font-semibold bg-background text-primary shadow-sm border border-primary/30"
+                  : "font-medium text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Pencil className="w-3 h-3" /> Edit
+            </button>
+            <button
+              onClick={() => { setInvMode("add"); setActiveTab("transactions"); setPendingTxns([]); }}
+              className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] transition-all ${
+                invMode === "add"
+                  ? "font-semibold bg-background text-primary shadow-sm border border-primary/30"
+                  : "font-medium text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Plus className="w-3 h-3" /> Add
+            </button>
+          </div>
+          {/* Discard — only visible in edit / add mode */}
+          {invMode !== "view" && (
+            <button
+              onClick={discardMode}
+              className="inline-flex items-center gap-1 h-6 px-2 rounded-[6px] border border-border bg-background text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <X className="h-3 w-3" /> Discard
+            </button>
+          )}
         </div>
       </div>
 
@@ -2810,49 +2845,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
 
       {/* Action buttons */}
       <div className="flex items-center gap-2 pt-1 border-t border-border flex-wrap">
-        {invMode !== "view" ? (
-          <div className="flex items-center gap-2 ml-auto">
-            {(() => {
-              const canSubmit = invMode === "edit" ? canSubmitEdit : canSubmitAdd;
-              const missingCount = invMode === "add"
-                ? pendingTxns.reduce((s, r) => s + INV_ADD_REQUIRED.filter(f => invAddRowMissing(r, f)).length, 0)
-                : 0;
-              const tooltip = !canSubmit
-                ? invMode === "edit"
-                  ? "Make at least one change to enable"
-                  : missingCount > 0
-                    ? `${missingCount} required field${missingCount !== 1 ? "s" : ""} missing`
-                    : "Add at least one transaction to enable"
-                : null;
-              return (
-                <div className="relative group/submit">
-                  <button
-                    onClick={canSubmit ? (invMode === "edit" ? submitEdits : submitAdd) : undefined}
-                    disabled={!canSubmit}
-                    className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-xs font-medium transition-all ${
-                      canSubmit
-                        ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
-                        : "bg-primary/30 text-primary-foreground/50 cursor-not-allowed"
-                    }`}
-                  >
-                    <RotateCcw className="h-3.5 w-3.5" /> Submit &amp; Rerun
-                  </button>
-                  {tooltip && (
-                    <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-1 rounded-[6px] bg-foreground text-background text-[10px] font-medium opacity-0 group-hover/submit:opacity-100 transition-opacity pointer-events-none z-50">
-                      {tooltip}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-            <button
-              onClick={discardMode}
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors"
-            >
-              <X className="h-3.5 w-3.5" /> Discard
-            </button>
-          </div>
-        ) : (
+        {invMode === "view" && (
           <>
             <button ref={saveBtnRef} onClick={openSaveFlow} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
               <Save className="h-3.5 w-3.5" /> Save to Engagement
@@ -2866,7 +2859,6 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
             <button onClick={triggerRerun} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
               <RotateCcw className="h-3.5 w-3.5" /> Rerun
             </button>
-
           </>
         )}
       </div>
