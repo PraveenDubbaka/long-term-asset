@@ -1112,7 +1112,14 @@ function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; 
           <thead>
             <tr className="bg-muted/30 border-b border-border">
               {["Security","Ticker","Date","Units","Gross Proceeds","Cost (ACB)","Realized G/L","TB Account"].map((h, i) => (
-                <th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 3 ? "text-left" : "text-right"}`}>{h}</th>
+                <th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 3 ? "text-left" : "text-right"}`}>
+                  {h === "Realized G/L" ? (
+                    <span className="flex flex-col items-end gap-0.5">
+                      <span>Realized G/L</span>
+                      <span className="text-[8px] font-normal normal-case tracking-normal text-muted-foreground/60">+ gain &nbsp; (loss)</span>
+                    </span>
+                  ) : h}
+                </th>
               ))}
             </tr>
           </thead>
@@ -1158,10 +1165,17 @@ function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; 
                 { label: "Units", align: "right" },
                 { label: "Fair Market Value", align: "right" },
                 { label: "Book Value",        align: "right" },
-                { label: "Unrealized G/L",    align: "right" },
+                { label: "Unrealized G/L",    align: "right", hint: true },
                 { label: "TB Account",        align: "right" },
               ].map(h => (
-                <th key={h.label} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-${h.align}`}>{h.label}</th>
+                <th key={h.label} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-${h.align}`}>
+                  {(h as { hint?: boolean }).hint ? (
+                    <span className="flex flex-col items-end gap-0.5">
+                      <span>{h.label}</span>
+                      <span className="text-[8px] font-normal normal-case tracking-normal text-muted-foreground/60">+ gain &nbsp; (loss)</span>
+                    </span>
+                  ) : h.label}
+                </th>
               ))}
             </tr>
           </thead>
