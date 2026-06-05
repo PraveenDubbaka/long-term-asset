@@ -1116,7 +1116,7 @@ function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; 
                   {h === "Realized G/L" ? (
                     <span className="flex flex-col items-end gap-0.5">
                       <span>Realized G/L</span>
-                      <span className="text-[8px] font-normal normal-case tracking-normal text-muted-foreground/60">+ gain &nbsp; (loss)</span>
+                      <span className="text-[9px] font-medium normal-case tracking-normal text-foreground">+ gain &nbsp; (loss)</span>
                     </span>
                   ) : h}
                 </th>
@@ -1172,7 +1172,7 @@ function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; 
                   {(h as { hint?: boolean }).hint ? (
                     <span className="flex flex-col items-end gap-0.5">
                       <span>{h.label}</span>
-                      <span className="text-[8px] font-normal normal-case tracking-normal text-muted-foreground/60">+ gain &nbsp; (loss)</span>
+                      <span className="text-[9px] font-medium normal-case tracking-normal text-foreground">+ gain &nbsp; (loss)</span>
                     </span>
                   ) : h.label}
                 </th>
