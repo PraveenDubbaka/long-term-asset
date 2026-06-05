@@ -1170,7 +1170,7 @@ function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; 
               <tr key={s.key} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
                 <td className="px-3 py-1.5 font-medium">{s.security}</td>
                 <td className="px-3 py-1.5 font-mono">{s.ticker}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{yearEndStr}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground whitespace-nowrap">{yearEndStr}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">{fmtUnits(s.closingUnits)}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums font-medium">{fmtCAD(s.fmvCAD)}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">{fmtCAD(s.closingCostCAD)}</td>
