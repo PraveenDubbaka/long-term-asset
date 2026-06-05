@@ -1154,8 +1154,8 @@ function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; 
               {[
                 { label: "Security",          align: "left"  },
                 { label: "Ticker",            align: "left"  },
-                { label: "Year-End Date",     align: "right" },
-                { label: "Units Outstanding", align: "right" },
+                { label: "Date",  align: "right" },
+                { label: "Units", align: "right" },
                 { label: "Fair Market Value", align: "right" },
                 { label: "Book Value",        align: "right" },
                 { label: "Unrealized G/L",    align: "right" },
