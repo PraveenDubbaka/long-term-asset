@@ -1142,14 +1142,17 @@ function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; 
                 <td className="px-3 py-1.5 text-right tabular-nums">{fmt2(d.costOut)}</td>
                 <td className="px-3 py-1.5 text-right">{fmtGL(d.gl)}</td>
                 <td className="px-3 py-1 w-44">
-                  <select
-                    value={realizedAccts[i] ?? (d.gl >= 0 ? "4800" : "4900")}
-                    onChange={e => setRealizedAccts(p => ({ ...p, [i]: e.target.value }))}
-                    className={SC}
-                  >
-                    <option value="">— Select —</option>
-                    {CHART_OF_ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.code} · {a.name}</option>)}
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={realizedAccts[i] ?? (d.gl >= 0 ? "4800" : "4900")}
+                      onChange={e => setRealizedAccts(p => ({ ...p, [i]: e.target.value }))}
+                      className={SC}
+                    >
+                      <option value="">— Select —</option>
+                      {CHART_OF_ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.code} · {a.name}</option>)}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  </div>
                 </td>
               </tr>
             ))}
@@ -1200,14 +1203,17 @@ function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; 
                 <td className="px-3 py-1.5 text-right tabular-nums">{fmtCAD(s.closingCostCAD)}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">{fmtGL(s.unrealizedGL)}</td>
                 <td className="px-3 py-1 w-44">
-                  <select
-                    value={unrealizedAccts[s.key] ?? (s.unrealizedGL >= 0 ? "4810" : "4910")}
-                    onChange={e => setUnrealizedAccts(p => ({ ...p, [s.key]: e.target.value }))}
-                    className={SC}
-                  >
-                    <option value="">— Select —</option>
-                    {CHART_OF_ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.code} · {a.name}</option>)}
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={unrealizedAccts[s.key] ?? (s.unrealizedGL >= 0 ? "4810" : "4910")}
+                      onChange={e => setUnrealizedAccts(p => ({ ...p, [s.key]: e.target.value }))}
+                      className={SC}
+                    >
+                      <option value="">— Select —</option>
+                      {CHART_OF_ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.code} · {a.name}</option>)}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  </div>
                 </td>
               </tr>
             ))}
