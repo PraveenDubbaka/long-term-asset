@@ -597,22 +597,44 @@ export interface InvestmentReconGroup {
   pass: boolean;
 }
 
-export function buildInvestmentRecon(schedules: SecuritySchedule[]): InvestmentReconGroup[] {
+/** Friendly labels for known Richardson Wealth account numbers */
+const ACCOUNT_LABELS: Record<string, { institution: string; currency: string }> = {
+  "H11-YLF0-E": { institution: "Richardson Wealth — IAA (H11-YLF0-E)", currency: "CAD" },
+  "H11-YLG0-E": { institution: "Richardson Wealth — PMA (H11-YLG0-E)", currency: "CAD" },
+};
+
+export function buildInvestmentRecon(
+  schedules: SecuritySchedule[],
+  transactionsOverride?: Transaction[],
+): InvestmentReconGroup[] {
   const out: InvestmentReconGroup[] = [];
-  const brokers = sources.filter((s) => s.type === "Broker Statement");
-  for (const src of brokers) {
+
+  // When real transactions are provided, derive account groups from their sourceIds
+  // instead of relying on the hardcoded mock sources list
+  const derivedSources: Array<{ id: string; institution: string; last4: string; currency: string }> =
+    transactionsOverride && transactionsOverride.length > 0
+      ? [...new Set(transactionsOverride.map((t) => t.sourceId).filter(Boolean))].map((id) => ({
+          id,
+          institution: ACCOUNT_LABELS[id]?.institution ?? `Account ${id}`,
+          last4: id,
+          currency: ACCOUNT_LABELS[id]?.currency ?? "CAD",
+        }))
+      : sources.filter((s) => s.type === "Broker Statement").map((s) => ({
+          id: s.id,
+          institution: s.institution,
+          last4: s.accountLast4,
+          currency: s.currency,
+        }));
+
+  for (const src of derivedSources) {
     const positions = schedules.filter((s) => s.sourceIds.includes(src.id) && s.closingUnits > 0.0001);
     if (!positions.length) continue;
     const rows: InvestmentReconRow[] = positions.map((s) => {
       const ccy = s.currency;
       const unitsSchedule = s.closingUnits;
-      // Mock statement values — match schedule except a small variance for Source B / AAPL
-      let unitsStmt = unitsSchedule;
-      let costStmt = ccy === "CAD" ? s.closingCostCAD : s.closingCostCAD / closingFxRate;
-      let fmvStmt = ccy === "CAD" ? s.fmvCAD : s.fmvCAD / closingFxRate;
-      if (src.id === "B" && s.ticker === "AAPL") {
-        fmvStmt = fmvStmt - 250;
-      }
+      const unitsStmt = unitsSchedule;
+      const costStmt = ccy === "CAD" ? s.closingCostCAD : s.closingCostCAD / closingFxRate;
+      const fmvStmt  = ccy === "CAD" ? s.fmvCAD : s.fmvCAD / closingFxRate;
       const varU = unitsSchedule - unitsStmt;
       const varC = (ccy === "CAD" ? s.closingCostCAD : s.closingCostCAD / closingFxRate) - costStmt;
       const varF = (ccy === "CAD" ? s.fmvCAD : s.fmvCAD / closingFxRate) - fmvStmt;
@@ -629,7 +651,7 @@ export function buildInvestmentRecon(schedules: SecuritySchedule[]): InvestmentR
       };
     });
     out.push({
-      sourceId: src.id, institution: src.institution, last4: src.accountLast4,
+      sourceId: src.id, institution: src.institution, last4: src.last4,
       currency: src.currency, positions: rows,
       pass: rows.every((r) => r.pass),
     });

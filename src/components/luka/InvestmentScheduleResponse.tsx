@@ -2566,7 +2566,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
   const ajes         = useMemo(() => buildAJEs(schedules, opts, effectiveTxns),   [schedules, opts, effectiveTxns]);
   const incomeMatrix = useMemo(() => buildIncomeMatrix(effectiveTxns),            [effectiveTxns]);
   const fxSchedule   = useMemo(() => buildFxSchedule(effectiveTxns, effectivePY), [effectiveTxns, effectivePY]);
-  const invRecon     = useMemo(() => buildInvestmentRecon(schedules),             [schedules]);
+  const invRecon     = useMemo(() => buildInvestmentRecon(schedules, effectiveTxns), [schedules, effectiveTxns]);
 
   // suppress unused warning — cashRecon kept for data consistency
   useMemo(() => buildCashRecon(), []);
