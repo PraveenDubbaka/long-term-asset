@@ -1085,8 +1085,6 @@ function WACPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; yearE
 }
 
 // ─── Tab 3: Gain / Loss ───────────────────────────────────────────────────────
-// Common GL account options
-const GL_ACCOUNTS = ["4800","4810","4820","4900","4910","4920","5000","5100","5200"];
 
 function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; yearEnd?: string }) {
   const settings   = useStore(s => s.settings);
@@ -1143,13 +1141,14 @@ function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; 
                 <td className="px-3 py-1.5 text-right tabular-nums">{fmt2(d.proceeds)}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">{fmt2(d.costOut)}</td>
                 <td className="px-3 py-1.5 text-right">{fmtGL(d.gl)}</td>
-                <td className="px-3 py-1.5 text-right">
+                <td className="px-3 py-1 w-44">
                   <select
                     value={realizedAccts[i] ?? (d.gl >= 0 ? "4800" : "4900")}
                     onChange={e => setRealizedAccts(p => ({ ...p, [i]: e.target.value }))}
-                    className="h-6 px-1.5 text-[10px] font-semibold rounded-full border border-border bg-muted text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer"
+                    className={SC}
                   >
-                    {GL_ACCOUNTS.map(a => <option key={a} value={a}>{a}</option>)}
+                    <option value="">— Select —</option>
+                    {CHART_OF_ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.code} · {a.name}</option>)}
                   </select>
                 </td>
               </tr>
@@ -1200,13 +1199,14 @@ function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; 
                 <td className="px-3 py-1.5 text-right tabular-nums font-medium">{fmtCAD(s.fmvCAD)}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">{fmtCAD(s.closingCostCAD)}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">{fmtGL(s.unrealizedGL)}</td>
-                <td className="px-3 py-1.5 text-right">
+                <td className="px-3 py-1 w-44">
                   <select
                     value={unrealizedAccts[s.key] ?? (s.unrealizedGL >= 0 ? "4810" : "4910")}
                     onChange={e => setUnrealizedAccts(p => ({ ...p, [s.key]: e.target.value }))}
-                    className="h-6 px-1.5 text-[10px] font-semibold rounded-full border border-border bg-muted text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer"
+                    className={SC}
                   >
-                    {GL_ACCOUNTS.map(a => <option key={a} value={a}>{a}</option>)}
+                    <option value="">— Select —</option>
+                    {CHART_OF_ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.code} · {a.name}</option>)}
                   </select>
                 </td>
               </tr>
