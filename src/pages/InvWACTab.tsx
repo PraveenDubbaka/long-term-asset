@@ -285,6 +285,18 @@ export function InvWACTab({ schedules, opts, onAddToAJEs }: Props) {
 
               {/* ── Sticky frozen header ─────────────────────────────── */}
               <thead className="sticky top-0 z-10">
+                {/* Group header row */}
+                <tr className="bg-[#e8eaed] dark:bg-slate-900 border-b border-border/60 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
+                  <th colSpan={4} className="px-3 py-1 text-left border-r border-border/40" />
+                  <th colSpan={3} className="px-3 py-1 text-center bg-blue-50/40" style={{ borderLeft: "2px solid hsl(var(--border) / 0.5)", borderRight: "2px solid hsl(var(--border) / 0.5)" }}>
+                    Units
+                  </th>
+                  <th colSpan={3} className="px-3 py-1 text-center bg-violet-50/40" style={{ borderRight: "2px solid hsl(var(--border) / 0.5)" }}>
+                    Cost
+                  </th>
+                  <th colSpan={2} className="px-3 py-1 text-center" />
+                </tr>
+
                 <tr className="bg-[#f0f2f5] dark:bg-slate-800 border-b-2 border-border">
 
                   {/* Security — SearchFilter + sort */}
@@ -316,29 +328,29 @@ export function InvWACTab({ schedules, opts, onAddToAJEs }: Props) {
                     <ColFilter label="Type" options={uniqueTypes} value={filterType} onChange={setFilterType} />
                   </th>
 
-                  {/* Units In — static */}
-                  <th className="text-right w-24 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">Units In</th>
+                  {/* Units In */}
+                  <th className="text-right w-24 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40" style={{ borderLeft: "2px solid hsl(var(--border) / 0.5)" }}>In</th>
 
-                  {/* Units Out — static */}
-                  <th className="text-right w-24 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">Units Out</th>
+                  {/* Units Out */}
+                  <th className="text-right w-24 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">Out</th>
 
                   {/* Cum Units — sort */}
-                  <th className="text-right w-24 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                  <th className="text-right w-24 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap bg-blue-50/20" style={{ borderRight: "2px solid hsl(var(--border) / 0.5)" }}>
                     <button onClick={() => handleSort('cumUnits')} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">
-                      Cum Units {sortIcon('cumUnits')}
+                      Cumulative {sortIcon('cumUnits')}
                     </button>
                   </th>
 
-                  {/* Cost In — static */}
-                  <th className="text-right w-28 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">Cost In</th>
+                  {/* Cost In */}
+                  <th className="text-right w-28 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-violet-50/20" style={{ borderLeft: "2px solid hsl(var(--border) / 0.5)" }}>In</th>
 
-                  {/* Cost Out — static */}
-                  <th className="text-right w-28 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">Cost Out</th>
+                  {/* Cost Out */}
+                  <th className="text-right w-28 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">Out</th>
 
                   {/* Cum Cost — sort */}
-                  <th className="text-right w-28 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                  <th className="text-right w-28 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap" style={{ borderRight: "2px solid hsl(var(--border) / 0.5)" }}>
                     <button onClick={() => handleSort('cumCost')} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">
-                      Cum Cost {sortIcon('cumCost')}
+                      Cumulative {sortIcon('cumCost')}
                     </button>
                   </th>
 

@@ -900,10 +900,10 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
               {/* Group header row */}
               <tr className="bg-[#e8eaed] border-b border-border/60 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
                 <th colSpan={4} className="px-2.5 py-1 text-left border-r border-border/40" />
-                <th colSpan={3} className="px-2.5 py-1 text-center border-r-2 border-primary/30 bg-blue-50/40">
+                <th colSpan={3} className="px-2.5 py-1 text-center bg-blue-50/40" style={{ borderLeft: "2px solid hsl(var(--border) / 0.5)", borderRight: "2px solid hsl(var(--border) / 0.5)" }}>
                   Units
                 </th>
-                <th colSpan={3} className="px-2.5 py-1 text-center border-r border-border/40 bg-violet-50/40">
+                <th colSpan={3} className="px-2.5 py-1 text-center bg-violet-50/40" style={{ borderRight: "2px solid hsl(var(--border) / 0.5)" }}>
                   Cost
                 </th>
                 <th className="px-2.5 py-1 text-center" />
@@ -929,28 +929,28 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                   <ColFilter label="Type" options={uniqueTypes} value={filterType} onChange={setFilterType} />
                 </th>
                 {/* Units In */}
-                <th className="text-right w-24 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
-                  <button onClick={() => handleSort("unitsIn")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Units In {sortIcon("unitsIn")}</button>
+                <th className="text-right w-24 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40" style={{ borderLeft: "2px solid hsl(var(--border) / 0.5)" }}>
+                  <button onClick={() => handleSort("unitsIn")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">In {sortIcon("unitsIn")}</button>
                 </th>
                 {/* Units Out */}
                 <th className="text-right w-24 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
-                  <button onClick={() => handleSort("unitsOut")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Units Out {sortIcon("unitsOut")}</button>
+                  <button onClick={() => handleSort("unitsOut")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Out {sortIcon("unitsOut")}</button>
                 </th>
                 {/* Cum Units */}
-                <th className="text-right w-24 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r-2 border-primary/30 bg-blue-50/20">
-                  <button onClick={() => handleSort("cumUnits")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Cumulative Units {sortIcon("cumUnits")}</button>
+                <th className="text-right w-24 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap bg-blue-50/20" style={{ borderRight: "2px solid hsl(var(--border) / 0.5)" }}>
+                  <button onClick={() => handleSort("cumUnits")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Cumulative {sortIcon("cumUnits")}</button>
                 </th>
                 {/* Cost In */}
-                <th className="text-right w-28 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-violet-50/20">
-                  <button onClick={() => handleSort("costIn")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Cost In {sortIcon("costIn")}</button>
+                <th className="text-right w-28 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-violet-50/20" style={{ borderLeft: "2px solid hsl(var(--border) / 0.5)" }}>
+                  <button onClick={() => handleSort("costIn")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">In {sortIcon("costIn")}</button>
                 </th>
                 {/* Cost Out */}
                 <th className="text-right w-28 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
-                  <button onClick={() => handleSort("costOut")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Cost Out {sortIcon("costOut")}</button>
+                  <button onClick={() => handleSort("costOut")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Out {sortIcon("costOut")}</button>
                 </th>
                 {/* Cum Cost */}
-                <th className="text-right w-28 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
-                  <button onClick={() => handleSort("cumCost")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Cumulative Cost {sortIcon("cumCost")}</button>
+                <th className="text-right w-28 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap" style={{ borderRight: "2px solid hsl(var(--border) / 0.5)" }}>
+                  <button onClick={() => handleSort("cumCost")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Cumulative {sortIcon("cumCost")}</button>
                 </th>
                 {/* WAC */}
                 <th className="text-right w-24 px-2.5 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
