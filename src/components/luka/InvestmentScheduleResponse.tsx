@@ -1139,7 +1139,7 @@ function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; 
           </tbody>
           <tfoot>
             <tr className="bg-muted/30 border-t border-border font-semibold">
-              <td className="px-3 py-2 text-[11px]" colSpan={6}>Total Realized</td>
+              <td className="px-3 py-2 text-[11px]" colSpan={6}>Total</td>
               <td className="px-3 py-2 text-right text-[11px]">{fmtGL(totGL)}</td>
               <td className="px-3 py-2" />
             </tr>
@@ -1183,7 +1183,7 @@ function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; 
           </tbody>
           <tfoot>
             <tr className="bg-muted/30 border-t border-border font-semibold">
-              <td className="px-3 py-2 text-[11px]" colSpan={3}>Total Unrealized</td>
+              <td className="px-3 py-2 text-[11px]" colSpan={3}>Total</td>
               <td className="px-3 py-2 text-right tabular-nums text-[11px]">{fmtNum(schedules.reduce((a, s) => a + s.closingUnits, 0), 4)}</td>
               <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">{fmtCAD(schedules.reduce((a, s) => a + s.fmvCAD, 0))}</td>
               <td className="px-3 py-2 text-right tabular-nums text-[11px]">{fmtGL(totUnrealized)}</td>
