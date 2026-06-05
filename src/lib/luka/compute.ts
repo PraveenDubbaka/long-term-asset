@@ -387,9 +387,28 @@ export interface IncomeMatrixRow {
   totalCAD: number;
 }
 
+/** Flat per-transaction row for the new Income & Expenses panel */
+export interface IncomeTxRow {
+  id: string;
+  date: string;
+  description: string;   // security name for income; fee label for expenses
+  type: IncomeType;
+  tbAccount: string;     // default mapped account code
+  currency: string;
+  amountCAD: number;     // positive = income, negative = expense
+}
+
 export function buildIncomeMatrix(
   transactionsOverride?: Transaction[],
-): { rows: IncomeMatrixRow[]; totals: Record<IncomeType, number>; tbMap: Record<IncomeType, string> } {
+): {
+  rows: IncomeMatrixRow[];
+  totals: Record<IncomeType, number>;
+  tbMap: Record<IncomeType, string>;
+  incomeTxRows: IncomeTxRow[];
+  expenseTxRows: IncomeTxRow[];
+  incomeTotal: number;
+  expenseTotal: number;
+} {
   const all = transactionsOverride ?? currentYearTransactions;
   const txns = all.filter((t) => (t.status ?? "published") === "published");
   const tbMap: Record<IncomeType, string> = {
@@ -411,49 +430,72 @@ export function buildIncomeMatrix(
     return rowMap.get(ticker)!;
   };
 
+  const incomeTxRows: IncomeTxRow[] = [];
+  const expenseTxRows: IncomeTxRow[] = [];
+
   for (const t of txns) {
     const fx = t.fxRate ?? 1;
     let kind: IncomeType | null = null;
     let foreignAmt = 0;
     if (t.type === "Dividend" || t.type === "Reinvested Dividend") {
       const incomeKey = `${t.ticker}|${t.date}`;
-      foreignAmt = incomeAmounts[incomeKey] ?? (t.gross || 0);
+      foreignAmt = incomeAmounts[incomeKey] ?? (t.gross || Math.abs(t.net));
       kind = "Dividend";
     } else if (t.type === "Interest") {
-      foreignAmt = t.gross || 0;
+      foreignAmt = t.gross || Math.abs(t.net);
       kind = "Interest";
+    } else if (t.type === "Return of Capital") {
+      foreignAmt = t.gross || Math.abs(t.net);
+      kind = "Other";
     } else if (t.type === "Withholding Tax") {
-      foreignAmt = -Math.abs(t.gross || 0);
+      foreignAmt = -Math.abs(t.gross || Math.abs(t.net));
       kind = "Withholding Tax";
     } else if (t.type === "Fee/Commission") {
-      foreignAmt = -Math.abs(t.fees || 0);
+      foreignAmt = -Math.abs(t.fees || Math.abs(t.net));
       kind = "Fees";
     }
     if (!kind || foreignAmt === 0) continue;
 
-    const row = ensure(t.ticker, t.security, t.currency);
     const cad = foreignAmt * fx;
-    const cell = row.cells[kind] ?? { foreign: 0, cad: 0, ccy: t.currency };
-    cell.foreign += foreignAmt;
-    cell.cad += cad;
-    row.cells[kind] = cell;
-    row.totalCAD += cad;
-    totals[kind] += cad;
+    const isExpense = kind === "Fees" || kind === "Withholding Tax";
 
-    // Auto-impute foreign WHT at 15% on foreign-denominated dividends (illustrative)
-    if (kind === "Dividend" && t.currency !== "CAD") {
-      const wht = -cad * 0.15;
-      const wcell = row.cells["Withholding Tax"] ?? { foreign: 0, cad: 0, ccy: "CAD" };
-      wcell.cad += wht;
-      wcell.foreign += -Math.abs(foreignAmt) * 0.15;
-      row.cells["Withholding Tax"] = wcell;
-      row.totalCAD += wht;
-      totals["Withholding Tax"] += wht;
+    // Flat per-transaction row
+    const txRow: IncomeTxRow = {
+      id: t.id ?? `inc-${t.date}-${t.security}-${kind}`,
+      date: t.date ?? t.settlementDate ?? "",
+      description: t.security || t.type,
+      type: kind,
+      tbAccount: tbMap[kind],
+      currency: t.currency ?? "CAD",
+      amountCAD: cad,
+    };
+    if (isExpense) {
+      expenseTxRows.push(txRow);
+    } else {
+      incomeTxRows.push(txRow);
     }
+
+    // Keep existing pivot-matrix logic for backward compat
+    if (!isExpense) {
+      const row = ensure(t.ticker, t.security, t.currency ?? "CAD");
+      const cell = row.cells[kind] ?? { foreign: 0, cad: 0, ccy: t.currency ?? "CAD" };
+      cell.foreign += foreignAmt;
+      cell.cad += cad;
+      row.cells[kind] = cell;
+      row.totalCAD += cad;
+    }
+    totals[kind] += cad;
   }
 
+  // Sort by date
+  incomeTxRows.sort((a, b) => a.date.localeCompare(b.date));
+  expenseTxRows.sort((a, b) => a.date.localeCompare(b.date));
+
+  const incomeTotal = incomeTxRows.reduce((s, r) => s + r.amountCAD, 0);
+  const expenseTotal = expenseTxRows.reduce((s, r) => s + r.amountCAD, 0);
+
   const rows = Array.from(rowMap.values()).sort((a, b) => a.security.localeCompare(b.security));
-  return { rows, totals, tbMap };
+  return { rows, totals, tbMap, incomeTxRows, expenseTxRows, incomeTotal, expenseTotal };
 }
 
 // ===================== FX Schedule =====================

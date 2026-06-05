@@ -1340,66 +1340,95 @@ function FXPanel({ fxSchedule }: { fxSchedule: { rates: import("@/lib/luka/types
 
 // ─── Tab 5: Income & Expenses ─────────────────────────────────────────────────
 function IncomePanel({ incomeMatrix }: { incomeMatrix: ReturnType<typeof buildIncomeMatrix> }) {
-  const COLS: import("@/lib/luka/types").IncomeType[] = ["Dividend","Interest","Other","Withholding Tax","Fees"];
-  const { totals, tbMap } = incomeMatrix;
+  const { incomeTxRows, expenseTxRows, incomeTotal, expenseTotal } = incomeMatrix;
+  const [incomeAccts,  setIncomeAccts]  = useState<Record<string, string>>({});
+  const [expenseAccts, setExpenseAccts] = useState<Record<string, string>>({});
+
+  const acctDropdown = (
+    row: import("@/lib/luka/compute").IncomeTxRow,
+    overrides: Record<string, string>,
+    setOverrides: React.Dispatch<React.SetStateAction<Record<string, string>>>,
+  ) => (
+    <td className="px-3 py-1 w-48">
+      <div className="relative">
+        <select
+          value={overrides[row.id] ?? row.tbAccount}
+          onChange={e => setOverrides(p => ({ ...p, [row.id]: e.target.value }))}
+          className={`${SC} pr-7`}
+        >
+          <option value="">— Select —</option>
+          {CHART_OF_ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.code} · {a.name}</option>)}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+      </div>
+    </td>
+  );
+
+  const headerRow = (cols: string[]) => (
+    <tr className="bg-muted/30 border-b border-border">
+      {cols.map((h, i) => (
+        <th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i >= cols.length - 1 ? "text-right" : "text-left"}`}>
+          {h}
+        </th>
+      ))}
+    </tr>
+  );
+
   return (
-    <TableWrap title="Income & Expenses">
-      <table className="w-full text-[11px]">
-        <thead>
-          <tr className="bg-muted/30 border-b border-border">
-            {["Security","Ticker","CCY",...COLS,"Total"].map((h, i) => (
-              <th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 3 ? "text-left" : "text-right"}`}>{h}</th>
-            ))}
-          </tr>
-          {/* TB Account mapping row */}
-          <tr className="border-b border-border bg-primary/[0.03]">
-            <td className="px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide" colSpan={3}>TB Account</td>
-            {COLS.map(col => (
-              <td key={col} className="px-3 py-1.5 text-right">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-muted text-foreground border-border whitespace-nowrap">
-                  {tbMap[col]}
-                </span>
-              </td>
-            ))}
-            <td className="px-3 py-1.5" />
-          </tr>
-        </thead>
-        <tbody>
-          {incomeMatrix.rows.map((r, i) => {
-            const rowTotal = COLS.reduce((sum, col) => sum + (r.cells[col]?.cad ?? 0), 0);
-            return (
-              <tr key={r.ticker} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
-                <td className="px-3 py-1.5 font-medium">{r.security}</td>
-                <td className="px-3 py-1.5 font-mono">{r.ticker}</td>
-                <td className="px-3 py-1.5">{r.ccy}</td>
-                {COLS.map(col => {
-                  const cell = r.cells[col];
-                  return (
-                    <td key={col} className="px-3 py-1.5 text-right tabular-nums">
-                      {cell ? fmtGL(cell.cad) : <span className="tabular-nums text-foreground">0.00</span>}
-                    </td>
-                  );
-                })}
-                <td className="px-3 py-1.5 text-right tabular-nums font-semibold">{fmtGL(rowTotal)}</td>
+    <div className="space-y-3">
+      {/* ── Income ── */}
+      <TableWrap title="Income">
+        <table className="w-full text-[11px]">
+          <thead>{headerRow(["Date", "Account #", "Entry / Description", "CCY", "Amount (CAD)"])}</thead>
+          <tbody>
+            {incomeTxRows.length === 0 && (
+              <tr><td colSpan={5} className="px-3 py-4 text-center text-muted-foreground">No income transactions</td></tr>
+            )}
+            {incomeTxRows.map((row, i) => (
+              <tr key={row.id} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
+                <td className="px-3 py-1.5 whitespace-nowrap tabular-nums text-muted-foreground">{fmtDate(row.date)}</td>
+                {acctDropdown(row, incomeAccts, setIncomeAccts)}
+                <td className="px-3 py-1.5 font-medium">{row.description}</td>
+                <td className="px-3 py-1.5">{row.currency}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">{fmtGL(row.amountCAD)}</td>
               </tr>
-            );
-          })}
-        </tbody>
-        <tfoot>
-          <tr className="bg-muted/30 border-t border-border font-semibold">
-            <td className="px-3 py-2 text-[11px]" colSpan={3}>Total</td>
-            {COLS.map(col => (
-              <td key={col} className="px-3 py-2 text-right tabular-nums text-[11px]">
-                {fmtGL(totals[col] ?? 0)}
-              </td>
             ))}
-            <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">
-              {fmtGL(COLS.reduce((s, col) => s + (totals[col] ?? 0), 0))}
-            </td>
-          </tr>
-        </tfoot>
-      </table>
-    </TableWrap>
+          </tbody>
+          <tfoot>
+            <tr className="bg-muted/30 border-t border-border font-semibold">
+              <td className="px-3 py-2 text-[11px]" colSpan={4}>Total Income</td>
+              <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">{fmtGL(incomeTotal)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </TableWrap>
+
+      {/* ── Expenses ── */}
+      <TableWrap title="Expenses">
+        <table className="w-full text-[11px]">
+          <thead>{headerRow(["Date", "Account #", "Description", "Amount (CAD)"])}</thead>
+          <tbody>
+            {expenseTxRows.length === 0 && (
+              <tr><td colSpan={4} className="px-3 py-4 text-center text-muted-foreground">No expense transactions</td></tr>
+            )}
+            {expenseTxRows.map((row, i) => (
+              <tr key={row.id} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
+                <td className="px-3 py-1.5 whitespace-nowrap tabular-nums text-muted-foreground">{fmtDate(row.date)}</td>
+                {acctDropdown(row, expenseAccts, setExpenseAccts)}
+                <td className="px-3 py-1.5 font-medium">{row.description}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">{fmtGL(row.amountCAD)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="bg-muted/30 border-t border-border font-semibold">
+              <td className="px-3 py-2 text-[11px]" colSpan={3}>Total Expenses</td>
+              <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">{fmtGL(expenseTotal)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </TableWrap>
+    </div>
   );
 }
 
