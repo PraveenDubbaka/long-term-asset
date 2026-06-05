@@ -188,20 +188,8 @@ type TxFormType = typeof TX_TYPES[number];
 
 // Type badge colours matching workpapers
 function TxTypeBadge({ type }: { type: string }) {
-  const cls: Record<string, string> = {
-    "Purchase":            "bg-blue-50 text-blue-700 border-blue-200",
-    "Sale":                "bg-red-50 text-red-700 border-red-200",
-    "Dividend":            "bg-green-50 text-green-700 border-green-200",
-    "Reinvested Dividend": "bg-emerald-50 text-emerald-700 border-emerald-200",
-    "Interest":            "bg-purple-50 text-purple-700 border-purple-200",
-    "Return of Capital":   "bg-amber-50 text-amber-700 border-amber-200",
-    "Withholding Tax":     "bg-orange-50 text-orange-700 border-orange-200",
-    "Fee/Commission":      "bg-slate-100 text-slate-600 border-slate-200",
-    "Transfer In":         "bg-cyan-50 text-cyan-700 border-cyan-200",
-    "Transfer Out":        "bg-pink-50 text-pink-700 border-pink-200",
-  };
   return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${cls[type] ?? "bg-muted text-muted-foreground border-border"}`}>
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border whitespace-nowrap bg-transparent text-foreground border-border">
       {type}
     </span>
   );
@@ -994,9 +982,9 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                                 {WAC_ROW_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                               </select>
                             ) : isOB ? (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border whitespace-nowrap bg-muted text-muted-foreground border-border/60">{r.type}</span>
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border whitespace-nowrap bg-transparent text-foreground border-border">{r.type}</span>
                             ) : r.type === "Closing Balance" ? (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border whitespace-nowrap bg-muted text-muted-foreground border-border/60">{r.type}</span>
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border whitespace-nowrap bg-transparent text-foreground border-border">{r.type}</span>
                             ) : (
                               <TxTypeBadge type={r.type} />
                             )}
@@ -1072,7 +1060,7 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                         {allRows[allRows.length - 1]?.date ? fmtDate(allRows[allRows.length - 1].date) : "—"}
                       </td>
                       <td className="px-2.5 py-2 border-r border-border/30">
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap bg-primary/10 text-primary border-primary/25">Closing Balance</span>
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border whitespace-nowrap bg-transparent text-foreground border-border">Closing Balance</span>
                       </td>
                       <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">—</td>
                       <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">—</td>
