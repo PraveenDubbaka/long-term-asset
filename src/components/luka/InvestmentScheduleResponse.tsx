@@ -994,9 +994,9 @@ function WACPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                                 {WAC_ROW_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                               </select>
                             ) : isOB ? (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap bg-amber-50 text-amber-700 border-amber-200">{r.type}</span>
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border whitespace-nowrap bg-muted text-muted-foreground border-border/60">{r.type}</span>
                             ) : r.type === "Closing Balance" ? (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap bg-primary/10 text-primary border-primary/25">{r.type}</span>
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border whitespace-nowrap bg-muted text-muted-foreground border-border/60">{r.type}</span>
                             ) : (
                               <TxTypeBadge type={r.type} />
                             )}
