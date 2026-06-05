@@ -2578,6 +2578,15 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
         </div>
         {/* Schedule / Edit / Add button group + Discard */}
         <div className="shrink-0 ml-3 mb-px flex items-center gap-1.5">
+          {/* Discard — only visible in edit / add mode */}
+          {invMode !== "view" && (
+            <button
+              onClick={discardMode}
+              className="inline-flex items-center gap-1 h-6 px-2 rounded-[6px] border border-border bg-background text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <X className="h-3 w-3" /> Discard
+            </button>
+          )}
           <div className="flex items-center gap-0 rounded-[8px] border border-border bg-muted/40 p-0.5">
             {/* Schedule — in edit/add mode acts as Submit & Rerun */}
             {(() => {
@@ -2634,15 +2643,6 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
               <Plus className="w-3 h-3" /> Add
             </button>
           </div>
-          {/* Discard — only visible in edit / add mode */}
-          {invMode !== "view" && (
-            <button
-              onClick={discardMode}
-              className="inline-flex items-center gap-1 h-6 px-2 rounded-[6px] border border-border bg-background text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <X className="h-3 w-3" /> Discard
-            </button>
-          )}
         </div>
       </div>
 
