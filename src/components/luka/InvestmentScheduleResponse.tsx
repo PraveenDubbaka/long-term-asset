@@ -2313,9 +2313,11 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
   useEffect(() => { if (invMode !== "add") setAddUploadedFiles([]); }, [invMode]);
 
   const client  = settings.client || "this engagement";
-  // Use engagement year-end passed from the Luka flow; fall back to settings
-  const resolvedYearEnd = engagementYearEnd || (settings.fiscalYearEnd ? settings.fiscalYearEnd.slice(0, 10) : null);
-  const dateStr = resolvedYearEnd ? fmtDate(resolvedYearEnd) : "—";
+  // engagementYearEnd is already a display string ("May 31, 2024"); use it directly.
+  // settings.fiscalYearEnd is ISO ("2024-12-31") and needs fmtDate.
+  const dateStr = engagementYearEnd
+    ? engagementYearEnd
+    : settings.fiscalYearEnd ? fmtDate(settings.fiscalYearEnd.slice(0, 10)) : "—";
 
   // ── Compute options ────────────────────────────────────────────────────────
   const [opts] = useState<ComputeOptions>({
