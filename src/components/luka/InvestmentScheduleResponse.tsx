@@ -1146,7 +1146,7 @@ function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; 
                     <select
                       value={realizedAccts[i] ?? (d.gl >= 0 ? "4800" : "4900")}
                       onChange={e => setRealizedAccts(p => ({ ...p, [i]: e.target.value }))}
-                      className={SC}
+                      className={`${SC} pr-7`}
                     >
                       <option value="">— Select —</option>
                       {CHART_OF_ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.code} · {a.name}</option>)}
@@ -1207,7 +1207,7 @@ function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; 
                     <select
                       value={unrealizedAccts[s.key] ?? (s.unrealizedGL >= 0 ? "4810" : "4910")}
                       onChange={e => setUnrealizedAccts(p => ({ ...p, [s.key]: e.target.value }))}
-                      className={SC}
+                      className={`${SC} pr-7`}
                     >
                       <option value="">— Select —</option>
                       {CHART_OF_ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.code} · {a.name}</option>)}
