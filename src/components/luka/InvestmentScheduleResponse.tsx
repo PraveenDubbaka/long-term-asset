@@ -1085,9 +1085,16 @@ function WACPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; yearE
 }
 
 // ─── Tab 3: Gain / Loss ───────────────────────────────────────────────────────
+// Common GL account options
+const GL_ACCOUNTS = ["4800","4810","4820","4900","4910","4920","5000","5100","5200"];
+
 function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; yearEnd?: string }) {
   const settings   = useStore(s => s.settings);
   const yearEndStr = yearEnd || (settings.fiscalYearEnd ? fmtDate(settings.fiscalYearEnd.slice(0, 10)) : "—");
+
+  // Per-row TB account overrides
+  const [realizedAccts,   setRealizedAccts]   = useState<Record<number, string>>({});
+  const [unrealizedAccts, setUnrealizedAccts] = useState<Record<string, string>>({});
 
   const disposals = schedules.flatMap(s =>
     s.rows
@@ -1137,9 +1144,13 @@ function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; 
                 <td className="px-3 py-1.5 text-right tabular-nums">{fmt2(d.costOut)}</td>
                 <td className="px-3 py-1.5 text-right">{fmtGL(d.gl)}</td>
                 <td className="px-3 py-1.5 text-right">
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border bg-muted text-foreground border-border whitespace-nowrap">
-                    {d.gl >= 0 ? "4800" : "4900"}
-                  </span>
+                  <select
+                    value={realizedAccts[i] ?? (d.gl >= 0 ? "4800" : "4900")}
+                    onChange={e => setRealizedAccts(p => ({ ...p, [i]: e.target.value }))}
+                    className="h-6 px-1.5 text-[10px] font-semibold rounded-full border border-border bg-muted text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer"
+                  >
+                    {GL_ACCOUNTS.map(a => <option key={a} value={a}>{a}</option>)}
+                  </select>
                 </td>
               </tr>
             ))}
@@ -1190,9 +1201,13 @@ function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; 
                 <td className="px-3 py-1.5 text-right tabular-nums">{fmtCAD(s.closingCostCAD)}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">{fmtGL(s.unrealizedGL)}</td>
                 <td className="px-3 py-1.5 text-right">
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold border bg-muted text-foreground border-border whitespace-nowrap">
-                    {s.unrealizedGL >= 0 ? "4810" : "4910"}
-                  </span>
+                  <select
+                    value={unrealizedAccts[s.key] ?? (s.unrealizedGL >= 0 ? "4810" : "4910")}
+                    onChange={e => setUnrealizedAccts(p => ({ ...p, [s.key]: e.target.value }))}
+                    className="h-6 px-1.5 text-[10px] font-semibold rounded-full border border-border bg-muted text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer"
+                  >
+                    {GL_ACCOUNTS.map(a => <option key={a} value={a}>{a}</option>)}
+                  </select>
                 </td>
               </tr>
             ))}
