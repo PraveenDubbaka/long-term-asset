@@ -2872,86 +2872,6 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
                   {/* Chat body */}
                   <div className="relative flex-1 flex flex-col min-w-0 min-h-0">
-                    {/* Engagement Tray */}
-                    <AnimatePresence>
-                      {showEngagementTrayCtx && (
-                        <motion.div ref={engagementTrayCtxRef} initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: 0.98 }} transition={{ type: "spring", damping: 28, stiffness: 320, mass: 0.7 }} className="absolute left-4 right-4 bottom-2 z-30" style={{ maxHeight: "60%" }}>
-                          <div className="rounded-2xl overflow-hidden flex flex-col bg-card border border-border shadow-lg">
-                            <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-3">
-                              <h3 className="text-base font-semibold text-foreground">Select Engagement</h3>
-                              <div className="flex items-center gap-2">
-                                <div className="relative"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" /><input value={engagementSearchCtx} onChange={e => setEngagementSearchCtx(e.target.value)} placeholder="Search" className="h-9 w-56 pl-8 pr-3 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" style={{ borderColor: "hsl(var(--border))" }} /></div>
-                                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => { setShowEngagementTrayCtx(false); setEngagementSearchCtx(""); }} className="h-9 w-9 inline-flex items-center justify-center rounded-lg border" style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--background))" }}><X size={14} /></motion.button>
-                              </div>
-                            </div>
-                            <div className="overflow-auto" style={{ maxHeight: "calc(60vh - 70px)" }}>
-                              <table className="w-full text-sm" style={{ minWidth: 720 }}>
-                                <thead><tr className="text-left" style={{ borderBottom: "1px solid hsl(var(--border) / 0.6)" }}>
-                                  {["Client Name", "Engagement ID", "Year End", "Status", "Source"].map(h => <th key={h} className="px-5 py-2.5 font-medium text-muted-foreground">{h}</th>)}
-                                </tr></thead>
-                                <tbody>
-                                  {ENGAGEMENTS_PANEL.filter(e => { const q = engagementSearchCtx.toLowerCase(); return !q || e.client.toLowerCase().includes(q) || e.id.toLowerCase().includes(q); }).map((e, i) => (
-                                    <motion.tr key={`${e.client}-${i}`} whileHover={{ backgroundColor: "hsl(270, 80%, 65% / 0.06)" }} onClick={() => {
-                                      setSelectedEngagementCtx(e);
-                                      setShowEngagementTrayCtx(false);
-                                      setEngagementSearchCtx("");
-                                      // If investment flow is waiting for engagement, advance it
-                                      if (invSchedPhase === "engagement-check") {
-                                        setInvSelectedEngId(e.id);
-                                        setInvEngagementConnected(true);
-                                        const src = (e as { source?: string | null }).source ?? null;
-                                        setInvSourceConnected(src);
-                                        if (src) {
-                                          // Source connected → show blocking message
-                                          setInvSchedPhase("source-check");
-                                        } else {
-                                          // No source → proceed to TB check
-                                          setInvTBChecking(true);
-                                          setInvTBFound(null);
-                                          setInvTBAnalysis(null);
-                                          setInvTBAnalysisStep(0);
-                                          setInvSchedPhase("tb-check");
-                                          const engId = e.id;
-                                          setTimeout(() => {
-                                            const hasTB = MOCK_ENG_WITH_TB.has(engId);
-                                            setInvTBChecking(false);
-                                            setInvTBFound(hasTB);
-                                            if (!hasTB) return; // block — no upload prompt
-                                            // Start analysis
-                                            setInvTBAnalyzing(true);
-                                            const analysis = MOCK_TB_ANALYSIS[engId] ?? MOCK_TB_ANALYSIS["COM-DEF-May312024"];
-                                            setTimeout(() => {
-                                              setInvTBAnalysis(analysis);
-                                              setInvTBAnalyzing(false);
-                                              // Reveal findings one by one
-                                              [1, 2, 3, 4].forEach((step, i) =>
-                                                setTimeout(() => setInvTBAnalysisStep(step), i * 600)
-                                              );
-                                              // Advance to upload after all findings shown
-                                              setTimeout(() => setInvSchedPhase("upload-prompt"), 4 * 600 + 1000);
-                                            }, 2000);
-                                          }, 1800);
-                                        }
-                                      }
-                                    }} className="cursor-pointer" style={{ borderBottom: "1px solid hsl(var(--border) / 0.4)" }}>
-                                      <td className="px-5 py-3 font-semibold">{e.client}</td>
-                                      <td className="px-5 py-3">{e.id}</td>
-                                      <td className="px-5 py-3">{e.yearEnd}</td>
-                                      <td className="px-5 py-3"><span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium" style={{ background: "hsl(142, 70%, 45% / 0.12)", color: "hsl(142, 70%, 35%)", border: "1px solid hsl(142, 70%, 45% / 0.3)" }}>{e.status}</span></td>
-                                      <td className="px-5 py-3">
-                                        {e.source
-                                          ? <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[5px] text-[10px] font-semibold border bg-orange-50 text-orange-700 border-orange-200 capitalize">{e.source === "quickbooks" ? "QBO" : e.source === "xero" ? "Xero" : e.source}</span>
-                                          : <span className="text-[10px] text-muted-foreground">—</span>}
-                                      </td>
-                                    </motion.tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
 
                     {activeFlowPanel === "account-reconciliation" ? (
                       <><ReconciliationFlow onActivity={handleActivityUpdate} activityMinimized={activityMinimized} />{!activityMinimized && <LukaActivityPanel entries={activityEntries} isProcessing={isActivityProcessing} minimized={false} onToggleMinimize={() => setActivityMinimized(true)} />}</>
@@ -5195,6 +5115,89 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                   </div>
                   {/* Input area */}
                   <div className="px-4 pb-4 pt-2 relative">
+                    {/* Engagement Tray — floats above input with 4px gap */}
+                    <AnimatePresence>
+                      {showEngagementTrayCtx && (
+                        <motion.div
+                          ref={engagementTrayCtxRef}
+                          initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                          transition={{ type: "spring", damping: 28, stiffness: 320, mass: 0.7 }}
+                          className="absolute bottom-full left-0 right-0 z-40"
+                          style={{ marginBottom: 4, maxHeight: "min(420px, 60vh)" }}
+                        >
+                          <div className="rounded-2xl overflow-hidden flex flex-col bg-card border border-border shadow-lg">
+                            <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-3">
+                              <h3 className="text-base font-semibold text-foreground">Select Engagement</h3>
+                              <div className="flex items-center gap-2">
+                                <div className="relative"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" /><input value={engagementSearchCtx} onChange={e => setEngagementSearchCtx(e.target.value)} placeholder="Search" className="h-9 w-56 pl-8 pr-3 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" style={{ borderColor: "hsl(var(--border))" }} /></div>
+                                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => { setShowEngagementTrayCtx(false); setEngagementSearchCtx(""); }} className="h-9 w-9 inline-flex items-center justify-center rounded-lg border" style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--background))" }}><X size={14} /></motion.button>
+                              </div>
+                            </div>
+                            <div className="overflow-auto" style={{ maxHeight: "calc(min(420px, 60vh) - 70px)" }}>
+                              <table className="w-full text-sm" style={{ minWidth: 720 }}>
+                                <thead><tr className="text-left" style={{ borderBottom: "1px solid hsl(var(--border) / 0.6)" }}>
+                                  {["Client Name", "Engagement ID", "Year End", "Status", "Source"].map(h => <th key={h} className="px-5 py-2.5 font-medium text-muted-foreground">{h}</th>)}
+                                </tr></thead>
+                                <tbody>
+                                  {ENGAGEMENTS_PANEL.filter(e => { const q = engagementSearchCtx.toLowerCase(); return !q || e.client.toLowerCase().includes(q) || e.id.toLowerCase().includes(q); }).map((e, i) => (
+                                    <motion.tr key={`${e.client}-${i}`} whileHover={{ backgroundColor: "hsl(270, 80%, 65% / 0.06)" }} onClick={() => {
+                                      setSelectedEngagementCtx(e);
+                                      setShowEngagementTrayCtx(false);
+                                      setEngagementSearchCtx("");
+                                      if (invSchedPhase === "engagement-check") {
+                                        setInvSelectedEngId(e.id);
+                                        setInvEngagementConnected(true);
+                                        const src = (e as { source?: string | null }).source ?? null;
+                                        setInvSourceConnected(src);
+                                        if (src) {
+                                          setInvSchedPhase("source-check");
+                                        } else {
+                                          setInvTBChecking(true);
+                                          setInvTBFound(null);
+                                          setInvTBAnalysis(null);
+                                          setInvTBAnalysisStep(0);
+                                          setInvSchedPhase("tb-check");
+                                          const engId = e.id;
+                                          setTimeout(() => {
+                                            const hasTB = MOCK_ENG_WITH_TB.has(engId);
+                                            setInvTBChecking(false);
+                                            setInvTBFound(hasTB);
+                                            if (!hasTB) return;
+                                            setInvTBAnalyzing(true);
+                                            const analysis = MOCK_TB_ANALYSIS[engId] ?? MOCK_TB_ANALYSIS["COM-DEF-May312024"];
+                                            setTimeout(() => {
+                                              setInvTBAnalysis(analysis);
+                                              setInvTBAnalyzing(false);
+                                              [1, 2, 3, 4].forEach((step, i) =>
+                                                setTimeout(() => setInvTBAnalysisStep(step), i * 600)
+                                              );
+                                              setTimeout(() => setInvSchedPhase("upload-prompt"), 4 * 600 + 1000);
+                                            }, 2000);
+                                          }, 1800);
+                                        }
+                                      }
+                                    }} className="cursor-pointer" style={{ borderBottom: "1px solid hsl(var(--border) / 0.4)" }}>
+                                      <td className="px-5 py-3 font-semibold">{e.client}</td>
+                                      <td className="px-5 py-3">{e.id}</td>
+                                      <td className="px-5 py-3">{e.yearEnd}</td>
+                                      <td className="px-5 py-3"><span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium" style={{ background: "hsl(142, 70%, 45% / 0.12)", color: "hsl(142, 70%, 35%)", border: "1px solid hsl(142, 70%, 45% / 0.3)" }}>{e.status}</span></td>
+                                      <td className="px-5 py-3">
+                                        {e.source
+                                          ? <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[5px] text-[10px] font-semibold border bg-orange-50 text-orange-700 border-orange-200 capitalize">{e.source === "quickbooks" ? "QBO" : e.source === "xero" ? "Xero" : e.source}</span>
+                                          : <span className="text-[10px] text-muted-foreground">—</span>}
+                                      </td>
+                                    </motion.tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
                     {/* Prompt Window */}
                     <AnimatePresence>
                       {showPromptWindow && (
