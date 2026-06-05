@@ -927,14 +927,14 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   ]);
 
   const ENGAGEMENTS_PANEL = [
-    { client: "Phoenix Marie",  id: "COM-DEF-May312024", yearEnd: "22 Jan 2022", status: "Active", source: null            },
-    { client: "Circooles",      id: "COM-DEF-Dec312024", yearEnd: "20 Jan 2022", status: "Active", source: "quickbooks"     },
-    { client: "Command+R",      id: "COM-DEF-Dec312024", yearEnd: "24 Jan 2022", status: "Active", source: null             },
-    { client: "Hourglass",      id: "REV-DEF-Dec312024", yearEnd: "26 Jan 2022", status: "Active", source: "xero"           },
-    { client: "Layers",         id: "REV-DEF-Dec312024", yearEnd: "18 Jan 2022", status: "Active", source: "quickbooks"     },
-    { client: "Quotient",       id: "COM-DEF-Dec312024", yearEnd: "28 Jan 2022", status: "Active", source: "xero"           },
-    { client: "Sisyphus",       id: "REV-DEF-Dec312024", yearEnd: "16 Jan 2022", status: "Active", source: null             },
-    { client: "Catalog",        id: "COM-DEF-Dec312024", yearEnd: "12 Jan 2022", status: "Active", source: "quickbooks"     },
+    { client: "Phoenix Marie",  id: "COM-DEF-May312024", yearEnd: "May 31, 2024", status: "Active", source: null            },
+    { client: "Circooles",      id: "COM-DEF-Dec312024", yearEnd: "Dec 31, 2024", status: "Active", source: "quickbooks"     },
+    { client: "Command+R",      id: "COM-DEF-Dec312024", yearEnd: "Dec 31, 2024", status: "Active", source: null             },
+    { client: "Hourglass",      id: "REV-DEF-Dec312024", yearEnd: "Dec 31, 2024", status: "Active", source: "xero"           },
+    { client: "Layers",         id: "REV-DEF-Dec312024", yearEnd: "Dec 31, 2024", status: "Active", source: "quickbooks"     },
+    { client: "Quotient",       id: "COM-DEF-Dec312024", yearEnd: "Dec 31, 2024", status: "Active", source: "xero"           },
+    { client: "Sisyphus",       id: "REV-DEF-Dec312024", yearEnd: "Dec 31, 2024", status: "Active", source: null             },
+    { client: "Catalog",        id: "COM-DEF-Dec312024", yearEnd: "Dec 31, 2024", status: "Active", source: "quickbooks"     },
   ];
 
   const connectedConnectors = connectors.filter(c => c.connected);
