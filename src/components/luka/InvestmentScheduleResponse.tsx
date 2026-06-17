@@ -136,12 +136,12 @@ type TabId =
   | "brokerrecon" | "ajes";
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: "transactions", label: "Transactions"      },
   { id: "wac",          label: "WAC Schedule"      },
   { id: "gainloss",     label: "Gain / Loss"       },
   { id: "income",       label: "Income & Expenses" },
   { id: "brokerrecon",  label: "Broker Recon"      },
   { id: "ajes",         label: "AJEs"              },
+  { id: "transactions", label: "Transactions"      },
 ];
 
 // ─── Add-mode row type ────────────────────────────────────────────────────────
@@ -2369,7 +2369,7 @@ function HoldingsPanel({ schedules }: { schedules: SecuritySchedule[] }) {
 // ─── Main Export ──────────────────────────────────────────────────────────────
 export function InvestmentScheduleResponse({ onEditTransactions, initialTransactions, engagementYearEnd }: { onEditTransactions?: () => void; initialTransactions?: import("@/lib/luka/types").Transaction[]; engagementYearEnd?: string } = {}) {
   const settings = useStore(s => s.settings);
-  const [activeTab, setActiveTab] = useState<TabId>("transactions");
+  const [activeTab, setActiveTab] = useState<TabId>("wac");
   const [invMode, setInvMode] = useState<"view" | "edit" | "add">("view");
   const [pendingTxns, setPendingTxns] = useState<InvAddRow[]>([]);
   const [addUploading, setAddUploading] = useState(false);
