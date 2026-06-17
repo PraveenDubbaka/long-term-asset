@@ -112,7 +112,7 @@ function TableWrap({ title, subtitle, onAdd, addLabel, children }: {
   return (
     <div className="rounded-[8px] border border-border overflow-hidden">
       <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
-        <span className="text-sm font-semibold text-foreground">{title}</span>
+        <span className="text-base font-semibold text-foreground">{title}</span>
         <div className="flex items-center gap-3">
           {subtitle && <span className="text-base text-muted-foreground">{subtitle}</span>}
           {onAdd && (
@@ -486,7 +486,7 @@ function TransactionsPanel({
       {/* Header */}
       <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-foreground">Transactions</span>
+          <span className="text-base font-semibold text-foreground">Transactions</span>
           {batchEditMode && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-base font-semibold bg-amber-50 text-amber-700 border border-amber-200">
               <Pencil className="h-2.5 w-2.5" /> Editing
@@ -1591,7 +1591,7 @@ function BrokerReconPanel({
                 #{groupIdx + 1}/{invRecon.length}
               </span>
               {/* Institution */}
-              <span className="text-sm font-bold text-foreground shrink-0">{group.institution}</span>
+              <span className="text-base font-bold text-foreground shrink-0">{group.institution}</span>
               <span className="text-base text-muted-foreground font-mono bg-background border border-border px-1.5 py-0.5 rounded-[4px] shrink-0">…{group.last4}</span>
               {/* Status */}
               <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-base font-semibold border whitespace-nowrap shrink-0 ${reconciled ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
@@ -1978,7 +1978,7 @@ function JEAccountSelect({ value, disabled, onChange }: {
   return (
     <div className="relative">
       <select
-        className="input-double-border h-8 w-full pl-2 pr-7 text-xs border border-[#dcdfe4] rounded-[8px] bg-white dark:bg-card text-transparent appearance-none focus:outline-none"
+        className="input-double-border h-8 w-full pl-2 pr-7 text-base border border-[#dcdfe4] rounded-[8px] bg-white dark:bg-card text-transparent appearance-none focus:outline-none"
         value={value}
         disabled={disabled}
         onChange={e => onChange(e.target.value)}
@@ -1988,7 +1988,7 @@ function JEAccountSelect({ value, disabled, onChange }: {
           <option key={a.code} value={`${a.code} · ${a.name}`}>{a.code} · {a.name}</option>
         ))}
       </select>
-      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-mono text-foreground pointer-events-none select-none">
+      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-base font-mono text-foreground pointer-events-none select-none">
         {value ? acctCode(value) : <span className="font-sans text-muted-foreground">Select</span>}
       </span>
     </div>
@@ -2012,7 +2012,7 @@ function AddJECard({ onSave, onCancel }: {
   return (
     <div className="rounded-[8px] border-2 border-primary/30 bg-primary/[0.02] overflow-hidden mb-2">
       <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between bg-primary/5">
-        <span className="text-xs font-semibold text-primary uppercase tracking-wide">New Adjusting Entry</span>
+        <span className="text-base font-semibold text-primary uppercase tracking-wide">New Adjusting Entry</span>
         <button onClick={onCancel} className="text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>
       </div>
       {/* Top fields row */}
@@ -2072,14 +2072,14 @@ function AddJECard({ onSave, onCancel }: {
       <div className="px-4 py-3 border-t border-border/60">
         <label className="text-base font-semibold text-muted-foreground uppercase tracking-wider">Notes</label>
         <textarea rows={2} value={d.notes} onChange={e => set("notes", e.target.value)}
-          className="mt-1 w-full h-14 text-xs px-2 py-1.5 border border-border rounded-md bg-background resize-none focus:outline-none"
+          className="mt-1 w-full h-14 text-base px-2 py-1.5 border border-border rounded-md bg-background resize-none focus:outline-none"
           placeholder="Add a note…" />
       </div>
       {/* Footer */}
       <div className="px-4 py-2.5 border-t border-border/60 bg-muted/20 flex justify-end gap-2">
-        <button onClick={onCancel} className="h-7 px-3 text-xs border border-border rounded-[7px] text-muted-foreground hover:bg-muted transition-colors">Cancel</button>
+        <button onClick={onCancel} className="h-7 px-3 text-base border border-border rounded-[7px] text-muted-foreground hover:bg-muted transition-colors">Cancel</button>
         <button onClick={() => onSave({ ...d, _id: `aje-local-${Date.now()}` })}
-          className="h-7 px-3 text-xs bg-primary text-primary-foreground rounded-[7px] hover:bg-primary/90 transition-colors">
+          className="h-7 px-3 text-base bg-primary text-primary-foreground rounded-[7px] hover:bg-primary/90 transition-colors">
           Save Entry
         </button>
       </div>
@@ -2574,7 +2574,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
   return (
     <div className="min-w-0 space-y-3 animate-in fade-in slide-in-from-bottom-1 duration-300">
       {/* Intro */}
-      <p className="text-sm text-foreground leading-relaxed">
+      <p className="text-base text-foreground leading-relaxed">
         Here&apos;s a full summary of your <strong>Investment Schedule</strong> workpaper for{" "}
         <span className="font-medium text-primary">{client}</span> as at{" "}
         <span className="font-medium">{dateStr}</span>:
@@ -2590,7 +2590,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
               <button
                 key={id}
                 onClick={() => { if (locked) return; setActiveTab(id); }}
-                className={`flex items-center gap-1 px-3 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap shrink-0 ${
+                className={`flex items-center gap-1 px-3 py-2 text-base font-bold border-b-2 transition-colors whitespace-nowrap shrink-0 ${
                   isActive
                     ? "border-primary text-primary bg-primary/5"
                     : locked
@@ -2681,7 +2681,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
             <div className="absolute inset-y-0 w-[120px] bg-gradient-to-r from-transparent via-primary/10 to-transparent animate-shimmer-sweep" />
             <div className="absolute inset-y-0 w-[60px] bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer-sweep" style={{ animationDelay: "0.5s", animationDuration: "1.8s" }} />
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-background/95 shadow-xl border border-border/80 text-xs font-medium text-foreground">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-background/95 shadow-xl border border-border/80 text-base font-medium text-foreground">
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
                 Analysing data and generating workpaper…
               </div>
@@ -2750,7 +2750,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
             {addUploadedFiles.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {addUploadedFiles.map(f => (
-                  <div key={f.id} className="inline-flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-[10px] border border-border bg-background text-xs max-w-[260px]">
+                  <div key={f.id} className="inline-flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-[10px] border border-border bg-background text-base max-w-[260px]">
                     <div className="w-7 h-7 rounded-[6px] flex items-center justify-center shrink-0 bg-primary/10">
                       {f.ext === "pdf"
                         ? <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
@@ -2869,16 +2869,16 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
       <div className="flex items-center gap-2 pt-1 border-t border-border flex-wrap">
         {invMode === "view" && (
           <>
-            <button ref={saveBtnRef} onClick={openSaveFlow} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
+            <button ref={saveBtnRef} onClick={openSaveFlow} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-primary text-primary-foreground text-base font-medium hover:bg-primary/90 transition-colors">
               <Save className="h-3.5 w-3.5" /> Save to Engagement
             </button>
-            <button onClick={() => toast.success("Downloading workpaper…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+            <button onClick={() => toast.success("Downloading workpaper…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-base font-medium text-foreground hover:bg-muted transition-colors">
               <Download className="h-3.5 w-3.5" /> Download
             </button>
-            <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success("Link copied to clipboard"); }} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+            <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success("Link copied to clipboard"); }} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-base font-medium text-foreground hover:bg-muted transition-colors">
               <Copy className="h-3.5 w-3.5" /> Copy
             </button>
-            <button onClick={triggerRerun} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
+            <button onClick={triggerRerun} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-base font-medium text-foreground hover:bg-muted transition-colors">
               <RotateCcw className="h-3.5 w-3.5" /> Rerun
             </button>
           </>
@@ -2897,7 +2897,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
               style={{ top: saveMenuRect.bottom + 6, left: saveMenuRect.left }}
             >
               <div className="px-3 pt-3 pb-2 border-b border-border">
-                <p className="text-xs font-semibold text-foreground">Select document type</p>
+                <p className="text-base font-semibold text-foreground">Select document type</p>
                 <p className="text-base text-muted-foreground mt-0.5">Choose what to save to the engagement</p>
               </div>
               <div className="p-1.5 space-y-0.5">
@@ -2911,7 +2911,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                       <dt.icon className="h-3.5 w-3.5 text-primary" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-medium text-foreground">{dt.label}</p>
+                      <p className="text-base font-medium text-foreground">{dt.label}</p>
                       <p className="text-base text-muted-foreground">{dt.desc}</p>
                     </div>
                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/50 ml-auto shrink-0 -rotate-90" />
@@ -2936,13 +2936,13 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                       <Check className="h-5 w-5 text-green-600" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-foreground">Saved to engagement</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                      <p className="text-base font-semibold text-foreground">Saved to engagement</p>
+                      <p className="text-base text-muted-foreground mt-0.5">
                         {DOC_TYPES.find(d => d.id === saveDocType)?.label} saved to{" "}
                         <strong>{MOCK_ENGAGEMENTS.find(e => e.id === selectedEngId)?.client}</strong>
                       </p>
                     </div>
-                    <button onClick={closeSaveFlow} className="mt-1 h-8 px-6 text-xs font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors">
+                    <button onClick={closeSaveFlow} className="mt-1 h-8 px-6 text-base font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors">
                       Done
                     </button>
                   </div>
@@ -2950,7 +2950,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                   <>
                     <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
                       <div>
-                        <p className="text-sm font-semibold text-foreground">Select Engagement</p>
+                        <p className="text-base font-semibold text-foreground">Select Engagement</p>
                         {saveDocType && (
                           <p className="text-base text-muted-foreground mt-0.5">
                             Saving: <span className="font-medium text-primary">{DOC_TYPES.find(d => d.id === saveDocType)?.label}</span>
@@ -2965,7 +2965,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                             value={engSearch}
                             onChange={e => setEngSearch(e.target.value)}
                             placeholder="Search"
-                            className="h-8 pl-8 pr-3 w-40 text-xs border border-border rounded-[8px] bg-background focus:outline-none focus:border-primary/50"
+                            className="h-8 pl-8 pr-3 w-40 text-base border border-border rounded-[8px] bg-background focus:outline-none focus:border-primary/50"
                           />
                         </div>
                         <button onClick={closeSaveFlow} className="p-1.5 rounded-[6px] hover:bg-muted transition-colors text-muted-foreground">
@@ -2974,7 +2974,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                       </div>
                     </div>
                     <div className="overflow-auto flex-1">
-                      <table className="w-full text-xs">
+                      <table className="w-full text-base">
                         <thead className="sticky top-0 bg-muted/40 border-b border-border">
                           <tr>
                             {["Client Name","Engagement ID","Year End","Status","Date Created"].map(h => (
@@ -3013,7 +3013,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                     <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20 shrink-0">
                       <button
                         onClick={() => setSaveFlowStep("doc-type")}
-                        className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-[8px] bg-background hover:bg-muted transition-colors"
+                        className="inline-flex items-center gap-1.5 h-8 px-3 text-base font-medium text-muted-foreground hover:text-foreground border border-border rounded-[8px] bg-background hover:bg-muted transition-colors"
                       >
                         <ChevronDown className="h-3.5 w-3.5 rotate-90" /> Back
                       </button>
@@ -3027,7 +3027,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                           const eng = MOCK_ENGAGEMENTS.find(e => e.id === selectedEngId);
                           toast.success(`Saved to ${eng?.client} · ${eng?.engId}`);
                         }}
-                        className={`inline-flex items-center gap-1.5 h-8 px-4 text-xs font-medium rounded-[8px] transition-colors ${
+                        className={`inline-flex items-center gap-1.5 h-8 px-4 text-base font-medium rounded-[8px] transition-colors ${
                           !selectedEngId || saveFlowStep === "saving"
                             ? "bg-primary/30 text-primary-foreground/50 cursor-not-allowed"
                             : "bg-primary text-primary-foreground hover:bg-primary/90"
