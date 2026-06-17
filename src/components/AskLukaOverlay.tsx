@@ -4076,11 +4076,11 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         setInvTableSort(prev => prev?.field === field ? { field, dir: prev.dir === "asc" ? "desc" : "asc" } : { field, dir: "asc" });
                                                       };
                                                       return (
-                                                    <table className="w-full text-base" style={{ minWidth: 1600 }}>
+                                                    <table className="w-full text-base" style={{ minWidth: 1780 }}>
                                                       <thead>
                                                         <tr className="bg-muted/30 border-b border-border">
                                                           {([
-                                                            ["date","Trade Date"],["settlement","Settlement †"],
+                                                            ["date","Trade Date"],["settlement","Settlement †"],["account","Account #"],
                                                             ["security","Security *"],["ticker","Ticker"],["type","Type *"],["currency","CCY"],
                                                             ["units","Units"],["price","Price"],["amount","Amount (CAD)"],["fxRate","FX Rate"],["","Balance"],["",""]
                                                           ] as [keyof InvReviewRow | "", string][]).map(([field, label], i) => {
@@ -4133,6 +4133,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                             <tr className={`border-b border-border/40 transition-all ${row.voided ? "opacity-50 bg-red-50/30 line-through-row" : ri % 2 === 1 ? "bg-muted/10" : ""}`}>
                                                               <td className={`px-1.5 py-1 min-w-[110px] ${!row.date && !row.voided ? "bg-amber-50/60" : ""}`} title={!row.date ? "Trade date not in statement — enter manually" : undefined}><input value={row.date} onChange={e => upd("date", e.target.value)} type="date" className={IC} /></td>
                                                               <td className="px-1.5 py-1 min-w-[110px]"><input value={row.settlement ?? ""} onChange={e => upd("settlement", e.target.value)} type="date" className={IC} /></td>
+                                                              <td className="px-1.5 py-1 min-w-[130px]"><input value={row.account ?? ""} onChange={e => upd("account", e.target.value)} className={cn(IC, "w-32 font-mono")} placeholder="H11-XXXX-X" /></td>
                                                               <td className="px-1.5 py-1 min-w-[200px]"><input value={row.security} onChange={e => upd("security", e.target.value)} className={cn(IC, "w-52")} placeholder="Security name" /></td>
                                                               <td className="px-1.5 py-1 min-w-[70px]"><input value={row.ticker} onChange={e => upd("ticker", e.target.value)} className={cn(IC, "w-16 font-mono uppercase")} placeholder="TICK" /></td>
                                                               <td className="px-1.5 py-1 min-w-[130px]">
