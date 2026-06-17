@@ -3306,7 +3306,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                 )}
                               </div>
                             ) : richResponseType === "investment" ? (
-                              <div className="space-y-3 py-0.5 max-w-full">
+                              <div className="space-y-5 py-1 max-w-full">
                                 {(() => {
                                   const INV_PHASES = ["idle","thinking","engagement-check","source-check","tb-check","upload-prompt","review","done"] as const;
                                   const phaseIdx = INV_PHASES.indexOf(invSchedPhase as typeof INV_PHASES[number]);
@@ -3326,8 +3326,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
                                 {/* ── Engagement Check: past → compact selection summary ── */}
                                 {reached("engagement-check") && past("engagement-check") && (
-                                  <div className="space-y-1.5">
-                                    <p className="text-base text-muted-foreground">Connect to an Engagement</p>
+                                  <div className="space-y-2">
+                                    <p className="text-base text-muted-foreground font-medium">Connect to an Engagement</p>
                                     {invSelectedEngId
                                       ? <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-green-50 border border-green-200">
                                           <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
@@ -3381,36 +3381,36 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
                                 {/* ── TB Check: past → keep full analysis visible ── */}
                                 {reached("tb-check") && past("tb-check") && invTBAnalysis && (
-                                  <div className="space-y-2">
+                                  <div className="space-y-3">
                                     <div className="flex items-center gap-2">
                                       <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
                                       <span className="text-base text-foreground font-medium">Trial Balance found in <strong>{invSelectedEngId}</strong></span>
                                     </div>
                                     <p className="text-base font-semibold text-foreground">Trial Balance Analysis</p>
-                                    <div className="space-y-1.5">
-                                      <div className="flex items-start gap-2">
+                                    <div className="space-y-3">
+                                      <div className="flex items-start gap-3">
                                         <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-base font-bold shrink-0">1</span>
                                         <div><p className="text-base font-medium text-foreground">Years of TB detected</p><p className="text-base text-muted-foreground">{invTBAnalysis.years}</p></div>
                                       </div>
-                                      <div className="flex items-start gap-2">
+                                      <div className="flex items-start gap-3">
                                         <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-100 text-green-700 text-base font-bold shrink-0">2</span>
                                         <div>
                                           <p className="text-base font-medium text-foreground">Investment accounts ({invTBAnalysis.investmentAccounts.length})</p>
-                                          <div className="flex flex-wrap gap-1 mt-0.5">
-                                            {invTBAnalysis.investmentAccounts.map(a => <span key={a} className="inline-flex items-center px-1.5 py-1 rounded-[4px] text-base font-medium bg-primary/[0.08] text-primary border border-primary/15">{a}</span>)}
+                                          <div className="flex flex-wrap gap-2 mt-2">
+                                            {invTBAnalysis.investmentAccounts.map(a => <span key={a} className="inline-flex items-center px-2.5 py-1.5 rounded-[6px] text-base font-medium bg-primary/[0.08] text-primary border border-primary/15">{a}</span>)}
                                           </div>
                                         </div>
                                       </div>
-                                      <div className="flex items-start gap-2">
+                                      <div className="flex items-start gap-3">
                                         <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-base font-bold shrink-0">3</span>
                                         <div>
                                           <p className="text-base font-medium text-foreground">Bank accounts ({invTBAnalysis.bankAccounts.length})</p>
-                                          <div className="flex flex-wrap gap-1 mt-0.5">
-                                            {invTBAnalysis.bankAccounts.map(a => <span key={a} className="inline-flex items-center px-1.5 py-1 rounded-[4px] text-base font-medium bg-muted text-muted-foreground border border-border">{a}</span>)}
+                                          <div className="flex flex-wrap gap-2 mt-2">
+                                            {invTBAnalysis.bankAccounts.map(a => <span key={a} className="inline-flex items-center px-2.5 py-1.5 rounded-[6px] text-base font-medium bg-muted text-muted-foreground border border-border">{a}</span>)}
                                           </div>
                                         </div>
                                       </div>
-                                      <div className="flex items-start gap-2">
+                                      <div className="flex items-start gap-3">
                                         <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-700 text-base font-bold shrink-0">4</span>
                                         <div><p className="text-base font-medium text-foreground">Recording method</p><p className="text-base text-muted-foreground">{invTBAnalysis.recordingMethod}</p></div>
                                       </div>
@@ -3469,39 +3469,39 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
                                     {/* Step 4: Analysis findings — revealed sequentially */}
                                     {invTBAnalysis && !invTBAnalyzing && (
-                                      <div className="space-y-2">
+                                      <div className="space-y-3">
                                         <p className="text-base font-semibold text-foreground">Trial Balance Analysis</p>
-                                        <div className="space-y-1.5">
+                                        <div className="space-y-3">
                                           {invTBAnalysisStep >= 1 && (
-                                            <div className="flex items-start gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
+                                            <div className="flex items-start gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
                                               <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-base font-bold shrink-0">1</span>
                                               <div><p className="text-base font-medium text-foreground">Years of TB detected</p><p className="text-base text-muted-foreground">{invTBAnalysis.years}</p></div>
                                             </div>
                                           )}
                                           {invTBAnalysisStep >= 2 && (
-                                            <div className="flex items-start gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
+                                            <div className="flex items-start gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
                                               <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-100 text-green-700 text-base font-bold shrink-0">2</span>
                                               <div>
                                                 <p className="text-base font-medium text-foreground">Investment accounts present ({invTBAnalysis.investmentAccounts.length})</p>
-                                                <div className="flex flex-wrap gap-1 mt-0.5">
-                                                  {invTBAnalysis.investmentAccounts.map(a => <span key={a} className="inline-flex items-center px-1.5 py-1 rounded-[4px] text-base font-medium bg-primary/8 text-primary border border-primary/15">{a}</span>)}
+                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                  {invTBAnalysis.investmentAccounts.map(a => <span key={a} className="inline-flex items-center px-2.5 py-1.5 rounded-[6px] text-base font-medium bg-primary/8 text-primary border border-primary/15">{a}</span>)}
                                                 </div>
                                               </div>
                                             </div>
                                           )}
                                           {invTBAnalysisStep >= 3 && (
-                                            <div className="flex items-start gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
+                                            <div className="flex items-start gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
                                               <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-base font-bold shrink-0">3</span>
                                               <div>
                                                 <p className="text-base font-medium text-foreground">Bank accounts ({invTBAnalysis.bankAccounts.length})</p>
-                                                <div className="flex flex-wrap gap-1 mt-0.5">
-                                                  {invTBAnalysis.bankAccounts.map(a => <span key={a} className="inline-flex items-center px-1.5 py-1 rounded-[4px] text-base font-medium bg-muted text-muted-foreground border border-border">{a}</span>)}
+                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                  {invTBAnalysis.bankAccounts.map(a => <span key={a} className="inline-flex items-center px-2.5 py-1.5 rounded-[6px] text-base font-medium bg-muted text-muted-foreground border border-border">{a}</span>)}
                                                 </div>
                                               </div>
                                             </div>
                                           )}
                                           {invTBAnalysisStep >= 4 && (
-                                            <div className="flex items-start gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
+                                            <div className="flex items-start gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
                                               <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-700 text-base font-bold shrink-0">4</span>
                                               <div><p className="text-base font-medium text-foreground">Recording method</p><p className="text-base text-muted-foreground">{invTBAnalysis.recordingMethod}</p></div>
                                             </div>
