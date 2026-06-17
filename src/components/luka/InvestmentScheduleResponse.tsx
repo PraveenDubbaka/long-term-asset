@@ -237,10 +237,11 @@ function TransactionsPanel({
   const [editId, setEditId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<TxDraft>(EMPTY_TX_DRAFT());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "published">("all");
-  const [txSearch,     setTxSearch]     = useState("");
-  const [txTypeFilter, setTxTypeFilter] = useState("all");
-  const [txCcyFilter,  setTxCcyFilter]  = useState("all");
+  const [statusFilter,  setStatusFilter]  = useState<"all" | "pending" | "approved" | "published">("all");
+  const [sourceFilter,  setSourceFilter]  = useState("all");
+  const [txSearch,      setTxSearch]      = useState("");
+  const [txTypeFilter,  setTxTypeFilter]  = useState("all");
+  const [txCcyFilter,   setTxCcyFilter]   = useState("all");
   type TxSortField = "date"|"settlementDate"|"sourceId"|"security"|"ticker"|"currency"|"type"|"units"|"price"|"fxRate"|"net"|"tbAccount"|"status";
   const [txSortField, setTxSortField] = useState<TxSortField>("date");
   const [txSortDir,   setTxSortDir]   = useState<"asc"|"desc">("asc");
@@ -256,14 +257,22 @@ function TransactionsPanel({
       : <ArrowDown className="h-2.5 w-2.5 text-primary ml-0.5" />;
   };
 
-  const uniqueTypes = useMemo(() => ["all", ...Array.from(new Set(effectiveTxns.map(t => t.type))).sort()], [effectiveTxns]);
-  const uniqueCcys  = useMemo(() => ["all", ...Array.from(new Set(effectiveTxns.map(t => t.currency))).sort()], [effectiveTxns]);
+  const uniqueTypes   = useMemo(() => ["all", ...Array.from(new Set(effectiveTxns.map(t => t.type))).sort()], [effectiveTxns]);
+  const uniqueCcys    = useMemo(() => ["all", ...Array.from(new Set(effectiveTxns.map(t => t.currency))).sort()], [effectiveTxns]);
+  const uniqueSources = useMemo(() => {
+    const ids = Array.from(new Set(effectiveTxns.map(t => t.sourceId).filter(Boolean))).sort();
+    return ids.map(id => ({
+      id,
+      label: allInvSources.find(s => s.id === id)?.institution ?? id,
+    }));
+  }, [effectiveTxns, allInvSources]);
 
   const filtered = effectiveTxns.filter(t => {
     if (hiddenTxIds.has(t.id)) return false;
     if (statusFilter !== "all" && (t.status ?? "pending") !== statusFilter) return false;
-    if (txTypeFilter !== "all" && t.type !== txTypeFilter) return false;
-    if (txCcyFilter  !== "all" && t.currency !== txCcyFilter) return false;
+    if (sourceFilter  !== "all" && t.sourceId !== sourceFilter) return false;
+    if (txTypeFilter  !== "all" && t.type !== txTypeFilter) return false;
+    if (txCcyFilter   !== "all" && t.currency !== txCcyFilter) return false;
     if (txSearch) {
       if (txSearch.startsWith("src:")) {
         const q = txSearch.slice(4).toLowerCase();
@@ -497,6 +506,25 @@ function TransactionsPanel({
           )}
         </div>
         <div className="flex items-center gap-2">
+          {/* Brokerage / account filter */}
+          {!batchEditMode && uniqueSources.length > 1 && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-base text-muted-foreground font-medium">Account:</span>
+              <div className="relative">
+                <select
+                  value={sourceFilter}
+                  onChange={e => setSourceFilter(e.target.value)}
+                  className="h-7 text-base pl-2 pr-7 border border-border rounded-[7px] bg-background text-foreground appearance-none focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer font-mono"
+                >
+                  <option value="all">All accounts ({uniqueSources.length})</option>
+                  {uniqueSources.map(s => (
+                    <option key={s.id} value={s.id}>{s.id}</option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+            </div>
+          )}
           {/* Status filter dropdown */}
           {!batchEditMode && (
             <div className="flex items-center gap-1.5">
