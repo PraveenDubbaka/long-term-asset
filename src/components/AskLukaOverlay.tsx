@@ -3683,12 +3683,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               <div className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full bg-primary/10 blur-3xl" />
                                               <div className="pointer-events-none absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-violet-400/10 blur-3xl" />
 
-                                              <div className="relative z-10 px-5 pt-4 pb-3 text-center space-y-0.5">
-                                                <p className="text-xs font-semibold text-foreground">How would you like to add investments?</p>
-                                                <p className="text-[10px] text-muted-foreground">Luka will auto-extract and fill all fields from your brokerage documents</p>
-                                              </div>
-
-                                              <div className="relative z-10 flex items-stretch gap-0 px-4 pb-4 pt-2">
+                                              <div className="relative z-10 flex items-stretch gap-0 px-4 py-4 pt-4">
                                                 {/* Upload card */}
                                                 <div
                                                   className="flex-1 flex flex-col items-center gap-2.5 p-4 rounded-[10px] border border-dashed border-primary/25 bg-primary/[0.03] cursor-pointer hover:bg-primary/[0.07] hover:border-primary/45 transition-all group text-center"
