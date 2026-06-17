@@ -274,13 +274,8 @@ function TransactionsPanel({
     if (txTypeFilter  !== "all" && t.type !== txTypeFilter) return false;
     if (txCcyFilter   !== "all" && t.currency !== txCcyFilter) return false;
     if (txSearch) {
-      if (txSearch.startsWith("src:")) {
-        const q = txSearch.slice(4).toLowerCase();
-        if (q && !t.sourceId?.toLowerCase().includes(q)) return false;
-      } else {
-        const q = txSearch.toLowerCase();
-        if (![t.security, t.ticker].some(v => v?.toLowerCase().includes(q))) return false;
-      }
+      const q = txSearch.toLowerCase();
+      if (![t.security, t.ticker].some(v => v?.toLowerCase().includes(q))) return false;
     }
     return true;
   });
@@ -561,6 +556,10 @@ function TransactionsPanel({
               <th className="px-3 py-2 w-7">
                 <input type="checkbox" checked={allSelected} onChange={toggleAll} className="w-3.5 h-3.5 accent-primary rounded" />
               </th>
+              {/* Source — ColFilter dropdown */}
+              <th className="px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left">
+                <ColFilter label="Source" options={uniqueSources.map(s => s.id)} value={sourceFilter === "all" ? "" : sourceFilter} onChange={v => setSourceFilter(v || "all")} />
+              </th>
               {/* Trade Date */}
               <th className="px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left">
                 <button onClick={() => handleTxSort("date")} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">Trade Date {txSortIcon("date")}</button>
@@ -569,18 +568,11 @@ function TransactionsPanel({
               <th className="px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left">
                 <button onClick={() => handleTxSort("settlementDate")} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">Settlement {txSortIcon("settlementDate")}</button>
               </th>
-              {/* Source — SearchFilter */}
-              <th className="px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left">
-                <span className="flex items-center gap-1">
-                  <button onClick={() => handleTxSort("sourceId")} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">Source {txSortIcon("sourceId")}</button>
-                  <SearchFilter label="" value={txSearch.startsWith("src:") ? txSearch.slice(4) : ""} onChange={v => setTxSearch(v ? `src:${v}` : "")} placeholder="Filter source…" />
-                </span>
-              </th>
               {/* Security — SearchFilter */}
               <th className="px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left">
                 <span className="flex items-center gap-1">
                   <button onClick={() => handleTxSort("security")} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">Security {txSortIcon("security")}</button>
-                  <SearchFilter label="" value={txSearch.startsWith("src:") ? "" : txSearch} onChange={v => setTxSearch(v)} placeholder="Security or ticker…" />
+                  <SearchFilter label="" value={txSearch} onChange={v => setTxSearch(v)} placeholder="Security or ticker…" />
                 </span>
               </th>
               {/* Ticker */}
@@ -649,6 +641,15 @@ function TransactionsPanel({
                     )}
                   </td>
 
+                  {/* Source */}
+                  <td className="px-2 py-1 max-w-[110px]">
+                    {isEditing
+                      ? <input value={d.broker} onChange={e => setD("broker", e.target.value)} className={`${IC} w-24 font-mono`} placeholder="Broker" />
+                      : isBatchEditing
+                      ? <input value={String(bv?.sourceId ?? t.sourceId ?? "")} onChange={e => bSet("sourceId", e.target.value)} className={`${IC} w-24 font-mono`} placeholder="Broker" />
+                      : <span className="truncate block font-mono">{t.sourceId ?? brokerName(t)}</span>}
+                  </td>
+
                   {/* Trade Date */}
                   <td className="px-2 py-1">
                     {isEditing
@@ -665,15 +666,6 @@ function TransactionsPanel({
                       : isBatchEditing
                       ? <input type="date" value={String(bv?.settlementDate ?? t.settlementDate ?? "")} onChange={e => bSet("settlementDate", e.target.value || undefined)} className={`${IC} w-28`} />
                       : <span className="whitespace-nowrap text-muted-foreground">{t.settlementDate ? fmtDate(t.settlementDate) : "—"}</span>}
-                  </td>
-
-                  {/* Source */}
-                  <td className="px-2 py-1 max-w-[90px]">
-                    {isEditing
-                      ? <input value={d.broker} onChange={e => setD("broker", e.target.value)} className={`${IC} w-24`} placeholder="Broker" />
-                      : isBatchEditing
-                      ? <input value={String(bv?.sourceId ?? t.sourceId ?? "")} onChange={e => bSet("sourceId", e.target.value)} className={`${IC} w-24`} placeholder="Broker" />
-                      : <span className="truncate block">{brokerName(t)}</span>}
                   </td>
 
                   {/* Security */}
