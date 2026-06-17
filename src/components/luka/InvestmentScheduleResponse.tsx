@@ -2629,7 +2629,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
           {invMode !== "view" && (
             <button
               onClick={discardMode}
-              className="inline-flex items-center gap-1 h-6 px-2 rounded-[6px] border border-border bg-background text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="inline-flex items-center gap-1 h-6 px-2 rounded-[6px] border border-red-200 bg-red-50 text-base font-medium text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors"
             >
               <X className="h-3 w-3" /> Discard
             </button>
