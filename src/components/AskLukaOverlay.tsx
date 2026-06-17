@@ -164,7 +164,7 @@ const ThreadRow = ({ thread, icon, isPinned, onPinToggle, onDelete }: ThreadRowP
         </TooltipTrigger>
         <TooltipContent side="right" className="max-w-xs">
           <div className="font-medium text-xs">{thread.name}</div>
-          <div className="text-[10px] opacity-70 mt-0.5">Created {formatThreadDate(thread.createdAt)}</div>
+          <div className="text-base opacity-70 mt-0.5">Created {formatThreadDate(thread.createdAt)}</div>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -374,7 +374,7 @@ function defaultGLPrincipal(type: string, currency: string): string {
   if (currency === "USD") return "2110";                    // LTD – USD
   return "2100";                                            // LTD – CAD (default)
 }
-const SCR = "h-6 text-[10px] px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer";
+const SCR = "h-6 text-base px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer";
 
 // ── GL account combobox (compact, for review table) ─────────────────────────
 function GLComboboxMini({ value, onChange, required }: { value: string; onChange: (v: string) => void; required?: boolean }) {
@@ -418,7 +418,7 @@ function GLComboboxMini({ value, onChange, required }: { value: string; onChange
     <>
       <input
         ref={inputRef}
-        className={cn("h-6 text-[10px] px-1.5 border rounded bg-background focus:outline-none w-full font-mono",required && !value ? "border-red-400 bg-red-50/60 placeholder:text-red-400 text-red-600 focus:border-red-500" : "border-border focus:border-primary/40 placeholder:text-muted-foreground")}
+        className={cn("h-6 text-base px-1.5 border rounded bg-background focus:outline-none w-full font-mono",required && !value ? "border-red-400 bg-red-50/60 placeholder:text-red-400 text-red-600 focus:border-red-500" : "border-border focus:border-primary/40 placeholder:text-muted-foreground")}
         value={open ? query : displayLabel}
         placeholder="Search GL…"
         onChange={e => { setQuery(e.target.value); setTyped(true); }}
@@ -434,7 +434,7 @@ function GLComboboxMini({ value, onChange, required }: { value: string; onChange
           {filtered.map(a => (
             <div
               key={a.code}
-              className={`px-3 py-1 text-[11px] cursor-pointer font-mono ${a.code === value ? 'bg-primary/10 font-semibold text-primary' : 'text-foreground hover:bg-muted'}`}
+              className={`px-3 py-1 text-base cursor-pointer font-mono ${a.code === value ? 'bg-primary/10 font-semibold text-primary' : 'text-foreground hover:bg-muted'}`}
               onMouseDown={e => {
                 e.preventDefault();
                 onChange(a.code);
@@ -1809,7 +1809,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
         {/* ── Task header chip ── */}
         <div className="flex items-center justify-center">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-primary/8 border border-primary/15 text-[11px] font-medium text-primary/80">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-primary/8 border border-primary/15 text-base font-medium text-primary/80">
             <div className="w-4 h-4 rounded-[4px] bg-gradient-to-br from-primary to-[hsl(265_80%_55%)] flex items-center justify-center">
               <LukaIcon size={8} />
             </div>
@@ -1828,7 +1828,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
             <div className="flex-1 pt-0.5">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-xs font-semibold text-foreground">Luka</span>
-                <span className="text-[10px] text-foreground">Engagement AI</span>
+                <span className="text-base text-foreground">Engagement AI</span>
               </div>
               <div className="bg-background rounded-[8px] border border-border/60 px-4 py-3 shadow-sm text-sm text-foreground leading-relaxed">
                 Hi! I am <span className="text-primary font-semibold">Luka</span> — your year-end-engagement automation preparer.
@@ -1846,7 +1846,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
             <div className="flex-1 pt-0.5">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-xs font-semibold text-foreground">Luka</span>
-                <span className="text-[10px] text-foreground">Engagement AI</span>
+                <span className="text-base text-foreground">Engagement AI</span>
               </div>
               <div className="bg-background rounded-[8px] border border-border/60 px-4 py-3 shadow-sm text-sm text-foreground leading-relaxed">
                 I'll gather the info needed for this engagement while you relax. I'll review the details and sources, then update you on the verification results shortly.
@@ -1864,9 +1864,9 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
             <div className="flex-1 pt-0.5">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-xs font-semibold text-foreground">Luka</span>
-                <span className="text-[10px] text-foreground">Engagement AI</span>
+                <span className="text-base text-foreground">Engagement AI</span>
                 {verifyPhase === "reviewing" && (
-                  <span className="flex items-center gap-1 text-[10px] text-primary/70 animate-pulse">
+                  <span className="flex items-center gap-1 text-base text-primary/70 animate-pulse">
                     <span className="w-1 h-1 rounded-full bg-primary inline-block" />
                     working…
                   </span>
@@ -1890,7 +1890,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                     {verifyPhase === "done" ? "Verification complete" : "Reviewing engagement…"}
                   </span>
                   {verifyPhase === "done" && (
-                    <span className="ml-auto text-[10px] text-green-600/70 font-medium">{verifyRows.length} checks passed</span>
+                    <span className="ml-auto text-base text-green-600/70 font-medium">{verifyRows.length} checks passed</span>
                   )}
                 </div>
                 {/* Rows */}
@@ -1903,9 +1903,9 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                           : <div className="w-3.5 h-3.5 rounded-full border-2 border-border/60" />
                         }
                       </div>
-                      <span className="text-[11px] text-foreground w-36 shrink-0 leading-relaxed">{row.label}</span>
+                      <span className="text-base text-foreground w-36 shrink-0 leading-relaxed">{row.label}</span>
                       {row.showCheck && (
-                        <span className="text-[11px] text-foreground flex-1 leading-relaxed whitespace-pre-line">{row.value}</span>
+                        <span className="text-base text-foreground flex-1 leading-relaxed whitespace-pre-line">{row.value}</span>
                       )}
                     </div>
                   ))}
@@ -1931,7 +1931,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
             <div className="flex-1 pt-0.5">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-xs font-semibold text-foreground">Required Files</span>
-                <span className="text-[10px] text-foreground">Must upload before automation</span>
+                <span className="text-base text-foreground">Must upload before automation</span>
               </div>
               <div className="bg-background rounded-[8px] border border-amber-200 dark:border-amber-800/40 overflow-hidden shadow-sm">
                 <div className="bg-amber-50 dark:bg-amber-950/20 px-4 py-2.5 border-b border-amber-100 dark:border-amber-900/30">
@@ -1944,16 +1944,16 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                     { n: 3, label: "Corporate Tax Returns", sub: "Filed T2" },
                   ].map(item => (
                     <div key={item.n} className="flex items-center gap-3 px-4 py-2.5">
-                      <div className="w-5 h-5 rounded-[4px] bg-amber-500 flex items-center justify-center shrink-0 text-white text-[10px] font-bold">{item.n}</div>
+                      <div className="w-5 h-5 rounded-[4px] bg-amber-500 flex items-center justify-center shrink-0 text-white text-base font-bold">{item.n}</div>
                       <div className="flex-1">
                         <p className="text-xs font-medium text-foreground">{item.label}</p>
-                        <p className="text-[10px] text-foreground">{item.sub}</p>
+                        <p className="text-base text-foreground">{item.sub}</p>
                       </div>
                     </div>
                   ))}
                 </div>
                 <div className="px-4 py-2 bg-amber-50/50 dark:bg-amber-950/10 border-t border-amber-100 dark:border-amber-900/20">
-                  <p className="text-[10px] text-amber-600 dark:text-amber-400">*Note: Only PDF file type allowed</p>
+                  <p className="text-base text-amber-600 dark:text-amber-400">*Note: Only PDF file type allowed</p>
                 </div>
               </div>
             </div>
@@ -1969,7 +1969,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
             <div className="flex-1 pt-0.5">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-xs font-semibold text-foreground">Luka</span>
-                <span className="text-[10px] text-foreground">Engagement AI</span>
+                <span className="text-base text-foreground">Engagement AI</span>
               </div>
               <div className="bg-background rounded-[8px] border border-border/60 px-4 py-3 shadow-sm inline-flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "0ms" }} />
@@ -2004,7 +2004,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
       <div className="flex-1 pt-0.5">
         <div className="flex items-center gap-2 mb-1.5">
           <span className="text-xs font-semibold text-foreground">Luka</span>
-          <span className="text-[10px] text-foreground">Engagement AI</span>
+          <span className="text-base text-foreground">Engagement AI</span>
         </div>
         <div className="bg-background rounded-[8px] border border-border/60 px-4 py-3 shadow-sm text-sm text-foreground leading-relaxed">
           {children}
@@ -2016,7 +2016,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   // ── shared helper: tab header chip ──
   const TabChip = ({ label, icon: Icon }: { label: string; icon: React.ElementType }) => (
     <div className="flex items-center justify-center">
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-primary/8 border border-primary/15 text-[11px] font-medium text-primary/80">
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-primary/8 border border-primary/15 text-base font-medium text-primary/80">
         <Icon className="w-3.5 h-3.5 text-primary" />
         {label}
       </div>
@@ -2131,12 +2131,12 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                 <div className="col-span-2">
                   <div className="rounded-[8px] border border-border bg-background shadow-sm overflow-hidden">
                     <div className="px-3 py-2.5 border-b border-border bg-muted/30">
-                      <p className="text-[11px] font-semibold text-foreground">Last year checklists</p>
+                      <p className="text-base font-semibold text-foreground">Last year checklists</p>
                     </div>
                     <div className="divide-y divide-border/40">
                       {["Client acceptance & continuance", "Independence", "Knowledge of client business", "Planning"].map(item => (
                         <div key={item} className="flex items-center justify-between px-3 py-2">
-                          <span className="text-[11px] text-foreground">{item}</span>
+                          <span className="text-base text-foreground">{item}</span>
                           {uploadedChecklists.length > 0
                             ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
                             : <div className="w-3.5 h-3.5 rounded-full border-2 border-border/50 shrink-0" />}
@@ -2174,7 +2174,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
           <div className="flex-1 rounded-[8px] border border-border bg-background shadow-sm overflow-hidden">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/30">
               <span className="text-xs font-semibold text-foreground flex-1">Letter Templates</span>
-              <span className="text-[10px] text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full font-medium">*Required</span>
+              <span className="text-base text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full font-medium">*Required</span>
             </div>
             <div className="divide-y divide-border/40 px-4">
               {[
@@ -2186,7 +2186,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                     <FileText className="w-3.5 h-3.5 text-primary/70" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] text-foreground mb-1">{row.label}</p>
+                    <p className="text-base text-foreground mb-1">{row.label}</p>
                     <div className="flex items-center gap-2 border border-border rounded-[8px] px-3 py-1.5 bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer">
                       <span className="text-xs text-foreground flex-1 truncate">{row.value}</span>
                       <ChevronDown className="w-3.5 h-3.5 text-foreground shrink-0" />
@@ -2231,7 +2231,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                 <LukaIcon size={9} />
               </div>
               <span className="text-xs font-semibold text-foreground flex-1">Luka suggested working paper threads</span>
-              <span className="text-[10px] text-foreground">{Object.values(wpToggles).filter(Boolean).length} selected</span>
+              <span className="text-base text-foreground">{Object.values(wpToggles).filter(Boolean).length} selected</span>
             </div>
             <div className="divide-y divide-border/40">
               {WP_THREADS.map(wp => (
@@ -2244,7 +2244,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                       {wp.label}
                       {wp.required && <span className="text-destructive ml-0.5 font-normal">*</span>}
                     </p>
-                    <p className="text-[11px] text-foreground mt-0.5 leading-relaxed">{wp.desc}</p>
+                    <p className="text-base text-foreground mt-0.5 leading-relaxed">{wp.desc}</p>
                   </div>
                   <button
                     onClick={() => { setWpToggles(prev => ({ ...prev, [wp.id]: !prev[wp.id] })); markCompleted("workingpapers"); }}
@@ -2289,14 +2289,14 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
               <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-muted/30">
                 <span className="text-xs font-semibold text-foreground flex-1">Financial Statement Settings</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-foreground">Last Year Files</span>
+                  <span className="text-base text-foreground">Last Year Files</span>
                   <button
                     onClick={() => setFsExtractFromLastYear(!fsExtractFromLastYear)}
                     className={cn("relative w-9 h-5 rounded-full transition-colors", fsExtractFromLastYear ? "bg-primary" : "bg-muted")}
                   >
                     <span className={cn("absolute left-0 top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform", fsExtractFromLastYear ? "translate-x-4" : "translate-x-0.5")} />
                   </button>
-                  <span className="text-[10px] text-foreground">Global Default</span>
+                  <span className="text-base text-foreground">Global Default</span>
                 </div>
               </div>
 
@@ -2321,7 +2321,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                       { label: "Footer Placement", val: fsFooter, set: setFsFooter, opts: ["First Page Only", "All Pages", "No Footer"] },
                     ].map(field => (
                       <div key={field.label}>
-                        <p className="text-[10px] text-foreground mb-1">{field.label}</p>
+                        <p className="text-base text-foreground mb-1">{field.label}</p>
                         <div className="relative">
                           <select
                             value={field.val}
@@ -2385,7 +2385,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                     <span className="text-xl font-bold text-foreground">12 mins</span>
                   </div>
                   <p className="text-xs font-medium text-foreground">Completion time</p>
-                  <p className="text-[10px] text-foreground mt-0.5">After file analysis</p>
+                  <p className="text-base text-foreground mt-0.5">After file analysis</p>
                 </div>
                 <div className="rounded-[8px] border border-border bg-background px-4 py-3.5 shadow-sm">
                   <div className="flex items-center gap-2 mb-1">
@@ -2395,7 +2395,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                     <span className="text-xl font-bold text-foreground">4.5 hrs</span>
                   </div>
                   <p className="text-xs font-medium text-foreground">Time saved</p>
-                  <p className="text-[10px] text-foreground mt-0.5">This engagement</p>
+                  <p className="text-base text-foreground mt-0.5">This engagement</p>
                 </div>
               </div>
 
@@ -2406,7 +2406,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                 </div>
                 <div>
                   <p className="text-sm font-bold text-foreground">1.5 credits estimated</p>
-                  <p className="text-[10px] text-foreground">Based on uploaded files and Trial Balance data</p>
+                  <p className="text-base text-foreground">Based on uploaded files and Trial Balance data</p>
                 </div>
               </div>
 
@@ -2417,7 +2417,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                   <div className="flex flex-wrap gap-2">
                     {["verification","checklists","letters","workingpapers","fsmapping"].map(s => (
                       <span key={s} className={cn(
-                        "flex items-center gap-1 text-[10px] px-2 py-1 rounded-[6px] font-medium",
+                        "flex items-center gap-1 text-base px-2 py-1 rounded-[6px] font-medium",
                         completedSteps.has(s)
                           ? "bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400"
                           : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
@@ -2538,7 +2538,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
             <div className="flex items-center gap-2">
               <button className="relative flex items-center justify-center w-7 h-7 rounded-lg hover:bg-muted transition-colors">
                 <Bell className="w-4 h-4 text-foreground" />
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary text-white text-[9px] flex items-center justify-center font-bold">5</span>
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary text-white text-base flex items-center justify-center font-bold">5</span>
               </button>
               <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-muted transition-colors">
                 <Settings className="w-4 h-4 text-foreground" />
@@ -2603,7 +2603,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
               <div key={action} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted/30 transition-colors">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary/60 shrink-0" />
                 <p className="text-xs text-foreground flex-1">{action}</p>
-                <button className="text-[10px] text-primary opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity">→</button>
+                <button className="text-base text-primary opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity">→</button>
               </div>
             ))}
           </div>
@@ -2846,8 +2846,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "hsl(270 65% 45%)" }}>{isEnhancing ? "Enhancing prompt…" : "Enhanced by Luka"}</span>
-                              {enhanceCount > 0 && !isEnhancing && <span className="text-[9px] font-bold px-1.5 rounded-md" style={{ background: "hsl(270 65% 55%)", color: "white", height: 14, lineHeight: "14px" }}>v{enhanceCount}</span>}
+                              <span className="text-base font-bold uppercase tracking-wider" style={{ color: "hsl(270 65% 45%)" }}>{isEnhancing ? "Enhancing prompt…" : "Enhanced by Luka"}</span>
+                              {enhanceCount > 0 && !isEnhancing && <span className="text-base font-bold px-1.5 rounded-md" style={{ background: "hsl(270 65% 55%)", color: "white", height: 14, lineHeight: "14px" }}>v{enhanceCount}</span>}
                             </div>
                             {isEnhancing ? (
                               <div className="flex gap-1.5">{[0,1,2].map(i => (<motion.div key={i} className="h-2 rounded-full" style={{ background: "hsl(270 65% 55% / 0.25)", flex: i === 1 ? 2 : 1 }} animate={{ opacity: [0.3, 0.9, 0.3] }} transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.15 }} />))}</div>
@@ -2857,7 +2857,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                           </div>
                           {!isEnhancing && enhancedPrompt && (
                             <div className="flex items-center gap-1.5 shrink-0">
-                              <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }} onClick={handleReplaceWithEnhanced} className="inline-flex items-center gap-1.5 px-3 h-7 rounded-lg text-[11px] font-semibold cursor-pointer" style={{ background: "linear-gradient(135deg, hsl(270 65% 55%), hsl(207 71% 38%))", color: "white", boxShadow: "0 2px 6px hsl(270 65% 55% / 0.3)" }}>
+                              <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }} onClick={handleReplaceWithEnhanced} className="inline-flex items-center gap-1.5 px-3 h-7 rounded-lg text-base font-semibold cursor-pointer" style={{ background: "linear-gradient(135deg, hsl(270 65% 55%), hsl(207 71% 38%))", color: "white", boxShadow: "0 2px 6px hsl(270 65% 55% / 0.3)" }}>
                                 <Check size={12} strokeWidth={2.5} />Replace
                               </motion.button>
                               <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} onClick={handleDismissEnhanced} className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer" style={{ color: "hsl(var(--muted-foreground))" }}>
@@ -2974,7 +2974,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
                                             <div className="relative z-10 px-5 pt-4 pb-3 text-center space-y-0.5">
                                               <p className="text-xs font-semibold text-foreground">How would you like to add loans?</p>
-                                              <p className="text-[10px] text-muted-foreground">Luka will auto-extract and fill all fields from your documents</p>
+                                              <p className="text-base text-muted-foreground">Luka will auto-extract and fill all fields from your documents</p>
                                             </div>
 
                                             <div className="relative z-10 flex items-stretch gap-0 px-4 pb-4 pt-2">
@@ -2992,10 +2992,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   </div>
                                                 </div>
                                                 <div>
-                                                  <p className="text-[11px] font-semibold text-foreground">Import documents</p>
-                                                  <p className="text-[10px] text-muted-foreground mt-0.5">Loan agreements · Registers<br />Schedules · PDF · XLSX · ZIP</p>
+                                                  <p className="text-base font-semibold text-foreground">Import documents</p>
+                                                  <p className="text-base text-muted-foreground mt-0.5">Loan agreements · Registers<br />Schedules · PDF · XLSX · ZIP</p>
                                                 </div>
-                                                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary group-hover:underline">
+                                                <span className="inline-flex items-center gap-1 text-base font-medium text-primary group-hover:underline">
                                                   Click to browse or drag & drop
                                                 </span>
                                               </div>
@@ -3003,7 +3003,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               {/* OR */}
                                               <div className="flex flex-col items-center justify-center px-3 gap-1.5">
                                                 <div className="w-px flex-1 bg-gradient-to-b from-transparent via-border to-transparent" />
-                                                <span className="text-[10px] font-bold text-muted-foreground/50">or</span>
+                                                <span className="text-base font-bold text-muted-foreground/50">or</span>
                                                 <div className="w-px flex-1 bg-gradient-to-b from-transparent via-border to-transparent" />
                                               </div>
 
@@ -3019,10 +3019,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   </div>
                                                 </div>
                                                 <div>
-                                                  <p className="text-[11px] font-semibold text-foreground">Enter manually</p>
-                                                  <p className="text-[10px] text-muted-foreground mt-0.5">Add a blank row and type<br />loan details directly in the table</p>
+                                                  <p className="text-base font-semibold text-foreground">Enter manually</p>
+                                                  <p className="text-base text-muted-foreground mt-0.5">Add a blank row and type<br />loan details directly in the table</p>
                                                 </div>
-                                                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-violet-600 group-hover:underline">
+                                                <span className="inline-flex items-center gap-1 text-base font-medium text-violet-600 group-hover:underline">
                                                   Add a new entry row
                                                 </span>
                                               </div>
@@ -3061,7 +3061,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                             }
                                                           }
                                                         }}
-                                                        className="text-[10px] border border-amber-300 rounded-[6px] px-1 py-0.5 bg-background text-amber-700 focus:outline-none cursor-pointer shrink-0 max-w-[100px]"
+                                                        className="text-base border border-amber-300 rounded-[6px] px-1 py-0.5 bg-background text-amber-700 focus:outline-none cursor-pointer shrink-0 max-w-[100px]"
                                                       >
                                                         <option value="" disabled>Classify…</option>
                                                         <option value="loan-agreement">Loan Agreement</option>
@@ -3071,7 +3071,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         <option value="workpaper">Prior Year WP</option>
                                                       </select>
                                                     )}
-                                                    {isError && <span className="text-[10px] text-red-600 shrink-0">{f.kind === "unsupported" ? "Unsupported" : "Too large"}</span>}
+                                                    {isError && <span className="text-base text-red-600 shrink-0">{f.kind === "unsupported" ? "Unsupported" : "Too large"}</span>}
                                                     <button onClick={e => { e.stopPropagation(); setLtDebtUploadFiles(prev => prev.filter(x => x.id !== f.id)); }} className="shrink-0 text-red-400 hover:text-red-600 transition-colors">
                                                       <Trash2 className="h-3.5 w-3.5" />
                                                     </button>
@@ -3085,7 +3085,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                           {ltReviewRows.length > 0 && (
                                             <div className="space-y-2">
                                               <div className="flex items-center">
-                                                <span className="text-[11px] font-semibold text-foreground">
+                                                <span className="text-base font-semibold text-foreground">
                                                   {ltReviewRows.length} loan{ltReviewRows.length !== 1 ? "s" : ""} extracted — review and complete before submitting
                                                 </span>
                                               </div>
@@ -3093,11 +3093,11 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               {/* Scrollable review table */}
                                               <div className="rounded-[8px] border border-border overflow-hidden">
                                                 <div className="overflow-x-auto">
-                                                  <table className="w-full text-[10px]" style={{ minWidth: 2400 }}>
+                                                  <table className="w-full text-base" style={{ minWidth: 2400 }}>
                                                     <thead>
                                                       <tr className="bg-muted/30 border-b border-border">
                                                         {["Loan Name *","Lender *","Current Collateral","Type","Rate Type","Int. Rate % *","Start *","Maturity *","First Payment","CCY","Mo. Payment","Orig. Loan Amt","FX Rate","Opening Bal. *","GL Principal *","Day Count","Payment Type","Freq.","Compounding","IO Period (mo.)","Balloon Amt","Status",""].map((h, i) => (
-                                                          <th key={i} className={`px-2 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${LT_RIGHT_COLS.has(h) ? "text-right" : "text-left"} ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10" : ""}`}>
+                                                          <th key={i} className={`px-2 py-1.5 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${LT_RIGHT_COLS.has(h) ? "text-right" : "text-left"} ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10" : ""}`}>
                                                             {h.endsWith(" *")
                                                               ? <>{h.slice(0, -2)} <span className="text-red-500">*</span></>
                                                               : h}
@@ -3108,7 +3108,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     <tbody>
                                                       {ltReviewRows.map((row, ri) => {
                                                         const fc = (field: keyof LtDebtReviewRow, req: boolean) =>
-                                                          cn("h-6 text-[10px] px-1.5 border rounded bg-background focus:outline-none w-full",
+                                                          cn("h-6 text-base px-1.5 border rounded bg-background focus:outline-none w-full",
                                                             req && ltRowMissing(row, field)
                                                               ? "border-red-400 bg-red-50/60 placeholder:text-red-400 text-red-600 focus:border-red-500"
                                                               : "border-border focus:border-primary/40");
@@ -3243,7 +3243,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             {/* Right: hint + Submit */}
                                             <div className="flex items-center gap-2">
                                               {missingCount > 0 && (
-                                                <span className="text-[10px] text-red-500">
+                                                <span className="text-base text-red-500">
                                                   Fill in the <strong>{missingCount}</strong> highlighted field{missingCount !== 1 ? "s" : ""} to continue
                                                 </span>
                                               )}
@@ -3297,7 +3297,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   ? <FolderOpen className="h-3 w-3 text-primary shrink-0" />
                                                   : <FileSpreadsheet className="h-3 w-3 text-primary shrink-0" />}
                                               </div>
-                                              <span className="flex-1 min-w-0 truncate font-medium text-foreground text-[11px]">{f.name}</span>
+                                              <span className="flex-1 min-w-0 truncate font-medium text-foreground text-base">{f.name}</span>
                                             </div>
                                           ))}
                                       </div>
@@ -3389,30 +3389,30 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                     <p className="text-xs font-semibold text-foreground">Trial Balance Analysis</p>
                                     <div className="space-y-1.5">
                                       <div className="flex items-start gap-2">
-                                        <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold shrink-0">1</span>
-                                        <div><p className="text-[11px] font-medium text-foreground">Years of TB detected</p><p className="text-[11px] text-muted-foreground">{invTBAnalysis.years}</p></div>
+                                        <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary/10 text-primary text-base font-bold shrink-0">1</span>
+                                        <div><p className="text-base font-medium text-foreground">Years of TB detected</p><p className="text-base text-muted-foreground">{invTBAnalysis.years}</p></div>
                                       </div>
                                       <div className="flex items-start gap-2">
-                                        <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-green-100 text-green-700 text-[9px] font-bold shrink-0">2</span>
+                                        <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-green-100 text-green-700 text-base font-bold shrink-0">2</span>
                                         <div>
-                                          <p className="text-[11px] font-medium text-foreground">Investment accounts ({invTBAnalysis.investmentAccounts.length})</p>
+                                          <p className="text-base font-medium text-foreground">Investment accounts ({invTBAnalysis.investmentAccounts.length})</p>
                                           <div className="flex flex-wrap gap-1 mt-0.5">
-                                            {invTBAnalysis.investmentAccounts.map(a => <span key={a} className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[9px] font-medium bg-primary/[0.08] text-primary border border-primary/15">{a}</span>)}
+                                            {invTBAnalysis.investmentAccounts.map(a => <span key={a} className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-base font-medium bg-primary/[0.08] text-primary border border-primary/15">{a}</span>)}
                                           </div>
                                         </div>
                                       </div>
                                       <div className="flex items-start gap-2">
-                                        <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-100 text-blue-700 text-[9px] font-bold shrink-0">3</span>
+                                        <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-100 text-blue-700 text-base font-bold shrink-0">3</span>
                                         <div>
-                                          <p className="text-[11px] font-medium text-foreground">Bank accounts ({invTBAnalysis.bankAccounts.length})</p>
+                                          <p className="text-base font-medium text-foreground">Bank accounts ({invTBAnalysis.bankAccounts.length})</p>
                                           <div className="flex flex-wrap gap-1 mt-0.5">
-                                            {invTBAnalysis.bankAccounts.map(a => <span key={a} className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[9px] font-medium bg-muted text-muted-foreground border border-border">{a}</span>)}
+                                            {invTBAnalysis.bankAccounts.map(a => <span key={a} className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-base font-medium bg-muted text-muted-foreground border border-border">{a}</span>)}
                                           </div>
                                         </div>
                                       </div>
                                       <div className="flex items-start gap-2">
-                                        <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-100 text-amber-700 text-[9px] font-bold shrink-0">4</span>
-                                        <div><p className="text-[11px] font-medium text-foreground">Recording method</p><p className="text-[11px] text-muted-foreground">{invTBAnalysis.recordingMethod}</p></div>
+                                        <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-100 text-amber-700 text-base font-bold shrink-0">4</span>
+                                        <div><p className="text-base font-medium text-foreground">Recording method</p><p className="text-base text-muted-foreground">{invTBAnalysis.recordingMethod}</p></div>
                                       </div>
                                     </div>
                                   </div>
@@ -3474,36 +3474,36 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                         <div className="space-y-1.5">
                                           {invTBAnalysisStep >= 1 && (
                                             <div className="flex items-start gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
-                                              <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold shrink-0">1</span>
-                                              <div><p className="text-[11px] font-medium text-foreground">Years of TB detected</p><p className="text-[11px] text-muted-foreground">{invTBAnalysis.years}</p></div>
+                                              <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary/10 text-primary text-base font-bold shrink-0">1</span>
+                                              <div><p className="text-base font-medium text-foreground">Years of TB detected</p><p className="text-base text-muted-foreground">{invTBAnalysis.years}</p></div>
                                             </div>
                                           )}
                                           {invTBAnalysisStep >= 2 && (
                                             <div className="flex items-start gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
-                                              <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-green-100 text-green-700 text-[9px] font-bold shrink-0">2</span>
+                                              <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-green-100 text-green-700 text-base font-bold shrink-0">2</span>
                                               <div>
-                                                <p className="text-[11px] font-medium text-foreground">Investment accounts present ({invTBAnalysis.investmentAccounts.length})</p>
+                                                <p className="text-base font-medium text-foreground">Investment accounts present ({invTBAnalysis.investmentAccounts.length})</p>
                                                 <div className="flex flex-wrap gap-1 mt-0.5">
-                                                  {invTBAnalysis.investmentAccounts.map(a => <span key={a} className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[9px] font-medium bg-primary/8 text-primary border border-primary/15">{a}</span>)}
+                                                  {invTBAnalysis.investmentAccounts.map(a => <span key={a} className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-base font-medium bg-primary/8 text-primary border border-primary/15">{a}</span>)}
                                                 </div>
                                               </div>
                                             </div>
                                           )}
                                           {invTBAnalysisStep >= 3 && (
                                             <div className="flex items-start gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
-                                              <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-100 text-blue-700 text-[9px] font-bold shrink-0">3</span>
+                                              <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-100 text-blue-700 text-base font-bold shrink-0">3</span>
                                               <div>
-                                                <p className="text-[11px] font-medium text-foreground">Bank accounts ({invTBAnalysis.bankAccounts.length})</p>
+                                                <p className="text-base font-medium text-foreground">Bank accounts ({invTBAnalysis.bankAccounts.length})</p>
                                                 <div className="flex flex-wrap gap-1 mt-0.5">
-                                                  {invTBAnalysis.bankAccounts.map(a => <span key={a} className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[9px] font-medium bg-muted text-muted-foreground border border-border">{a}</span>)}
+                                                  {invTBAnalysis.bankAccounts.map(a => <span key={a} className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-base font-medium bg-muted text-muted-foreground border border-border">{a}</span>)}
                                                 </div>
                                               </div>
                                             </div>
                                           )}
                                           {invTBAnalysisStep >= 4 && (
                                             <div className="flex items-start gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
-                                              <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-100 text-amber-700 text-[9px] font-bold shrink-0">4</span>
-                                              <div><p className="text-[11px] font-medium text-foreground">Recording method</p><p className="text-[11px] text-muted-foreground">{invTBAnalysis.recordingMethod}</p></div>
+                                              <span className="mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-100 text-amber-700 text-base font-bold shrink-0">4</span>
+                                              <div><p className="text-base font-medium text-foreground">Recording method</p><p className="text-base text-muted-foreground">{invTBAnalysis.recordingMethod}</p></div>
                                             </div>
                                           )}
                                         </div>
@@ -3545,7 +3545,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             <div className="w-5 h-5 rounded-[4px] flex items-center justify-center shrink-0 bg-primary/10">
                                               {f.ext === "pdf" ? <FileText className="h-3 w-3 text-primary shrink-0" /> : f.ext === "zip" ? <FolderOpen className="h-3 w-3 text-primary shrink-0" /> : <FileSpreadsheet className="h-3 w-3 text-primary shrink-0" />}
                                             </div>
-                                            <span className="flex-1 min-w-0 truncate text-[11px] font-medium text-foreground">{f.name}</span>
+                                            <span className="flex-1 min-w-0 truncate text-base font-medium text-foreground">{f.name}</span>
                                           </div>
                                         ))}
                                       </div>
@@ -3703,10 +3703,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     </div>
                                                   </div>
                                                   <div>
-                                                    <p className="text-[11px] font-semibold text-foreground">Import documents</p>
-                                                    <p className="text-[10px] text-muted-foreground mt-0.5">Brokerage statements · Trade confirms<br />Statements · PDF · XLSX · CSV</p>
+                                                    <p className="text-base font-semibold text-foreground">Import documents</p>
+                                                    <p className="text-base text-muted-foreground mt-0.5">Brokerage statements · Trade confirms<br />Statements · PDF · XLSX · CSV</p>
                                                   </div>
-                                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary group-hover:underline">
+                                                  <span className="inline-flex items-center gap-1 text-base font-medium text-primary group-hover:underline">
                                                     Click to browse or drag &amp; drop
                                                   </span>
                                                 </div>
@@ -3714,7 +3714,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                 {/* OR */}
                                                 <div className="flex flex-col items-center justify-center px-3 gap-1.5">
                                                   <div className="w-px flex-1 bg-gradient-to-b from-transparent via-border to-transparent" />
-                                                  <span className="text-[10px] font-bold text-muted-foreground/50">or</span>
+                                                  <span className="text-base font-bold text-muted-foreground/50">or</span>
                                                   <div className="w-px flex-1 bg-gradient-to-b from-transparent via-border to-transparent" />
                                                 </div>
 
@@ -3731,9 +3731,9 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         </div>
                                                       </div>
                                                       <div>
-                                                        <p className="text-[11px] font-semibold text-green-800">Connected</p>
-                                                        <p className="text-[10px] font-medium text-green-700 mt-0.5">{invSchedSrcLabel.replace("Plaid — ","")}</p>
-                                                        <p className="text-[10px] text-green-600 mt-0.5">Transactions synced · read-only</p>
+                                                        <p className="text-base font-semibold text-green-800">Connected</p>
+                                                        <p className="text-base font-medium text-green-700 mt-0.5">{invSchedSrcLabel.replace("Plaid — ","")}</p>
+                                                        <p className="text-base text-green-600 mt-0.5">Transactions synced · read-only</p>
                                                       </div>
                                                     </div>
                                                     {/* Bottom: action buttons */}
@@ -3745,13 +3745,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                           setInvMissingMonthsPrompt(null);
                                                           resetInvPlaid();
                                                         }}
-                                                        className="inline-flex items-center gap-1 h-6 px-2.5 rounded-[6px] border border-green-300 bg-white text-[10px] font-medium text-red-500 hover:border-red-300 hover:bg-red-50 transition-colors"
+                                                        className="inline-flex items-center gap-1 h-6 px-2.5 rounded-[6px] border border-green-300 bg-white text-base font-medium text-red-500 hover:border-red-300 hover:bg-red-50 transition-colors"
                                                       >
                                                         <X className="w-2.5 h-2.5" /> Disconnect
                                                       </button>
                                                       <button
                                                         onClick={() => setInvReviewRows(INV_MOCK_ROWS)}
-                                                        className="inline-flex items-center gap-1 h-6 px-2.5 rounded-[6px] border border-green-300 bg-white text-[10px] font-medium text-green-700 hover:border-green-400 hover:bg-green-100 transition-colors"
+                                                        className="inline-flex items-center gap-1 h-6 px-2.5 rounded-[6px] border border-green-300 bg-white text-base font-medium text-green-700 hover:border-green-400 hover:bg-green-100 transition-colors"
                                                       >
                                                         <RefreshCw className="w-2.5 h-2.5" /> Refresh
                                                       </button>
@@ -3769,22 +3769,22 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       )}
                                                       {invPlaidStep === 'login' && invPlaidInstitution ? (
                                                         <>
-                                                          <div className="w-4 h-4 rounded shrink-0 text-white text-[8px] font-bold flex items-center justify-center"
+                                                          <div className="w-4 h-4 rounded shrink-0 text-white text-base font-bold flex items-center justify-center"
                                                             style={{ backgroundColor: invPlaidInstitution.color }}>
                                                             {invPlaidInstitution.abbr.slice(0, 2)}
                                                           </div>
-                                                          <span className="text-[11px] font-semibold text-foreground flex-1 truncate">Sign in to {invPlaidInstitution.name}</span>
+                                                          <span className="text-base font-semibold text-foreground flex-1 truncate">Sign in to {invPlaidInstitution.name}</span>
                                                         </>
                                                       ) : invPlaidStep === 'verifying' ? (
-                                                        <span className="text-[11px] font-semibold text-foreground flex-1">Connecting…</span>
+                                                        <span className="text-base font-semibold text-foreground flex-1">Connecting…</span>
                                                       ) : invPlaidStep === 'success' ? (
-                                                        <span className="text-[11px] font-semibold text-foreground flex-1">Authorize Access</span>
+                                                        <span className="text-base font-semibold text-foreground flex-1">Authorize Access</span>
                                                       ) : (
                                                         <>
                                                           <div className="w-4 h-4 rounded-[4px] bg-[#1A1A1A] flex items-center justify-center shrink-0">
-                                                            <span className="text-white text-[8px] font-bold tracking-tight">p</span>
+                                                            <span className="text-white text-base font-bold tracking-tight">p</span>
                                                           </div>
-                                                          <span className="text-[11px] font-semibold text-foreground flex-1">Connect to Plaid</span>
+                                                          <span className="text-base font-semibold text-foreground flex-1">Connect to Plaid</span>
                                                         </>
                                                       )}
                                                       <button onClick={resetInvPlaid} className="ml-auto text-muted-foreground hover:text-foreground shrink-0">
@@ -3799,7 +3799,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                           <div className="relative">
                                                             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
                                                             <input
-                                                              className="w-full h-7 pl-6 pr-2.5 text-[11px] rounded-[6px] border border-border bg-muted/20 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
+                                                              className="w-full h-7 pl-6 pr-2.5 text-base rounded-[6px] border border-border bg-muted/20 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
                                                               placeholder="Search 12,000+ institutions…" value={invPlaidSearch}
                                                               onChange={e => setInvPlaidSearch(e.target.value)} autoFocus />
                                                           </div>
@@ -3810,17 +3810,17 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                                 <button key={inst.id}
                                                                   onClick={() => { setInvPlaidInstitution(inst); setInvPlaidStep('login'); }}
                                                                   className="flex items-center gap-2 px-2 py-1.5 rounded-[6px] border border-border hover:border-primary hover:bg-muted/40 transition-colors text-left">
-                                                                  <div className="w-5 h-5 rounded-[4px] flex items-center justify-center flex-shrink-0 text-white text-[8px] font-bold"
+                                                                  <div className="w-5 h-5 rounded-[4px] flex items-center justify-center flex-shrink-0 text-white text-base font-bold"
                                                                     style={{ backgroundColor: inst.color }}>
                                                                     {inst.abbr.slice(0, 2)}
                                                                   </div>
-                                                                  <span className="text-[11px] font-medium text-foreground leading-tight truncate">{inst.name}</span>
+                                                                  <span className="text-base font-medium text-foreground leading-tight truncate">{inst.name}</span>
                                                                 </button>
                                                               ))}
                                                           </div>
                                                           <div className="flex items-center gap-1 justify-center pt-0.5">
                                                             <ShieldCheck className="w-3 h-3 text-muted-foreground" />
-                                                            <span className="text-[10px] text-muted-foreground">256-bit encryption · read-only</span>
+                                                            <span className="text-base text-muted-foreground">256-bit encryption · read-only</span>
                                                           </div>
                                                         </div>
                                                       )}
@@ -3829,17 +3829,17 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         <div className="space-y-2.5">
                                                           <div className="h-0.5 rounded-full" style={{ backgroundColor: invPlaidInstitution.color }} />
                                                           <div>
-                                                            <label className="block text-[10px] font-medium text-foreground mb-1">Username / Card Number</label>
+                                                            <label className="block text-base font-medium text-foreground mb-1">Username / Card Number</label>
                                                             <input
-                                                              className="w-full h-7 px-2.5 text-[11px] rounded-[6px] border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
+                                                              className="w-full h-7 px-2.5 text-base rounded-[6px] border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
                                                               placeholder="Enter username" value={invPlaidUsername}
                                                               onChange={e => setInvPlaidUsername(e.target.value)} autoFocus />
                                                           </div>
                                                           <div>
-                                                            <label className="block text-[10px] font-medium text-foreground mb-1">Password</label>
+                                                            <label className="block text-base font-medium text-foreground mb-1">Password</label>
                                                             <div className="relative">
                                                               <input
-                                                                className="w-full h-7 px-2.5 pr-7 text-[11px] rounded-[6px] border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
+                                                                className="w-full h-7 px-2.5 pr-7 text-base rounded-[6px] border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
                                                                 type={invPlaidShowPwd ? 'text' : 'password'} placeholder="Enter password"
                                                                 value={invPlaidPassword} onChange={e => setInvPlaidPassword(e.target.value)}
                                                                 onKeyDown={e => { if (e.key === 'Enter') handleInvPlaidVerify(); }} />
@@ -3849,7 +3849,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                               </button>
                                                             </div>
                                                           </div>
-                                                          <p className="text-[10px] text-muted-foreground leading-relaxed flex items-start gap-1">
+                                                          <p className="text-base text-muted-foreground leading-relaxed flex items-start gap-1">
                                                             <ShieldCheck className="w-3 h-3 flex-shrink-0 mt-0.5" />
                                                             Encrypted end-to-end · read-only access · never stored
                                                           </p>
@@ -3860,8 +3860,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         <div className="flex flex-col items-center justify-center py-6 gap-3">
                                                           <div className="w-9 h-9 rounded-full border-[3px] border-primary/20 border-t-primary animate-spin" />
                                                           <div className="text-center">
-                                                            <p className="text-[11px] font-semibold text-foreground">Verifying credentials…</p>
-                                                            <p className="text-[10px] text-muted-foreground mt-0.5">Connecting to {invPlaidInstitution?.name}</p>
+                                                            <p className="text-base font-semibold text-foreground">Verifying credentials…</p>
+                                                            <p className="text-base text-muted-foreground mt-0.5">Connecting to {invPlaidInstitution?.name}</p>
                                                           </div>
                                                         </div>
                                                       )}
@@ -3872,10 +3872,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                             <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-1">
                                                               <Check className="w-3.5 h-3.5 text-green-600" />
                                                             </div>
-                                                            <p className="text-[11px] font-semibold text-green-800">{invPlaidInstitution.name}</p>
-                                                            <p className="text-[10px] text-green-700 mt-0.5">2 accounts found · ready to link</p>
+                                                            <p className="text-base font-semibold text-green-800">{invPlaidInstitution.name}</p>
+                                                            <p className="text-base text-green-700 mt-0.5">2 accounts found · ready to link</p>
                                                           </div>
-                                                          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Select accounts</p>
+                                                          <p className="text-base font-semibold uppercase tracking-wide text-muted-foreground">Select accounts</p>
                                                           {[
                                                             { name: 'Investment Account', acct: '···' + invPlaidInstitution.id.slice(0, 2).toUpperCase() + '01', ccy: 'CAD' },
                                                             { name: 'USD Investment Account', acct: '···' + invPlaidInstitution.id.slice(0, 2).toUpperCase() + '02', ccy: 'USD' },
@@ -3883,8 +3883,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                             <label key={a.acct} className="flex items-center gap-2 rounded-[6px] border border-border px-2.5 py-1.5 cursor-pointer hover:bg-muted/30 transition-colors">
                                                               <input type="checkbox" defaultChecked className="rounded h-3 w-3 accent-primary" />
                                                               <div>
-                                                                <div className="text-[10px] font-medium text-foreground">{a.name}</div>
-                                                                <div className="text-[9px] text-muted-foreground font-mono">{a.acct} · {a.ccy}</div>
+                                                                <div className="text-base font-medium text-foreground">{a.name}</div>
+                                                                <div className="text-base text-muted-foreground font-mono">{a.acct} · {a.ccy}</div>
                                                               </div>
                                                             </label>
                                                           ))}
@@ -3896,18 +3896,18 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     <div className="px-3 pb-2.5 pt-2 flex justify-end gap-1.5 border-t border-border shrink-0">
                                                       {invPlaidStep === 'select' && (
                                                         <button onClick={resetInvPlaid}
-                                                          className="h-7 px-3 text-[11px] font-medium rounded-[6px] border border-border hover:bg-muted/40 transition-colors text-foreground">
+                                                          className="h-7 px-3 text-base font-medium rounded-[6px] border border-border hover:bg-muted/40 transition-colors text-foreground">
                                                           Cancel
                                                         </button>
                                                       )}
                                                       {invPlaidStep === 'login' && (
                                                         <>
                                                           <button onClick={() => setInvPlaidStep('select')}
-                                                            className="h-7 px-3 text-[11px] font-medium rounded-[6px] border border-border hover:bg-muted/40 transition-colors text-foreground">
+                                                            className="h-7 px-3 text-base font-medium rounded-[6px] border border-border hover:bg-muted/40 transition-colors text-foreground">
                                                             Back
                                                           </button>
                                                           <button onClick={handleInvPlaidVerify}
-                                                            className="h-7 px-3 text-[11px] font-medium rounded-[6px] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                                                            className="h-7 px-3 text-base font-medium rounded-[6px] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
                                                             Continue
                                                           </button>
                                                         </>
@@ -3915,7 +3915,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       {invPlaidStep === 'success' && (
                                                         <>
                                                           <button onClick={resetInvPlaid}
-                                                            className="h-7 px-3 text-[11px] font-medium rounded-[6px] border border-border hover:bg-muted/40 transition-colors text-foreground">
+                                                            className="h-7 px-3 text-base font-medium rounded-[6px] border border-border hover:bg-muted/40 transition-colors text-foreground">
                                                             Cancel
                                                           </button>
                                                           <button
@@ -3925,7 +3925,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                               setInvSchedPhase("upload-prompt");
                                                               resetInvPlaid();
                                                             }}
-                                                            className="inline-flex items-center gap-1 h-7 px-3 text-[11px] font-medium rounded-[6px] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                                                            className="inline-flex items-center gap-1 h-7 px-3 text-base font-medium rounded-[6px] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
                                                             <ShieldCheck className="w-3 h-3" /> Allow Access
                                                           </button>
                                                         </>
@@ -3942,8 +3942,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       </div>
                                                     </div>
                                                     <div>
-                                                      <p className="text-[11px] font-semibold text-foreground">Pulling from Plaid…</p>
-                                                      <p className="text-[10px] text-muted-foreground luka-thinking-text mt-0.5">Extracting transactions from {invSchedSrcLabel.replace("Plaid — ", "")}</p>
+                                                      <p className="text-base font-semibold text-foreground">Pulling from Plaid…</p>
+                                                      <p className="text-base text-muted-foreground luka-thinking-text mt-0.5">Extracting transactions from {invSchedSrcLabel.replace("Plaid — ", "")}</p>
                                                     </div>
                                                   </div>
                                                 ) : invSchedSrcLabel?.startsWith("Plaid") && invReviewRows.length > 0 ? (
@@ -3955,8 +3955,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       </div>
                                                     </div>
                                                     <div>
-                                                      <p className="text-[11px] font-semibold text-green-800">Connected via Plaid</p>
-                                                      <p className="text-[10px] text-green-700 mt-0.5">{invSchedSrcLabel.replace("Plaid — ", "")} · {invReviewRows.length} transactions pulled</p>
+                                                      <p className="text-base font-semibold text-green-800">Connected via Plaid</p>
+                                                      <p className="text-base text-green-700 mt-0.5">{invSchedSrcLabel.replace("Plaid — ", "")} · {invReviewRows.length} transactions pulled</p>
                                                     </div>
                                                   </div>
                                                 ) : (
@@ -3968,7 +3968,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         <Zap className="w-4 h-4 text-white" />
                                                       </div>
                                                     </div>
-                                                    <p className="text-[11px] text-muted-foreground leading-relaxed max-w-[180px]">
+                                                    <p className="text-base text-muted-foreground leading-relaxed max-w-[180px]">
                                                       To connect Plaid for this Investment Schedule, select{" "}
                                                       <span className="inline-flex items-center gap-0.5 font-semibold text-foreground">
                                                         <Plus className="h-2.5 w-2.5" /> then connect Plaid
@@ -4009,7 +4009,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                             const v = e.target.value as Exclude<InvFileKind, "ambiguous"|"unsupported"|"oversized">;
                                                             setInvUploadFiles(prev => prev.map(x => x.id === f.id ? { ...x, userKind: v } : x));
                                                           }}
-                                                          className="text-[10px] border border-amber-300 rounded-[6px] px-1 py-0.5 bg-background text-amber-700 focus:outline-none cursor-pointer shrink-0 max-w-[110px]"
+                                                          className="text-base border border-amber-300 rounded-[6px] px-1 py-0.5 bg-background text-amber-700 focus:outline-none cursor-pointer shrink-0 max-w-[110px]"
                                                         >
                                                           <option value="" disabled>Classify…</option>
                                                           <option value="statement">Statement</option>
@@ -4018,7 +4018,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                           <option value="workpaper">Prior Year WP</option>
                                                         </select>
                                                       )}
-                                                      {isError && <span className="text-[10px] text-red-600 shrink-0">{f.kind === "unsupported" ? "Unsupported" : "Too large"}</span>}
+                                                      {isError && <span className="text-base text-red-600 shrink-0">{f.kind === "unsupported" ? "Unsupported" : "Too large"}</span>}
                                                       <button onClick={e => { e.stopPropagation(); setInvUploadFiles(prev => prev.filter(x => x.id !== f.id)); }} className="shrink-0 text-red-400 hover:text-red-600 transition-colors">
                                                         <Trash2 className="h-3.5 w-3.5" />
                                                       </button>
@@ -4041,10 +4041,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   </p>
                                                   <div className="flex flex-wrap gap-1.5 pt-0.5">
                                                     {invMissingMonthsPrompt.map(m => (
-                                                      <span key={m} className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-red-100 text-red-700 border-red-200">{m}</span>
+                                                      <span key={m} className="inline-flex items-center px-2 py-0.5 rounded-full text-base font-semibold border bg-red-100 text-red-700 border-red-200">{m}</span>
                                                     ))}
                                                   </div>
-                                                  <p className="text-[10px] text-red-700 pt-0.5">
+                                                  <p className="text-base text-red-700 pt-0.5">
                                                     <strong>Note:</strong> The first and last statements may be cut-off (partial month) — this is allowed. All months in between must be present.
                                                   </p>
                                                 </div>
@@ -4055,7 +4055,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             {invReviewRows.length > 0 && (
                                               <div className="space-y-2">
                                                 <div className="flex items-center justify-between">
-                                                  <span className="text-[11px] font-semibold text-foreground">
+                                                  <span className="text-base font-semibold text-foreground">
                                                     {invReviewRows.length} transaction{invReviewRows.length !== 1 ? "s" : ""} extracted — review before submitting
                                                   </span>
                                                 </div>
@@ -4076,7 +4076,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         setInvTableSort(prev => prev?.field === field ? { field, dir: prev.dir === "asc" ? "desc" : "asc" } : { field, dir: "asc" });
                                                       };
                                                       return (
-                                                    <table className="w-full text-[10px]" style={{ minWidth: 1600 }}>
+                                                    <table className="w-full text-base" style={{ minWidth: 1600 }}>
                                                       <thead>
                                                         <tr className="bg-muted/30 border-b border-border">
                                                           {([
@@ -4088,7 +4088,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                             const isLast = label === "";
                                                             const isBalance = label === "Balance";
                                                             return (
-                                                              <th key={i} className={`px-2 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${isLast ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10 text-left" : isBalance ? "text-right" : "text-left"}`}>
+                                                              <th key={i} className={`px-2 py-1.5 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${isLast ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10 text-left" : isBalance ? "text-right" : "text-left"}`}>
                                                                 {field ? (
                                                                   <button onClick={() => handleInvSort(field as keyof InvReviewRow)} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">
                                                                     {label.endsWith(" *") ? <>{label.slice(0,-2)} <span className="text-red-500">*</span></> : label}
@@ -4111,7 +4111,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                           return sortedInvRows.map((row, ri) => {
                                                           if (!row.voided) runBal += parseFloat(row.amount || "0");
                                                           const rowBal = runBal;
-                                                          const IC = "h-6 text-[10px] px-1.5 border rounded bg-background focus:outline-none w-full border-border focus:border-primary/40";
+                                                          const IC = "h-6 text-base px-1.5 border rounded bg-background focus:outline-none w-full border-border focus:border-primary/40";
                                                           const upd = (field: keyof InvReviewRow, val: string) =>
                                                             setInvReviewRows(prev => prev.map(r => r.id === row.id ? { ...r, [field]: val } : r));
                                                           const voidRow = () => {
@@ -4152,7 +4152,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                                 {row.units ? (
                                                                   <input value={row.units} onChange={e => upd("units", e.target.value)} className={cn(IC, "w-20 text-right tabular-nums")} placeholder="0.0000" />
                                                                 ) : (
-                                                                  <span className="text-[10px] text-muted-foreground px-1.5">—</span>
+                                                                  <span className="text-base text-muted-foreground px-1.5">—</span>
                                                                 )}
                                                               </td>
                                                               <td className="px-1.5 py-1 min-w-[80px]"><input value={row.price} onChange={e => upd("price", e.target.value)} className={cn(IC, "w-20 text-right")} placeholder="0.000" /></td>
@@ -4163,9 +4163,9 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                               </td>
                                                               <td className="px-1.5 py-1 min-w-[75px]"><input value={row.fxRate ?? ""} onChange={e => upd("fxRate", e.target.value)} className={cn(IC, "w-20 text-right font-mono")} placeholder="1.0000" /></td>
                                                               {/* Running balance */}
-                                                              <td className="px-2 py-1 text-right tabular-nums text-[10px] font-semibold whitespace-nowrap">
+                                                              <td className="px-2 py-1 text-right tabular-nums text-base font-semibold whitespace-nowrap">
                                                                 {row.voided
-                                                                  ? <span className="text-[9px] text-muted-foreground italic">voided</span>
+                                                                  ? <span className="text-base text-muted-foreground italic">voided</span>
                                                                   : <span className="text-foreground">{rowBal.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>}
                                                               </td>
                                                               {/* Actions: void / restore + insert */}
@@ -4192,11 +4192,11 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                                 <td colSpan={16} className="px-3 py-1 bg-red-50/50">
                                                                   <div className="flex items-center gap-2">
                                                                     <AlertCircle className="h-3 w-3 text-red-500 shrink-0" />
-                                                                    <span className="text-[9px] text-red-600">
+                                                                    <span className="text-base text-red-600">
                                                                       Entry voided — excluded from running balance.
                                                                       {row.source && !row.isManual && <> Re-upload <strong>{row.source}</strong> to restore this scanned transaction.</>}
                                                                     </span>
-                                                                    <button onClick={insertAfter} className="ml-auto inline-flex items-center gap-0.5 text-[9px] text-primary hover:underline">
+                                                                    <button onClick={insertAfter} className="ml-auto inline-flex items-center gap-0.5 text-base text-primary hover:underline">
                                                                       <Plus className="h-2.5 w-2.5" /> Add replacement entry here
                                                                     </button>
                                                                   </div>
@@ -4230,7 +4230,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         for (const [pat, label] of BROKER_PATTERNS) { if (pat.test(f.name)) return label; }
                                                         return null;
                                                       }).filter(Boolean))];
-                                                      return detected.length > 0 ? <p className="text-[10px] text-muted-foreground pl-5">Broker: {detected[0]} · Each broker is processed with its own adjusting entry</p> : null;
+                                                      return detected.length > 0 ? <p className="text-base text-muted-foreground pl-5">Broker: {detected[0]} · Each broker is processed with its own adjusting entry</p> : null;
                                                     })()}
                                                   </div>
                                                 ) : (
@@ -4251,7 +4251,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             {invReviewRows.length > 0 && (
                                               <div className="flex items-center justify-end gap-2 pt-1">
                                                 <div className="flex items-center gap-2">
-                                                  <span className="text-[11px] text-muted-foreground">{invReviewRows.length} transaction{invReviewRows.length !== 1 ? "s" : ""}</span>
+                                                  <span className="text-base text-muted-foreground">{invReviewRows.length} transaction{invReviewRows.length !== 1 ? "s" : ""}</span>
                                                   <button
                                                     onClick={() => {
                                                       // Convert review rows to Transaction[] for the schedule workpaper
@@ -4500,7 +4500,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                     {addMoreLtFiles.length > 0 && (
                                       <div className="flex flex-wrap gap-1.5">
                                         {addMoreLtFiles.map(f => (
-                                          <span key={f.id} className={cn("inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border font-medium",
+                                          <span key={f.id} className={cn("inline-flex items-center gap-1 text-base px-2 py-0.5 rounded-full border font-medium",
                                             f.kind === "unsupported" || f.kind === "oversized" ? "bg-red-50 text-red-600 border-red-200"
                                             : f.kind === "ambiguous" ? "bg-amber-50 text-amber-700 border-amber-200"
                                             : "bg-primary/8 text-primary border-primary/25")}>
@@ -4515,11 +4515,11 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                     {addMoreLtRows.length > 0 && (
                                       <div className="rounded-[8px] border border-border overflow-hidden">
                                         <div className="overflow-x-auto">
-                                          <table className="w-full text-[10px]" style={{ minWidth: 2400 }}>
+                                          <table className="w-full text-base" style={{ minWidth: 2400 }}>
                                             <thead>
                                               <tr className="bg-muted/30 border-b border-border">
                                                 {["Loan Name *","Lender *","Current Collateral","Type","Rate Type","Int. Rate % *","Start *","Maturity *","First Payment","CCY","Mo. Payment","Orig. Loan Amt","FX Rate","Opening Bal. *","GL Principal *","Day Count","Payment Type","Freq.","Compounding","IO Period (mo.)","Balloon Amt","Status",""].map((h, i) => (
-                                                  <th key={i} className={`px-2 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${LT_RIGHT_COLS.has(h) ? "text-right" : "text-left"} ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10" : ""}`}>
+                                                  <th key={i} className={`px-2 py-1.5 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${LT_RIGHT_COLS.has(h) ? "text-right" : "text-left"} ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10" : ""}`}>
                                                     {h.endsWith(" *") ? <>{h.slice(0,-2)} <span className="text-red-500">*</span></> : h}
                                                   </th>
                                                 ))}
@@ -4528,7 +4528,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             <tbody>
                                               {addMoreLtRows.map((row, ri) => {
                                                 const fc2 = (field: keyof LtDebtReviewRow, req: boolean) =>
-                                                  cn("h-6 text-[10px] px-1.5 border rounded bg-background focus:outline-none w-full",
+                                                  cn("h-6 text-base px-1.5 border rounded bg-background focus:outline-none w-full",
                                                     req && ltRowMissing(row, field)
                                                       ? "border-red-400 bg-red-50/60 placeholder:text-red-400 text-red-600 focus:border-red-500"
                                                       : "border-border focus:border-primary/40");
@@ -4582,7 +4582,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                         Submit
                                       </button>
                                       {amMissingCount > 0 && (
-                                        <span className="text-[10px] text-red-500">Fill in the <strong>{amMissingCount}</strong> highlighted field{amMissingCount !== 1 ? "s" : ""} to continue</span>
+                                        <span className="text-base text-red-500">Fill in the <strong>{amMissingCount}</strong> highlighted field{amMissingCount !== 1 ? "s" : ""} to continue</span>
                                       )}
                                     </div>
                                   </>
@@ -4624,7 +4624,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                   <div className="rounded-[10px] border border-border overflow-hidden">
                                     <table className="w-full text-xs">
                                       <thead><tr className="bg-muted/60 border-b border-border">
-                                        {["Loan","Covenant","Actual","Threshold","Status"].map(h => <th key={h} className="px-3 py-2 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>)}
+                                        {["Loan","Covenant","Actual","Threshold","Status"].map(h => <th key={h} className="px-3 py-2 text-left text-base font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>)}
                                       </tr></thead>
                                       <tbody>
                                         {[
@@ -4639,7 +4639,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             <td className="px-3 py-2 font-semibold">{r.actual}</td>
                                             <td className="px-3 py-2">{r.threshold}</td>
                                             <td className="px-3 py-2">
-                                              <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-[4px] border ${r.status === "Breached" ? "bg-red-50 text-red-700 border-red-200" : r.status === "At Risk" ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-green-50 text-green-700 border-green-200"}`}>
+                                              <span className={`inline-flex items-center gap-1 text-base font-semibold px-1.5 py-0.5 rounded-[4px] border ${r.status === "Breached" ? "bg-red-50 text-red-700 border-red-200" : r.status === "At Risk" ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-green-50 text-green-700 border-green-200"}`}>
                                                 {r.status === "Breached" ? <AlertTriangle className="h-2.5 w-2.5" /> : r.status === "At Risk" ? <AlertTriangle className="h-2.5 w-2.5" /> : <CheckCircle2 className="h-2.5 w-2.5" />}
                                                 {r.status}
                                               </span>
@@ -4658,7 +4658,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                     <div className="px-4 py-3 space-y-2 text-xs">
                                       <div className="grid grid-cols-3 gap-3">
                                         {[{l:"Actual DSCR",v:"1.12",c:"text-red-600 font-bold"},{l:"Required",v:"≥ 1.25",c:"text-foreground"},{l:"Shortfall",v:"0.13",c:"text-red-600 font-semibold"}].map(r=>(
-                                          <div key={r.l} className="rounded-[8px] bg-background border border-border px-2.5 py-2 text-center"><p className="text-[10px] text-muted-foreground mb-0.5">{r.l}</p><p className={`text-sm ${r.c}`}>{r.v}</p></div>
+                                          <div key={r.l} className="rounded-[8px] bg-background border border-border px-2.5 py-2 text-center"><p className="text-base text-muted-foreground mb-0.5">{r.l}</p><p className={`text-sm ${r.c}`}>{r.v}</p></div>
                                         ))}
                                       </div>
                                       <p className="text-muted-foreground pt-1"><span className="font-semibold text-foreground">Root cause:</span> Operating cash flow declined 8.4% YoY while debt service remained constant. EBITDA was impacted by one-time restructuring costs of $240K.</p>
@@ -4674,7 +4674,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                     <div className="px-4 py-3 space-y-2 text-xs">
                                       <div className="grid grid-cols-3 gap-3">
                                         {[{l:"Actual Cash",v:"$425K",c:"text-amber-600 font-bold"},{l:"Required",v:"≥ $500K",c:"text-foreground"},{l:"Shortfall",v:"$75K",c:"text-amber-600 font-semibold"}].map(r=>(
-                                          <div key={r.l} className="rounded-[8px] bg-background border border-border px-2.5 py-2 text-center"><p className="text-[10px] text-muted-foreground mb-0.5">{r.l}</p><p className={`text-sm ${r.c}`}>{r.v}</p></div>
+                                          <div key={r.l} className="rounded-[8px] bg-background border border-border px-2.5 py-2 text-center"><p className="text-base text-muted-foreground mb-0.5">{r.l}</p><p className={`text-sm ${r.c}`}>{r.v}</p></div>
                                         ))}
                                       </div>
                                       <p className="text-muted-foreground pt-1"><span className="font-semibold text-foreground">Root cause:</span> Seasonal working capital draw in Q4 reduced unrestricted cash below the minimum balance threshold set by TD.</p>
@@ -4699,7 +4699,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                 <div className="rounded-[10px] border border-border overflow-hidden">
                                   <table className="w-full text-xs">
                                     <thead><tr className="bg-muted/60 border-b border-border">
-                                      {["Facility","Lender","Balance (CAD)","Maturity Date","Days Remaining","Status"].map(h=><th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide ${h==="Balance (CAD)"||h==="Days Remaining"?"text-right":"text-left"}`}>{h}</th>)}
+                                      {["Facility","Lender","Balance (CAD)","Maturity Date","Days Remaining","Status"].map(h=><th key={h} className={`px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide ${h==="Balance (CAD)"||h==="Days Remaining"?"text-right":"text-left"}`}>{h}</th>)}
                                     </tr></thead>
                                     <tbody>
                                       {[
@@ -4714,7 +4714,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                           <td className="px-3 py-2 whitespace-nowrap">{r.date}</td>
                                           <td className={`px-3 py-2 text-right tabular-nums ${r.cls}`}>{r.label}</td>
                                           <td className="px-3 py-2">
-                                            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-[4px] border ${r.days<=365?"bg-amber-50 text-amber-700 border-amber-200":"bg-green-50 text-green-700 border-green-200"}`}>
+                                            <span className={`inline-flex items-center gap-1 text-base font-semibold px-1.5 py-0.5 rounded-[4px] border ${r.days<=365?"bg-amber-50 text-amber-700 border-amber-200":"bg-green-50 text-green-700 border-green-200"}`}>
                                               <Calendar className="h-2.5 w-2.5" />{r.days<=365?"Renewing Soon":"On Track"}
                                             </span>
                                           </td>
@@ -4746,7 +4746,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                 <div className="rounded-[10px] border border-border overflow-hidden">
                                   <table className="w-full text-xs">
                                     <thead><tr className="bg-muted/60 border-b border-border">
-                                      {["Loan","Rate","Balance","Days","Accrued Interest","YTD Expense"].map(h=><th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide ${h==="Loan"?"text-left":"text-right"}`}>{h}</th>)}
+                                      {["Loan","Rate","Balance","Days","Accrued Interest","YTD Expense"].map(h=><th key={h} className={`px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide ${h==="Loan"?"text-left":"text-right"}`}>{h}</th>)}
                                     </tr></thead>
                                     <tbody>
                                       {[
@@ -4791,13 +4791,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                   <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-muted/40">
                                     <Receipt className="h-3.5 w-3.5 text-primary" />
                                     <span className="text-xs font-semibold text-foreground">{choice.includes("Accrued") ? "AJE-06 — Accrued Interest FY2025" : choice.includes("Current") ? "AJE-07 — Current Portion Reclassification" : "AJE-08 — FX Translation Adjustment"}</span>
-                                    <span className="ml-auto text-[10px] text-muted-foreground">Dec 31, 2025</span>
+                                    <span className="ml-auto text-base text-muted-foreground">Dec 31, 2025</span>
                                   </div>
                                   <table className="w-full text-xs">
                                     <thead><tr className="border-b border-border/40 bg-muted/20">
-                                      <th className="px-3 py-1.5 text-left text-[10px] font-semibold text-muted-foreground uppercase">Account</th>
-                                      <th className="px-3 py-1.5 text-right text-[10px] font-semibold text-muted-foreground uppercase">Debit</th>
-                                      <th className="px-3 py-1.5 text-right text-[10px] font-semibold text-muted-foreground uppercase">Credit</th>
+                                      <th className="px-3 py-1.5 text-left text-base font-semibold text-muted-foreground uppercase">Account</th>
+                                      <th className="px-3 py-1.5 text-right text-base font-semibold text-muted-foreground uppercase">Debit</th>
+                                      <th className="px-3 py-1.5 text-right text-base font-semibold text-muted-foreground uppercase">Credit</th>
                                     </tr></thead>
                                     <tbody>
                                       {(choice.includes("Accrued") ? [
@@ -4836,7 +4836,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                 <div className="rounded-[10px] border border-border overflow-hidden">
                                   <table className="w-full text-xs">
                                     <thead><tr className="bg-muted/60 border-b border-border">
-                                      {["Loan","TB Balance","Workpaper","Variance","Root Cause"].map(h=><th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide ${h==="Loan"||h==="Root Cause"?"text-left":"text-right"}`}>{h}</th>)}
+                                      {["Loan","TB Balance","Workpaper","Variance","Root Cause"].map(h=><th key={h} className={`px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide ${h==="Loan"||h==="Root Cause"?"text-left":"text-right"}`}>{h}</th>)}
                                     </tr></thead>
                                     <tbody>
                                       {[
@@ -4924,8 +4924,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                     <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-muted/40">
                                       <Building2 className="h-3.5 w-3.5 text-primary" />
                                       <span className="text-xs font-semibold text-foreground">{l.name}</span>
-                                      <span className="text-[10px] text-muted-foreground">·</span>
-                                      <span className="text-[10px] text-muted-foreground">{l.ref}</span>
+                                      <span className="text-base text-muted-foreground">·</span>
+                                      <span className="text-base text-muted-foreground">{l.ref}</span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-0 divide-x divide-border">
                                       {[
@@ -4934,13 +4934,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                         ["Current Portion", l.current], ["Long-term Portion", l.lt], ["Accrued Interest", l.accrued],
                                       ].map(([label, value]) => (
                                         <div key={label} className="px-3 py-1.5 border-b border-border/40">
-                                          <p className="text-[10px] text-muted-foreground">{label}</p>
+                                          <p className="text-base text-muted-foreground">{label}</p>
                                           <p className="text-xs font-medium text-foreground">{value}</p>
                                         </div>
                                       ))}
                                     </div>
                                     <div className="px-3 py-2 border-t border-border/40">
-                                      <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wide font-semibold">Covenants</p>
+                                      <p className="text-base text-muted-foreground mb-1 uppercase tracking-wide font-semibold">Covenants</p>
                                       {l.covenants.map((c,i) => (
                                         <div key={i} className={`text-xs ${c.includes("BREACHED")?"text-red-600":c.includes("AT RISK")?"text-amber-600":"text-foreground"}`}>{c}</div>
                                       ))}
@@ -4964,7 +4964,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                 <div className="rounded-[10px] border border-border overflow-hidden">
                                   <table className="w-full text-xs">
                                     <thead><tr className="bg-muted/60 border-b border-border">
-                                      {["Loan","Opening","New Draws","Repayments","FX Adj.","Closing"].map(h=><th key={h} className={`px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide ${h==="Loan"?"text-left":"text-right"}`}>{h}</th>)}
+                                      {["Loan","Opening","New Draws","Repayments","FX Adj.","Closing"].map(h=><th key={h} className={`px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide ${h==="Loan"?"text-left":"text-right"}`}>{h}</th>)}
                                     </tr></thead>
                                     <tbody>
                                       {[
@@ -5185,8 +5185,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                       <td className="px-5 py-3"><span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium" style={{ background: "hsl(142, 70%, 45% / 0.12)", color: "hsl(142, 70%, 35%)", border: "1px solid hsl(142, 70%, 45% / 0.3)" }}>{e.status}</span></td>
                                       <td className="px-5 py-3">
                                         {e.source
-                                          ? <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[5px] text-[10px] font-semibold border bg-orange-50 text-orange-700 border-orange-200 capitalize">{e.source === "quickbooks" ? "QBO" : e.source === "xero" ? "Xero" : e.source}</span>
-                                          : <span className="text-[10px] text-muted-foreground">—</span>}
+                                          ? <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[5px] text-base font-semibold border bg-orange-50 text-orange-700 border-orange-200 capitalize">{e.source === "quickbooks" ? "QBO" : e.source === "xero" ? "Xero" : e.source}</span>
+                                          : <span className="text-base text-muted-foreground">—</span>}
                                       </td>
                                     </motion.tr>
                                   ))}
@@ -5233,13 +5233,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                               <div className="flex items-center justify-between px-5 py-2.5 text-xs" style={{ color: "hsl(var(--muted-foreground))", borderTop: "1px solid hsl(var(--border) / 0.4)" }}>
                                 <div className="flex items-center gap-2">
                                   <span>Use</span>
-                                  <kbd className="inline-flex items-center justify-center w-6 h-6 rounded-md border text-[11px] font-semibold" style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--muted) / 0.5)" }}>↑</kbd>
-                                  <kbd className="inline-flex items-center justify-center w-6 h-6 rounded-md border text-[11px] font-semibold" style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--muted) / 0.5)" }}>↓</kbd>
+                                  <kbd className="inline-flex items-center justify-center w-6 h-6 rounded-md border text-base font-semibold" style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--muted) / 0.5)" }}>↑</kbd>
+                                  <kbd className="inline-flex items-center justify-center w-6 h-6 rounded-md border text-base font-semibold" style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--muted) / 0.5)" }}>↓</kbd>
                                   <span>to navigate</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <span>To close, press</span>
-                                  <kbd className="inline-flex items-center justify-center px-2 h-6 rounded-md border text-[11px] font-semibold" style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--muted) / 0.5)" }}>Esc</kbd>
+                                  <kbd className="inline-flex items-center justify-center px-2 h-6 rounded-md border text-base font-semibold" style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--muted) / 0.5)" }}>Esc</kbd>
                                 </div>
                               </div>
                             </div>
@@ -5514,7 +5514,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                 {/* Header */}
                 <div className="flex items-start justify-between px-4 py-3 border-b border-border shrink-0">
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium mb-0.5">
+                    <p className="text-base text-muted-foreground uppercase tracking-wide font-medium mb-0.5">
                       A few quick questions · Step {amortWizStep} of {amortSource === "manual" ? 2 : 3}
                     </p>
                     <p className="text-sm font-semibold text-foreground">
@@ -5661,8 +5661,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                       <p className="text-sm text-foreground leading-relaxed">Here's what I'll do — review and approve to continue.</p>
                       <div className="rounded-[10px] border border-border p-3 space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Question 1</p>
-                          <button onClick={() => setAmortWizStep(1)} className="text-[10px] text-primary hover:underline">Edit</button>
+                          <p className="text-base font-semibold text-muted-foreground uppercase tracking-wide">Question 1</p>
+                          <button onClick={() => setAmortWizStep(1)} className="text-base text-primary hover:underline">Edit</button>
                         </div>
                         <p className="text-xs text-foreground">How should I source the loan data?</p>
                         <span className="inline-flex items-center text-xs bg-muted text-foreground rounded-full px-2.5 py-0.5 font-medium">
@@ -5673,8 +5673,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                       </div>
                       <div className="rounded-[10px] border border-border p-3 space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Question 2</p>
-                          <button onClick={() => setAmortWizStep(2)} className="text-[10px] text-primary hover:underline">Edit</button>
+                          <p className="text-base font-semibold text-muted-foreground uppercase tracking-wide">Question 2</p>
+                          <button onClick={() => setAmortWizStep(2)} className="text-base text-primary hover:underline">Edit</button>
                         </div>
                         <p className="text-xs text-foreground">
                           {amortSource === "existing" && "Selected document"}
