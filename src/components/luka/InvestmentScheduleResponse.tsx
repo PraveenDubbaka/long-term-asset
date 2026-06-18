@@ -110,7 +110,7 @@ function TableWrap({ title, subtitle, onAdd, addLabel, children }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[8px] border border-border overflow-hidden">
+    <div className="rounded-[8px] border border-border overflow-clip">
       <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
         <span className="text-base font-semibold text-foreground">{title}</span>
         <div className="flex items-center gap-3">
@@ -125,7 +125,7 @@ function TableWrap({ title, subtitle, onAdd, addLabel, children }: {
           )}
         </div>
       </div>
-      <div className="w-full overflow-x-auto">{children}</div>
+      <div className="w-full">{children}</div>
     </div>
   );
 }
@@ -139,7 +139,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "wac",          label: "WAC Schedule"      },
   { id: "gainloss",     label: "Gain / Loss"       },
   { id: "income",       label: "Income & Expenses" },
-  { id: "brokerrecon",  label: "Broker Recon"      },
+
   { id: "ajes",         label: "AJEs"              },
   { id: "transactions", label: "Transactions"      },
 ];
@@ -486,7 +486,7 @@ function TransactionsPanel({
   );
 
   return (
-    <div className="rounded-[8px] border border-border overflow-hidden">
+    <div className="rounded-[8px] border border-border overflow-clip">
       {/* Header */}
       <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -548,9 +548,9 @@ function TransactionsPanel({
 
 
       {/* Table */}
-      <div className="w-full overflow-x-auto">
+      <div className="w-full">
         <table className="w-full text-base" style={{ minWidth: 1100 }}>
-          <thead>
+          <thead className="sticky top-0 z-10 bg-background">
             <tr className="bg-muted/30 border-b border-border">
               {/* Checkbox all */}
               <th className="px-3 py-2 w-7">
@@ -795,12 +795,19 @@ function TransactionsPanel({
 }
 
 // ─── Tab 2: WAC Schedule ──────────────────────────────────────────────────────
-function WACPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; yearEnd?: string }) {
+function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedule[]; yearEnd?: string; editMode?: boolean }) {
   const [filterSecurity, setFilterSecurity] = useState("");
   const [filterType,     setFilterType]     = useState("");
+  const [filterAccount,  setFilterAccount]  = useState("");
   const [rowOverrides,   setRowOverrides]   = useState<Record<string, WacRow[]>>({});
   const [editKey,        setEditKey]        = useState<string | null>(null);
   const [editData,       setEditData]       = useState<Partial<WacRow>>({});
+
+  const updateRowField = (scheduleKey: string, idx: number, updates: Partial<WacRow>) => {
+    const sched = schedules.find(s => s.key === scheduleKey)!;
+    const rows = getRows(sched);
+    setRowOverrides(prev => ({ ...prev, [scheduleKey]: rows.map((r, i) => i === idx ? { ...r, ...updates } : r) }));
+  };
   const [addingFor,      setAddingFor]      = useState<string | null>(null);
   const [newRow,         setNewRow]         = useState<Partial<WacRow>>({});
   const settings     = useStore(s => s.settings);
@@ -843,12 +850,17 @@ function WACPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; yearE
   };
 
   const uniqueTypes = useMemo(() =>
-    Array.from(new Set(schedules.flatMap(s => getRows(s).map(r => r.type)))).sort(),
+    Array.from(new Set(schedules.flatMap(s => getRows(s).map(r => r.type)).filter(t => t !== "Opening Balance"))).sort(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [schedules, rowOverrides]
   );
 
-  type WacSortField = "security" | "ticker" | "date" | "type" | "unitsIn" | "unitsOut" | "cumUnits" | "costIn" | "costOut" | "cumCost" | "wac";
+  const uniqueAccounts = useMemo(() =>
+    Array.from(new Set(schedules.flatMap(s => s.sourceIds))).sort(),
+    [schedules]
+  );
+
+  type WacSortField = "security" | "ticker" | "date" | "type" | "openingCost" | "costIn" | "cumCost" | "openingUnits" | "unitsIn" | "cumUnits" | "wac";
   const [sortField, setSortField] = useState<WacSortField>("security");
   const [sortDir,   setSortDir]   = useState<"asc" | "desc">("asc");
 
@@ -865,7 +877,8 @@ function WACPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; yearE
 
   const sortedSchedules = useMemo(() => {
     const filtered = schedules.filter(s =>
-      (!filterSecurity || s.security.toLowerCase().includes(filterSecurity.toLowerCase()) || s.ticker.toLowerCase().includes(filterSecurity.toLowerCase()))
+      (!filterSecurity || s.security.toLowerCase().includes(filterSecurity.toLowerCase()) || s.ticker.toLowerCase().includes(filterSecurity.toLowerCase())) &&
+      (!filterAccount  || s.sourceIds.includes(filterAccount))
     );
     return [...filtered].sort((a, b) => {
       let cmp = 0;
@@ -875,18 +888,18 @@ function WACPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; yearE
         case "ticker":    cmp = a.ticker.localeCompare(b.ticker); break;
         case "date":      cmp = (ar[0]?.date ?? "").localeCompare(br[0]?.date ?? ""); break;
         case "type":      cmp = (ar[0]?.type ?? "").localeCompare(br[0]?.type ?? ""); break;
-        case "unitsIn":   cmp = ar.reduce((s,r)=>s+r.unitsIn,0) - br.reduce((s,r)=>s+r.unitsIn,0); break;
-        case "unitsOut":  cmp = ar.reduce((s,r)=>s+r.unitsOut,0) - br.reduce((s,r)=>s+r.unitsOut,0); break;
-        case "cumUnits":  cmp = a.closingUnits - b.closingUnits; break;
-        case "costIn":    cmp = ar.reduce((s,r)=>s+r.costIn,0) - br.reduce((s,r)=>s+r.costIn,0); break;
-        case "costOut":   cmp = ar.reduce((s,r)=>s+r.costOut,0) - br.reduce((s,r)=>s+r.costOut,0); break;
-        case "cumCost":   cmp = a.closingCostCAD - b.closingCostCAD; break;
+        case "openingCost":   cmp = (ar.find(r => r.type !== "Opening Balance")?.openingCost ?? 0) - (br.find(r => r.type !== "Opening Balance")?.openingCost ?? 0); break;
+        case "costIn":        cmp = ar.reduce((s,r)=>s+r.costIn,0) - br.reduce((s,r)=>s+r.costIn,0); break;
+        case "cumCost":       cmp = a.closingCostCAD - b.closingCostCAD; break;
+        case "openingUnits":  cmp = (ar.find(r => r.type !== "Opening Balance")?.openingUnits ?? 0) - (br.find(r => r.type !== "Opening Balance")?.openingUnits ?? 0); break;
+        case "unitsIn":       cmp = ar.reduce((s,r)=>s+r.unitsIn,0) - br.reduce((s,r)=>s+r.unitsIn,0); break;
+        case "cumUnits":      cmp = a.closingUnits - b.closingUnits; break;
         case "wac":       cmp = a.closingWac - b.closingWac; break;
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schedules, filterSecurity, sortField, sortDir, rowOverrides]);
+  }, [schedules, filterSecurity, filterAccount, sortField, sortDir, rowOverrides]);
 
   const IIC = "h-6 text-base px-1.5 border border-border rounded-[5px] bg-background focus:outline-none w-full";
 
@@ -894,8 +907,22 @@ function WACPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; yearE
     <div className="space-y-2">
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
-        {(filterSecurity || filterType) && (
-          <button onClick={() => { setFilterSecurity(""); setFilterType(""); }} className="inline-flex items-center gap-1 h-7 px-2 text-base text-muted-foreground hover:text-foreground border border-border rounded-[7px] bg-background transition-colors">
+        {/* Account filter dropdown */}
+        <div className="relative">
+          <select
+            value={filterAccount}
+            onChange={e => setFilterAccount(e.target.value)}
+            className="h-7 pl-2 pr-7 text-base border border-border rounded-[7px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer"
+          >
+            <option value="">All Accounts</option>
+            {uniqueAccounts.map(a => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        </div>
+        {(filterSecurity || filterType || filterAccount) && (
+          <button onClick={() => { setFilterSecurity(""); setFilterType(""); setFilterAccount(""); }} className="inline-flex items-center gap-1 h-7 px-2 text-base text-muted-foreground hover:text-foreground border border-border rounded-[7px] bg-background transition-colors">
             <X className="h-3 w-3" /> Clear filters
           </button>
         )}
@@ -903,18 +930,18 @@ function WACPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; yearE
       </div>
 
       {/* Spreadsheet table */}
-      <div className="rounded-[8px] border border-border overflow-hidden">
-        <div className="w-full overflow-x-auto">
+      <div className="rounded-[8px] border border-border overflow-clip">
+        <div className="w-full">
           <table className="w-full border-collapse text-base" style={{ minWidth: 900 }}>
-            <thead className="sticky top-0 z-10">
+            <thead className="sticky top-0 z-10 bg-background">
               {/* Group header row */}
               <tr className="bg-[#e8eaed] border-b border-border/60 text-base font-bold text-muted-foreground uppercase tracking-wider">
                 <th colSpan={4} className="px-2.5 py-1 text-left border-r border-border/40" />
-                <th colSpan={3} className="px-2.5 py-1 text-center bg-blue-50/40" style={{ borderLeft: "2px solid hsl(var(--border) / 0.5)", borderRight: "2px solid hsl(var(--border) / 0.5)" }}>
-                  Units
-                </th>
-                <th colSpan={3} className="px-2.5 py-1 text-center bg-violet-50/40" style={{ borderRight: "2px solid hsl(var(--border) / 0.5)" }}>
+                <th colSpan={3} className="px-2.5 py-1 text-center bg-violet-50/40" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)", borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}>
                   Cost
+                </th>
+                <th colSpan={3} className="px-2.5 py-1 text-center bg-blue-50/40" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}>
+                  Units
                 </th>
                 <th className="px-2.5 py-1 text-center" />
               </tr>
@@ -923,7 +950,7 @@ function WACPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; yearE
                 <th className="text-left min-w-[100px] max-w-[180px] px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
                   <span className="flex items-center gap-1">
                     <button onClick={() => handleSort("security")} className="flex items-center gap-1 hover:text-foreground transition-colors">Security {sortIcon("security")}</button>
-                    <SearchFilter label="" value={filterSecurity} onChange={setFilterSecurity} placeholder="Ticker or name…" />
+                    <SearchFilter label="" value={filterSecurity} onChange={setFilterSecurity} placeholder="Ticker or name…" options={[...schedules].sort((a,b)=>a.ticker.localeCompare(b.ticker)).map(s => ({ value: s.ticker, label: `${s.ticker} · ${s.security}` }))} />
                   </span>
                 </th>
                 {/* Ticker */}
@@ -938,29 +965,29 @@ function WACPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; yearE
                 <th className="text-left min-w-[140px] px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
                   <ColFilter label="Type" options={uniqueTypes} value={filterType} onChange={setFilterType} />
                 </th>
-                {/* Units In */}
-                <th className="text-right w-24 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40" style={{ borderLeft: "2px solid hsl(var(--border) / 0.5)" }}>
-                  <button onClick={() => handleSort("unitsIn")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">In {sortIcon("unitsIn")}</button>
+                {/* Cost Opening */}
+                <th className="text-right w-28 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-violet-50/20" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>
+                  <button onClick={() => handleSort("openingCost")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Opening {sortIcon("openingCost")}</button>
                 </th>
-                {/* Units Out */}
-                <th className="text-right w-24 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
-                  <button onClick={() => handleSort("unitsOut")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Out {sortIcon("unitsOut")}</button>
-                </th>
-                {/* Cum Units */}
-                <th className="text-right w-24 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap bg-blue-50/20" style={{ borderRight: "2px solid hsl(var(--border) / 0.5)" }}>
-                  <button onClick={() => handleSort("cumUnits")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Cumulative {sortIcon("cumUnits")}</button>
-                </th>
-                {/* Cost In */}
-                <th className="text-right w-28 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-violet-50/20" style={{ borderLeft: "2px solid hsl(var(--border) / 0.5)" }}>
-                  <button onClick={() => handleSort("costIn")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">In {sortIcon("costIn")}</button>
-                </th>
-                {/* Cost Out */}
+                {/* Cost Purchasing */}
                 <th className="text-right w-28 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
-                  <button onClick={() => handleSort("costOut")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Out {sortIcon("costOut")}</button>
+                  <button onClick={() => handleSort("costIn")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Purchasing {sortIcon("costIn")}</button>
                 </th>
-                {/* Cum Cost */}
-                <th className="text-right w-28 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap" style={{ borderRight: "2px solid hsl(var(--border) / 0.5)" }}>
-                  <button onClick={() => handleSort("cumCost")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Cumulative {sortIcon("cumCost")}</button>
+                {/* Cost Closing */}
+                <th className="text-right w-28 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}>
+                  <button onClick={() => handleSort("cumCost")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Closing {sortIcon("cumCost")}</button>
+                </th>
+                {/* Units Opening */}
+                <th className="text-right w-24 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>
+                  <button onClick={() => handleSort("openingUnits")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Opening {sortIcon("openingUnits")}</button>
+                </th>
+                {/* Units Purchasing */}
+                <th className="text-right w-24 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                  <button onClick={() => handleSort("unitsIn")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Purchasing {sortIcon("unitsIn")}</button>
+                </th>
+                {/* Units Closing */}
+                <th className="text-right w-24 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap bg-blue-50/20" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}>
+                  <button onClick={() => handleSort("cumUnits")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Closing {sortIcon("cumUnits")}</button>
                 </th>
                 {/* WAC */}
                 <th className="text-right w-24 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
@@ -971,16 +998,22 @@ function WACPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; yearE
             <tbody>
               {sortedSchedules.map((s, si) => {
                 const allRows  = getRows(s);
-                const dataRows = filterType ? allRows.filter(r => r.type === filterType) : allRows;
-                const grpBg    = si % 2 === 0 ? "" : "bg-slate-50/60";
+                const visibleRows = allRows.filter(r => r.type !== "Opening Balance");
+                const dataRows = filterType ? visibleRows.filter(r => r.type === filterType) : visibleRows;
+                const grpBg    = "";
                 return (
                   <Fragment key={s.key}>
                     {dataRows.map((r, rowI) => {
                       const actualIdx = allRows.indexOf(r);
                       const eKey      = `${s.key}|${actualIdx}`;
-                      const isEditing = editKey === eKey;
-                      const isOB      = r.type === "Opening Balance";
-                      const rowBg     = isEditing ? "bg-primary/5" : isOB ? "bg-amber-50/70" : grpBg;
+                      const isEditing = editMode || editKey === eKey;
+                      // In global editMode, read value from rowOverrides directly; in per-row mode use editData buffer
+                      const getV = <K extends keyof WacRow>(field: K): WacRow[K] =>
+                        editMode ? ((rowOverrides[s.key]?.[actualIdx] ?? r)[field]) : ((editData[field] ?? r[field]) as WacRow[K]);
+                      const setV = (updates: Partial<WacRow>) =>
+                        editMode ? updateRowField(s.key, actualIdx, updates) : setEditData(d => ({ ...d, ...updates }));
+                      const isOB      = false;
+                      const rowBg     = isEditing ? "bg-primary/5" : "";
                       return (
                         <tr key={eKey} className={`border-b border-border/30 hover:bg-primary/[0.03] transition-colors ${rowBg}`}>
                           {/* Security */}
@@ -994,13 +1027,13 @@ function WACPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; yearE
                           {/* Date */}
                           <td className="px-2.5 py-1.5 border-r border-border/20 font-mono text-muted-foreground whitespace-nowrap text-base">
                             {isEditing
-                              ? <input type="date" value={editData.date ?? r.date} onChange={e => setEditData(d => ({...d, date: e.target.value}))} className={`${IIC} w-28`} />
+                              ? <input type="date" value={getV("date")} onChange={e => setV({ date: e.target.value })} className={`${IIC} w-28`} />
                               : fmtDate(r.date)}
                           </td>
                           {/* Type */}
                           <td className="px-2.5 py-1.5 border-r border-border/20">
                             {isEditing ? (
-                              <select value={editData.type ?? r.type} onChange={e => setEditData(d => ({...d, type: e.target.value}))} className={`${IIC} w-36`}>
+                              <select value={getV("type")} onChange={e => setV({ type: e.target.value })} className={`${IIC} w-36`}>
                                 {WAC_ROW_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                               </select>
                             ) : isOB ? (
@@ -1011,47 +1044,41 @@ function WACPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; yearE
                               <TxTypeBadge type={r.type} />
                             )}
                           </td>
-                          {/* Units In */}
+                          {/* Cost Opening (read-only — prev cumCost) */}
+                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20 text-muted-foreground" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>
+                            {fmtCAD(r.openingCost ?? 0)}
+                          </td>
+                          {/* Cost Purchasing */}
                           <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
                             {isEditing
-                              ? <input type="number" value={editData.unitsIn ?? r.unitsIn} onChange={e => setEditData(d => ({...d, unitsIn: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} />
-                              : fmtUnits(r.unitsIn)}
-                          </td>
-                          {/* Units Out */}
-                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
-                            {isEditing
-                              ? <input type="number" value={editData.unitsOut ?? r.unitsOut} onChange={e => setEditData(d => ({...d, unitsOut: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} />
-                              : fmtUnits(r.unitsOut)}
-                          </td>
-                          {/* Cum Units */}
-                          <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold border-r border-border/20">
-                            {isEditing
-                              ? <input type="number" value={editData.cumUnits ?? r.cumUnits} onChange={e => setEditData(d => ({...d, cumUnits: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} />
-                              : fmtUnits(r.cumUnits)}
-                          </td>
-                          {/* Cost In */}
-                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
-                            {isEditing
-                              ? <input type="number" value={editData.costIn ?? r.costIn} onChange={e => setEditData(d => ({...d, costIn: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} />
+                              ? <input type="number" value={getV("costIn")} onChange={e => setV({ costIn: parseFloat(e.target.value)||0 })} className={`${IIC} w-24 text-right`} />
                               : fmtCAD(r.costIn)}
                           </td>
-                          {/* Cost Out */}
-                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
+                          {/* Cost Closing */}
+                          <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}>
                             {isEditing
-                              ? <input type="number" value={editData.costOut ?? r.costOut} onChange={e => setEditData(d => ({...d, costOut: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} />
-                              : fmtCAD(r.costOut)}
-                          </td>
-                          {/* Cum Cost */}
-                          <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold border-r border-border/20">
-                            {isEditing
-                              ? <input type="number" value={editData.cumCost ?? r.cumCost} onChange={e => setEditData(d => ({...d, cumCost: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} />
+                              ? <input type="number" value={getV("cumCost")} onChange={e => setV({ cumCost: parseFloat(e.target.value)||0 })} className={`${IIC} w-24 text-right`} />
                               : fmtCAD(r.cumCost)}
                           </td>
-                          {/* WAC */}
+                          {/* Units Opening (read-only — prev cumUnits) */}
+                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20 text-muted-foreground" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>
+                            {fmtUnits(r.openingUnits ?? 0)}
+                          </td>
+                          {/* Units Purchasing */}
                           <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
                             {isEditing
-                              ? <input type="number" value={editData.wac ?? r.wac} onChange={e => setEditData(d => ({...d, wac: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} />
-                              : fmtNum(r.wac, 4)}
+                              ? <input type="number" value={getV("unitsIn")} onChange={e => setV({ unitsIn: parseFloat(e.target.value)||0 })} className={`${IIC} w-20 text-right`} />
+                              : fmtUnits(r.unitsIn)}
+                          </td>
+                          {/* Units Closing */}
+                          <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}>
+                            {isEditing
+                              ? <input type="number" value={getV("cumUnits")} onChange={e => setV({ cumUnits: parseFloat(e.target.value)||0 })} className={`${IIC} w-20 text-right`} />
+                              : fmtUnits(r.cumUnits)}
+                          </td>
+                          {/* WAC — always computed: cumCost ÷ cumUnits */}
+                          <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
+                            {fmtNum((() => { const u = isEditing ? getV("cumUnits") : r.cumUnits; const c = isEditing ? getV("cumCost") : r.cumCost; return u > 0 ? c / u : 0; })(), 4)}
                           </td>
                         </tr>
                       );
@@ -1064,13 +1091,13 @@ function WACPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; yearE
                         <td className="px-2.5 py-1 border-r border-border/20 font-mono font-semibold text-base">{s.ticker}</td>
                         <td className="px-2.5 py-1 border-r border-border/20"><input type="date" value={newRow.date ?? ""} onChange={e => setNewRow(d => ({...d, date: e.target.value}))} className={`${IIC} w-28`} /></td>
                         <td className="px-2.5 py-1 border-r border-border/20"><select value={newRow.type ?? "Adjustment"} onChange={e => setNewRow(d => ({...d, type: e.target.value}))} className={`${IIC} w-36`}>{WAC_ROW_TYPES.map(t => <option key={t}>{t}</option>)}</select></td>
+                        <td className="px-2.5 py-1 border-r border-border/20 text-right tabular-nums text-muted-foreground/60" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>{fmtCAD(allRows[allRows.length - 1]?.cumCost ?? 0)}</td>
+                        <td className="px-2.5 py-1 border-r border-border/20" style={{}}><input type="number" placeholder="0.00" value={newRow.costIn ?? ""} onChange={e => setNewRow(d => ({...d, costIn: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} /></td>
+                        <td className="px-2.5 py-1" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}><input type="number" placeholder="0.00" value={newRow.cumCost ?? ""} onChange={e => setNewRow(d => ({...d, cumCost: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} /></td>
+                        <td className="px-2.5 py-1 border-r border-border/20 text-right tabular-nums text-muted-foreground/60" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>{fmtUnits(allRows[allRows.length - 1]?.cumUnits ?? 0)}</td>
                         <td className="px-2.5 py-1 border-r border-border/20"><input type="number" placeholder="0" value={newRow.unitsIn ?? ""} onChange={e => setNewRow(d => ({...d, unitsIn: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} /></td>
-                        <td className="px-2.5 py-1 border-r border-border/20"><input type="number" placeholder="0" value={newRow.unitsOut ?? ""} onChange={e => setNewRow(d => ({...d, unitsOut: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} /></td>
-                        <td className="px-2.5 py-1 border-r border-border/20"><input type="number" placeholder="0.0000" value={newRow.cumUnits ?? ""} onChange={e => setNewRow(d => ({...d, cumUnits: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} /></td>
-                        <td className="px-2.5 py-1 border-r border-border/20"><input type="number" placeholder="0.00" value={newRow.costIn ?? ""} onChange={e => setNewRow(d => ({...d, costIn: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} /></td>
-                        <td className="px-2.5 py-1 border-r border-border/20"><input type="number" placeholder="0.00" value={newRow.costOut ?? ""} onChange={e => setNewRow(d => ({...d, costOut: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} /></td>
-                        <td className="px-2.5 py-1 border-r border-border/20"><input type="number" placeholder="0.00" value={newRow.cumCost ?? ""} onChange={e => setNewRow(d => ({...d, cumCost: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} /></td>
-                        <td className="px-2.5 py-1"><input type="number" placeholder="0.0000" value={newRow.wac ?? ""} onChange={e => setNewRow(d => ({...d, wac: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} /></td>
+                        <td className="px-2.5 py-1" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}><input type="number" placeholder="0.0000" value={newRow.cumUnits ?? ""} onChange={e => setNewRow(d => ({...d, cumUnits: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} /></td>
+                        <td className="px-2.5 py-1 text-right tabular-nums text-muted-foreground">{fmtNum((newRow.cumUnits ?? 0) > 0 ? (newRow.cumCost ?? 0) / (newRow.cumUnits ?? 1) : 0, 4)}</td>
                       </tr>
                     )}
 
@@ -1078,18 +1105,18 @@ function WACPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; yearE
                     <tr className="border-b-[3px] border-slate-300/80 font-semibold bg-[#f0f2f5]">
                       <td className="px-2.5 py-2 border-r border-border/30 text-base font-bold max-w-[180px] truncate overflow-hidden text-ellipsis" title={s.security}>{s.security}</td>
                       <td className="px-2.5 py-2 border-r border-border/30 font-mono font-bold">{s.ticker}</td>
-                      <td className="px-2.5 py-2 border-r border-border/30 font-mono text-muted-foreground text-base">
+                      <td className="px-2.5 py-2 border-r border-border/30 font-mono text-muted-foreground text-base whitespace-nowrap">
                         {yearEndDate}
                       </td>
                       <td className="px-2.5 py-2 border-r border-border/30">
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-base font-medium border whitespace-nowrap bg-transparent text-foreground border-border">Closing Balance</span>
                       </td>
-                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">—</td>
-                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">—</td>
-                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30">{fmtUnits(s.closingUnits)}</td>
-                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">0.00</td>
-                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">0.00</td>
-                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30">{fmtCAD(s.closingCostCAD)}</td>
+                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground/60" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>{fmtCAD(0)}</td>
+                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground/60">{fmtCAD(0)}</td>
+                      <td className="px-2.5 py-2 text-right tabular-nums" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}>{fmtCAD(s.closingCostCAD)}</td>
+                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground/60" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>{fmtUnits(0)}</td>
+                      <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground/60">{fmtUnits(0)}</td>
+                      <td className="px-2.5 py-2 text-right tabular-nums" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}>{fmtUnits(s.closingUnits)}</td>
                       <td className="px-2.5 py-2 text-right tabular-nums">{fmtNum(s.closingWac, 4)}</td>
                     </tr>
 
@@ -1106,66 +1133,277 @@ function WACPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; yearE
 
 // ─── Tab 3: Gain / Loss ───────────────────────────────────────────────────────
 
-function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; yearEnd?: string }) {
+function GainLossPanel({ schedules, yearEnd, editMode, allInvSources }: {
+  schedules: SecuritySchedule[];
+  yearEnd?: string;
+  editMode?: boolean;
+  allInvSources: Source[];
+}) {
   const settings   = useStore(s => s.settings);
   const yearEndStr = yearEnd || (settings.fiscalYearEnd ? fmtDate(settings.fiscalYearEnd.slice(0, 10)) : "—");
 
-  // Per-row TB account overrides
+  // Per-row account / override state
   const [realizedAccts,   setRealizedAccts]   = useState<Record<number, string>>({});
-  const [unrealizedAccts, setUnrealizedAccts] = useState<Record<string, string>>({});
+  const [bankAccts,       setBankAccts]        = useState<Record<number, string>>({});
+  const [unrealizedBankAccts, setUnrealizedBankAccts] = useState<Record<string, string>>({});
+  const [adjustments,     setAdjustments]      = useState<Record<number, number>>({});
+  const [unrealizedAccts, setUnrealizedAccts]  = useState<Record<string, string>>({});
+  const [rOvr, setROvr] = useState<Record<number, { date?: string; units?: number; grossProceeds?: number; costOut?: number }>>({});
+  const [uOvr, setUOvr] = useState<Record<string, { units?: number; fmvCAD?: number; closingCostCAD?: number; unrealizedGL?: number }>>({});
+  const rSet = (i: number, patch: typeof rOvr[number]) => setROvr(p => ({ ...p, [i]: { ...p[i], ...patch } }));
+  const uSet = (k: string, patch: typeof uOvr[string]) => setUOvr(p => ({ ...p, [k]: { ...p[k], ...patch } }));
 
-  const disposals = schedules.flatMap(s =>
+  // Filters — Realized table
+  const [filterBroker,   setFilterBroker]   = useState("");
+  const [filterSecurity, setFilterSecurity] = useState("");
+  const [filterCcy,      setFilterCcy]      = useState("");
+  // Filters — Unrealized table
+  const [filterUnrSecurity, setFilterUnrSecurity] = useState("");
+
+  const brokerLabel = useCallback((id?: string) => {
+    if (!id) return "—";
+    return allInvSources.find(s => s.id === id)?.institution ?? id;
+  }, [allInvSources]);
+
+  const allDisposals = useMemo(() => schedules.flatMap(s =>
     s.rows
       .filter(r => r.unitsOut > 0)
       .map(r => ({
         security: s.security,
         ticker: s.ticker,
         date: r.date,
+        settlementDate: r.settlementDate,
+        sourceId: r.sourceId ?? (s.sourceIds[0] as string | undefined),
+        currency: r.currency ?? s.currency ?? "CAD",
+        fxRate: r.fxRate ?? 1,
         units: r.unitsOut,
-        proceeds: (r.realizedGL ?? 0) + r.costOut,
+        grossProceeds: r.grossProceedsCAD ?? ((r.realizedGL ?? 0) + r.costOut),
         costOut: r.costOut,
-        gl: r.realizedGL ?? 0,
       }))
+  ), [schedules]);
+
+  const uniqueBrokers = useMemo(() =>
+    [...new Set(allDisposals.map(d => brokerLabel(d.sourceId)))].filter(b => b !== "—"),
+    [allDisposals, brokerLabel]
   );
-  const totGL = disposals.reduce((s, d) => s + d.gl, 0);
-  const totUnrealized = schedules.reduce((s, x) => s + x.unrealizedGL, 0);
+  const uniqueTickers = useMemo(() =>
+    [...new Set(allDisposals.map(d => d.ticker))],
+    [allDisposals]
+  );
+  const uniqueCcys = useMemo(() =>
+    [...new Set(allDisposals.map(d => d.currency))],
+    [allDisposals]
+  );
+  const uniqueUnrTickers = useMemo(() =>
+    [...new Set(schedules.map(s => s.ticker))],
+    [schedules]
+  );
+
+  const disposals = useMemo(() => allDisposals.filter(d => {
+    if (filterBroker   && brokerLabel(d.sourceId) !== filterBroker) return false;
+    if (filterSecurity && d.ticker !== filterSecurity)              return false;
+    if (filterCcy      && d.currency !== filterCcy)                 return false;
+    return true;
+  }), [allDisposals, filterBroker, filterSecurity, filterCcy, brokerLabel]);
+
+  const filteredSchedules = useMemo(() =>
+    filterUnrSecurity ? schedules.filter(s => s.ticker === filterUnrSecurity) : schedules,
+    [schedules, filterUnrSecurity]
+  );
+
+  // Tickers that appear in >1 brokerage
+  const multiBrokerTickers = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    allDisposals.forEach(d => {
+      if (!map.has(d.ticker)) map.set(d.ticker, new Set());
+      map.get(d.ticker)!.add(d.sourceId ?? "");
+    });
+    return new Set([...map.entries()].filter(([, s]) => s.size > 1).map(([t]) => t));
+  }, [allDisposals]);
+
+  const totGL = disposals.reduce((sum, d, i) => {
+    const ov = rOvr[i] ?? {};
+    return sum + ((ov.grossProceeds ?? d.grossProceeds) - (ov.costOut ?? d.costOut) - (adjustments[i] ?? 0));
+  }, 0);
+  const totUnrealized = filteredSchedules.reduce((s, x) => s + x.unrealizedGL, 0);
+  const anyFilter = !!(filterBroker || filterSecurity || filterCcy);
 
   return (
     <div className="space-y-3">
       <TableWrap title="Realized Gain / Loss">
+        <div className="overflow-x-auto">
+          <table className="w-full text-base">
+            <thead className="sticky top-0 z-10 bg-background">
+              <tr className="bg-muted/30 border-b border-border">
+                <th className="px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left min-w-[220px]">
+                  <ColFilter label="Security" options={uniqueTickers} value={filterSecurity} onChange={setFilterSecurity} />
+                </th>
+                {(([
+                  { h: "Source",         l: true,  filter: uniqueBrokers.length > 1 ? { opts: uniqueBrokers, val: filterBroker, set: setFilterBroker } : undefined },
+                  { h: "Ticker",         l: true  },
+                  { h: "Trade Date",     l: false },
+                  { h: "Settlement",     l: false },
+                  { h: "Units",          l: false },
+                  { h: "FX Rate",        l: false },
+                  { h: "CCY",            l: false, filter: uniqueCcys.length > 1 ? { opts: uniqueCcys, val: filterCcy, set: setFilterCcy } : undefined },
+                  { h: "Gross Proceeds", l: false },
+                  { h: "Cost (ACB)",     l: false },
+                  { h: "Adjustments",    l: false },
+                  { h: "Realized G/L",  l: false, hint: true },
+                  { h: "Bank Account",   l: false },
+                  { h: "TB Account",     l: false },
+                ]) as Array<{ h: string; l: boolean; hint?: boolean; filter?: { opts: string[]; val: string; set: (v: string) => void } }>).map(({ h, l, hint, filter }) => (
+                  <th key={h} className={`px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${l ? "text-left" : "text-right"}`}>
+                    {hint ? (
+                      <span className="flex flex-col items-end gap-0.5">
+                        <span>Realized G/L</span>
+                        <span className="text-[10px] font-medium normal-case tracking-normal text-foreground">+ gain &nbsp; (loss)</span>
+                      </span>
+                    ) : filter ? (
+                      <ColFilter label={h} options={filter.opts} value={filter.val} onChange={filter.set} />
+                    ) : h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {disposals.length === 0 && (
+                <tr><td colSpan={14} className="px-3 py-4 text-center text-base text-muted-foreground">No disposals in this period</td></tr>
+              )}
+              {disposals.map((d, i) => {
+                const ov = rOvr[i] ?? {};
+                const EC = "h-6 text-base px-1.5 border border-border rounded-[5px] bg-background focus:outline-none w-full";
+                const gp  = ov.grossProceeds ?? d.grossProceeds;
+                const co  = ov.costOut ?? d.costOut;
+                const adj = adjustments[i] ?? 0;
+                const gl  = gp - co - adj;
+                const defaultBank = d.currency === "USD" ? "1110" : "1100";
+                const defaultTb   = gl >= 0 ? "4800" : "4900";
+                return (
+                  <tr key={`${d.ticker}-${d.date}-${i}`} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
+                    <td className="px-3 py-1.5 font-medium min-w-[220px]">{d.security}</td>
+                    <td className="px-3 py-1.5 whitespace-nowrap">
+                      <span className={multiBrokerTickers.has(d.ticker) ? "text-amber-700" : ""}>
+                        {brokerLabel(d.sourceId)}
+                      </span>
+                    </td>
+                    <td className="px-3 py-1.5 font-mono">{d.ticker}</td>
+                    <td className="px-3 py-1.5 whitespace-nowrap text-right">
+                      {editMode ? <input type="date" value={ov.date ?? d.date} onChange={e => rSet(i, { date: e.target.value })} className={`${EC} w-28`} /> : fmtDate(d.date)}
+                    </td>
+                    <td className="px-3 py-1.5 whitespace-nowrap text-right tabular-nums">
+                      {d.settlementDate && d.settlementDate !== d.date ? fmtDate(d.settlementDate) : "—"}
+                    </td>
+                    <td className="px-3 py-1.5 text-right tabular-nums">
+                      {editMode ? <input type="number" value={ov.units ?? d.units} onChange={e => rSet(i, { units: parseFloat(e.target.value)||0 })} className={`${EC} w-24 text-right`} /> : fmtUnits(d.units)}
+                    </td>
+                    <td className="px-3 py-1.5 text-right tabular-nums font-mono">
+                      {d.fxRate !== 1 ? d.fxRate.toFixed(4) : "—"}
+                    </td>
+                    <td className="px-3 py-1.5 text-right font-mono">{d.currency}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums">
+                      {editMode ? <input type="number" value={ov.grossProceeds ?? d.grossProceeds} onChange={e => rSet(i, { grossProceeds: parseFloat(e.target.value)||0 })} className={`${EC} w-28 text-right`} /> : fmtCAD(gp)}
+                    </td>
+                    <td className="px-3 py-1.5 text-right tabular-nums">
+                      {editMode ? <input type="number" value={ov.costOut ?? d.costOut} onChange={e => rSet(i, { costOut: parseFloat(e.target.value)||0 })} className={`${EC} w-28 text-right`} /> : fmtCAD(co)}
+                    </td>
+                    <td className="px-3 py-1 text-right">
+                      <input
+                        type="number"
+                        value={adj === 0 ? "" : adj}
+                        placeholder="0.00"
+                        onChange={e => setAdjustments(p => ({ ...p, [i]: parseFloat(e.target.value) || 0 }))}
+                        className={`${EC} w-20 text-right`}
+                      />
+                    </td>
+                    <td className="px-3 py-1.5 text-right">{fmtGL(gl)}</td>
+                    <td className="px-3 py-1 w-44">
+                      <div className="relative">
+                        <select value={bankAccts[i] ?? defaultBank} onChange={e => setBankAccts(p => ({ ...p, [i]: e.target.value }))} className={`${SC} pr-7`}>
+                          <option value="">— Select —</option>
+                          {CHART_OF_ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.code} · {a.name}</option>)}
+                        </select>
+                        <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                    </td>
+                    <td className="px-3 py-1 w-44">
+                      <div className="relative">
+                        <select value={realizedAccts[i] ?? defaultTb} onChange={e => setRealizedAccts(p => ({ ...p, [i]: e.target.value }))} className={`${SC} pr-7`}>
+                          <option value="">— Select —</option>
+                          {CHART_OF_ACCOUNTS.map(a => <option key={a.code} value={a.code}>{a.code} · {a.name}</option>)}
+                        </select>
+                        <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="bg-muted/30 border-t border-border font-semibold">
+                <td className="px-3 py-2 text-base" colSpan={11}>Total</td>
+                <td className="px-3 py-2 text-right text-base">{fmtGL(totGL)}</td>
+                <td className="px-3 py-2" colSpan={2} />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </TableWrap>
+
+      <TableWrap title="Unrealized Gain / Loss">
         <table className="w-full text-base">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-background">
             <tr className="bg-muted/30 border-b border-border">
-              {["Security","Ticker","Date","Units","Gross Proceeds","Cost (ACB)","Realized G/L","TB Account"].map((h, i) => (
-                <th key={h} className={`px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 3 ? "text-left" : "text-right"}`}>
-                  {h === "Realized G/L" ? (
+              {([
+                { label: "Security",          align: "left",  filter: { opts: uniqueUnrTickers, val: filterUnrSecurity, set: setFilterUnrSecurity } },
+                { label: "Ticker",            align: "left"  },
+                { label: "Year End Date",      align: "right" },
+                { label: "Units",             align: "right" },
+                { label: "Fair Market Value", align: "right" },
+                { label: "Book Value",        align: "right" },
+                { label: "Unrealized G/L",    align: "right", hint: true },
+                { label: "Bank Account",      align: "right" },
+                { label: "TB Account",        align: "right" },
+              ] as Array<{ label: string; align: string; hint?: boolean; filter?: { opts: string[]; val: string; set: (v: string) => void } }>).map(h => (
+                <th key={h.label} className={`px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-${h.align}`}>
+                  {h.hint ? (
                     <span className="flex flex-col items-end gap-0.5">
-                      <span>Realized G/L</span>
-                      <span className="text-base font-medium normal-case tracking-normal text-foreground">+ gain &nbsp; (loss)</span>
+                      <span>{h.label}</span>
+                      <span className="text-[10px] font-medium normal-case tracking-normal text-foreground">+ gain &nbsp; (loss)</span>
                     </span>
-                  ) : h}
+                  ) : h.filter ? (
+                    <ColFilter label={h.label} options={h.filter.opts} value={h.filter.val} onChange={h.filter.set} />
+                  ) : h.label}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {disposals.length === 0 && (
-              <tr><td colSpan={8} className="px-3 py-4 text-center text-base text-muted-foreground">No disposals in this period</td></tr>
-            )}
-            {disposals.map((d, i) => (
-              <tr key={`${d.ticker}-${d.date}-${i}`} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
-                <td className="px-3 py-1.5 font-medium">{d.security}</td>
-                <td className="px-3 py-1.5 font-mono">{d.ticker}</td>
-                <td className="px-3 py-1.5 whitespace-nowrap">{fmtDate(d.date)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmt2(d.units)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmt2(d.proceeds)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmt2(d.costOut)}</td>
-                <td className="px-3 py-1.5 text-right">{fmtGL(d.gl)}</td>
+            {filteredSchedules.map((s, i) => {
+              const uv = uOvr[s.key] ?? {};
+              const EC = "h-6 text-base px-1.5 border border-border rounded-[5px] bg-background focus:outline-none w-full";
+              return (
+              <tr key={s.key} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
+                <td className="px-3 py-1.5 font-medium">{s.security}</td>
+                <td className="px-3 py-1.5 font-mono">{s.ticker}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground whitespace-nowrap">{yearEndStr}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">
+                  {editMode ? <input type="number" value={uv.units ?? Math.max(0, s.closingUnits)} onChange={e => uSet(s.key, { units: parseFloat(e.target.value)||0 })} className={`${EC} w-24 text-right`} /> : fmtUnits(Math.max(0, s.closingUnits))}
+                </td>
+                <td className="px-3 py-1.5 text-right tabular-nums font-medium">
+                  {editMode ? <input type="number" value={uv.fmvCAD ?? s.fmvCAD} onChange={e => uSet(s.key, { fmvCAD: parseFloat(e.target.value)||0 })} className={`${EC} w-28 text-right`} /> : fmtCAD(s.fmvCAD)}
+                </td>
+                <td className="px-3 py-1.5 text-right tabular-nums">
+                  {editMode ? <input type="number" value={uv.closingCostCAD ?? s.closingCostCAD} onChange={e => uSet(s.key, { closingCostCAD: parseFloat(e.target.value)||0 })} className={`${EC} w-28 text-right`} /> : fmtCAD(s.closingCostCAD)}
+                </td>
+                <td className="px-3 py-1.5 text-right tabular-nums">
+                  {editMode ? <input type="number" value={uv.unrealizedGL ?? s.unrealizedGL} onChange={e => uSet(s.key, { unrealizedGL: parseFloat(e.target.value)||0 })} className={`${EC} w-28 text-right`} /> : fmtGL(s.unrealizedGL)}
+                </td>
                 <td className="px-3 py-1 w-44">
                   <div className="relative">
                     <select
-                      value={realizedAccts[i] ?? (d.gl >= 0 ? "4800" : "4900")}
-                      onChange={e => setRealizedAccts(p => ({ ...p, [i]: e.target.value }))}
+                      value={unrealizedBankAccts[s.key] ?? (s.currency === "USD" ? "1110" : "1100")}
+                      onChange={e => setUnrealizedBankAccts(p => ({ ...p, [s.key]: e.target.value }))}
                       className={`${SC} pr-7`}
                     >
                       <option value="">— Select —</option>
@@ -1174,54 +1412,6 @@ function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; 
                     <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   </div>
                 </td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="bg-muted/30 border-t border-border font-semibold">
-              <td className="px-3 py-2 text-base" colSpan={6}>Total</td>
-              <td className="px-3 py-2 text-right text-base">{fmtGL(totGL)}</td>
-              <td className="px-3 py-2" />
-            </tr>
-          </tfoot>
-        </table>
-      </TableWrap>
-
-      <TableWrap title="Unrealized Gain / Loss">
-        <table className="w-full text-base">
-          <thead>
-            <tr className="bg-muted/30 border-b border-border">
-              {[
-                { label: "Security",          align: "left"  },
-                { label: "Ticker",            align: "left"  },
-                { label: "Date",  align: "right" },
-                { label: "Units", align: "right" },
-                { label: "Fair Market Value", align: "right" },
-                { label: "Book Value",        align: "right" },
-                { label: "Unrealized G/L",    align: "right", hint: true },
-                { label: "TB Account",        align: "right" },
-              ].map(h => (
-                <th key={h.label} className={`px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-${h.align}`}>
-                  {(h as { hint?: boolean }).hint ? (
-                    <span className="flex flex-col items-end gap-0.5">
-                      <span>{h.label}</span>
-                      <span className="text-base font-medium normal-case tracking-normal text-foreground">+ gain &nbsp; (loss)</span>
-                    </span>
-                  ) : h.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {schedules.map((s, i) => (
-              <tr key={s.key} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
-                <td className="px-3 py-1.5 font-medium">{s.security}</td>
-                <td className="px-3 py-1.5 font-mono">{s.ticker}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground whitespace-nowrap">{yearEndStr}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmtUnits(s.closingUnits)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums font-medium">{fmtCAD(s.fmvCAD)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmtCAD(s.closingCostCAD)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmtGL(s.unrealizedGL)}</td>
                 <td className="px-3 py-1 w-44">
                   <div className="relative">
                     <select
@@ -1236,16 +1426,16 @@ function GainLossPanel({ schedules, yearEnd }: { schedules: SecuritySchedule[]; 
                   </div>
                 </td>
               </tr>
-            ))}
+            );})}
           </tbody>
           <tfoot>
             <tr className="bg-muted/30 border-t border-border font-semibold">
               <td className="px-3 py-2 text-base" colSpan={3}>Total</td>
-              <td className="px-3 py-2 text-right tabular-nums text-base">{fmtNum(schedules.reduce((a, s) => a + s.closingUnits, 0), 4)}</td>
-              <td className="px-3 py-2 text-right tabular-nums text-base font-bold">{fmtCAD(schedules.reduce((a, s) => a + s.fmvCAD, 0))}</td>
-              <td className="px-3 py-2 text-right tabular-nums text-base font-bold">{fmtCAD(schedules.reduce((a, s) => a + s.closingCostCAD, 0))}</td>
+              <td className="px-3 py-2 text-right tabular-nums text-base">{fmtNum(filteredSchedules.reduce((a, s) => a + s.closingUnits, 0), 4)}</td>
+              <td className="px-3 py-2 text-right tabular-nums text-base font-bold">{fmtCAD(filteredSchedules.reduce((a, s) => a + s.fmvCAD, 0))}</td>
+              <td className="px-3 py-2 text-right tabular-nums text-base font-bold">{fmtCAD(filteredSchedules.reduce((a, s) => a + s.closingCostCAD, 0))}</td>
               <td className="px-3 py-2 text-right tabular-nums text-base">{fmtGL(totUnrealized)}</td>
-              <td className="px-3 py-2" />
+              <td className="px-3 py-2" colSpan={2} />
             </tr>
           </tfoot>
         </table>
@@ -1359,10 +1549,13 @@ function FXPanel({ fxSchedule }: { fxSchedule: { rates: import("@/lib/luka/types
 }
 
 // ─── Tab 5: Income & Expenses ─────────────────────────────────────────────────
-function IncomePanel({ incomeMatrix }: { incomeMatrix: ReturnType<typeof buildIncomeMatrix> }) {
+function IncomePanel({ incomeMatrix, editMode }: { incomeMatrix: ReturnType<typeof buildIncomeMatrix>; editMode?: boolean }) {
   const { incomeTxRows, expenseTxRows, incomeTotal, expenseTotal } = incomeMatrix;
   const [incomeAccts,  setIncomeAccts]  = useState<Record<string, string>>({});
   const [expenseAccts, setExpenseAccts] = useState<Record<string, string>>({});
+  const [incOvr, setIncOvr] = useState<Record<string, { date?: string; description?: string; amountCAD?: number }>>({});
+  const [expOvr, setExpOvr] = useState<Record<string, { date?: string; description?: string; amountCAD?: number }>>({});
+  const EC = "h-6 text-base px-1.5 border border-border rounded-[5px] bg-background focus:outline-none w-full";
 
   const acctDropdown = (
     row: import("@/lib/luka/compute").IncomeTxRow,
@@ -1399,20 +1592,28 @@ function IncomePanel({ incomeMatrix }: { incomeMatrix: ReturnType<typeof buildIn
       {/* ── Income ── */}
       <TableWrap title="Income">
         <table className="w-full text-base">
-          <thead>{headerRow(["Date", "Account #", "Entry / Description", "CCY", "Amount (CAD)"])}</thead>
+          <thead className="sticky top-0 z-10 bg-background">{headerRow(["Date", "Account #", "Entry / Description", "CCY", "Amount (CAD)"])}</thead>
           <tbody>
             {incomeTxRows.length === 0 && (
               <tr><td colSpan={5} className="px-3 py-4 text-center text-muted-foreground">No income transactions</td></tr>
             )}
-            {incomeTxRows.map((row, i) => (
+            {incomeTxRows.map((row, i) => {
+              const ov = incOvr[row.id] ?? {};
+              return (
               <tr key={row.id} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
-                <td className="px-3 py-1.5 whitespace-nowrap tabular-nums text-muted-foreground">{fmtDate(row.date)}</td>
+                <td className="px-3 py-1.5 whitespace-nowrap tabular-nums text-muted-foreground">
+                  {editMode ? <input type="date" value={ov.date ?? row.date} onChange={e => setIncOvr(p => ({ ...p, [row.id]: { ...p[row.id], date: e.target.value } }))} className={`${EC} w-28`} /> : fmtDate(row.date)}
+                </td>
                 {acctDropdown(row, incomeAccts, setIncomeAccts)}
-                <td className="px-3 py-1.5 font-medium">{row.description}</td>
+                <td className="px-3 py-1.5 font-medium">
+                  {editMode ? <input value={ov.description ?? row.description} onChange={e => setIncOvr(p => ({ ...p, [row.id]: { ...p[row.id], description: e.target.value } }))} className={`${EC}`} /> : row.description}
+                </td>
                 <td className="px-3 py-1.5">{row.currency}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmtGL(row.amountCAD)}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">
+                  {editMode ? <input type="number" value={ov.amountCAD ?? row.amountCAD} onChange={e => setIncOvr(p => ({ ...p, [row.id]: { ...p[row.id], amountCAD: parseFloat(e.target.value)||0 } }))} className={`${EC} w-28 text-right`} /> : fmtGL(row.amountCAD)}
+                </td>
               </tr>
-            ))}
+            );})}
           </tbody>
           <tfoot>
             <tr className="bg-muted/30 border-t border-border font-semibold">
@@ -1426,19 +1627,27 @@ function IncomePanel({ incomeMatrix }: { incomeMatrix: ReturnType<typeof buildIn
       {/* ── Expenses ── */}
       <TableWrap title="Expenses">
         <table className="w-full text-base">
-          <thead>{headerRow(["Date", "Account #", "Description", "Amount (CAD)"])}</thead>
+          <thead className="sticky top-0 z-10 bg-background">{headerRow(["Date", "Account #", "Description", "Amount (CAD)"])}</thead>
           <tbody>
             {expenseTxRows.length === 0 && (
               <tr><td colSpan={4} className="px-3 py-4 text-center text-muted-foreground">No expense transactions</td></tr>
             )}
-            {expenseTxRows.map((row, i) => (
+            {expenseTxRows.map((row, i) => {
+              const ov = expOvr[row.id] ?? {};
+              return (
               <tr key={row.id} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
-                <td className="px-3 py-1.5 whitespace-nowrap tabular-nums text-muted-foreground">{fmtDate(row.date)}</td>
+                <td className="px-3 py-1.5 whitespace-nowrap tabular-nums text-muted-foreground">
+                  {editMode ? <input type="date" value={ov.date ?? row.date} onChange={e => setExpOvr(p => ({ ...p, [row.id]: { ...p[row.id], date: e.target.value } }))} className={`${EC} w-28`} /> : fmtDate(row.date)}
+                </td>
                 {acctDropdown(row, expenseAccts, setExpenseAccts)}
-                <td className="px-3 py-1.5 font-medium">{row.description}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmtGL(row.amountCAD)}</td>
+                <td className="px-3 py-1.5 font-medium">
+                  {editMode ? <input value={ov.description ?? row.description} onChange={e => setExpOvr(p => ({ ...p, [row.id]: { ...p[row.id], description: e.target.value } }))} className={`${EC}`} /> : row.description}
+                </td>
+                <td className="px-3 py-1.5 text-right tabular-nums">
+                  {editMode ? <input type="number" value={ov.amountCAD ?? row.amountCAD} onChange={e => setExpOvr(p => ({ ...p, [row.id]: { ...p[row.id], amountCAD: parseFloat(e.target.value)||0 } }))} className={`${EC} w-28 text-right`} /> : fmtGL(row.amountCAD)}
+                </td>
               </tr>
-            ))}
+            );})}
           </tbody>
           <tfoot>
             <tr className="bg-muted/30 border-t border-border font-semibold">
@@ -1463,12 +1672,13 @@ function SectionHead({ title }: { title: string }) {
 }
 
 function BrokerReconPanel({
-  invRecon, schedules, effectiveTxns, yearEnd: yearEndProp,
+  invRecon, schedules, effectiveTxns, yearEnd: yearEndProp, editMode,
 }: {
   invRecon: ReturnType<typeof buildInvestmentRecon>;
   schedules: SecuritySchedule[];
   effectiveTxns: ReturnType<typeof buildIncomeMatrix> extends never ? never : import("@/lib/luka/types").Transaction[];
   yearEnd?: string;
+  editMode?: boolean;
 }) {
   const settings  = useStore(s => s.settings);
   const yearEnd   = yearEndProp || (settings.fiscalYearEnd ? fmtDate(settings.fiscalYearEnd.slice(0, 10)) : "Dec 31, 2024");
@@ -2107,10 +2317,11 @@ function AddJECard({ onSave, onCancel }: {
   );
 }
 
-function AJEsPanel({ ajes, ajeQueue, clearAjeQueue }: {
+function AJEsPanel({ ajes, ajeQueue, clearAjeQueue, editMode }: {
   ajes: AJE[];
   ajeQueue: LocalInvJE[];
   clearAjeQueue: () => void;
+  editMode?: boolean;
 }) {
   const [localJEs, setLocalJEs] = useState<LocalInvJE[]>(() => ajes.map((a, i) => makeLocalJE(a, i)));
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
@@ -2519,7 +2730,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
 
   // ── Edit/Add mode helpers ─────────────────────────────────────────────────
   const discardMode = () => { setInvMode("view"); setTxEdits({}); setPendingTxns([]); };
-  const canSubmitEdit = Object.keys(txEdits).length > 0;
+  const canSubmitEdit = true; // edit mode covers all panels, not just txEdits
   const canSubmitAdd = pendingTxns.length > 0 && pendingTxns.every(r => INV_ADD_REQUIRED.every(f => !invAddRowMissing(r, f)));
   const triggerRerun = () => { setIsRerunning(true); setTimeout(() => setIsRerunning(false), 2600); };
 
@@ -2670,7 +2881,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
               );
             })()}
             <button
-              onClick={() => { setInvMode("edit"); setActiveTab("transactions"); setTxEdits({}); }}
+              onClick={() => { setInvMode("edit"); setTxEdits({}); }}
               className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-base transition-all ${
                 invMode === "edit"
                   ? "font-semibold bg-background text-primary shadow-sm border border-primary/30"
@@ -2679,16 +2890,18 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
             >
               <Pencil className="w-3 h-3" /> Edit
             </button>
-            <button
-              onClick={() => { setInvMode("add"); setActiveTab("transactions"); setPendingTxns([]); }}
-              className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-base transition-all ${
-                invMode === "add"
-                  ? "font-semibold bg-background text-primary shadow-sm border border-primary/30"
-                  : "font-medium text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Plus className="w-3 h-3" /> Add
-            </button>
+            {activeTab === "transactions" && (
+              <button
+                onClick={() => { setInvMode("add"); setActiveTab("transactions"); setPendingTxns([]); }}
+                className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-base transition-all ${
+                  invMode === "add"
+                    ? "font-semibold bg-background text-primary shadow-sm border border-primary/30"
+                    : "font-medium text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Plus className="w-3 h-3" /> Add
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -2869,19 +3082,19 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
           />
         </div>
         <div className={activeTab === "wac" ? "" : "hidden"}>
-          <WACPanel schedules={schedules} yearEnd={dateStr} />
+          <WACPanel schedules={schedules} yearEnd={dateStr} editMode={invMode === "edit"} />
         </div>
         <div className={activeTab === "gainloss" ? "" : "hidden"}>
-          <GainLossPanel schedules={schedules} yearEnd={dateStr} />
+          <GainLossPanel schedules={schedules} yearEnd={dateStr} editMode={invMode === "edit"} allInvSources={allInvSources} />
         </div>
         <div className={activeTab === "income" ? "" : "hidden"}>
-          <IncomePanel incomeMatrix={incomeMatrix} />
+          <IncomePanel incomeMatrix={incomeMatrix} editMode={invMode === "edit"} />
         </div>
         <div className={activeTab === "brokerrecon" ? "" : "hidden"}>
-          <BrokerReconPanel invRecon={invRecon} schedules={schedules} effectiveTxns={effectiveTxns} yearEnd={dateStr} />
+          <BrokerReconPanel invRecon={invRecon} schedules={schedules} effectiveTxns={effectiveTxns} yearEnd={dateStr} editMode={invMode === "edit"} />
         </div>
         <div className={activeTab === "ajes" ? "" : "hidden"}>
-          <AJEsPanel ajes={ajes} ajeQueue={ajeQueue} clearAjeQueue={clearAjeQueue} />
+          <AJEsPanel ajes={ajes} ajeQueue={ajeQueue} clearAjeQueue={clearAjeQueue} editMode={invMode === "edit"} />
         </div>
       </div>
 

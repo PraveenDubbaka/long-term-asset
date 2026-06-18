@@ -16,13 +16,20 @@ export type WacRow = {
   unitsIn: number;
   unitsOut: number;
   price: number;
-  costIn: number; // CAD
-  costOut: number; // CAD
+  costIn: number; // CAD — purchases/additions this row
+  costOut: number; // CAD — disposal cost basis this row
+  openingCost?: number;  // CAD — cumulative cost before this row's activity (set by roll-forward)
+  openingUnits?: number; // cumulative units before this row's activity (set by roll-forward)
   cumUnits: number;
   cumCost: number; // CAD
   wac: number; // CAD per unit
   realizedGL?: number;
   feesCAD?: number;   // transaction costs deducted from gross proceeds (Sale rows only)
+  settlementDate?: string;
+  sourceId?: string;
+  currency?: string;
+  fxRate?: number;
+  grossProceedsCAD?: number; // pre-fee gross proceeds in CAD (Sale rows only)
   notes?: string;
 };
 
@@ -112,7 +119,7 @@ export function compute(
         date: tx.date, type: "Purchase",
         unitsIn: tx.units, unitsOut: 0,
         price: tx.price, costIn: costCAD, costOut: 0,
-        cumUnits: 0, cumCost: 0, wac: 0,
+        openingCost: 0, openingUnits: 0, cumUnits: 0, cumCost: 0, wac: 0,
         notes: tx.notes,
       });
     } else if (tx.type === "Sale") {
@@ -122,9 +129,14 @@ export function compute(
         date: tx.date, type: "Sale",
         unitsIn: 0, unitsOut: Math.abs(tx.units),
         price: tx.price, costIn: 0, costOut: 0, // costOut filled below
-        cumUnits: 0, cumCost: 0, wac: 0,
+        openingCost: 0, openingUnits: 0, cumUnits: 0, cumCost: 0, wac: 0,
         realizedGL: proceedsCAD, // will subtract WAC cost below
         feesCAD: feesCAD > 0 ? feesCAD : undefined,
+        settlementDate: tx.settlementDate,
+        sourceId: tx.sourceId,
+        currency: ccy,
+        fxRate: fx !== 1 ? fx : undefined,
+        grossProceedsCAD: tx.gross * fx,
         notes: tx.notes,
       });
     } else if (tx.type === "Reinvested Dividend") {
@@ -133,7 +145,7 @@ export function compute(
         date: tx.date, type: "Reinvested Div",
         unitsIn: tx.units, unitsOut: 0,
         price: tx.price, costIn: costCAD, costOut: 0,
-        cumUnits: 0, cumCost: 0, wac: 0,
+        openingCost: 0, openingUnits: 0, cumUnits: 0, cumCost: 0, wac: 0,
         notes: "DRIP increases units & cost",
       });
     } else if (tx.type === "Return of Capital") {
@@ -143,8 +155,39 @@ export function compute(
         date: tx.date, type: "Return of Capital",
         unitsIn: 0, unitsOut: 0,
         price: 0, costIn: -rocAmt * fx, costOut: 0,
-        cumUnits: 0, cumCost: 0, wac: 0,
+        openingCost: 0, openingUnits: 0, cumUnits: 0, cumCost: 0, wac: 0,
         notes: `ROC reduces ACB by ${(rocAmt * fx).toFixed(2)} CAD`,
+      });
+    } else if (tx.type === "Opening") {
+      const costCAD = tx.gross * fx;
+      // Merge into existing Opening Balance row when multiple accounts hold the same security
+      const existing = b.rows.find(r => r.type === "Opening Balance");
+      if (existing) {
+        existing.unitsIn += tx.units;
+        existing.costIn  += costCAD;
+        existing.price    = existing.unitsIn > 0 ? existing.costIn / existing.unitsIn : 0;
+      } else {
+        b.rows.push({
+          date: tx.date, type: "Opening Balance",
+          unitsIn: tx.units, unitsOut: 0,
+          price: tx.price, costIn: costCAD, costOut: 0,
+          openingCost: 0, openingUnits: 0, cumUnits: 0, cumCost: 0, wac: 0,
+          notes: "Opening position per statement",
+        });
+      }
+    }
+  }
+
+  // Ensure every security starts with an Opening Balance row (nil for new positions)
+  for (const [, b] of buckets) {
+    if (!b.rows.some(r => r.type === "Opening Balance")) {
+      b.rows.unshift({
+        date: "",
+        type: "Opening Balance",
+        unitsIn: 0, unitsOut: 0,
+        price: 0, costIn: 0, costOut: 0,
+        openingCost: 0, openingUnits: 0, cumUnits: 0, cumCost: 0, wac: 0,
+        notes: "Nil opening — position opened during the period",
       });
     }
   }
@@ -155,6 +198,8 @@ export function compute(
     b.rows.sort((a, b) => a.date.localeCompare(b.date));
     let units = 0, cost = 0, realized = 0;
     for (const r of b.rows) {
+      r.openingCost  = cost;
+      r.openingUnits = units;
       if (r.unitsIn > 0) {
         units += r.unitsIn; cost += r.costIn;
       } else if (r.unitsOut > 0) {

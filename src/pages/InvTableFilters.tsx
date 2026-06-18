@@ -94,12 +94,13 @@ export function ColFilter({
 
 // ─── Text-search filter ───────────────────────────────────────────────────────
 export function SearchFilter({
-  label, value, onChange, placeholder = 'Search…',
+  label, value, onChange, placeholder = 'Search…', options,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
+  options?: { label: string; value: string }[];
 }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -109,7 +110,7 @@ export function SearchFilter({
   useEffect(() => {
     if (open && btnRef.current) {
       const r = btnRef.current.getBoundingClientRect();
-      const dropW = 200;
+      const dropW = options ? 260 : 200;
       const left = r.left + dropW > window.innerWidth - 8 ? r.right - dropW : r.left;
       setPos({ top: r.bottom + 6, left: Math.max(8, left) });
     }
@@ -117,13 +118,21 @@ export function SearchFilter({
 
   const title = value ? `Filtering: "${value}"` : 'Filter';
 
+  const filteredOptions = options
+    ? options.filter(o =>
+        !value ||
+        o.label.toLowerCase().includes(value.toLowerCase()) ||
+        o.value.toLowerCase().includes(value.toLowerCase())
+      )
+    : [];
+
   const popup = open
     ? ReactDOM.createPortal(
         <>
           <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)} />
           <div
             style={{ position: 'fixed', top: pos.top, left: pos.left }}
-            className="z-[70] bg-card border border-border rounded-lg shadow-[0_4px_24px_hsl(213_40%_20%/0.18)] p-2.5 min-w-[180px]"
+            className={`z-[70] bg-card border border-border rounded-lg shadow-[0_4px_24px_hsl(213_40%_20%/0.18)] p-2.5 ${options ? 'min-w-[260px]' : 'min-w-[180px]'}`}
             onClick={(e) => e.stopPropagation()}
           >
             <input
@@ -134,6 +143,23 @@ export function SearchFilter({
               className={INPUT_CLS}
               autoFocus
             />
+            {options && (
+              <div className="mt-1.5 max-h-52 overflow-y-auto">
+                {filteredOptions.length === 0 ? (
+                  <p className="text-xs text-muted-foreground px-2 py-1.5">No matches</p>
+                ) : (
+                  filteredOptions.map(o => (
+                    <button
+                      key={o.value}
+                      onClick={() => { onChange(o.value); setOpen(false); }}
+                      className={`w-full text-left text-xs px-2 py-1.5 rounded-md hover:bg-primary/10 transition-colors flex items-center gap-2 ${value === o.value ? 'bg-primary/10 text-primary font-medium' : 'text-foreground'}`}
+                    >
+                      {o.label}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
             {value && (
               <button
                 onClick={() => { onChange(''); setOpen(false); }}
