@@ -3366,16 +3366,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                         <div><p className="text-base font-medium text-foreground">Years of TB detected</p><p className="text-base text-muted-foreground">{invTBAnalysis.years}</p></div>
                                       </div>
                                       <div className="flex items-start gap-3">
-                                        <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-100 text-green-700 text-base font-bold shrink-0">2</span>
-                                        <div>
-                                          <p className="text-base font-medium text-foreground">Investment accounts ({invTBAnalysis.investmentAccounts.length})</p>
-                                          <div className="flex flex-wrap gap-2 mt-2">
-                                            {invTBAnalysis.investmentAccounts.map(a => <span key={a} className="inline-flex items-center px-2.5 py-1.5 rounded-[6px] text-base font-medium bg-primary/[0.08] text-primary border border-primary/15">{a}</span>)}
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <div className="flex items-start gap-3">
-                                        <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-base font-bold shrink-0">3</span>
+                                        <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-base font-bold shrink-0">2</span>
                                         <div>
                                           <p className="text-base font-medium text-foreground">Bank accounts ({invTBAnalysis.bankAccounts.length})</p>
                                           <div className="flex flex-wrap gap-2 mt-2">
@@ -3384,7 +3375,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                         </div>
                                       </div>
                                       <div className="flex items-start gap-3">
-                                        <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-700 text-base font-bold shrink-0">4</span>
+                                        <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-700 text-base font-bold shrink-0">3</span>
                                         <div><p className="text-base font-medium text-foreground">Recording method</p><p className="text-base text-muted-foreground">{invTBAnalysis.recordingMethod}</p></div>
                                       </div>
                                     </div>
@@ -3648,6 +3639,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                           setInvExtracting(false);
                                         };
                                         const validFiles = invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
+                                        const invInputMode: "upload" | "plaid" | null =
+                                          invUploadFiles.length > 0 ? "upload"
+                                          : (invPlaidOpen || invSchedSrcLabel?.startsWith("Plaid")) ? "plaid"
+                                          : null;
                                         return (
                                           <>
                                             {/* ── AI-style upload section ── */}
@@ -3658,7 +3653,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
                                               <div className="relative z-10 flex items-stretch gap-0 px-4 py-4 pt-4">
                                                 {/* Upload card */}
-                                                <div
+                                                {invInputMode !== "plaid" && <div
                                                   className="flex-1 flex flex-col items-center gap-2.5 p-4 rounded-[10px] border border-dashed border-primary/25 bg-primary/[0.03] cursor-pointer hover:bg-primary/[0.07] hover:border-primary/45 transition-all group text-center"
                                                   onClick={() => {
                                                     const inp = document.createElement("input");
@@ -3682,17 +3677,17 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   <span className="inline-flex items-center gap-1 text-base font-medium text-primary group-hover:underline">
                                                     Click to browse or drag &amp; drop
                                                   </span>
-                                                </div>
+                                                </div>}
 
-                                                {/* OR */}
-                                                <div className="flex flex-col items-center justify-center px-3 gap-2">
+                                                {/* OR — hidden once a method is chosen */}
+                                                {invInputMode === null && <div className="flex flex-col items-center justify-center px-3 gap-2">
                                                   <div className="w-px flex-1 bg-gradient-to-b from-transparent via-border to-transparent" />
                                                   <span className="text-base font-bold text-muted-foreground/50">or</span>
                                                   <div className="w-px flex-1 bg-gradient-to-b from-transparent via-border to-transparent" />
-                                                </div>
+                                                </div>}
 
-                                                {/* Plaid card — connected state — or inline Plaid flow */}
-                                                {invSchedSrcLabel?.startsWith("Plaid") ? (
+                                                {/* Plaid card — hidden once upload is chosen */}
+                                                {invInputMode !== "upload" && (invSchedSrcLabel?.startsWith("Plaid") ? (
                                                   /* ── Connected state ── */
                                                   <div className="flex-1 flex flex-col rounded-[10px] border border-green-200 bg-green-50 overflow-hidden">
                                                     {/* Top: institution + check */}
@@ -3949,7 +3944,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       in the toolbar below.
                                                     </p>
                                                   </div>
-                                                )}
+                                                ))}
                                               </div>
                                             </div>
 

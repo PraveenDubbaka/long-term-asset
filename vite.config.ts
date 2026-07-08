@@ -11,8 +11,8 @@ export default defineConfig({
     },
   },
   server: {
-    host: '0.0.0.0',
-    port: 5173,
+    host: '127.0.0.1',
+    port: parseInt(process.env.PORT ?? '5173'),
   },
   optimizeDeps: {
     include: ['xlsx']
