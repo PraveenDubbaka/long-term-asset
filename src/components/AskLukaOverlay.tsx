@@ -4270,24 +4270,32 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
                                             {/* ── Continuity status (no manual button — extraction is automatic) ── */}
                                             {validFiles.length > 0 && invReviewRows.length === 0 && !invExtracting && !(invMissingMonthsPrompt !== null && invMissingMonthsPrompt.length > 0) && (
-                                              <div className="pt-1">
-                                                {invContinuityOk ? (
-                                                  <div className="space-y-0.5">
-                                                    <div className="flex items-center gap-2 text-base text-green-700">
-                                                      <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
-                                                      <span><strong>{validFiles.length}</strong> statement{validFiles.length !== 1 ? "s" : ""} — all months in continuity ✓</span>
+                                              <div className="pt-1 flex items-center justify-between gap-3">
+                                                <div>
+                                                  {invContinuityOk ? (
+                                                    <div className="space-y-0.5">
+                                                      <div className="flex items-center gap-2 text-base text-green-700">
+                                                        <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+                                                        <span><strong>{validFiles.length}</strong> statement{validFiles.length !== 1 ? "s" : ""} — all months in continuity ✓</span>
+                                                      </div>
+                                                      {(() => {
+                                                        const detected = [...new Set(validFiles.map(f => {
+                                                          for (const [pat, label] of BROKER_PATTERNS) { if (pat.test(f.name)) return label; }
+                                                          return null;
+                                                        }).filter(Boolean))];
+                                                        return detected.length > 0 ? <p className="text-base text-muted-foreground pl-5">Broker: {detected[0]} · Each broker is processed with its own adjusting entry</p> : null;
+                                                      })()}
                                                     </div>
-                                                    {(() => {
-                                                      const detected = [...new Set(validFiles.map(f => {
-                                                        for (const [pat, label] of BROKER_PATTERNS) { if (pat.test(f.name)) return label; }
-                                                        return null;
-                                                      }).filter(Boolean))];
-                                                      return detected.length > 0 ? <p className="text-base text-muted-foreground pl-5">Broker: {detected[0]} · Each broker is processed with its own adjusting entry</p> : null;
-                                                    })()}
-                                                  </div>
-                                                ) : (
-                                                  <span className="text-base text-muted-foreground">{validFiles.length} statement{validFiles.length !== 1 ? "s" : ""} added</span>
-                                                )}
+                                                  ) : (
+                                                    <span className="text-base text-muted-foreground">{validFiles.length} statement{validFiles.length !== 1 ? "s" : ""} added</span>
+                                                  )}
+                                                </div>
+                                                <button
+                                                  onClick={extractAllInvFiles}
+                                                  className="inline-flex items-center gap-1.5 h-8 px-4 text-base font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors shrink-0"
+                                                >
+                                                  Analyze <ChevronRight className="h-4 w-4" />
+                                                </button>
                                               </div>
                                             )}
 
