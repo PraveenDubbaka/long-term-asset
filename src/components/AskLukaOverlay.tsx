@@ -1245,6 +1245,9 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   // ── Investment — upload flow ──
   const [invUploadOpen, setInvUploadOpen] = useState(false);
   const [invUploadFiles, setInvUploadFiles] = useState<InvUploadFile[]>([]);
+  const invFileMapRef = useRef<Map<string, File>>(new Map()); // stores actual File objects for PDF parsing
+  const [invOpeningBalMode, setInvOpeningBalMode] = useState<"zero" | "prior-upload" | "prior-system" | null>(null);
+  const [invActiveStatement, setInvActiveStatement] = useState<string | null>(null); // null = show all statements
   // null = no prompt; string[] = months missing (shown before review table)
   const [invMissingMonthsPrompt, setInvMissingMonthsPrompt] = useState<string[]|null>(null);
   const [invBrokerError, setInvBrokerError] = useState<string|null>(null);
@@ -1622,7 +1625,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
     setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
-    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvTableSort(null); setInvSubmittedTxns([]);
+    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvTableSort(null); setInvSubmittedTxns([]); setInvOpeningBalMode(null); setInvActiveStatement(null);
     setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
@@ -3587,21 +3590,16 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                           else {
                                             setInvMissingMonthsPrompt([]);
                                             setInvContinuityOk(sorted.length > 0);
-                                            // Auto-extract immediately when continuity is confirmed
-                                            if (sorted.length > 0) {
-                                              setInvExtracting(true);
-                                              setTimeout(() => {
-                                                setInvReviewRows(INV_MOCK_ROWS);
-                                                setInvExtracting(false);
-                                              }, 1400);
-                                            }
                                           }
                                         };
 
                                         // ── Step 1: Add files + validate continuity (NO extraction yet) ──
                                         const addInvFiles = (rawFiles: FileList | null) => {
                                           if (!rawFiles) return;
-                                          const classified = Array.from(rawFiles).map(classifyInvFile);
+                                          const files = Array.from(rawFiles);
+                                          // Store real File objects for PDF parsing
+                                          files.forEach(file => invFileMapRef.current.set(file.name, file));
+                                          const classified = files.map(classifyInvFile);
                                           setInvUploadFiles(prev => {
                                             const existing = new Set(prev.map(f => f.name));
                                             const next = [...prev, ...classified.filter(f => !existing.has(f.name))].slice(0, 15);
@@ -3617,11 +3615,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                           if (validFiles.length === 0) return;
                                           setInvExtracting(true);
                                           try {
-                                            // Need actual File objects — reconstruct from input ref
                                             const parseResults = await Promise.all(
                                               validFiles.map(f => {
-                                                // Create a minimal placeholder — parser will fall back to mock if no File
-                                                return extractInvTransactions(new File([], f.name, { type: "application/pdf" }));
+                                                const realFile = invFileMapRef.current.get(f.name);
+                                                return extractInvTransactions(realFile ?? new File([], f.name, { type: "application/pdf" }));
                                               })
                                             );
                                             const brokerCheck = validateSingleBroker(parseResults);
@@ -3631,8 +3628,28 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               return;
                                             }
                                             setInvBrokerError(null);
-                                            // Use mock rows (real extraction needs stored File objects; we use INV_MOCK_ROWS as stand-in)
-                                            setInvReviewRows(INV_MOCK_ROWS);
+                                            const allTxns = parseResults.flatMap(r => r.transactions);
+                                            if (allTxns.length > 0) {
+                                              const rows: InvReviewRow[] = allTxns.map(t => ({
+                                                id: t.id,
+                                                date: t.tradeDate,
+                                                settlement: t.settlementDate,
+                                                security: t.security,
+                                                ticker: t.ticker,
+                                                type: mapActivityToType(t.activity),
+                                                units: t.quantity != null ? String(t.quantity) : "",
+                                                price: t.price != null ? String(t.price) : "",
+                                                amount: String(t.amount),
+                                                fxRate: t.fxRate != null ? String(t.fxRate) : "",
+                                                currency: t.currency,
+                                                account: t.account,
+                                                accountType: t.accountType,
+                                                source: t.sourceFile,
+                                              }));
+                                              setInvReviewRows(rows);
+                                            } else {
+                                              setInvReviewRows(INV_MOCK_ROWS);
+                                            }
                                           } catch {
                                             setInvReviewRows(INV_MOCK_ROWS);
                                           }
@@ -3645,6 +3662,37 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                           : null;
                                         return (
                                           <>
+                                            {/* ── Opening balance mode selector ── */}
+                                            <div className="space-y-2 mb-3">
+                                              <p className="text-base font-semibold text-foreground">Prior year opening balance</p>
+                                              <div className="grid grid-cols-3 gap-2">
+                                                {([
+                                                  ["zero",         "No prior year",          "Start fresh — opening balance is zero"],
+                                                  ["prior-upload", "Upload prior schedule",   "Upload last year's workpaper file"],
+                                                  ["prior-system", "Prior year in Countable", "Carry forward from previous engagement"],
+                                                ] as [typeof invOpeningBalMode, string, string][]).map(([mode, title, desc]) => (
+                                                  <button
+                                                    key={mode}
+                                                    onClick={() => setInvOpeningBalMode(mode)}
+                                                    className={`flex flex-col gap-1 text-left p-3 rounded-[10px] border transition-all ${invOpeningBalMode === mode ? "border-primary bg-primary/[0.06] ring-1 ring-primary/30" : "border-border bg-background hover:border-primary/40 hover:bg-muted/30"}`}
+                                                  >
+                                                    <span className={`text-base font-semibold ${invOpeningBalMode === mode ? "text-primary" : "text-foreground"}`}>{title}</span>
+                                                    <span className="text-[11px] text-muted-foreground leading-snug">{desc}</span>
+                                                  </button>
+                                                ))}
+                                              </div>
+                                              {invOpeningBalMode === "prior-upload" && (
+                                                <label className="flex items-center gap-2 px-3 py-2 rounded-[8px] border border-dashed border-border bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors text-base text-muted-foreground">
+                                                  <Upload className="h-4 w-4 shrink-0" />
+                                                  <span>Upload prior year schedule (XLSX or PDF)</span>
+                                                  <input type="file" accept=".xlsx,.xls,.pdf" className="hidden" />
+                                                </label>
+                                              )}
+                                              {invOpeningBalMode === "prior-system" && (
+                                                <p className="text-[11px] text-muted-foreground px-1">Opening balances will be pulled from the most recent closed engagement automatically.</p>
+                                              )}
+                                            </div>
+
                                             {/* ── AI-style upload section ── */}
                                             <div className="relative rounded-[14px] overflow-hidden border border-primary/20 bg-gradient-to-br from-primary/[0.04] via-background to-violet-50/30">
                                               {/* Ambient blobs */}
@@ -4022,16 +4070,47 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             {/* ── Review table ── */}
                                             {invReviewRows.length > 0 && (
                                               <div className="space-y-2">
+                                                {/* Statement tabs */}
+                                                {(() => {
+                                                  const sources = [...new Set(invReviewRows.map(r => r.source).filter(Boolean))];
+                                                  if (sources.length <= 1) return null;
+                                                  return (
+                                                    <div className="flex items-center gap-1 flex-wrap">
+                                                      <button
+                                                        onClick={() => setInvActiveStatement(null)}
+                                                        className={`px-3 py-1 rounded-full text-base font-medium transition-all border ${invActiveStatement === null ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground hover:text-foreground hover:border-primary/40"}`}
+                                                      >
+                                                        All ({invReviewRows.length})
+                                                      </button>
+                                                      {sources.map(src => {
+                                                        const count = invReviewRows.filter(r => r.source === src).length;
+                                                        const label = src.replace(/\.[^.]+$/, "").slice(0, 28);
+                                                        return (
+                                                          <button
+                                                            key={src}
+                                                            onClick={() => setInvActiveStatement(src)}
+                                                            className={`px-3 py-1 rounded-full text-base font-medium transition-all border ${invActiveStatement === src ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground hover:text-foreground hover:border-primary/40"}`}
+                                                          >
+                                                            {label} ({count})
+                                                          </button>
+                                                        );
+                                                      })}
+                                                    </div>
+                                                  );
+                                                })()}
                                                 <div className="flex items-center justify-between">
                                                   <span className="text-base font-semibold text-foreground">
-                                                    {invReviewRows.length} transaction{invReviewRows.length !== 1 ? "s" : ""} extracted — review before submitting
+                                                    {(invActiveStatement ? invReviewRows.filter(r => r.source === invActiveStatement) : invReviewRows).length} transaction{invReviewRows.length !== 1 ? "s" : ""} extracted — review before submitting
                                                   </span>
                                                 </div>
                                                 <div className="rounded-[8px] border border-border overflow-clip">
                                                   <div className="w-full">
                                                     {(() => {
+                                                      const visibleRows = invActiveStatement
+                                                        ? invReviewRows.filter(r => r.source === invActiveStatement)
+                                                        : invReviewRows;
                                                       const sortedInvRows = invTableSort
-                                                        ? [...invReviewRows].sort((a, b) => {
+                                                        ? [...visibleRows].sort((a, b) => {
                                                             const av = String(a[invTableSort.field] ?? "");
                                                             const bv = String(b[invTableSort.field] ?? "");
                                                             const num = (s: string) => parseFloat(s.replace(/[^0-9.-]/g, ""));
@@ -4039,7 +4118,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                             const cmp = isNaN(aNum) || isNaN(bNum) ? av.localeCompare(bv) : aNum - bNum;
                                                             return invTableSort.dir === "asc" ? cmp : -cmp;
                                                           })
-                                                        : invReviewRows;
+                                                        : visibleRows;
                                                       const handleInvSort = (field: keyof InvReviewRow) => {
                                                         setInvTableSort(prev => prev?.field === field ? { field, dir: prev.dir === "asc" ? "desc" : "asc" } : { field, dir: "asc" });
                                                       };
@@ -4048,7 +4127,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       <thead className="sticky top-0 z-10 bg-background">
                                                         <tr className="bg-muted/30 border-b border-border">
                                                           {([
-                                                            ["date","Trade Date"],["settlement","Settlement †"],["account","Account #"],
+                                                            ["settlement","Settlement †"],["date","Trade Date"],["account","Account #"],
                                                             ["security","Security *"],["ticker","Ticker"],["type","Type *"],["currency","CCY"],
                                                             ["units","Units"],["price","Price"],["amount","Amount (CAD)"],["fxRate","FX Rate"],["","Balance"],["",""]
                                                           ] as [keyof InvReviewRow | "", string][]).map(([field, label], i) => {
@@ -4099,8 +4178,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                           return (
                                                             <Fragment key={row.id}>
                                                             <tr className={`border-b border-border/40 transition-all ${row.voided ? "opacity-50 bg-red-50/30 line-through-row" : ri % 2 === 1 ? "bg-muted/10" : ""}`}>
-                                                              <td className={`px-1.5 py-1 min-w-[110px] ${!row.date && !row.voided ? "bg-amber-50/60" : ""}`} title={!row.date ? "Trade date not in statement — enter manually" : undefined}><input value={row.date} onChange={e => upd("date", e.target.value)} type="date" className={IC} /></td>
                                                               <td className="px-1.5 py-1 min-w-[110px]"><input value={row.settlement ?? ""} onChange={e => upd("settlement", e.target.value)} type="date" className={IC} /></td>
+                                                              <td className={`px-1.5 py-1 min-w-[110px] ${!row.date && !row.voided ? "bg-amber-50/60" : ""}`} title={!row.date ? "Trade date not in statement — enter manually" : undefined}><input value={row.date} onChange={e => upd("date", e.target.value)} type="date" className={IC} /></td>
                                                               <td className="px-1.5 py-1 min-w-[130px]"><input value={row.account ?? ""} onChange={e => upd("account", e.target.value)} className={cn(IC, "w-32 font-mono")} placeholder="H11-XXXX-X" /></td>
                                                               <td className="px-1.5 py-1 min-w-[200px]"><input value={row.security} onChange={e => upd("security", e.target.value)} className={cn(IC, "w-52")} placeholder="Security name" /></td>
                                                               <td className="px-1.5 py-1 min-w-[70px]"><input value={row.ticker} onChange={e => upd("ticker", e.target.value)} className={cn(IC, "w-16 font-mono uppercase")} placeholder="TICK" /></td>

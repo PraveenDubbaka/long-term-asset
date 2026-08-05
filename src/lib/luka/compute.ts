@@ -31,6 +31,12 @@ export type WacRow = {
   fxRate?: number;
   grossProceedsCAD?: number; // pre-fee gross proceeds in CAD (Sale rows only)
   notes?: string;
+  // Distribution breakdown — populated for Dividend/Distribution rows
+  eligibleDividend?: number;
+  capitalDividend?: number;
+  otherIncome?: number;
+  foreignIncome?: number;
+  nonResidentTax?: number;
 };
 
 export type SecurityKey = string; // `${ticker}|${sourceId}` when tracked-by-broker

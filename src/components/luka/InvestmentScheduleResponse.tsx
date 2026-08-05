@@ -943,7 +943,10 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
                 <th colSpan={3} className="px-2.5 py-1 text-center bg-blue-50/40" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}>
                   Units
                 </th>
-                <th className="px-2.5 py-1 text-center" />
+                <th className="px-2.5 py-1 text-center border-r border-border/40" />
+                <th colSpan={5} className="px-2.5 py-1 text-center bg-emerald-50/40" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>
+                  Distributions
+                </th>
               </tr>
               <tr className="bg-[#f0f2f5] border-b-2 border-border">
                 {/* Security — sort + SearchFilter */}
@@ -990,9 +993,15 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
                   <button onClick={() => handleSort("cumUnits")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Closing {sortIcon("cumUnits")}</button>
                 </th>
                 {/* WAC */}
-                <th className="text-right w-24 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                <th className="text-right w-24 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
                   <button onClick={() => handleSort("wac")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">WAC {sortIcon("wac")}</button>
                 </th>
+                {/* Distribution columns */}
+                <th className="text-right w-28 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-emerald-50/20" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>Elig Div</th>
+                <th className="text-right w-28 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-emerald-50/20">Cap Div</th>
+                <th className="text-right w-28 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-emerald-50/20">Other Inc</th>
+                <th className="text-right w-28 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-emerald-50/20">Foreign Inc</th>
+                <th className="text-right w-24 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap bg-emerald-50/20">NR Tax</th>
               </tr>
             </thead>
             <tbody>
@@ -1080,6 +1089,16 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
                           <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
                             {fmtNum((() => { const u = isEditing ? getV("cumUnits") : r.cumUnits; const c = isEditing ? getV("cumCost") : r.cumCost; return u > 0 ? c / u : 0; })(), 4)}
                           </td>
+                          {/* Distribution columns — only relevant for income rows */}
+                          {(["eligibleDividend","capitalDividend","otherIncome","foreignIncome","nonResidentTax"] as const).map((field, fi) => (
+                            <td key={field} className={`px-2.5 py-1.5 text-right tabular-nums ${fi < 4 ? "border-r border-border/20" : ""} ${fi === 0 ? "bg-emerald-50/10" : ""}`} style={fi === 0 ? { borderLeft: "3px solid hsl(var(--foreground) / 0.3)" } : {}}>
+                              {isEditing ? (
+                                <input type="number" value={getV(field) ?? ""} onChange={e => setV({ [field]: parseFloat(e.target.value) || undefined })} className={`${IIC} w-20 text-right`} placeholder="0.00" />
+                              ) : (r[field] != null && r[field] !== 0)
+                                ? <span className={field === "nonResidentTax" ? "text-red-600" : "text-emerald-700"}>{fmtCAD(r[field]!)}</span>
+                                : <span className="text-muted-foreground/25">—</span>}
+                            </td>
+                          ))}
                         </tr>
                       );
                     })}
@@ -1097,7 +1116,12 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
                         <td className="px-2.5 py-1 border-r border-border/20 text-right tabular-nums text-muted-foreground/60" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>{fmtUnits(allRows[allRows.length - 1]?.cumUnits ?? 0)}</td>
                         <td className="px-2.5 py-1 border-r border-border/20"><input type="number" placeholder="0" value={newRow.unitsIn ?? ""} onChange={e => setNewRow(d => ({...d, unitsIn: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} /></td>
                         <td className="px-2.5 py-1" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}><input type="number" placeholder="0.0000" value={newRow.cumUnits ?? ""} onChange={e => setNewRow(d => ({...d, cumUnits: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} /></td>
-                        <td className="px-2.5 py-1 text-right tabular-nums text-muted-foreground">{fmtNum((newRow.cumUnits ?? 0) > 0 ? (newRow.cumCost ?? 0) / (newRow.cumUnits ?? 1) : 0, 4)}</td>
+                        <td className="px-2.5 py-1 text-right tabular-nums text-muted-foreground border-r border-border/20">{fmtNum((newRow.cumUnits ?? 0) > 0 ? (newRow.cumCost ?? 0) / (newRow.cumUnits ?? 1) : 0, 4)}</td>
+                        {(["eligibleDividend","capitalDividend","otherIncome","foreignIncome","nonResidentTax"] as const).map((field, fi) => (
+                          <td key={field} className={`px-2.5 py-1 ${fi < 4 ? "border-r border-border/20" : ""}`} style={fi === 0 ? { borderLeft: "3px solid hsl(var(--foreground) / 0.3)" } : {}}>
+                            <input type="number" placeholder="0.00" value={newRow[field] ?? ""} onChange={e => setNewRow(d => ({...d, [field]: parseFloat(e.target.value)||undefined}))} className={`${IIC} w-20 text-right`} />
+                          </td>
+                        ))}
                       </tr>
                     )}
 

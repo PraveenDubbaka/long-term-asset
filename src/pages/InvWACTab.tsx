@@ -294,7 +294,11 @@ export function InvWACTab({ schedules, opts, onAddToAJEs }: Props) {
                   <th colSpan={3} className="px-3 py-1 text-center bg-violet-50/40" style={{ borderRight: "2px solid hsl(var(--border) / 0.5)" }}>
                     Cost
                   </th>
-                  <th colSpan={2} className="px-3 py-1 text-center" />
+                  <th className="px-3 py-1 text-center border-r border-border/40" />
+                  <th colSpan={5} className="px-3 py-1 text-center bg-emerald-50/40" style={{ borderLeft: "2px solid hsl(var(--border) / 0.5)" }}>
+                    Distributions
+                  </th>
+                  <th className="px-3 py-1 text-center" />
                 </tr>
 
                 <tr className="bg-[#f0f2f5] dark:bg-slate-800 border-b-2 border-border">
@@ -360,6 +364,13 @@ export function InvWACTab({ schedules, opts, onAddToAJEs }: Props) {
                       WAC {sortIcon('wac')}
                     </button>
                   </th>
+
+                  {/* Distribution columns */}
+                  <th className="text-right w-24 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-emerald-50/20" style={{ borderLeft: "2px solid hsl(var(--border) / 0.5)" }}>Elig Div</th>
+                  <th className="text-right w-24 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-emerald-50/20">Cap Div</th>
+                  <th className="text-right w-24 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-emerald-50/20">Other Inc</th>
+                  <th className="text-right w-24 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-emerald-50/20">Foreign Inc</th>
+                  <th className="text-right w-24 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-emerald-50/20">NR Tax</th>
 
                   {/* Actions — static */}
                   <th className="text-left w-20 px-3 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Actions</th>
@@ -479,6 +490,17 @@ export function InvWACTab({ schedules, opts, onAddToAJEs }: Props) {
                                 : fmtNum(r.wac)}
                             </td>
 
+                            {/* Distribution cells */}
+                            {(["eligibleDividend","capitalDividend","otherIncome","foreignIncome","nonResidentTax"] as const).map((field, fi) => (
+                              <td key={field} className={`px-3 py-2 text-right tabular-nums ${fi < 4 ? "border-r border-border/20" : "border-r border-border/20"}`} style={fi === 0 ? { borderLeft: "2px solid hsl(var(--border) / 0.5)" } : {}}>
+                                {isEditing ? (
+                                  <input type="number" value={(editData[field] as number | undefined) ?? r[field] ?? ""} onChange={e => setEditData(d => ({...d, [field]: parseFloat(e.target.value)||undefined}))} className={`${INPUT_CLS} w-20 text-right`} placeholder="0.00" />
+                                ) : (r[field] != null && r[field] !== 0)
+                                  ? <span className={field === "nonResidentTax" ? "text-red-600 text-[11px]" : "text-emerald-700 text-[11px]"}>{fmtNum(r[field]!)}</span>
+                                  : <span className="text-muted-foreground/25 text-[10px]">—</span>}
+                              </td>
+                            ))}
+
                             {/* Actions */}
                             <td className="px-3 py-2">
                               {isEditing ? (
@@ -511,6 +533,11 @@ export function InvWACTab({ schedules, opts, onAddToAJEs }: Props) {
                           <td className="px-3 py-1.5 border-r border-border/20"><input type="number" placeholder="0.00" value={newRow.costOut ?? ''} onChange={e => setNewRow(d => ({...d, costOut: parseFloat(e.target.value)||0}))} className={`${INPUT_CLS} w-28 text-right`} /></td>
                           <td className="px-3 py-1.5 border-r border-border/20"><input type="number" placeholder="0.00" value={newRow.cumCost ?? ''} onChange={e => setNewRow(d => ({...d, cumCost: parseFloat(e.target.value)||0}))} className={`${INPUT_CLS} w-28 text-right`} /></td>
                           <td className="px-3 py-1.5 border-r border-border/20"><input type="number" placeholder="0.00" value={newRow.wac ?? ''} onChange={e => setNewRow(d => ({...d, wac: parseFloat(e.target.value)||0}))} className={`${INPUT_CLS} w-24 text-right`} /></td>
+                          {(["eligibleDividend","capitalDividend","otherIncome","foreignIncome","nonResidentTax"] as const).map((field, fi) => (
+                            <td key={field} className="px-3 py-1.5 border-r border-border/20" style={fi === 0 ? { borderLeft: "2px solid hsl(var(--border) / 0.5)" } : {}}>
+                              <input type="number" placeholder="0.00" value={(newRow[field] as number | undefined) ?? ''} onChange={e => setNewRow(d => ({...d, [field]: parseFloat(e.target.value)||undefined}))} className={`${INPUT_CLS} w-20 text-right`} />
+                            </td>
+                          ))}
                           <td className="px-3 py-1.5">
                             <div className="flex gap-0.5">
                               <button onClick={() => addRow(s.key)} className="p-1.5 rounded hover:bg-emerald-50 text-emerald-600" title="Save"><Check className="h-3.5 w-3.5" /></button>
@@ -539,6 +566,15 @@ export function InvWACTab({ schedules, opts, onAddToAJEs }: Props) {
                         <td className="px-3 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground">—</td>
                         <td className="px-3 py-2 text-right tabular-nums border-r border-border/30">{fmtCAD(s.closingCostCAD)}</td>
                         <td className="px-3 py-2 text-right tabular-nums border-r border-border/30">{fmtNum(s.closingWac)}</td>
+                        {/* Distribution totals for closing row */}
+                        {(["eligibleDividend","capitalDividend","otherIncome","foreignIncome","nonResidentTax"] as const).map((field, fi) => {
+                          const total = getRows(s).reduce((sum, r) => sum + (r[field] ?? 0), 0);
+                          return (
+                            <td key={field} className={`px-3 py-2 text-right tabular-nums border-r border-border/30 ${fi === 0 ? "bg-emerald-50/10" : ""}`} style={fi === 0 ? { borderLeft: "2px solid hsl(var(--border) / 0.5)" } : {}}>
+                              {total !== 0 ? <span className={field === "nonResidentTax" ? "text-red-600 text-[11px] font-semibold" : "text-emerald-700 text-[11px] font-semibold"}>{fmtNum(total)}</span> : <span className="text-muted-foreground/25 text-[10px]">—</span>}
+                            </td>
+                          );
+                        })}
                         {/* Actions: + Add Row + optional AJE */}
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-1">
