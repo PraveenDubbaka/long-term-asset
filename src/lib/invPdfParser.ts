@@ -182,15 +182,26 @@ export interface InvPdfParseResult {
 function reconstructLines(
   items: Array<{ str: string; transform: number[] }>,
 ): string[] {
-  const lineMap = new Map<number, string[]>();
+  // Group items by Y, tolerating ±2pt sub-pixel differences within the same row.
+  // Sort each group left-to-right by X so column order is preserved.
+  const lineMap = new Map<number, Array<{ x: number; str: string }>>();
   for (const item of items) {
-    const y = Math.round(item.transform[5]);
-    if (!lineMap.has(y)) lineMap.set(y, []);
-    lineMap.get(y)!.push(item.str);
+    const rawY = item.transform[5];
+    // Find an existing bucket within ±2 points
+    let bucketY: number | undefined;
+    for (const y of lineMap.keys()) {
+      if (Math.abs(y - rawY) <= 2) { bucketY = y; break; }
+    }
+    const key = bucketY ?? Math.round(rawY);
+    if (!lineMap.has(key)) lineMap.set(key, []);
+    lineMap.get(key)!.push({ x: item.transform[4], str: item.str });
   }
   return Array.from(lineMap.entries())
-    .sort((a, b) => b[0] - a[0])
-    .map(([, parts]) => parts.join(' ').trim())
+    .sort((a, b) => b[0] - a[0])           // Y descending = top-to-bottom reading order
+    .map(([, parts]) =>
+      parts.sort((a, b) => a.x - b.x)      // left-to-right within each line
+           .map(p => p.str).join(' ').trim()
+    )
     .filter(l => l.length > 0);
 }
 
@@ -439,7 +450,7 @@ export async function extractInvTransactions(file: File): Promise<InvPdfParseRes
     let isBmo = false;
     let isRichardson = false;
 
-    if (/bmo\s*investor\s*line/i.test(fullText)) {
+    if (/bmo\s*investor\s*line/i.test(fullText) || /bmo\s*investorline/i.test(fullText) || (/\bbmo\b/i.test(fullText) && /non-registered\s*account/i.test(fullText))) {
       broker = 'BMO InvestorLine'; isBmo = true;
     } else if (/richardson\s*wealth/i.test(fullText) || /jsk\s*partners/i.test(fullText)) {
       broker = 'Richardson Wealth Limited'; isRichardson = true;

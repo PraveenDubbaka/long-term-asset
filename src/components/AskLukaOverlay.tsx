@@ -3648,10 +3648,15 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               }));
                                               setInvReviewRows(rows);
                                             } else {
-                                              setInvReviewRows(INV_MOCK_ROWS);
+                                              const fileErrors = parseResults.filter(r => r.error).map(r => r.error).join(" ");
+                                              const detectedBrokers = parseResults.map(r => r.broker).filter(b => b !== 'Unknown');
+                                              const brokerMsg = detectedBrokers.length
+                                                ? `${detectedBrokers[0]} detected but no transactions found — the statement may not contain an "Account activity for this month" section, or all activity was filtered.`
+                                                : "Could not identify the broker — only BMO InvestorLine and Richardson Wealth statements are currently supported.";
+                                              setInvBrokerError(fileErrors || brokerMsg);
                                             }
-                                          } catch {
-                                            setInvReviewRows(INV_MOCK_ROWS);
+                                          } catch (err) {
+                                            setInvBrokerError("Could not parse the uploaded file: " + (err instanceof Error ? err.message : "unknown error") + ". Please ensure it is a valid broker statement PDF.");
                                           }
                                           setInvExtracting(false);
                                         };
