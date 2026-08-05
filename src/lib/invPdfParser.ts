@@ -6,12 +6,14 @@
  *   - BMO InvestorLine Self-Directed
  */
 
+import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+
 let pdfjsLib: typeof import('pdfjs-dist') | null = null;
 
 async function getPdfJs() {
   if (!pdfjsLib) {
     pdfjsLib = await import('pdfjs-dist');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
   }
   return pdfjsLib;
 }
