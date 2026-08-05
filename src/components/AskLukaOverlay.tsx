@@ -3693,8 +3693,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               )}
                                             </div>
 
-                                            {/* ── AI-style upload section ── */}
-                                            <div className="relative rounded-[14px] overflow-hidden border border-primary/20 bg-gradient-to-br from-primary/[0.04] via-background to-violet-50/30">
+                                            {/* ── AI-style upload section — only shown after opening balance mode is chosen ── */}
+                                            {invOpeningBalMode !== null && <div className="relative rounded-[14px] overflow-hidden border border-primary/20 bg-gradient-to-br from-primary/[0.04] via-background to-violet-50/30">
                                               {/* Ambient blobs */}
                                               <div className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full bg-primary/10 blur-3xl" />
                                               <div className="pointer-events-none absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-violet-400/10 blur-3xl" />
@@ -3994,7 +3994,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   </div>
                                                 ))}
                                               </div>
-                                            </div>
+                                            </div>}
 
                                             {/* ── Broker error ── */}
                                             {invBrokerError && (
