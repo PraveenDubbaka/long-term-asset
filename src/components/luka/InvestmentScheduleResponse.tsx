@@ -2670,8 +2670,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
     if (initialTransactions && initialTransactions.length > 0) {
       setManualTxns(initialTransactions);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialTransactions]);
   const [txEdits,      setTxEdits]      = useState<Record<string, Partial<Transaction>>>({});
 
   const allInvSources = useMemo(() => [...baseSources, ...plaidSources], [plaidSources]);
