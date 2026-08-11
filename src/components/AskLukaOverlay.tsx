@@ -3853,7 +3853,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
                                               {/* Scenario C — answered Yes: confirm */}
                                               {invPriorScenario === "ASK" && invFirstYearAnswer === true && (
-                                                <div className="flex items-center gap-2 px-3 py-2 rounded-[8px] bg-muted border border-border">
+                                                <div className="inline-flex items-center gap-2 px-3 py-2 rounded-[8px] bg-muted border border-border">
                                                   <Check className="h-4 w-4 text-muted-foreground shrink-0" />
                                                   <span className="text-base text-muted-foreground">First year — opening balances default to zero.</span>
                                                 </div>
