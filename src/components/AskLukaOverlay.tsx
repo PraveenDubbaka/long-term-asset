@@ -4606,10 +4606,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       );
                                                     })()}
                                                   </div>
-                                                  <p className="mt-2 text-base text-muted-foreground/70 px-1">
-                                                    <span className="font-medium text-foreground/60">†</span> Settlement date sourced from statement.
-                                                    Trade date is not included in brokerage statements — <span className="text-amber-600 font-medium">highlighted cells</span> require manual entry.
-                                                  </p>
+
                                                 </div>
                                               </div>
                                             )}
