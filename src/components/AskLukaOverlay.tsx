@@ -1253,6 +1253,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [invOpeningBalMode, setInvOpeningBalMode] = useState<"FIRST_YEAR" | "UPLOAD_PRIOR" | "ROLL_FORWARD" | null>(null);
   const [invFirstYearAnswer, setInvFirstYearAnswer] = useState<boolean | null>(null);
   const [invPriorScheduleFile, setInvPriorScheduleFile] = useState<{ name: string; id: string } | null>(null);
+  const [invSelectedBankAccount, setInvSelectedBankAccount] = useState<string | null>(null);
   // ── Assessment questions (Q1 + Q2) — Q3/Q4 hardcoded per Jul 20 scope decision ──
   const [invValuationMethod, setInvValuationMethod] = useState<'cost' | 'fairValue' | null>(null);
   const [invRecordingLevel, setInvRecordingLevel] = useState<'security' | 'brokerage' | 'hybrid' | null>(null);
@@ -1337,6 +1338,23 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
       setInvOpeningBalMode("ROLL_FORWARD");
     }
   }, [invPriorScenario]);
+
+  // Auto-select bank account when only one exists
+  useEffect(() => {
+    if (!invTBAnalysis) return;
+    if (invTBAnalysis.bankAccounts.length === 1) {
+      setInvSelectedBankAccount(invTBAnalysis.bankAccounts[0]);
+    }
+  }, [invTBAnalysis]);
+
+  // Advance to upload-prompt once step 4 is shown AND a bank account is selected
+  useEffect(() => {
+    if (invSchedPhase !== "tb-check") return;
+    if (invTBAnalysisStep < 4) return;
+    if (!invSelectedBankAccount) return;
+    const t = setTimeout(() => setInvSchedPhase("upload-prompt"), 800);
+    return () => clearTimeout(t);
+  }, [invSchedPhase, invTBAnalysisStep, invSelectedBankAccount]);
 
   // Q1 auto-detection: unrealized gain/loss account present → fair value
   const invDetectedValuation = useMemo<'cost' | 'fairValue' | null>(() => {
@@ -1683,7 +1701,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
     setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
-    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvTableSort(null); setInvSubmittedTxns([]); setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); setInvValuationMethod(null); setInvRecordingLevel(null); setInvAssessmentDone(false); setInvActiveStatement(null);
+    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvTableSort(null); setInvSubmittedTxns([]); setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); setInvSelectedBankAccount(null); setInvValuationMethod(null); setInvRecordingLevel(null); setInvAssessmentDone(false); setInvActiveStatement(null);
     setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
@@ -3429,9 +3447,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                       <div className="flex items-start gap-3">
                                         <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-base font-bold shrink-0">2</span>
                                         <div>
-                                          <p className="text-base font-medium text-foreground">Bank accounts ({invTBAnalysis.bankAccounts.length})</p>
-                                          <div className="flex flex-wrap gap-2 mt-2">
-                                            {invTBAnalysis.bankAccounts.map(a => <span key={a} className="inline-flex items-center px-2.5 py-1.5 rounded-[6px] text-base font-medium bg-muted text-muted-foreground border border-border">{a}</span>)}
+                                          <p className="text-base font-medium text-foreground">Bank account</p>
+                                          <div className="mt-2">
+                                            {invSelectedBankAccount && (
+                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-base font-medium bg-green-50 text-green-800 border border-green-200">
+                                                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />{invSelectedBankAccount}
+                                              </span>
+                                            )}
                                           </div>
                                         </div>
                                       </div>
@@ -3517,22 +3539,39 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                           {invTBAnalysisStep >= 3 && (
                                             <div className="flex items-start gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
                                               <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-base font-bold shrink-0">3</span>
-                                              <div>
-                                                <p className="text-base font-medium text-foreground">Bank accounts ({invTBAnalysis.bankAccounts.length})</p>
-                                                <div className="flex flex-wrap gap-2 mt-2">
-                                                  {invTBAnalysis.bankAccounts.map(a => <span key={a} className="inline-flex items-center px-2.5 py-1.5 rounded-[6px] text-base font-medium bg-muted text-muted-foreground border border-border">{a}</span>)}
-                                                </div>
+                                              <div className="flex-1">
+                                                <p className="text-base font-medium text-foreground">
+                                                  {invTBAnalysis.bankAccounts.length === 1 ? "Bank account" : `Bank accounts detected (${invTBAnalysis.bankAccounts.length}) — select one to use`}
+                                                </p>
+                                                {invTBAnalysis.bankAccounts.length === 1 ? (
+                                                  <div className="mt-2">
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-base font-medium bg-green-50 text-green-800 border border-green-200">
+                                                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />{invTBAnalysis.bankAccounts[0]}
+                                                    </span>
+                                                  </div>
+                                                ) : (
+                                                  <div className="mt-2">
+                                                    <select
+                                                      value={invSelectedBankAccount ?? ""}
+                                                      onChange={e => setInvSelectedBankAccount(e.target.value || null)}
+                                                      className="h-9 px-3 rounded-[8px] border border-border bg-background text-base text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 w-full max-w-xs"
+                                                    >
+                                                      <option value="">Select bank account…</option>
+                                                      {invTBAnalysis.bankAccounts.map(a => <option key={a} value={a}>{a}</option>)}
+                                                    </select>
+                                                  </div>
+                                                )}
                                               </div>
                                             </div>
                                           )}
-                                          {invTBAnalysisStep >= 4 && (
+                                          {invTBAnalysisStep >= 4 && invSelectedBankAccount && (
                                             <div className="flex items-start gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
                                               <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-700 text-base font-bold shrink-0">4</span>
                                               <div><p className="text-base font-medium text-foreground">Recording method</p><p className="text-base text-muted-foreground">{invTBAnalysis.recordingMethod}</p></div>
                                             </div>
                                           )}
                                         </div>
-                                        {invTBAnalysisStep >= 4 && (
+                                        {invTBAnalysisStep >= 4 && invSelectedBankAccount && (
                                           <div className="flex items-center gap-2 pt-1 animate-in fade-in duration-300">
                                             <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" />
                                             <span className="text-base text-muted-foreground luka-thinking-text">Preparing upload prompt…</span>
@@ -3726,7 +3765,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                         return (
                                           <>
                                             {/* ── Prior-year gate — conditional per scenario ── */}
-                                            {invPriorScenario !== null && (
+                                            {invPriorScenario !== null && invSelectedBankAccount !== null && (
                                             <div className="space-y-2 mb-3">
                                               <p className="text-base font-semibold text-foreground">Prior year opening balance</p>
 
@@ -3818,7 +3857,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               <div className="flex items-center justify-between">
                                                 <p className="text-base font-semibold text-foreground">Setup questions</p>
                                                 <button
-                                                  onClick={() => { setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); }}
+                                                  onClick={() => { setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); setInvSelectedBankAccount(null); }}
                                                   className="flex items-center gap-1 text-base text-muted-foreground hover:text-foreground transition-colors"
                                                 >
                                                   <ArrowLeft className="h-3.5 w-3.5" /> Back
@@ -5443,7 +5482,6 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               [1, 2, 3, 4].forEach((step, i) =>
                                                 setTimeout(() => setInvTBAnalysisStep(step), i * 600)
                                               );
-                                              setTimeout(() => setInvSchedPhase("upload-prompt"), 4 * 600 + 1000);
                                             }, 2000);
                                           }, 1800);
                                         }
