@@ -136,12 +136,11 @@ type TabId =
   | "brokerrecon" | "ajes";
 
 const TABS: { id: TabId; label: string }[] = [
+  { id: "transactions", label: "Transactions"      },
   { id: "wac",          label: "WAC Schedule"      },
   { id: "gainloss",     label: "Gain / Loss"       },
   { id: "income",       label: "Income & Expenses" },
-
   { id: "ajes",         label: "AJEs"              },
-  { id: "transactions", label: "Transactions"      },
 ];
 
 // ─── Add-mode row type ────────────────────────────────────────────────────────
