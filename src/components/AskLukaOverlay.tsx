@@ -3554,15 +3554,16 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     </span>
                                                   </div>
                                                 ) : (
-                                                  <div className="mt-2">
+                                                  <div className="mt-2 relative w-full max-w-xs">
                                                     <select
                                                       value={invSelectedBankAccount ?? ""}
                                                       onChange={e => setInvSelectedBankAccount(e.target.value || null)}
-                                                      className="h-9 px-3 rounded-[8px] border border-border bg-background text-base text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 w-full max-w-xs"
+                                                      className="input-double-border w-full h-9 text-sm pl-3 pr-8 rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground appearance-none transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)]"
                                                     >
                                                       <option value="">Select bank account…</option>
                                                       {invTBAnalysis.bankAccounts.map(a => <option key={a} value={a}>{a}</option>)}
                                                     </select>
+                                                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground pointer-events-none" />
                                                   </div>
                                                 )}
                                               </div>
@@ -3810,18 +3811,21 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               {invPriorScenario === "ASK" && invFirstYearAnswer === null && (
                                                 <div className="space-y-2">
                                                   <p className="text-base text-foreground">Is this the first year of operations for this client?</p>
-                                                  <select
-                                                    defaultValue=""
-                                                    onChange={e => {
-                                                      if (e.target.value === "yes") { setInvFirstYearAnswer(true); setInvOpeningBalMode("FIRST_YEAR"); }
-                                                      else if (e.target.value === "no") { setInvFirstYearAnswer(false); }
-                                                    }}
-                                                    className="h-9 px-3 rounded-[8px] border border-border bg-background text-base text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 w-40"
-                                                  >
-                                                    <option value="" disabled>Select…</option>
-                                                    <option value="yes">Yes</option>
-                                                    <option value="no">No</option>
-                                                  </select>
+                                                  <div className="relative w-40">
+                                                    <select
+                                                      defaultValue=""
+                                                      onChange={e => {
+                                                        if (e.target.value === "yes") { setInvFirstYearAnswer(true); setInvOpeningBalMode("FIRST_YEAR"); }
+                                                        else if (e.target.value === "no") { setInvFirstYearAnswer(false); }
+                                                      }}
+                                                      className="input-double-border w-full h-9 text-sm pl-3 pr-8 rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground appearance-none transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)]"
+                                                    >
+                                                      <option value="" disabled>Select…</option>
+                                                      <option value="yes">Yes</option>
+                                                      <option value="no">No</option>
+                                                    </select>
+                                                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground pointer-events-none" />
+                                                  </div>
                                                 </div>
                                               )}
 
@@ -3881,15 +3885,18 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     <p className="text-[11px] text-muted-foreground mt-0.5">Auto-detected from trial balance accounts</p>
                                                   )}
                                                 </div>
-                                                <select
-                                                  value={invValuationMethod ?? ""}
-                                                  onChange={e => setInvValuationMethod(e.target.value as 'cost' | 'fairValue' || null)}
-                                                  className="h-9 px-3 rounded-[8px] border border-border bg-background text-base text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 w-full max-w-xs"
-                                                >
-                                                  <option value="">Select…</option>
-                                                  <option value="cost">At cost</option>
-                                                  <option value="fairValue">At fair value</option>
-                                                </select>
+                                                <div className="relative w-full max-w-xs">
+                                                  <select
+                                                    value={invValuationMethod ?? ""}
+                                                    onChange={e => setInvValuationMethod(e.target.value as 'cost' | 'fairValue' || null)}
+                                                    className="input-double-border w-full h-9 text-sm pl-3 pr-8 rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground appearance-none transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)]"
+                                                  >
+                                                    <option value="">Select…</option>
+                                                    <option value="cost">At cost</option>
+                                                    <option value="fairValue">At fair value</option>
+                                                  </select>
+                                                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground pointer-events-none" />
+                                                </div>
                                                 {invValuationMethod && (
                                                   <p className="text-[11px] text-muted-foreground">
                                                     {invValuationMethod === 'fairValue'
@@ -3907,16 +3914,19 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     <p className="text-[11px] text-muted-foreground mt-0.5">Auto-detected from trial balance accounts</p>
                                                   )}
                                                 </div>
-                                                <select
-                                                  value={invRecordingLevel ?? ""}
-                                                  onChange={e => setInvRecordingLevel(e.target.value as 'security' | 'brokerage' | 'hybrid' || null)}
-                                                  className="h-9 px-3 rounded-[8px] border border-border bg-background text-base text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 w-full max-w-xs"
-                                                >
-                                                  <option value="">Select…</option>
-                                                  <option value="security">By security</option>
-                                                  <option value="brokerage">By brokerage</option>
-                                                  <option value="hybrid">Hybrid</option>
-                                                </select>
+                                                <div className="relative w-full max-w-xs">
+                                                  <select
+                                                    value={invRecordingLevel ?? ""}
+                                                    onChange={e => setInvRecordingLevel(e.target.value as 'security' | 'brokerage' | 'hybrid' || null)}
+                                                    className="input-double-border w-full h-9 text-sm pl-3 pr-8 rounded-[10px] border border-[#dcdfe4] bg-white dark:bg-card text-foreground appearance-none transition-all duration-200 hover:border-[hsl(210_25%_75%)] dark:border-[hsl(220_15%_30%)]"
+                                                  >
+                                                    <option value="">Select…</option>
+                                                    <option value="security">By security</option>
+                                                    <option value="brokerage">By brokerage</option>
+                                                    <option value="hybrid">Hybrid</option>
+                                                  </select>
+                                                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground pointer-events-none" />
+                                                </div>
                                               </div>
 
                                               {invValuationMethod && invRecordingLevel && (
