@@ -2622,7 +2622,7 @@ function HoldingsPanel({ schedules }: { schedules: SecuritySchedule[] }) {
 }
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
-export function InvestmentScheduleResponse({ onEditTransactions, initialTransactions, engagementYearEnd }: { onEditTransactions?: () => void; initialTransactions?: import("@/lib/luka/types").Transaction[]; engagementYearEnd?: string } = {}) {
+export function InvestmentScheduleResponse({ onEditTransactions, initialTransactions, engagementYearEnd, valuationMethod, recordingLevel, bankAccounts, brokerCount }: { onEditTransactions?: () => void; initialTransactions?: import("@/lib/luka/types").Transaction[]; engagementYearEnd?: string; valuationMethod?: 'cost' | 'fairValue'; recordingLevel?: 'security' | 'brokerage' | 'hybrid'; bankAccounts?: number; brokerCount?: number } = {}) {
   const settings = useStore(s => s.settings);
   const [activeTab, setActiveTab] = useState<TabId>("wac");
   const [invMode, setInvMode] = useState<"view" | "edit" | "add">("view");
@@ -2833,6 +2833,41 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
         <span className="font-medium text-primary">{client}</span> as at{" "}
         <span className="font-medium">{dateStr}</span>:
       </p>
+
+      {/* Settings strip — read-only summary of setup questions */}
+      {(valuationMethod || recordingLevel) && (
+        <div className="flex items-center justify-between px-3 py-2 rounded-[8px] bg-muted/30 border border-border text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-medium text-foreground text-base">Schedule settings</span>
+            {valuationMethod && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] bg-background border border-border text-base">
+                {valuationMethod === 'fairValue' ? 'Fair value' : 'Cost'}
+              </span>
+            )}
+            {recordingLevel && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] bg-background border border-border text-base">
+                {recordingLevel === 'security' ? 'By security' : recordingLevel === 'brokerage' ? 'By brokerage' : 'Hybrid'}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] bg-background border border-border text-base">
+              {bankAccounts ?? 1} bank account{(bankAccounts ?? 1) !== 1 ? 's' : ''}
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] bg-background border border-border text-base">
+              {brokerCount ?? 1} broker{(brokerCount ?? 1) !== 1 ? 's' : ''}
+            </span>
+          </div>
+          {onEditTransactions && (
+            <button
+              onClick={() => {
+                if (window.confirm('Changing setup questions will regenerate the schedule. Return to setup?')) {
+                  onEditTransactions();
+                }
+              }}
+              className="text-base text-primary hover:underline underline-offset-2 transition-colors shrink-0 ml-2"
+            >Edit settings</button>
+          )}
+        </div>
+      )}
 
       {/* Tab bar */}
       <div className="flex items-center border-b border-border -mx-0">

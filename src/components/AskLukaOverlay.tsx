@@ -1253,6 +1253,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [invOpeningBalMode, setInvOpeningBalMode] = useState<"FIRST_YEAR" | "UPLOAD_PRIOR" | "ROLL_FORWARD" | null>(null);
   const [invFirstYearAnswer, setInvFirstYearAnswer] = useState<boolean | null>(null);
   const [invPriorScheduleFile, setInvPriorScheduleFile] = useState<{ name: string; id: string } | null>(null);
+  // ── Assessment questions (Q1 + Q2) — Q3/Q4 hardcoded per Jul 20 scope decision ──
+  const [invValuationMethod, setInvValuationMethod] = useState<'cost' | 'fairValue' | null>(null);
+  const [invRecordingLevel, setInvRecordingLevel] = useState<'security' | 'brokerage' | 'hybrid' | null>(null);
+  const [invAssessmentDone, setInvAssessmentDone] = useState(false);
+  // TODO: expose as UI when multi-bank and multi-broker support is added
+  const INV_BANK_ACCOUNTS = 1;
+  const INV_BROKER_COUNT = 1;
   const [invActiveStatement, setInvActiveStatement] = useState<string | null>(null); // null = show all statements
   // null = no prompt; string[] = months missing (shown before review table)
   const [invMissingMonthsPrompt, setInvMissingMonthsPrompt] = useState<string[]|null>(null);
@@ -1330,6 +1337,31 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
       setInvOpeningBalMode("ROLL_FORWARD");
     }
   }, [invPriorScenario]);
+
+  // Q1 auto-detection: unrealized gain/loss account present → fair value
+  const invDetectedValuation = useMemo<'cost' | 'fairValue' | null>(() => {
+    if (!invTBAnalysis) return null;
+    return invTBAnalysis.investmentAccounts.some(a => /unrealized/i.test(a)) ? 'fairValue' : 'cost';
+  }, [invTBAnalysis]);
+
+  // Q2 auto-detection: all balance-sheet accounts have generic names → brokerage
+  const invDetectedRecordingLevel = useMemo<'security' | 'brokerage' | null>(() => {
+    if (!invTBAnalysis) return null;
+    const balanceAccts = invTBAnalysis.investmentAccounts.filter(
+      a => /^\d/.test(a) && !/unrealized|realized|gain|loss|income|revenue/i.test(a)
+    );
+    if (balanceAccts.length === 0) return null;
+    const allGeneric = balanceAccts.every(a =>
+      /\b(investments?|securities|portfolio|marketable|equity|fund|holding)\b/i.test(a)
+    );
+    return allGeneric ? 'brokerage' : null;
+  }, [invTBAnalysis]);
+
+  // Pre-populate answers from auto-detection (only if not yet answered)
+  useEffect(() => {
+    if (invDetectedValuation) setInvValuationMethod(v => v ?? invDetectedValuation);
+    if (invDetectedRecordingLevel) setInvRecordingLevel(r => r ?? invDetectedRecordingLevel);
+  }, [invDetectedValuation, invDetectedRecordingLevel]);
 
   // Position agentic loan amort wizard above the input bar
   useLayoutEffect(() => {
@@ -1651,7 +1683,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
     setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
-    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvTableSort(null); setInvSubmittedTxns([]); setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); setInvActiveStatement(null);
+    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvTableSort(null); setInvSubmittedTxns([]); setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); setInvValuationMethod(null); setInvRecordingLevel(null); setInvAssessmentDone(false); setInvActiveStatement(null);
     setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
@@ -3780,8 +3812,95 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             </div>
                                             )}
 
-                                            {/* ── AI-style upload section — only shown after opening balance mode is chosen ── */}
-                                            {invOpeningBalMode !== null && <div className="relative rounded-[14px] overflow-hidden border border-primary/20 bg-gradient-to-br from-primary/[0.04] via-background to-violet-50/30">
+                                            {/* ── Assessment step — Q1 + Q2, shown after prior year gate ── */}
+                                            {invOpeningBalMode !== null && !invAssessmentDone && (
+                                            <div className="space-y-3 mb-3">
+                                              <div className="flex items-center justify-between">
+                                                <p className="text-base font-semibold text-foreground">Setup questions</p>
+                                                <button
+                                                  onClick={() => { setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); }}
+                                                  className="flex items-center gap-1 text-base text-muted-foreground hover:text-foreground transition-colors"
+                                                >
+                                                  <ArrowLeft className="h-3.5 w-3.5" /> Back
+                                                </button>
+                                              </div>
+                                              {invDetectedValuation && invDetectedRecordingLevel && (
+                                                <p className="text-[11px] text-muted-foreground">Detected from trial balance — confirm or change before continuing.</p>
+                                              )}
+
+                                              {/* Q1 — Valuation method */}
+                                              <div className="rounded-[10px] border border-border bg-background p-3 space-y-2">
+                                                <div>
+                                                  <p className="text-base font-medium text-foreground">How does this client record investments?</p>
+                                                  {invDetectedValuation && (
+                                                    <p className="text-[11px] text-muted-foreground mt-0.5">Auto-detected from trial balance accounts</p>
+                                                  )}
+                                                </div>
+                                                <div className="flex gap-2">
+                                                  {([['cost', 'At cost'], ['fairValue', 'At fair value']] as const).map(([v, label]) => (
+                                                    <button
+                                                      key={v}
+                                                      onClick={() => setInvValuationMethod(v)}
+                                                      className={`flex-1 px-3 py-2 rounded-[8px] border text-base font-medium transition-all ${invValuationMethod === v ? 'border-primary bg-primary/[0.06] ring-1 ring-primary/30 text-primary' : 'border-border bg-background hover:border-primary/40 hover:bg-muted/30 text-foreground'}`}
+                                                    >{label}</button>
+                                                  ))}
+                                                </div>
+                                                {invValuationMethod && (
+                                                  <p className="text-[11px] text-muted-foreground">
+                                                    {invValuationMethod === 'fairValue'
+                                                      ? 'Unrealized gain/loss section will be included in the generated schedule.'
+                                                      : 'Schedule will reflect book cost only — no unrealized G/L section.'}
+                                                  </p>
+                                                )}
+                                              </div>
+
+                                              {/* Q2 — Recording level */}
+                                              <div className="rounded-[10px] border border-border bg-background p-3 space-y-2">
+                                                <div>
+                                                  <p className="text-base font-medium text-foreground">How are investments recorded in the books?</p>
+                                                  {invDetectedRecordingLevel && (
+                                                    <p className="text-[11px] text-muted-foreground mt-0.5">Auto-detected from trial balance accounts</p>
+                                                  )}
+                                                </div>
+                                                <div className="flex gap-2">
+                                                  {([['security', 'By security'], ['brokerage', 'By brokerage'], ['hybrid', 'Hybrid']] as const).map(([r, label]) => (
+                                                    <button
+                                                      key={r}
+                                                      onClick={() => setInvRecordingLevel(r)}
+                                                      className={`flex-1 px-3 py-2 rounded-[8px] border text-base font-medium transition-all ${invRecordingLevel === r ? 'border-primary bg-primary/[0.06] ring-1 ring-primary/30 text-primary' : 'border-border bg-background hover:border-primary/40 hover:bg-muted/30 text-foreground'}`}
+                                                    >{label}</button>
+                                                  ))}
+                                                </div>
+                                              </div>
+
+                                              {invValuationMethod && invRecordingLevel && (
+                                                <button
+                                                  onClick={() => setInvAssessmentDone(true)}
+                                                  className="w-full px-4 py-2.5 rounded-[10px] bg-primary text-primary-foreground text-base font-semibold hover:bg-primary/90 transition-colors"
+                                                >
+                                                  Confirm and continue →
+                                                </button>
+                                              )}
+                                            </div>
+                                            )}
+
+                                            {/* Assessment summary — collapsed after confirmed */}
+                                            {invOpeningBalMode !== null && invAssessmentDone && (
+                                              <div className="flex items-center justify-between px-3 py-2 rounded-[8px] bg-muted/30 border border-border mb-3">
+                                                <div className="flex items-center gap-2 flex-wrap text-[11px] text-muted-foreground">
+                                                  <span className="font-medium text-foreground text-base">Setup</span>
+                                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] bg-background border border-border text-base">{invValuationMethod === 'fairValue' ? 'Fair value' : 'Cost'}</span>
+                                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] bg-background border border-border text-base">{invRecordingLevel === 'security' ? 'By security' : invRecordingLevel === 'brokerage' ? 'By brokerage' : 'Hybrid'}</span>
+                                                </div>
+                                                <button
+                                                  onClick={() => setInvAssessmentDone(false)}
+                                                  className="text-base text-primary hover:underline underline-offset-2 transition-colors shrink-0"
+                                                >Edit</button>
+                                              </div>
+                                            )}
+
+                                            {/* ── AI-style upload section — only shown after prior year gate + assessment ── */}
+                                            {invOpeningBalMode !== null && invAssessmentDone && <div className="relative rounded-[14px] overflow-hidden border border-primary/20 bg-gradient-to-br from-primary/[0.04] via-background to-violet-50/30">
                                               {/* Ambient blobs */}
                                               <div className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full bg-primary/10 blur-3xl" />
                                               <div className="pointer-events-none absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-violet-400/10 blur-3xl" />
@@ -4441,9 +4560,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                   /* ── DONE / SCHEDULE VIEW ── */
                                   <>
                                     <InvestmentScheduleResponse
-                                      onEditTransactions={() => { setInvSchedPhase("upload-prompt"); }}
+                                      onEditTransactions={() => { setInvSchedPhase("upload-prompt"); setInvAssessmentDone(false); }}
                                       initialTransactions={invSubmittedTxns.length > 0 ? invSubmittedTxns : undefined}
                                       engagementYearEnd={ENGAGEMENTS_PANEL.find(e => e.id === invSelectedEngId)?.yearEnd}
+                                      valuationMethod={invValuationMethod ?? undefined}
+                                      recordingLevel={invRecordingLevel ?? undefined}
+                                      bankAccounts={INV_BANK_ACCOUNTS}
+                                      brokerCount={INV_BROKER_COUNT}
                                     />
                                   </>
                                 )}
