@@ -2873,7 +2873,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
         <div className="flex items-center gap-0 overflow-x-auto flex-1 min-w-0">
           {TABS.map(({ id, label }) => {
             const isActive = activeTab === id;
-            const locked = invMode === "add" && id !== "transactions";
+            const locked = (invMode === "add" && id !== "transactions") || (invMode === "edit" && id !== activeTab);
             return (
               <button
                 key={id}
