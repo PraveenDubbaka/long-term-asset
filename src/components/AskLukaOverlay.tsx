@@ -3810,16 +3810,18 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               {invPriorScenario === "ASK" && invFirstYearAnswer === null && (
                                                 <div className="space-y-2">
                                                   <p className="text-base text-foreground">Is this the first year of operations for this client?</p>
-                                                  <div className="flex gap-2">
-                                                    <button
-                                                      onClick={() => { setInvFirstYearAnswer(true); setInvOpeningBalMode("FIRST_YEAR"); }}
-                                                      className="px-4 py-2 rounded-[8px] border border-border bg-background hover:bg-muted/40 text-base font-medium text-foreground transition-colors"
-                                                    >Yes</button>
-                                                    <button
-                                                      onClick={() => setInvFirstYearAnswer(false)}
-                                                      className="px-4 py-2 rounded-[8px] border border-border bg-background hover:bg-muted/40 text-base font-medium text-foreground transition-colors"
-                                                    >No</button>
-                                                  </div>
+                                                  <select
+                                                    defaultValue=""
+                                                    onChange={e => {
+                                                      if (e.target.value === "yes") { setInvFirstYearAnswer(true); setInvOpeningBalMode("FIRST_YEAR"); }
+                                                      else if (e.target.value === "no") { setInvFirstYearAnswer(false); }
+                                                    }}
+                                                    className="h-9 px-3 rounded-[8px] border border-border bg-background text-base text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 w-40"
+                                                  >
+                                                    <option value="" disabled>Select…</option>
+                                                    <option value="yes">Yes</option>
+                                                    <option value="no">No</option>
+                                                  </select>
                                                 </div>
                                               )}
 
@@ -3861,7 +3863,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               <div className="flex items-center justify-between">
                                                 <p className="text-base font-semibold text-foreground">Setup questions</p>
                                                 <button
-                                                  onClick={() => { setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); setInvSelectedBankAccount(null); }}
+                                                  onClick={() => { setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); }}
                                                   className="flex items-center gap-1 text-base text-muted-foreground hover:text-foreground transition-colors"
                                                 >
                                                   <ArrowLeft className="h-3.5 w-3.5" /> Back
