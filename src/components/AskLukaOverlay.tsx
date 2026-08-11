@@ -10,7 +10,7 @@ import {
   Zap, Building2, CheckCircle2, ChevronDown, SlidersHorizontal,
   Bell, Settings, ArrowLeft, Lock, Upload, FileText, Mail, Square,
   FolderOpen, RotateCcw, Sparkles, Eye, EyeOff, Pin, PinOff, LayoutList, CalendarDays, CalendarRange,
-  ArrowUpDown, ArrowUp, ArrowDown, Check, BookOpen, HardDrive, FileSpreadsheet, ShieldCheck,
+  ArrowUpDown, ArrowUp, ArrowDown, Check, BookOpen, HardDrive, FileSpreadsheet, ShieldCheck, Filter,
   AlertTriangle, AlertCircle, TrendingUp, TrendingDown, Info, Table2, RefreshCw,
   Calendar, Receipt, Download, Trash2, BarChart2, Pencil, Loader2,
   PlusCircle, ChevronsLeft, ChevronsRight, Wand2, GitBranch, Database,
@@ -1268,6 +1268,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [invContinuityOk, setInvContinuityOk] = useState<boolean>(false); // true when all uploaded files are contiguous
   const [invExtracting, setInvExtracting] = useState(false); // spinner during PDF extraction
   const [invTableSort, setInvTableSort] = useState<{ field: keyof InvReviewRow; dir: "asc" | "desc" } | null>(null);
+  const [invColumnFilters, setInvColumnFilters] = useState<Record<string, string[]>>({});
+  const [invOpenFilterCol, setInvOpenFilterCol] = useState<string | null>(null);
+  const [invFilterDropdownPos, setInvFilterDropdownPos] = useState<{ top: number; left: number } | null>(null);
+  const [invFilterSearch, setInvFilterSearch] = useState("");
   // files uploaded via the "Upload" button in the missing-months prompt
   const [invMissingReUploads, setInvMissingReUploads] = useState<Array<{id:string;name:string;ext:string}>>([]);
   // ── Free-prompt follow-up turns (context-aware after lt-debt summary) ──
@@ -1701,7 +1705,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
     setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
-    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvTableSort(null); setInvSubmittedTxns([]); setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); setInvSelectedBankAccount(null); setInvValuationMethod(null); setInvRecordingLevel(null); setInvAssessmentDone(false); setInvActiveStatement(null);
+    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvTableSort(null); setInvColumnFilters({}); setInvOpenFilterCol(null); setInvFilterDropdownPos(null); setInvFilterSearch(""); setInvSubmittedTxns([]); setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); setInvSelectedBankAccount(null); setInvValuationMethod(null); setInvRecordingLevel(null); setInvAssessmentDone(false); setInvActiveStatement(null);
     setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
@@ -4357,8 +4361,28 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       const visibleRows = invActiveStatement
                                                         ? invReviewRows.filter(r => r.source === invActiveStatement)
                                                         : invReviewRows;
+                                                      const handleInvSort = (field: keyof InvReviewRow) => {
+                                                        setInvTableSort(prev => prev?.field === field ? { field, dir: prev.dir === "asc" ? "desc" : "asc" } : { field, dir: "asc" });
+                                                      };
+                                                      const handleInvFilter = (field: string, e: React.MouseEvent<HTMLButtonElement>) => {
+                                                        e.stopPropagation();
+                                                        if (invOpenFilterCol === field) { setInvOpenFilterCol(null); setInvFilterDropdownPos(null); return; }
+                                                        const rect = e.currentTarget.getBoundingClientRect();
+                                                        setInvFilterDropdownPos({ top: rect.bottom + 4, left: rect.left });
+                                                        setInvOpenFilterCol(field);
+                                                        setInvFilterSearch("");
+                                                      };
+                                                      // Apply column filters before sorting
+                                                      const filteredInvRows = Object.entries(invColumnFilters).reduce((rows, [field, vals]) => {
+                                                        if (!vals.length) return rows;
+                                                        return rows.filter(r => vals.includes(String(r[field as keyof InvReviewRow] ?? "")));
+                                                      }, visibleRows);
+                                                      // Unique values for open filter column (from unfiltered visible rows)
+                                                      const openFilterVals: string[] = invOpenFilterCol
+                                                        ? [...new Set(visibleRows.map(r => String(r[invOpenFilterCol as keyof InvReviewRow] ?? "")).filter(Boolean))].sort()
+                                                        : [];
                                                       const sortedInvRows = invTableSort
-                                                        ? [...visibleRows].sort((a, b) => {
+                                                        ? [...filteredInvRows].sort((a, b) => {
                                                             const av = String(a[invTableSort.field] ?? "");
                                                             const bv = String(b[invTableSort.field] ?? "");
                                                             const num = (s: string) => parseFloat(s.replace(/[^0-9.-]/g, ""));
@@ -4366,11 +4390,9 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                             const cmp = isNaN(aNum) || isNaN(bNum) ? av.localeCompare(bv) : aNum - bNum;
                                                             return invTableSort.dir === "asc" ? cmp : -cmp;
                                                           })
-                                                        : visibleRows;
-                                                      const handleInvSort = (field: keyof InvReviewRow) => {
-                                                        setInvTableSort(prev => prev?.field === field ? { field, dir: prev.dir === "asc" ? "desc" : "asc" } : { field, dir: "asc" });
-                                                      };
+                                                        : filteredInvRows;
                                                       return (
+                                                    <>
                                                     <table className="w-full text-base" style={{ minWidth: 1780 }}>
                                                       <thead className="sticky top-0 z-10 bg-background">
                                                         <tr className="bg-muted/30 border-b border-border">
@@ -4382,17 +4404,27 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                             const isSort = field && invTableSort?.field === field;
                                                             const isLast = label === "";
                                                             const isBalance = label === "Balance";
+                                                            const hasFilter = field ? (invColumnFilters[field as string]?.length ?? 0) > 0 : false;
                                                             return (
                                                               <th key={i} className={`px-2 py-1.5 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${isLast ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10 text-left" : isBalance ? "text-right" : "text-left"}`}>
                                                                 {field ? (
-                                                                  <button onClick={() => handleInvSort(field as keyof InvReviewRow)} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">
-                                                                    {label.endsWith(" *") ? <>{label.slice(0,-2)} <span className="text-red-500">*</span></> : label}
-                                                                    {isSort
-                                                                      ? invTableSort!.dir === "asc"
-                                                                        ? <ArrowUp className="h-2.5 w-2.5 text-primary ml-0.5" />
-                                                                        : <ArrowDown className="h-2.5 w-2.5 text-primary ml-0.5" />
-                                                                      : <ArrowUpDown className="h-2.5 w-2.5 text-muted-foreground/40 ml-0.5" />}
-                                                                  </button>
+                                                                  <span className="inline-flex items-center gap-0.5">
+                                                                    <button onClick={() => handleInvSort(field as keyof InvReviewRow)} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">
+                                                                      {label.endsWith(" *") ? <>{label.slice(0,-2)} <span className="text-red-500">*</span></> : label}
+                                                                      {isSort
+                                                                        ? invTableSort!.dir === "asc"
+                                                                          ? <ArrowUp className="h-2.5 w-2.5 text-primary ml-0.5" />
+                                                                          : <ArrowDown className="h-2.5 w-2.5 text-primary ml-0.5" />
+                                                                        : <ArrowUpDown className="h-2.5 w-2.5 text-muted-foreground/40 ml-0.5" />}
+                                                                    </button>
+                                                                    <button
+                                                                      onClick={e => handleInvFilter(field as string, e)}
+                                                                      className={`ml-0.5 rounded p-0.5 transition-colors ${hasFilter ? "text-primary" : "text-muted-foreground/30 hover:text-muted-foreground"} ${invOpenFilterCol === field ? "bg-primary/10 text-primary" : ""}`}
+                                                                      title={`Filter by ${label.replace(" *","").replace(" †","")}`}
+                                                                    >
+                                                                      <Filter className="h-2.5 w-2.5" />
+                                                                    </button>
+                                                                  </span>
                                                                 ) : label}
                                                               </th>
                                                             );
@@ -4505,6 +4537,60 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         })()}
                                                       </tbody>
                                                     </table>
+                                                    {/* Column filter portal */}
+                                                    {invOpenFilterCol && invFilterDropdownPos && ReactDOM.createPortal(
+                                                      <>
+                                                        <div className="fixed inset-0 z-[9998]" onClick={() => { setInvOpenFilterCol(null); setInvFilterDropdownPos(null); }} />
+                                                        <div
+                                                          className="fixed z-[9999] bg-background border border-border rounded-[10px] shadow-xl p-2 w-52 space-y-1.5"
+                                                          style={{ top: invFilterDropdownPos.top, left: invFilterDropdownPos.left }}
+                                                          onClick={e => e.stopPropagation()}
+                                                        >
+                                                          <input
+                                                            autoFocus
+                                                            placeholder="Search values…"
+                                                            value={invFilterSearch}
+                                                            onChange={e => setInvFilterSearch(e.target.value)}
+                                                            className="h-7 px-2 w-full border border-border rounded-[6px] text-base focus:outline-none focus:border-primary/40 bg-background"
+                                                          />
+                                                          <div className="max-h-48 overflow-y-auto space-y-0.5">
+                                                            {openFilterVals
+                                                              .filter(v => v.toLowerCase().includes(invFilterSearch.toLowerCase()))
+                                                              .map(v => {
+                                                                const active = (invColumnFilters[invOpenFilterCol] ?? []).includes(v);
+                                                                return (
+                                                                  <label key={v} className="flex items-center gap-2 px-1.5 py-1 rounded-[5px] hover:bg-muted/40 cursor-pointer text-base select-none">
+                                                                    <input
+                                                                      type="checkbox"
+                                                                      checked={active}
+                                                                      onChange={() => {
+                                                                        const col = invOpenFilterCol;
+                                                                        setInvColumnFilters(prev => {
+                                                                          const curr = prev[col] ?? [];
+                                                                          return { ...prev, [col]: active ? curr.filter(x => x !== v) : [...curr, v] };
+                                                                        });
+                                                                      }}
+                                                                      className="h-3.5 w-3.5 rounded accent-primary shrink-0"
+                                                                    />
+                                                                    <span className="truncate">{v || "(blank)"}</span>
+                                                                  </label>
+                                                                );
+                                                              })}
+                                                            {openFilterVals.filter(v => v.toLowerCase().includes(invFilterSearch.toLowerCase())).length === 0 && (
+                                                              <p className="text-base text-muted-foreground px-1.5 py-1">No values found</p>
+                                                            )}
+                                                          </div>
+                                                          {(invColumnFilters[invOpenFilterCol]?.length ?? 0) > 0 && (
+                                                            <button
+                                                              onClick={() => setInvColumnFilters(prev => ({ ...prev, [invOpenFilterCol]: [] }))}
+                                                              className="text-base text-primary hover:underline w-full text-left px-1.5 pt-0.5 border-t border-border"
+                                                            >Clear filter</button>
+                                                          )}
+                                                        </div>
+                                                      </>,
+                                                      document.body
+                                                    )}
+                                                    </>
                                                       );
                                                     })()}
                                                   </div>
