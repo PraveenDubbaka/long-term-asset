@@ -3875,15 +3875,15 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     <p className="text-[11px] text-muted-foreground mt-0.5">Auto-detected from trial balance accounts</p>
                                                   )}
                                                 </div>
-                                                <div className="flex gap-2">
-                                                  {([['cost', 'At cost'], ['fairValue', 'At fair value']] as const).map(([v, label]) => (
-                                                    <button
-                                                      key={v}
-                                                      onClick={() => setInvValuationMethod(v)}
-                                                      className={`flex-1 px-3 py-2 rounded-[8px] border text-base font-medium transition-all ${invValuationMethod === v ? 'border-primary bg-primary/[0.06] ring-1 ring-primary/30 text-primary' : 'border-border bg-background hover:border-primary/40 hover:bg-muted/30 text-foreground'}`}
-                                                    >{label}</button>
-                                                  ))}
-                                                </div>
+                                                <select
+                                                  value={invValuationMethod ?? ""}
+                                                  onChange={e => setInvValuationMethod(e.target.value as 'cost' | 'fairValue' || null)}
+                                                  className="h-9 px-3 rounded-[8px] border border-border bg-background text-base text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 w-full max-w-xs"
+                                                >
+                                                  <option value="">Select…</option>
+                                                  <option value="cost">At cost</option>
+                                                  <option value="fairValue">At fair value</option>
+                                                </select>
                                                 {invValuationMethod && (
                                                   <p className="text-[11px] text-muted-foreground">
                                                     {invValuationMethod === 'fairValue'
@@ -3901,24 +3901,27 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     <p className="text-[11px] text-muted-foreground mt-0.5">Auto-detected from trial balance accounts</p>
                                                   )}
                                                 </div>
-                                                <div className="flex gap-2">
-                                                  {([['security', 'By security'], ['brokerage', 'By brokerage'], ['hybrid', 'Hybrid']] as const).map(([r, label]) => (
-                                                    <button
-                                                      key={r}
-                                                      onClick={() => setInvRecordingLevel(r)}
-                                                      className={`flex-1 px-3 py-2 rounded-[8px] border text-base font-medium transition-all ${invRecordingLevel === r ? 'border-primary bg-primary/[0.06] ring-1 ring-primary/30 text-primary' : 'border-border bg-background hover:border-primary/40 hover:bg-muted/30 text-foreground'}`}
-                                                    >{label}</button>
-                                                  ))}
-                                                </div>
+                                                <select
+                                                  value={invRecordingLevel ?? ""}
+                                                  onChange={e => setInvRecordingLevel(e.target.value as 'security' | 'brokerage' | 'hybrid' || null)}
+                                                  className="h-9 px-3 rounded-[8px] border border-border bg-background text-base text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 w-full max-w-xs"
+                                                >
+                                                  <option value="">Select…</option>
+                                                  <option value="security">By security</option>
+                                                  <option value="brokerage">By brokerage</option>
+                                                  <option value="hybrid">Hybrid</option>
+                                                </select>
                                               </div>
 
                                               {invValuationMethod && invRecordingLevel && (
-                                                <button
-                                                  onClick={() => setInvAssessmentDone(true)}
-                                                  className="w-full px-4 py-2.5 rounded-[10px] bg-primary text-primary-foreground text-base font-semibold hover:bg-primary/90 transition-colors"
-                                                >
-                                                  Confirm and continue →
-                                                </button>
+                                                <div>
+                                                  <button
+                                                    onClick={() => setInvAssessmentDone(true)}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-primary text-primary-foreground text-base font-medium hover:bg-primary/90 transition-colors"
+                                                  >
+                                                    Confirm and continue →
+                                                  </button>
+                                                </div>
                                               )}
                                             </div>
                                             )}
