@@ -4405,20 +4405,19 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         : filteredInvRows;
                                                       return (
                                                     <>
-                                                    <table className="w-full text-base" style={{ minWidth: 1780 }}>
+                                                    <table className="w-full text-base" style={{ minWidth: 1640 }}>
                                                       <thead className="sticky top-0 z-10 bg-background">
                                                         <tr className="bg-muted/30 border-b border-border">
                                                           {([
                                                             ["settlement","Settlement †"],["date","Trade Date"],["account","Account #"],
                                                             ["security","Security *"],["ticker","Ticker"],["type","Type *"],["currency","CCY"],
-                                                            ["units","Units"],["price","Price"],["amount","Amount (CAD)"],["fxRate","FX Rate"],["","Balance"],["",""]
+                                                            ["units","Units"],["price","Price"],["amount","Amount (CAD)"],["fxRate","FX Rate"],["",""]
                                                           ] as [keyof InvReviewRow | "", string][]).map(([field, label], i) => {
                                                             const isSort = field && invTableSort?.field === field;
                                                             const isLast = label === "";
-                                                            const isBalance = label === "Balance";
                                                             const hasFilter = field ? (invColumnFilters[field as string]?.length ?? 0) > 0 : false;
                                                             return (
-                                                              <th key={i} className={`px-2 py-1.5 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${isLast ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10 text-left" : isBalance ? "text-right" : "text-left"}`}>
+                                                              <th key={i} className={`px-2 py-1.5 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${isLast ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10 text-left" : "text-left"}`}>
                                                                 {field ? (
                                                                   <span className="inline-flex items-center gap-0.5">
                                                                     <button onClick={() => handleInvSort(field as keyof InvReviewRow)} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">
@@ -4445,11 +4444,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       </thead>
                                                       <tbody>
                                                         {(() => {
-                                                          // Compute running balance (excludes voided rows)
-                                                          let runBal = 0;
                                                           return sortedInvRows.map((row, ri) => {
-                                                          if (!row.voided) runBal += parseFloat(row.amount || "0");
-                                                          const rowBal = runBal;
                                                           const IC = "h-6 text-base px-1.5 border rounded bg-background focus:outline-none w-full border-border focus:border-primary/40";
                                                           const upd = (field: keyof InvReviewRow, val: string) =>
                                                             setInvReviewRows(prev => prev.map(r => r.id === row.id ? { ...r, [field]: val } : r));
@@ -4502,12 +4497,6 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                                   placeholder="0.00" />
                                                               </td>
                                                               <td className="px-1.5 py-1 min-w-[75px]"><input value={row.fxRate ?? ""} onChange={e => upd("fxRate", e.target.value)} className={cn(IC, "w-20 text-right font-mono")} placeholder="1.0000" /></td>
-                                                              {/* Running balance */}
-                                                              <td className="px-2 py-1 text-right tabular-nums text-base font-semibold whitespace-nowrap">
-                                                                {row.voided
-                                                                  ? <span className="text-base text-muted-foreground italic">voided</span>
-                                                                  : <span className="text-foreground">{rowBal.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>}
-                                                              </td>
                                                               {/* Actions: void / restore + insert */}
                                                               <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
                                                                 <div className="flex items-center gap-0.5">
@@ -4529,11 +4518,11 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                             {/* Voided banner below the row */}
                                                             {row.voided && (
                                                               <tr className="border-b border-red-100">
-                                                                <td colSpan={16} className="px-3 py-1 bg-red-50/50">
+                                                                <td colSpan={12} className="px-3 py-1 bg-red-50/50">
                                                                   <div className="flex items-center gap-2">
                                                                     <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
                                                                     <span className="text-base text-red-600">
-                                                                      Entry voided — excluded from running balance.
+                                                                      Entry voided — excluded from submitted transactions.
                                                                       {row.source && !row.isManual && <> Re-upload <strong>{row.source}</strong> to restore this scanned transaction.</>}
                                                                     </span>
                                                                     <button onClick={insertAfter} className="ml-auto inline-flex items-center gap-0.5 text-base text-primary hover:underline">
