@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect, useLayoutEffect, Fragment } from "react";
+import React, { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo, Fragment } from "react";
 import ReactDOM from "react-dom";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { accountMappings as allGLAccounts } from "@/data/mockData";
@@ -900,14 +900,14 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   ]);
 
   const ENGAGEMENTS_PANEL = [
-    { client: "Phoenix Marie",  id: "COM-DEF-May312024", yearEnd: "May 31, 2024", status: "Active", source: null            },
-    { client: "Circooles",      id: "COM-DEF-Dec312024", yearEnd: "Dec 31, 2024", status: "Active", source: "quickbooks"     },
-    { client: "Command+R",      id: "COM-DEF-Dec312024", yearEnd: "Dec 31, 2024", status: "Active", source: null             },
-    { client: "Hourglass",      id: "REV-DEF-Dec312024", yearEnd: "Dec 31, 2024", status: "Active", source: "xero"           },
-    { client: "Layers",         id: "REV-DEF-Dec312024", yearEnd: "Dec 31, 2024", status: "Active", source: "quickbooks"     },
-    { client: "Quotient",       id: "COM-DEF-Dec312024", yearEnd: "Dec 31, 2024", status: "Active", source: "xero"           },
-    { client: "Sisyphus",       id: "REV-DEF-Dec312024", yearEnd: "Dec 31, 2024", status: "Active", source: null             },
-    { client: "Catalog",        id: "COM-DEF-Dec312024", yearEnd: "Dec 31, 2024", status: "Active", source: "quickbooks"     },
+    { client: "Phoenix Marie",  id: "COM-DEF-May312024", yearEnd: "May 31, 2024", status: "Active", source: null,            priorEngagementId: undefined          },
+    { client: "Circooles",      id: "COM-DEF-Dec312024", yearEnd: "Dec 31, 2024", status: "Active", source: "quickbooks",    priorEngagementId: undefined          },
+    { client: "Command+R",      id: "COM-DEF-Dec312024", yearEnd: "Dec 31, 2024", status: "Active", source: null,            priorEngagementId: undefined          },
+    { client: "Hourglass",      id: "REV-DEF-Dec312024", yearEnd: "Dec 31, 2024", status: "Active", source: "xero",          priorEngagementId: "REV-DEF-Dec312023" },
+    { client: "Layers",         id: "REV-DEF-Dec312024", yearEnd: "Dec 31, 2024", status: "Active", source: "quickbooks",    priorEngagementId: "REV-DEF-Dec312023" },
+    { client: "Quotient",       id: "COM-DEF-Dec312024", yearEnd: "Dec 31, 2024", status: "Active", source: "xero",          priorEngagementId: undefined          },
+    { client: "Sisyphus",       id: "REV-DEF-Dec312024", yearEnd: "Dec 31, 2024", status: "Active", source: null,            priorEngagementId: "REV-DEF-Dec312023" },
+    { client: "Catalog",        id: "COM-DEF-Dec312024", yearEnd: "Dec 31, 2024", status: "Active", source: "quickbooks",    priorEngagementId: undefined          },
   ];
 
   const connectedConnectors = connectors.filter(c => c.connected);
@@ -1223,11 +1223,15 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [invTBAnalysis, setInvTBAnalysis] = useState<InvTBAnalysis | null>(null);
 
   // Mock: engagements that have a TB already uploaded
-  const MOCK_ENG_WITH_TB = new Set(["COM-CON-Dec312024","COM-TES-Dec312024","COM-KAU-Dec312024","COM-DEF-May312024"]);
+  // COM-DEF-Dec312024 → Scenario B (2-year TB, prior year detected)
+  // REV-DEF-Dec312024 → Scenario A (roll-forward, prior engagement linked)
+  const MOCK_ENG_WITH_TB = new Set(["COM-CON-Dec312024","COM-TES-Dec312024","COM-KAU-Dec312024","COM-DEF-May312024","COM-DEF-Dec312024","REV-DEF-Dec312024"]);
 
   // Mock TB analysis results per engagement
   const MOCK_TB_ANALYSIS: Record<string, InvTBAnalysis> = {
     "COM-DEF-May312024":  { years: "1 year (FY 2024)", investmentAccounts: ["1310 · Investments at Cost", "1320 · Unrealized Gain/Loss", "4800 · Realized Gain on Investments", "4810 · Unrealized Gain on Investments"], bankAccounts: ["1100 · Cash — BMO Operating", "1110 · Cash — RBC USD", "1120 · Cash — TD Savings"], recordingMethod: "Accrual basis · monthly journal entries · investment income recorded separately" },
+    "COM-DEF-Dec312024":  { years: "2 years (FY 2023, FY 2024)", investmentAccounts: ["1310 · Investments at Cost", "1320 · Unrealized Gain/Loss", "4800 · Realized Gain on Investments", "4810 · Unrealized Gain on Investments"], bankAccounts: ["1100 · Cash — BMO Operating", "1110 · Cash — RBC USD", "1120 · Cash — TD Savings"], recordingMethod: "Accrual basis · monthly journal entries · investment income recorded separately" },
+    "REV-DEF-Dec312024":  { years: "1 year (FY 2024)", investmentAccounts: ["1310 · Investments at Cost", "4800 · Realized Gain on Investments"], bankAccounts: ["1100 · Cash — Operating", "1105 · Cash — USD"], recordingMethod: "Accrual basis · quarterly entries · investment income recorded separately" },
     "COM-CON-Dec312024":  { years: "2 years (FY 2023, FY 2024)", investmentAccounts: ["1310 · Investments at Cost", "4800 · Realized Gain on Investments"], bankAccounts: ["1100 · Cash — BMO Operating", "1110 · Cash — RBC USD"], recordingMethod: "Accrual basis · quarterly entries" },
     "COM-TES-Dec312024":  { years: "1 year (FY 2024)", investmentAccounts: ["1300 · Investment Portfolio"], bankAccounts: ["1100 · Cash — Operating"], recordingMethod: "Cash basis · annual entries" },
     "COM-KAU-Dec312024":  { years: "3 years (FY 2022, FY 2023, FY 2024)", investmentAccounts: ["1310 · Investments", "1315 · Marketable Securities", "4800 · Investment Income"], bankAccounts: ["1100 · Main Operating", "1105 · USD Account", "1110 · Savings"], recordingMethod: "Accrual basis · monthly · IFRS-compliant" },
@@ -1246,7 +1250,9 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [invUploadOpen, setInvUploadOpen] = useState(false);
   const [invUploadFiles, setInvUploadFiles] = useState<InvUploadFile[]>([]);
   const invFileMapRef = useRef<Map<string, File>>(new Map()); // stores actual File objects for PDF parsing
-  const [invOpeningBalMode, setInvOpeningBalMode] = useState<"zero" | "prior-upload" | "prior-system" | null>(null);
+  const [invOpeningBalMode, setInvOpeningBalMode] = useState<"FIRST_YEAR" | "UPLOAD_PRIOR" | "ROLL_FORWARD" | null>(null);
+  const [invFirstYearAnswer, setInvFirstYearAnswer] = useState<boolean | null>(null);
+  const [invPriorScheduleFile, setInvPriorScheduleFile] = useState<{ name: string; id: string } | null>(null);
   const [invActiveStatement, setInvActiveStatement] = useState<string | null>(null); // null = show all statements
   // null = no prompt; string[] = months missing (shown before review table)
   const [invMissingMonthsPrompt, setInvMissingMonthsPrompt] = useState<string[]|null>(null);
@@ -1304,6 +1310,26 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
       setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 100);
     }
   }, [invSchedPhase]);
+
+  // Prior-year scenario detection — runs once TB analysis is available
+  // ROLL_FORWARD: engagement already has a prior year linked in Countable
+  // UPLOAD_PRIOR: TB shows 2+ years of data → prior year balance exists
+  // ASK: 1-year TB with no prior link → ask the user
+  const invPriorScenario = useMemo<"ROLL_FORWARD" | "UPLOAD_PRIOR" | "ASK" | null>(() => {
+    if (!invTBAnalysis) return null;
+    const eng = ENGAGEMENTS_PANEL.find(e => e.id === invSelectedEngId);
+    if (eng?.priorEngagementId) return "ROLL_FORWARD";
+    if (!invTBAnalysis.years.startsWith("1 year")) return "UPLOAD_PRIOR";
+    return "ASK";
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invTBAnalysis, invSelectedEngId]);
+
+  // Scenario A: auto-set mode when prior year is already in Countable
+  useEffect(() => {
+    if (invPriorScenario === "ROLL_FORWARD") {
+      setInvOpeningBalMode("ROLL_FORWARD");
+    }
+  }, [invPriorScenario]);
 
   // Position agentic loan amort wizard above the input bar
   useLayoutEffect(() => {
@@ -1625,7 +1651,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
     setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
-    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvTableSort(null); setInvSubmittedTxns([]); setInvOpeningBalMode(null); setInvActiveStatement(null);
+    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvTableSort(null); setInvSubmittedTxns([]); setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); setInvActiveStatement(null);
     setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
@@ -3667,36 +3693,92 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                           : null;
                                         return (
                                           <>
-                                            {/* ── Opening balance mode selector ── */}
+                                            {/* ── Prior-year gate — conditional per scenario ── */}
+                                            {invPriorScenario !== null && (
                                             <div className="space-y-2 mb-3">
                                               <p className="text-base font-semibold text-foreground">Prior year opening balance</p>
-                                              <div className="grid grid-cols-3 gap-2">
-                                                {([
-                                                  ["zero",         "No prior year",          "Start fresh — opening balance is zero"],
-                                                  ["prior-upload", "Upload prior schedule",   "Upload last year's workpaper file"],
-                                                  ["prior-system", "Prior year in Countable", "Carry forward from previous engagement"],
-                                                ] as [typeof invOpeningBalMode, string, string][]).map(([mode, title, desc]) => (
-                                                  <button
-                                                    key={mode}
-                                                    onClick={() => setInvOpeningBalMode(mode)}
-                                                    className={`flex flex-col gap-1 text-left p-3 rounded-[10px] border transition-all ${invOpeningBalMode === mode ? "border-primary bg-primary/[0.06] ring-1 ring-primary/30" : "border-border bg-background hover:border-primary/40 hover:bg-muted/30"}`}
-                                                  >
-                                                    <span className={`text-base font-semibold ${invOpeningBalMode === mode ? "text-primary" : "text-foreground"}`}>{title}</span>
-                                                    <span className="text-[11px] text-muted-foreground leading-snug">{desc}</span>
-                                                  </button>
-                                                ))}
-                                              </div>
-                                              {invOpeningBalMode === "prior-upload" && (
-                                                <label className="flex items-center gap-2 px-3 py-2 rounded-[8px] border border-dashed border-border bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors text-base text-muted-foreground">
-                                                  <Upload className="h-4 w-4 shrink-0" />
-                                                  <span>Upload prior year schedule (XLSX or PDF)</span>
-                                                  <input type="file" accept=".xlsx,.xls,.pdf" className="hidden" />
-                                                </label>
+
+                                              {/* Scenario A — ROLL_FORWARD: prior year already in Countable */}
+                                              {invPriorScenario === "ROLL_FORWARD" && (
+                                                <div className="flex items-center gap-2 px-3 py-2 rounded-[8px] bg-green-50 border border-green-200">
+                                                  <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                                                  <span className="text-base text-green-800">
+                                                    Opening balances will be carried forward automatically from{" "}
+                                                    <strong>{ENGAGEMENTS_PANEL.find(e => e.id === invSelectedEngId)?.priorEngagementId}</strong>.
+                                                  </span>
+                                                </div>
                                               )}
-                                              {invOpeningBalMode === "prior-system" && (
-                                                <p className="text-[11px] text-muted-foreground px-1">Opening balances will be pulled from the most recent closed engagement automatically.</p>
+
+                                              {/* Scenario B — UPLOAD_PRIOR: prior year TB detected */}
+                                              {invPriorScenario === "UPLOAD_PRIOR" && (
+                                                <div className="space-y-2">
+                                                  <div className="flex items-start gap-2 px-3 py-2 rounded-[8px] bg-amber-50 border border-amber-200">
+                                                    <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                                                    <span className="text-base text-amber-900">
+                                                      Prior year data detected in this trial balance. Upload last year's investment schedule to carry forward cost basis per security.
+                                                    </span>
+                                                  </div>
+                                                  <label className="flex items-center gap-2 px-3 py-2 rounded-[8px] border border-dashed border-border bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors text-base text-muted-foreground">
+                                                    <Upload className="h-4 w-4 shrink-0" />
+                                                    {invPriorScheduleFile
+                                                      ? <span className="text-foreground font-medium">{invPriorScheduleFile.name}</span>
+                                                      : <span>Upload prior year investment schedule (XLSX or PDF)</span>}
+                                                    <input type="file" accept=".xlsx,.xls,.pdf" className="hidden" onChange={e => {
+                                                      const f = e.target.files?.[0];
+                                                      if (f) { setInvPriorScheduleFile({ name: f.name, id: crypto.randomUUID() }); setInvOpeningBalMode("UPLOAD_PRIOR"); }
+                                                    }} />
+                                                  </label>
+                                                </div>
+                                              )}
+
+                                              {/* Scenario C — ASK: no prior year detected, ask user */}
+                                              {invPriorScenario === "ASK" && invFirstYearAnswer === null && (
+                                                <div className="space-y-2">
+                                                  <p className="text-base text-foreground">Is this the first year of operations for this client?</p>
+                                                  <div className="flex gap-2">
+                                                    <button
+                                                      onClick={() => { setInvFirstYearAnswer(true); setInvOpeningBalMode("FIRST_YEAR"); }}
+                                                      className="px-4 py-2 rounded-[8px] border border-border bg-background hover:bg-muted/40 text-base font-medium text-foreground transition-colors"
+                                                    >Yes</button>
+                                                    <button
+                                                      onClick={() => setInvFirstYearAnswer(false)}
+                                                      className="px-4 py-2 rounded-[8px] border border-border bg-background hover:bg-muted/40 text-base font-medium text-foreground transition-colors"
+                                                    >No</button>
+                                                  </div>
+                                                </div>
+                                              )}
+
+                                              {/* Scenario C — answered No: show prior schedule upload */}
+                                              {invPriorScenario === "ASK" && invFirstYearAnswer === false && (
+                                                <div className="space-y-2">
+                                                  <label className="flex items-center gap-2 px-3 py-2 rounded-[8px] border border-dashed border-border bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors text-base text-muted-foreground">
+                                                    <Upload className="h-4 w-4 shrink-0" />
+                                                    {invPriorScheduleFile
+                                                      ? <span className="text-foreground font-medium">{invPriorScheduleFile.name}</span>
+                                                      : <span>Upload prior year investment schedule (XLSX or PDF)</span>}
+                                                    <input type="file" accept=".xlsx,.xls,.pdf" className="hidden" onChange={e => {
+                                                      const f = e.target.files?.[0];
+                                                      if (f) { setInvPriorScheduleFile({ name: f.name, id: crypto.randomUUID() }); setInvOpeningBalMode("UPLOAD_PRIOR"); }
+                                                    }} />
+                                                  </label>
+                                                  {!invPriorScheduleFile && (
+                                                    <button
+                                                      onClick={() => setInvOpeningBalMode("UPLOAD_PRIOR")}
+                                                      className="text-base text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+                                                    >Skip for now</button>
+                                                  )}
+                                                </div>
+                                              )}
+
+                                              {/* Scenario C — answered Yes: confirm */}
+                                              {invPriorScenario === "ASK" && invFirstYearAnswer === true && (
+                                                <div className="flex items-center gap-2 px-3 py-2 rounded-[8px] bg-muted border border-border">
+                                                  <Check className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                  <span className="text-base text-muted-foreground">First year — opening balances default to zero.</span>
+                                                </div>
                                               )}
                                             </div>
+                                            )}
 
                                             {/* ── AI-style upload section — only shown after opening balance mode is chosen ── */}
                                             {invOpeningBalMode !== null && <div className="relative rounded-[14px] overflow-hidden border border-primary/20 bg-gradient-to-br from-primary/[0.04] via-background to-violet-50/30">
