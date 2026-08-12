@@ -72,9 +72,9 @@ export function compute(
 ) {
   const { includePriorYear, trackByBroker } = opts;
   const openings = priorYearOverride ?? priorYearLots;
-  // Only published transactions feed the schedules
+  // Only posted/published transactions feed the schedules
   const allTxns = transactionsOverride ?? currentYearTransactions;
-  const txns = allTxns.filter((t) => (t.status ?? "published") === "published");
+  const txns = allTxns.filter((t) => { const s = t.status ?? "posted"; return s === "posted" || s === "published"; });
 
   const keyOf = (ticker: string, sourceId: string) =>
     trackByBroker ? `${ticker}|${sourceId}` : ticker;
