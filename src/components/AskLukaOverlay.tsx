@@ -3747,7 +3747,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
                                           const apiKey = localStorage.getItem('anthropic_api_key') ?? '';
                                           if (!apiKey) {
-                                            setInvBrokerError('Anthropic API key not configured. Add it in Settings → Conventions to enable statement extraction.');
+                                            setInvBrokerError('Anthropic API key not configured. Add it in Settings → AI Configuration to enable statement extraction.');
                                             return;
                                           }
 
@@ -4318,7 +4318,18 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             {invBrokerError && (
                                               <div className="flex items-start gap-2 px-3 py-2 rounded-[8px] bg-red-50 border border-red-200">
                                                 <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
-                                                <p className="text-base text-red-700">{invBrokerError}</p>
+                                                <p className="text-base text-red-700">
+                                                  {invBrokerError}
+                                                  {invBrokerError.includes('API key') && (
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => setSettingsOpen(true)}
+                                                      className="ml-1.5 underline underline-offset-2 hover:text-red-900 transition-colors"
+                                                    >
+                                                      Open Settings
+                                                    </button>
+                                                  )}
+                                                </p>
                                               </div>
                                             )}
 
