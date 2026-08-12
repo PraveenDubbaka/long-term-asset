@@ -409,10 +409,19 @@ function parseRichardsonText(pages: string[], sourceFile: string): ParsedInvTran
       }
 
       let quantity: number | null = null;
-      const qtyInSec = security.match(/^([\d,]+(?:\.\d+)?)\s+/);
-      if (qtyInSec) {
-        const q = parseFloat(qtyInSec[1].replace(',', ''));
-        if (q > 0 && q < 1_000_000) { quantity = q; security = security.slice(qtyInSec[0].length).trim(); }
+      // Format A: qty at START of remaining (Activity Qty Security ...)
+      const qtyAtStart = security.match(/^([\d,]+(?:\.\d+)?)\s+(.+)$/);
+      if (qtyAtStart) {
+        const q = parseFloat(qtyAtStart[1].replace(/,/g, ''));
+        if (q > 0 && q < 1_000_000) { quantity = q; security = qtyAtStart[2].trim(); }
+      }
+      // Format B: qty at END of remaining (Activity Security Qty ...) when price was found
+      if (quantity === null && price !== null) {
+        const qtyAtEnd = security.match(/^(.+\S)\s+([\d,]+(?:\.\d+)?)$/);
+        if (qtyAtEnd) {
+          const q = parseFloat(qtyAtEnd[2].replace(/,/g, ''));
+          if (q > 0 && q < 1_000_000) { quantity = q; security = qtyAtEnd[1].trim(); }
+        }
       }
 
       let fxRate: number | null = fxRateUsdCad;
@@ -539,8 +548,14 @@ function parseBmoText(pages: string[], sourceFile: string): ParsedInvTransaction
       if (numMatches.length >= 3) {
         quantity = parseFloat(numMatches[numMatches.length - 3][1].replace(/,/g, ''));
         price = parseFloat(numMatches[numMatches.length - 2][1].replace(/,/g, ''));
+        // Strip the qty/price numbers that got embedded in the security string
+        security = security
+          .replace(/\s+(-?[\d,]+\.\d+)\s*$/, '')
+          .replace(/\s+(-?[\d,]+\.\d+)\s*$/, '')
+          .trim();
       } else if (numMatches.length === 2) {
         quantity = parseFloat(numMatches[numMatches.length - 2][1].replace(/,/g, ''));
+        security = security.replace(/\s+(-?[\d,]+\.\d+)\s*$/, '').trim();
       }
 
       const type = mapActivityToType(activity);
