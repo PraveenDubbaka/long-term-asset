@@ -67,6 +67,34 @@ const fmtUnits = (n: number) =>
 const fmtCAD = (n: number) =>
   n.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+function FmtNumInput({
+  value, onCommit, decimals = 2, className, placeholder, ...rest
+}: {
+  value: number | undefined | null;
+  onCommit: (n: number) => void;
+  decimals?: number;
+  className?: string;
+  placeholder?: string;
+} & Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "type">) {
+  const [focused, setFocused] = useState(false);
+  const [raw, setRaw] = useState("");
+  const num = parseFloat(String(value ?? 0).replace(/,/g, "")) || 0;
+  const display = focused ? raw : (num !== 0 ? fmtNum(num, decimals) : "");
+  return (
+    <input
+      {...rest}
+      type="text"
+      inputMode="decimal"
+      className={className}
+      placeholder={placeholder}
+      value={display}
+      onFocus={(e) => { setFocused(true); setRaw(num !== 0 ? String(num) : ""); e.target.select(); }}
+      onBlur={() => setFocused(false)}
+      onChange={(e) => { const s = e.target.value; setRaw(s); const n = parseFloat(s.replace(/,/g, "")); onCommit(isNaN(n) ? 0 : n); }}
+    />
+  );
+}
+
 const WAC_ROW_TYPES = [
   "Opening Balance","Purchase","Sale","Dividend","Interest",
   "Return of Capital","Reinvested Dividend","Withholding Tax",
@@ -446,12 +474,12 @@ function TransactionsPanel({
           {/* Units */}
           <div className="flex flex-col gap-0.5">
             <span className="text-base text-muted-foreground uppercase">Units</span>
-            <input type="number" value={d.qty || ""} onChange={e => setD("qty", parseFloat(e.target.value) || 0)} className={IC} placeholder="0" />
+            <FmtNumInput value={d.qty} onCommit={n => setD("qty", n)} className={IC} placeholder="0" decimals={0} />
           </div>
           {/* Price */}
           <div className="flex flex-col gap-0.5">
             <span className="text-base text-muted-foreground uppercase">Price</span>
-            <input type="number" value={d.price || ""} onChange={e => setD("price", parseFloat(e.target.value) || 0)} className={IC} placeholder="0.00" />
+            <FmtNumInput value={d.price} onCommit={n => setD("price", n)} className={IC} placeholder="0.00" />
           </div>
           {/* FX */}
           <div className="flex flex-col gap-0.5">
@@ -719,9 +747,9 @@ function TransactionsPanel({
                   {/* Units */}
                   <td className="px-2 py-1 text-right">
                     {isEditing
-                      ? <input type="number" value={d.qty || ""} onChange={e => setD("qty", parseFloat(e.target.value) || 0)} className={`${IC} w-20 text-right`} placeholder="0" />
+                      ? <FmtNumInput value={d.qty} onCommit={n => setD("qty", n)} className={`${IC} w-20 text-right`} placeholder="0" decimals={0} />
                       : isBatchEditing
-                      ? <input type="number" value={String(bv?.units ?? t.units)} onChange={e => bSet("units", parseFloat(e.target.value) || 0)} className={`${IC} w-20 text-right`} placeholder="0" />
+                      ? <FmtNumInput value={bv?.units ?? t.units} onCommit={n => bSet("units", n)} className={`${IC} w-20 text-right`} placeholder="0" decimals={0} />
                       : t.units > 0
                         ? <span className="tabular-nums">{Number.isInteger(t.units) ? t.units.toLocaleString("en-CA") : fmt4(t.units)}</span>
                         : <span className="text-muted-foreground">—</span>}
@@ -730,9 +758,9 @@ function TransactionsPanel({
                   {/* Price */}
                   <td className="px-2 py-1 text-right">
                     {isEditing
-                      ? <input type="number" value={d.price || ""} onChange={e => setD("price", parseFloat(e.target.value) || 0)} className={`${IC} w-20 text-right`} placeholder="0.00" />
+                      ? <FmtNumInput value={d.price} onCommit={n => setD("price", n)} className={`${IC} w-20 text-right`} placeholder="0.00" />
                       : isBatchEditing
-                      ? <input type="number" value={String(bv?.price ?? t.price)} onChange={e => bSet("price", parseFloat(e.target.value) || 0)} className={`${IC} w-20 text-right`} placeholder="0.00" />
+                      ? <FmtNumInput value={bv?.price ?? t.price} onCommit={n => bSet("price", n)} className={`${IC} w-20 text-right`} placeholder="0.00" />
                       : <span className="tabular-nums">{fmt2(t.price)}</span>}
                   </td>
 
@@ -1084,13 +1112,13 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
                           {/* Cost Purchasing */}
                           <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
                             {isEditing
-                              ? <input type="number" value={getV("costIn")} onChange={e => setV({ costIn: parseFloat(e.target.value)||0 })} className={`${IIC} w-24 text-right`} />
+                              ? <FmtNumInput value={getV("costIn")} onCommit={n => setV({ costIn: n })} className={`${IIC} w-24 text-right`} />
                               : fmtCAD(r.costIn)}
                           </td>
                           {/* Cost Closing */}
                           <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}>
                             {isEditing
-                              ? <input type="number" value={getV("cumCost")} onChange={e => setV({ cumCost: parseFloat(e.target.value)||0 })} className={`${IIC} w-24 text-right`} />
+                              ? <FmtNumInput value={getV("cumCost")} onCommit={n => setV({ cumCost: n })} className={`${IIC} w-24 text-right`} />
                               : fmtCAD(r.cumCost)}
                           </td>
                           {/* Units Opening (read-only — prev cumUnits) */}
@@ -1100,13 +1128,13 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
                           {/* Units Purchasing */}
                           <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
                             {isEditing
-                              ? <input type="number" value={getV("unitsIn")} onChange={e => setV({ unitsIn: parseFloat(e.target.value)||0 })} className={`${IIC} w-20 text-right`} />
+                              ? <FmtNumInput value={getV("unitsIn")} onCommit={n => setV({ unitsIn: n })} className={`${IIC} w-20 text-right`} decimals={4} />
                               : fmtUnits(r.unitsIn)}
                           </td>
                           {/* Units Closing */}
                           <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}>
                             {isEditing
-                              ? <input type="number" value={getV("cumUnits")} onChange={e => setV({ cumUnits: parseFloat(e.target.value)||0 })} className={`${IIC} w-20 text-right`} />
+                              ? <FmtNumInput value={getV("cumUnits")} onCommit={n => setV({ cumUnits: n })} className={`${IIC} w-20 text-right`} decimals={4} />
                               : fmtUnits(r.cumUnits)}
                           </td>
                           {/* WAC — always computed: cumCost ÷ cumUnits */}
@@ -1117,7 +1145,7 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
                           {(["eligibleDividend","capitalDividend","otherIncome","foreignIncome","nonResidentTax"] as const).map((field, fi) => (
                             <td key={field} className={`px-2.5 py-1.5 text-right tabular-nums ${fi < 4 ? "border-r border-border/20" : ""} ${fi === 0 ? "bg-emerald-50/10" : ""}`} style={fi === 0 ? { borderLeft: "3px solid hsl(var(--foreground) / 0.3)" } : {}}>
                               {isEditing ? (
-                                <input type="number" value={getV(field) ?? ""} onChange={e => setV({ [field]: parseFloat(e.target.value) || undefined })} className={`${IIC} w-20 text-right`} placeholder="0.00" />
+                                <FmtNumInput value={getV(field) ?? 0} onCommit={n => setV({ [field]: n || undefined })} className={`${IIC} w-20 text-right`} placeholder="0.00" />
                               ) : (r[field] != null && r[field] !== 0)
                                 ? <span className={field === "nonResidentTax" ? "text-red-600" : "text-emerald-700"}>{fmtCAD(r[field]!)}</span>
                                 : <span className="text-muted-foreground/25">—</span>}
@@ -1135,15 +1163,15 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
                         <td className="px-2.5 py-1 border-r border-border/20"><input type="date" value={newRow.date ?? ""} onChange={e => setNewRow(d => ({...d, date: e.target.value}))} className={`${IIC} w-28`} /></td>
                         <td className="px-2.5 py-1 border-r border-border/20"><select value={newRow.type ?? "Adjustment"} onChange={e => setNewRow(d => ({...d, type: e.target.value}))} className={`${IIC} w-36`}>{WAC_ROW_TYPES.map(t => <option key={t}>{t}</option>)}</select></td>
                         <td className="px-2.5 py-1 border-r border-border/20 text-right tabular-nums text-muted-foreground/60" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>{fmtCAD(allRows[allRows.length - 1]?.cumCost ?? 0)}</td>
-                        <td className="px-2.5 py-1 border-r border-border/20" style={{}}><input type="number" placeholder="0.00" value={newRow.costIn ?? ""} onChange={e => setNewRow(d => ({...d, costIn: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} /></td>
-                        <td className="px-2.5 py-1" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}><input type="number" placeholder="0.00" value={newRow.cumCost ?? ""} onChange={e => setNewRow(d => ({...d, cumCost: parseFloat(e.target.value)||0}))} className={`${IIC} w-24 text-right`} /></td>
+                        <td className="px-2.5 py-1 border-r border-border/20" style={{}}><FmtNumInput value={newRow.costIn ?? 0} onCommit={n => setNewRow(d => ({...d, costIn: n}))} className={`${IIC} w-24 text-right`} placeholder="0.00" /></td>
+                        <td className="px-2.5 py-1" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}><FmtNumInput value={newRow.cumCost ?? 0} onCommit={n => setNewRow(d => ({...d, cumCost: n}))} className={`${IIC} w-24 text-right`} placeholder="0.00" /></td>
                         <td className="px-2.5 py-1 border-r border-border/20 text-right tabular-nums text-muted-foreground/60" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>{fmtUnits(allRows[allRows.length - 1]?.cumUnits ?? 0)}</td>
-                        <td className="px-2.5 py-1 border-r border-border/20"><input type="number" placeholder="0" value={newRow.unitsIn ?? ""} onChange={e => setNewRow(d => ({...d, unitsIn: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} /></td>
-                        <td className="px-2.5 py-1" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}><input type="number" placeholder="0.0000" value={newRow.cumUnits ?? ""} onChange={e => setNewRow(d => ({...d, cumUnits: parseFloat(e.target.value)||0}))} className={`${IIC} w-20 text-right`} /></td>
+                        <td className="px-2.5 py-1 border-r border-border/20"><FmtNumInput value={newRow.unitsIn ?? 0} onCommit={n => setNewRow(d => ({...d, unitsIn: n}))} className={`${IIC} w-20 text-right`} placeholder="0" decimals={4} /></td>
+                        <td className="px-2.5 py-1" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}><FmtNumInput value={newRow.cumUnits ?? 0} onCommit={n => setNewRow(d => ({...d, cumUnits: n}))} className={`${IIC} w-20 text-right`} placeholder="0.0000" decimals={4} /></td>
                         <td className="px-2.5 py-1 text-right tabular-nums text-muted-foreground border-r border-border/20">{fmtNum((newRow.cumUnits ?? 0) > 0 ? (newRow.cumCost ?? 0) / (newRow.cumUnits ?? 1) : 0, 4)}</td>
                         {(["eligibleDividend","capitalDividend","otherIncome","foreignIncome","nonResidentTax"] as const).map((field, fi) => (
                           <td key={field} className={`px-2.5 py-1 ${fi < 4 ? "border-r border-border/20" : ""}`} style={fi === 0 ? { borderLeft: "3px solid hsl(var(--foreground) / 0.3)" } : {}}>
-                            <input type="number" placeholder="0.00" value={newRow[field] ?? ""} onChange={e => setNewRow(d => ({...d, [field]: parseFloat(e.target.value)||undefined}))} className={`${IIC} w-20 text-right`} />
+                            <FmtNumInput value={newRow[field] ?? 0} onCommit={n => setNewRow(d => ({...d, [field]: n || undefined}))} className={`${IIC} w-20 text-right`} placeholder="0.00" />
                           </td>
                         ))}
                       </tr>
@@ -1343,24 +1371,23 @@ function GainLossPanel({ schedules, yearEnd, editMode, allInvSources }: {
                       {d.settlementDate && d.settlementDate !== d.date ? fmtDate(d.settlementDate) : "—"}
                     </td>
                     <td className="px-3 py-1.5 text-right tabular-nums">
-                      {editMode ? <input type="number" value={ov.units ?? d.units} onChange={e => rSet(i, { units: parseFloat(e.target.value)||0 })} className={`${EC} w-24 text-right`} /> : fmtUnits(d.units)}
+                      {editMode ? <FmtNumInput value={ov.units ?? d.units} onCommit={n => rSet(i, { units: n })} className={`${EC} w-24 text-right`} decimals={4} /> : fmtUnits(d.units)}
                     </td>
                     <td className="px-3 py-1.5 text-right tabular-nums font-mono">
                       {d.fxRate !== 1 ? d.fxRate.toFixed(4) : "—"}
                     </td>
                     <td className="px-3 py-1.5 text-right font-mono">{d.currency}</td>
                     <td className="px-3 py-1.5 text-right tabular-nums">
-                      {editMode ? <input type="number" value={ov.grossProceeds ?? d.grossProceeds} onChange={e => rSet(i, { grossProceeds: parseFloat(e.target.value)||0 })} className={`${EC} w-28 text-right`} /> : fmtCAD(gp)}
+                      {editMode ? <FmtNumInput value={ov.grossProceeds ?? d.grossProceeds} onCommit={n => rSet(i, { grossProceeds: n })} className={`${EC} w-28 text-right`} /> : fmtCAD(gp)}
                     </td>
                     <td className="px-3 py-1.5 text-right tabular-nums">
-                      {editMode ? <input type="number" value={ov.costOut ?? d.costOut} onChange={e => rSet(i, { costOut: parseFloat(e.target.value)||0 })} className={`${EC} w-28 text-right`} /> : fmtCAD(co)}
+                      {editMode ? <FmtNumInput value={ov.costOut ?? d.costOut} onCommit={n => rSet(i, { costOut: n })} className={`${EC} w-28 text-right`} /> : fmtCAD(co)}
                     </td>
                     <td className="px-3 py-1 text-right">
-                      <input
-                        type="number"
-                        value={adj === 0 ? "" : adj}
+                      <FmtNumInput
+                        value={adj}
+                        onCommit={n => setAdjustments(p => ({ ...p, [i]: n }))}
                         placeholder="0.00"
-                        onChange={e => setAdjustments(p => ({ ...p, [i]: parseFloat(e.target.value) || 0 }))}
                         className={`${EC} w-20 text-right`}
                       />
                     </td>
@@ -1436,16 +1463,16 @@ function GainLossPanel({ schedules, yearEnd, editMode, allInvSources }: {
                 <td className="px-3 py-1.5 font-mono">{s.ticker}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground whitespace-nowrap">{yearEndStr}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">
-                  {editMode ? <input type="number" value={uv.units ?? Math.max(0, s.closingUnits)} onChange={e => uSet(s.key, { units: parseFloat(e.target.value)||0 })} className={`${EC} w-24 text-right`} /> : fmtUnits(Math.max(0, s.closingUnits))}
+                  {editMode ? <FmtNumInput value={uv.units ?? Math.max(0, s.closingUnits)} onCommit={n => uSet(s.key, { units: n })} className={`${EC} w-24 text-right`} decimals={4} /> : fmtUnits(Math.max(0, s.closingUnits))}
                 </td>
                 <td className="px-3 py-1.5 text-right tabular-nums font-medium">
-                  {editMode ? <input type="number" value={uv.fmvCAD ?? s.fmvCAD} onChange={e => uSet(s.key, { fmvCAD: parseFloat(e.target.value)||0 })} className={`${EC} w-28 text-right`} /> : fmtCAD(s.fmvCAD)}
+                  {editMode ? <FmtNumInput value={uv.fmvCAD ?? s.fmvCAD} onCommit={n => uSet(s.key, { fmvCAD: n })} className={`${EC} w-28 text-right`} /> : fmtCAD(s.fmvCAD)}
                 </td>
                 <td className="px-3 py-1.5 text-right tabular-nums">
-                  {editMode ? <input type="number" value={uv.closingCostCAD ?? s.closingCostCAD} onChange={e => uSet(s.key, { closingCostCAD: parseFloat(e.target.value)||0 })} className={`${EC} w-28 text-right`} /> : fmtCAD(s.closingCostCAD)}
+                  {editMode ? <FmtNumInput value={uv.closingCostCAD ?? s.closingCostCAD} onCommit={n => uSet(s.key, { closingCostCAD: n })} className={`${EC} w-28 text-right`} /> : fmtCAD(s.closingCostCAD)}
                 </td>
                 <td className="px-3 py-1.5 text-right tabular-nums">
-                  {editMode ? <input type="number" value={uv.unrealizedGL ?? s.unrealizedGL} onChange={e => uSet(s.key, { unrealizedGL: parseFloat(e.target.value)||0 })} className={`${EC} w-28 text-right`} /> : fmtGL(s.unrealizedGL)}
+                  {editMode ? <FmtNumInput value={uv.unrealizedGL ?? s.unrealizedGL} onCommit={n => uSet(s.key, { unrealizedGL: n })} className={`${EC} w-28 text-right`} /> : fmtGL(s.unrealizedGL)}
                 </td>
                 <td className="px-3 py-1 w-44">
                   <div className="relative">
@@ -1658,7 +1685,7 @@ function IncomePanel({ incomeMatrix, editMode }: { incomeMatrix: ReturnType<type
                 </td>
                 <td className="px-3 py-1.5">{row.currency}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">
-                  {editMode ? <input type="number" value={ov.amountCAD ?? row.amountCAD} onChange={e => setIncOvr(p => ({ ...p, [row.id]: { ...p[row.id], amountCAD: parseFloat(e.target.value)||0 } }))} className={`${EC} w-28 text-right`} /> : fmtGL(row.amountCAD)}
+                  {editMode ? <FmtNumInput value={ov.amountCAD ?? row.amountCAD} onCommit={n => setIncOvr(p => ({ ...p, [row.id]: { ...p[row.id], amountCAD: n } }))} className={`${EC} w-28 text-right`} /> : fmtGL(row.amountCAD)}
                 </td>
               </tr>
             );})}
@@ -1692,7 +1719,7 @@ function IncomePanel({ incomeMatrix, editMode }: { incomeMatrix: ReturnType<type
                   {editMode ? <input value={ov.description ?? row.description} onChange={e => setExpOvr(p => ({ ...p, [row.id]: { ...p[row.id], description: e.target.value } }))} className={`${EC}`} /> : row.description}
                 </td>
                 <td className="px-3 py-1.5 text-right tabular-nums">
-                  {editMode ? <input type="number" value={ov.amountCAD ?? row.amountCAD} onChange={e => setExpOvr(p => ({ ...p, [row.id]: { ...p[row.id], amountCAD: parseFloat(e.target.value)||0 } }))} className={`${EC} w-28 text-right`} /> : fmtGL(row.amountCAD)}
+                  {editMode ? <FmtNumInput value={ov.amountCAD ?? row.amountCAD} onCommit={n => setExpOvr(p => ({ ...p, [row.id]: { ...p[row.id], amountCAD: n } }))} className={`${EC} w-28 text-right`} /> : fmtGL(row.amountCAD)}
                 </td>
               </tr>
             );})}
@@ -2313,7 +2340,7 @@ function AddJECard({ onSave, onCancel }: {
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-base font-semibold text-muted-foreground uppercase tracking-wider">Amount</label>
-          <input type="number" step="0.01" value={d.amount || ""} onChange={e => set("amount", parseFloat(e.target.value) || 0)} className={IC} placeholder="0.00" />
+          <FmtNumInput value={d.amount} onCommit={n => set("amount", n)} className={IC} placeholder="0.00" />
         </div>
       </div>
       <div className="px-4 pb-2">
@@ -2334,7 +2361,7 @@ function AddJECard({ onSave, onCancel }: {
             <tr className="border-b border-border/40">
               <td className="px-3 py-2 w-36"><JEAccountSelect value={d.drAccount} onChange={v => set("drAccount", v)} /></td>
               <td className="px-3 py-2"><input value={d.drDescription} onChange={e => set("drDescription", e.target.value)} className={IC} placeholder="Line description…" /></td>
-              <td className="px-3 py-2 w-32"><input type="number" step="0.01" value={d.amount || ""} onChange={e => set("amount", parseFloat(e.target.value) || 0)} className={`${IC} text-right`} /></td>
+              <td className="px-3 py-2 w-32"><FmtNumInput value={d.amount} onCommit={n => set("amount", n)} className={`${IC} text-right`} /></td>
               <td className="px-3 py-2 w-32"><div className="h-7 flex items-center justify-end px-2 rounded-md border border-border/40 bg-muted/30 text-base text-muted-foreground">0.00</div></td>
             </tr>
             <tr>

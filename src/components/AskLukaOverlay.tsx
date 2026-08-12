@@ -376,6 +376,33 @@ function defaultGLPrincipal(type: string, currency: string): string {
 }
 const SCR = "h-6 text-base px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer";
 
+function FmtStrInput({
+  value, onChange, decimals = 2, className, placeholder,
+}: {
+  value: string | undefined | null;
+  onChange: (s: string) => void;
+  decimals?: number;
+  className?: string;
+  placeholder?: string;
+}) {
+  const [focused, setFocused] = useState(false);
+  const [raw, setRaw] = useState("");
+  const num = parseFloat(String(value ?? "").replace(/,/g, ""));
+  const display = focused ? raw : (!isNaN(num) && num !== 0 ? num.toLocaleString("en-CA", { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : "");
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      className={className}
+      placeholder={placeholder}
+      value={display}
+      onFocus={(e) => { setFocused(true); setRaw(String(value ?? "")); e.target.select(); }}
+      onBlur={() => setFocused(false)}
+      onChange={(e) => { const s = e.target.value; setRaw(s); onChange(s.replace(/,/g, "")); }}
+    />
+  );
+}
+
 // ── GL account combobox (compact, for review table) ─────────────────────────
 function GLComboboxMini({ value, onChange, required }: { value: string; onChange: (v: string) => void; required?: boolean }) {
   const [open, setOpen]   = useState(false);
@@ -4498,14 +4525,14 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                               </td>
                                                               <td className="px-1.5 py-1 min-w-[80px]">
                                                                 {row.units ? (
-                                                                  <input value={row.units} onChange={e => upd("units", e.target.value)} className={cn(IC, "w-20 text-right tabular-nums")} placeholder="0.0000" />
+                                                                  <FmtStrInput value={row.units} onChange={s => upd("units", s)} className={cn(IC, "w-20 text-right tabular-nums")} placeholder="0.0000" decimals={4} />
                                                                 ) : (
                                                                   <span className="text-base text-muted-foreground px-1.5">—</span>
                                                                 )}
                                                               </td>
-                                                              <td className="px-1.5 py-1 min-w-[80px]"><input value={row.price} onChange={e => upd("price", e.target.value)} className={cn(IC, "w-20 text-right")} placeholder="0.000" /></td>
+                                                              <td className="px-1.5 py-1 min-w-[80px]"><FmtStrInput value={row.price} onChange={s => upd("price", s)} className={cn(IC, "w-20 text-right")} placeholder="0.000" decimals={4} /></td>
                                                               <td className="px-1.5 py-1 min-w-[100px]">
-                                                                <input value={row.amount ?? ""} onChange={e => upd("amount", e.target.value)}
+                                                                <FmtStrInput value={row.amount ?? ""} onChange={s => upd("amount", s)}
                                                                   className={cn(IC, "w-24 text-right font-medium tabular-nums")}
                                                                   placeholder="0.00" />
                                                               </td>
