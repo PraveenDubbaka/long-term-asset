@@ -24,6 +24,8 @@ const ACTIVITY_TYPE_MAP: [string, string][] = [
   // Transfers
   ['online banking',        'Transfer In'],
   ['transfer of funds',     'Transfer In'],
+  ['transferof funds',      'Transfer In'],
+  ['transfer of',           'Transfer In'],
   ['instabank',             'Transfer In'],
   ['multi-branch banking',  'Transfer'],
   ['client movement',       'Transfer'],
@@ -61,9 +63,11 @@ const ACTIVITY_TYPE_MAP: [string, string][] = [
 ];
 
 export function mapActivityToType(activity: string): string {
-  const lower = activity.toLowerCase().trim();
+  const normalized = activity
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .toLowerCase().trim();
   for (const [key, value] of ACTIVITY_TYPE_MAP) {
-    if (lower.includes(key)) return value;
+    if (normalized.includes(key) || key.includes(normalized)) return value;
   }
   return activity;
 }
@@ -731,6 +735,40 @@ export async function extractInvTransactions(
     // PDF — extract text to determine if text-based or scanned
     const pdfPages = await extractPdfText(file).catch(() => [] as string[]);
     if (pdfPages.some(p => p.trim().length > 100)) {
+      const pdfFullText = pdfPages.join(' ');
+      const pdfIsRichardson = /richardson\s*wealth/i.test(pdfFullText);
+      const pdfIsBmo = /bmo\s*investor\s*line/i.test(pdfFullText) || /bmo\s*investorline/i.test(pdfFullText);
+
+      if (pdfIsRichardson) {
+        const acctM = pdfFullText.match(/(H\d{2}-[A-Z0-9]+-[A-Z])/);
+        return {
+          broker: 'Richardson Wealth Limited',
+          accountHolder: '',
+          account: acctM ? acctM[1] : '',
+          periodEnd: '',
+          fxRateUsdCad: null,
+          transactions: parseRichardsonText(pdfPages, file.name),
+        };
+      }
+
+      if (pdfIsBmo) {
+        const bmoPages = pdfPages.map(page =>
+          page
+            .replace(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(\d)/gi, '$1 $2')
+            .replace(/(\d{1,2}),(\d{4})/g, '$1, $2')
+            .replace(/([a-z])([A-Z])/g, '$1 $2')
+        );
+        const acctM = pdfFullText.match(/Non-registered account #([\d-]+)/i);
+        return {
+          broker: 'BMO InvestorLine',
+          accountHolder: '',
+          account: acctM ? acctM[1].replace(/\s+/g, '') : '',
+          periodEnd: '',
+          fxRateUsdCad: null,
+          transactions: parseBmoText(bmoPages, file.name),
+        };
+      }
+
       return extractWithClaude({ type: 'text', pages: pdfPages }, file.name, apiKey);
     }
 
