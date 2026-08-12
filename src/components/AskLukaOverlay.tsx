@@ -3781,10 +3781,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               setInvReviewRows(rows);
                                             } else {
                                               const fileErrors = parseResults.filter(r => r.error).map(r => r.error).join(" ");
-                                              const detectedBrokers = parseResults.map(r => r.broker).filter(b => b !== 'Unknown');
-                                              const brokerMsg = detectedBrokers.length
-                                                ? `${detectedBrokers[0]} detected but no transactions found — the statement may not contain an "Account activity for this month" section, or all activity was filtered.`
-                                                : "No transactions found in this document. The statement may not contain activity for this period, or it could not be read. Try uploading a different month.";
+                                              const brokerMsg = 'No transactions found in this document. The statement may not contain activity for this period, or the file could not be read. Try a different month or file format.';
                                               setInvBrokerError(fileErrors || brokerMsg);
                                             }
                                           } catch (err) {
