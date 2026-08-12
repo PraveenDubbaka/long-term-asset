@@ -8,6 +8,11 @@
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import JSZip from 'jszip';
 
+// ─── Built-in Gemini key for universal extraction ────────────────────────────
+// Fill this in with a real key from https://aistudio.google.com/app/apikey
+// Gemini 1.5 Flash free tier: 15 req/min, 1M tokens/day
+const BUILT_IN_GEMINI_KEY = '';
+
 let pdfjsLib: typeof import('pdfjs-dist') | null = null;
 
 async function getPdfJs() {
@@ -665,6 +670,115 @@ Rules:
   };
 }
 
+// ─── Gemini AI extraction ─────────────────────────────────────────────────────
+
+async function extractWithGemini(
+  input: { type: 'text'; pages: string[] } | { type: 'images'; pages: string[] },
+  sourceFile: string,
+  geminiKey: string,
+): Promise<InvPdfParseResult> {
+  const systemPrompt = `You are an expert Canadian investment workpaper preparer. Extract all transactions from the investment statement. Return ONLY valid JSON — no markdown, no explanation, no code fences.
+
+JSON shape:
+{
+  "broker": "broker name as shown on statement",
+  "accountHolder": "client entity name",
+  "account": "primary account number",
+  "periodEnd": "YYYY-MM-DD",
+  "fxRateUsdCad": number or null,
+  "transactions": [{
+    "settlementDate": "YYYY-MM-DD",
+    "tradeDate": "YYYY-MM-DD",
+    "activity": "exact description from statement",
+    "security": "full security name, cleaned of -NL SEG (F,NL) suffixes",
+    "ticker": "ticker symbol or empty string",
+    "quantity": number or null,
+    "price": number or null,
+    "amount": number,
+    "currency": "CAD" or "USD",
+    "fxRate": number or null,
+    "account": "account number for this transaction",
+    "accountType": "RRSP or TFSA or Non-Registered or IAA or PMA or RRIF or empty string"
+  }]
+}
+
+Rules:
+- Include ALL transactions across ALL accounts
+- EXCLUDE opening/closing balance rows, subtotals, and portfolio summary rows
+- Purchases and fees = negative amount. Sales, dividends, interest, distributions = positive
+- If settlement date not shown, use trade date for both fields
+- Preserve fractional quantities (e.g. 201.3536)`;
+
+  let parts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }> = [];
+
+  if (input.type === 'text') {
+    const fullText = input.pages.join('\n\n--- PAGE BREAK ---\n\n');
+    const truncated = fullText.length > 14000 ? fullText.slice(0, 14000) + '\n[...truncated]' : fullText;
+    parts = [{ text: `${systemPrompt}\n\nStatement text:\n${truncated}` }];
+  } else {
+    parts = [
+      { text: systemPrompt },
+      ...input.pages.slice(0, 8).map(data => ({
+        inline_data: { mime_type: 'image/jpeg' as const, data },
+      })),
+      { text: 'Extract all transactions from these statement pages. Return the full JSON object.' },
+    ];
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts }],
+      generationConfig: { temperature: 0, maxOutputTokens: 4096 },
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Gemini API error ${response.status}: ${errText.slice(0, 300)}`);
+  }
+
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  const clean = text.replace(/```json|```/g, '').trim();
+
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(clean);
+  } catch {
+    throw new Error(`Gemini returned invalid JSON. Raw: ${clean.slice(0, 200)}`);
+  }
+
+  return {
+    broker: String(parsed.broker ?? 'AI-Extracted'),
+    accountHolder: String(parsed.accountHolder ?? ''),
+    account: String(parsed.account ?? ''),
+    periodEnd: String(parsed.periodEnd ?? ''),
+    fxRateUsdCad: parsed.fxRateUsdCad != null ? Number(parsed.fxRateUsdCad) : null,
+    transactions: ((parsed.transactions ?? []) as Array<Record<string, unknown>>).map(
+      (r, i): ParsedInvTransaction => ({
+        id: `ai-${String(parsed.account ?? 'unknown').replace(/\s+/g, '')}-${String(r.settlementDate ?? i)}-${i}`,
+        settlementDate: String(r.settlementDate ?? ''),
+        tradeDate: String(r.tradeDate ?? r.settlementDate ?? ''),
+        activity: String(r.activity ?? ''),
+        security: String(r.security ?? ''),
+        ticker: String(r.ticker ?? ''),
+        quantity: r.quantity != null ? Number(r.quantity) : null,
+        price: r.price != null ? Number(r.price) : null,
+        amount: Number(r.amount ?? 0),
+        currency: r.currency === 'USD' ? 'USD' : 'CAD',
+        fxRate: r.fxRate != null ? Number(r.fxRate) : null,
+        account: String(r.account ?? parsed.account ?? ''),
+        accountType: String(r.accountType ?? ''),
+        broker: String(parsed.broker ?? 'AI-Extracted'),
+        sourceFile,
+      })
+    ),
+  };
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export async function extractInvTransactions(
@@ -673,7 +787,26 @@ export async function extractInvTransactions(
   onOcrProgress?: (page: number, total: number) => void,
 ): Promise<InvPdfParseResult> {
   try {
-    // ── ZIP format (Richardson Wealth + BMO — both use same ZIP structure) ─
+    // Resolve AI key: user-configured Anthropic takes priority, built-in Gemini is fallback
+    const userGeminiKey = typeof localStorage !== 'undefined'
+      ? (localStorage.getItem('gemini_api_key') ?? undefined)
+      : undefined;
+    const effectiveGeminiKey = userGeminiKey ?? (BUILT_IN_GEMINI_KEY || undefined);
+
+    const aiExtract = async (
+      input: { type: 'text'; pages: string[] } | { type: 'images'; pages: string[] },
+      src: string,
+    ): Promise<InvPdfParseResult> => {
+      if (apiKey) return extractWithClaude(input, src, apiKey);
+      if (effectiveGeminiKey) return extractWithGemini(input, src, effectiveGeminiKey);
+      return {
+        broker: 'Unknown', accountHolder: '', account: '', periodEnd: '',
+        fxRateUsdCad: null, transactions: [],
+        error: 'This statement format requires an API key. Add an Anthropic or Gemini key in Settings → AI Configuration.',
+      };
+    };
+
+    // ── 1. ZIP format (Richardson Wealth + BMO) ───────────────────────────
     const zipResult = await extractZipText(file);
     if (zipResult !== null) {
       const { pages, broker } = zipResult;
@@ -696,130 +829,101 @@ export async function extractInvTransactions(
                      ?? fullText.match(/Non-registered account #([\d-]+)/i);
       const account = acctMatch ? acctMatch[1].replace(/\s+/g, '') : '';
 
-      let transactions: ParsedInvTransaction[] = [];
       if (broker === 'Richardson Wealth Limited') {
-        transactions = parseRichardsonText(pages, file.name);
-      } else if (broker === 'BMO InvestorLine') {
-        transactions = parseBmoText(pages, file.name);
-      } else if (apiKey) {
-        return extractWithClaude({ type: 'text', pages }, file.name, apiKey);
+        return { broker, accountHolder, account, periodEnd, fxRateUsdCad, transactions: parseRichardsonText(pages, file.name) };
       }
-
-      return { broker, accountHolder, account, periodEnd, fxRateUsdCad, transactions };
+      if (broker === 'BMO InvestorLine') {
+        return { broker, accountHolder, account, periodEnd, fxRateUsdCad, transactions: parseBmoText(pages, file.name) };
+      }
+      return aiExtract({ type: 'text', pages }, file.name);
     }
 
-    // ── Non-ZIP formats need an API key ───────────────────────────────────
-    if (!apiKey) {
-      return {
-        broker: 'Unknown', accountHolder: '', account: '', periodEnd: '',
-        fxRateUsdCad: null, transactions: [],
-        error: 'This statement format requires an Anthropic API key. Add it in Settings → AI Configuration.',
-      };
-    }
-
-    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-
-    if (['csv', 'tsv', 'txt'].includes(ext)) {
-      return extractWithClaude({ type: 'text', pages: [await file.text()] }, file.name, apiKey);
-    }
-
-    if (['xlsx', 'xls'].includes(ext)) {
-      const { read, utils } = await import('xlsx');
-      const wb = read(await file.arrayBuffer());
-      const pages = wb.SheetNames.map(name =>
-        `--- Sheet: ${name} ---\n` + utils.sheet_to_csv(wb.Sheets[name])
-      );
-      return extractWithClaude({ type: 'text', pages }, file.name, apiKey);
-    }
-
-    // PDF — extract text to determine if text-based or scanned
+    // ── 2. Standard PDF ───────────────────────────────────────────────────
     const pdfPages = await extractPdfText(file).catch(() => [] as string[]);
     if (pdfPages.some(p => p.trim().length > 100)) {
-      const pdfFullText = pdfPages.join(' ');
-      const pdfIsRichardson = /richardson\s*wealth/i.test(pdfFullText);
-      const pdfIsBmo = /bmo\s*investor\s*line/i.test(pdfFullText) || /bmo\s*investorline/i.test(pdfFullText);
+      const fullPdfText = pdfPages.join(' ');
 
-      if (pdfIsRichardson) {
-        const acctM = pdfFullText.match(/(H\d{2}-[A-Z0-9]+-[A-Z])/);
+      if (/richardson\s*wealth/i.test(fullPdfText) || /jsk\s*partners/i.test(fullPdfText)) {
+        const acctM = fullPdfText.match(/(H\d{2}-[A-Z0-9]+-[A-Z])/);
+        const fxM = fullPdfText.match(/\$1USD\s*=\s*\$?([\d.]+)CAD/i);
+        const pmatch = fullPdfText.match(/For the period ending\s+([A-Za-z]+\s+\d{1,2},?\s+\d{4})/i);
+        const holderM = fullPdfText.match(/^([A-Z][A-Z\s]+(?:LTD|INC|CORP)\.?)/m);
         return {
           broker: 'Richardson Wealth Limited',
-          accountHolder: '',
-          account: acctM ? acctM[1] : '',
-          periodEnd: '',
-          fxRateUsdCad: null,
+          accountHolder: holderM?.[1]?.trim() ?? '',
+          account: acctM?.[1] ?? '',
+          periodEnd: pmatch ? parseDate(pmatch[1]) : '',
+          fxRateUsdCad: fxM ? parseFloat(fxM[1]) : null,
           transactions: parseRichardsonText(pdfPages, file.name),
         };
       }
 
-      if (pdfIsBmo) {
-        const bmoPages = pdfPages.map(page =>
-          page
-            .replace(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(\d)/gi, '$1 $2')
-            .replace(/(\d{1,2}),(\d{4})/g, '$1, $2')
-            .replace(/([a-z])([A-Z])/g, '$1 $2')
+      if (/bmo\s*investor\s*line/i.test(fullPdfText) || /bmo\s*investorline/i.test(fullPdfText)) {
+        const normalizedPages = pdfPages.map(p =>
+          p.replace(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(\d)/gi, '$1 $2')
+           .replace(/(\d{1,2}),(\d{4})/g, '$1, $2')
+           .replace(/([a-z])([A-Z])/g, '$1 $2')
         );
-        const acctM = pdfFullText.match(/Non-registered account #([\d-]+)/i);
+        const acctM = fullPdfText.match(/Non-registered account #([\d-]+)/i);
+        const pmatch = fullPdfText.match(/([A-Za-z]+\s+\d{1,2},?\s+\d{4})\s+Last Statement/i);
         return {
           broker: 'BMO InvestorLine',
           accountHolder: '',
-          account: acctM ? acctM[1].replace(/\s+/g, '') : '',
-          periodEnd: '',
+          account: acctM?.[1]?.replace(/\s+/g, '') ?? '',
+          periodEnd: pmatch ? parseDate(pmatch[1]) : '',
           fxRateUsdCad: null,
-          transactions: parseBmoText(bmoPages, file.name),
+          transactions: parseBmoText(normalizedPages, file.name),
         };
       }
 
-      return extractWithClaude({ type: 'text', pages: pdfPages }, file.name, apiKey);
+      return aiExtract({ type: 'text', pages: pdfPages }, file.name);
     }
 
-    // Scanned PDF — OCR with Tesseract (no API key needed)
+    // ── 3. CSV / TSV / TXT ────────────────────────────────────────────────
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+    if (['csv', 'tsv', 'txt'].includes(ext)) {
+      return aiExtract({ type: 'text', pages: [await file.text()] }, file.name);
+    }
+
+    // ── 4. XLSX / XLS ─────────────────────────────────────────────────────
+    if (['xlsx', 'xls'].includes(ext)) {
+      const { read, utils } = await import('xlsx');
+      const wb = read(await file.arrayBuffer());
+      const pages = wb.SheetNames.map(n =>
+        `--- Sheet: ${n} ---\n` + utils.sheet_to_csv(wb.Sheets[n])
+      );
+      return aiExtract({ type: 'text', pages }, file.name);
+    }
+
+    // ── 5. Scanned PDF — OCR first, AI only for unknown brokers ──────────
     const ocrPages = await ocrPdfPages(file, onOcrProgress);
-    const hasUsefulText = ocrPages.some(p => p.trim().length > 100);
-    if (!hasUsefulText) {
+    if (!ocrPages.some(p => p.trim().length > 100)) {
       return {
         broker: 'Unknown', accountHolder: '', account: '', periodEnd: '',
         fxRateUsdCad: null, transactions: [],
-        error: 'Could not extract text from this PDF. It may be a very low quality scan.',
+        error: 'Could not extract text from this PDF. The scan quality may be too low.',
       };
     }
 
     const ocrFullText = ocrPages.join(' ');
-    const ocrIsRichardson = /richardson\s*wealth/i.test(ocrFullText);
-    const ocrIsBmo = /bmo\s*investor\s*line/i.test(ocrFullText) || /bmo\s*investorline/i.test(ocrFullText);
 
-    if (ocrIsRichardson) {
+    if (/richardson\s*wealth/i.test(ocrFullText) || /jsk\s*partners/i.test(ocrFullText)) {
       const acctM = ocrFullText.match(/(H\d{2}-[A-Z0-9]+-[A-Z])/);
       return {
-        broker: 'Richardson Wealth Limited',
-        accountHolder: '',
-        account: acctM ? acctM[1] : '',
-        periodEnd: '',
-        fxRateUsdCad: null,
-        transactions: parseRichardsonText(ocrPages, file.name),
+        broker: 'Richardson Wealth Limited', accountHolder: '', account: acctM?.[1] ?? '',
+        periodEnd: '', fxRateUsdCad: null, transactions: parseRichardsonText(ocrPages, file.name),
       };
     }
 
-    if (ocrIsBmo) {
+    if (/bmo\s*investor\s*line/i.test(ocrFullText) || /bmo\s*investorline/i.test(ocrFullText)) {
       const acctM = ocrFullText.match(/Non-registered account #([\d-]+)/i);
       return {
-        broker: 'BMO InvestorLine',
-        accountHolder: '',
-        account: acctM ? acctM[1].replace(/\s+/g, '') : '',
-        periodEnd: '',
-        fxRateUsdCad: null,
-        transactions: parseBmoText(ocrPages, file.name),
+        broker: 'BMO InvestorLine', accountHolder: '', account: acctM?.[1]?.replace(/\s+/g, '') ?? '',
+        periodEnd: '', fxRateUsdCad: null, transactions: parseBmoText(ocrPages, file.name),
       };
     }
 
-    // Unknown broker after OCR — fall back to Claude text extraction
-    if (apiKey) {
-      return extractWithClaude({ type: 'text', pages: ocrPages }, file.name, apiKey);
-    }
-    return {
-      broker: 'Unknown', accountHolder: '', account: '', periodEnd: '',
-      fxRateUsdCad: null, transactions: [],
-      error: 'Statement broker not recognised after OCR. Add an Anthropic API key in Settings → AI Configuration for universal extraction.',
-    };
+    return aiExtract({ type: 'text', pages: ocrPages }, file.name);
 
   } catch (err) {
     return {

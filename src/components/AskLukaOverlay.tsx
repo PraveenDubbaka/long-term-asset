@@ -3799,7 +3799,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               const errors = [...new Set(parseResults.filter(r => r.error).map(r => r.error))];
                                               const successCount = parseResults.filter(r => r.transactions.length > 0).length;
                                               if (errors.length > 0 && successCount === 0) {
-                                                setInvBrokerError(errors[0] ?? 'No transactions found. Check the statement format.');
+                                                setInvBrokerError(errors[0]?.replace(
+                                                /Add it in Settings.*?$/i,
+                                                'The file may be corrupted or an unsupported format.'
+                                              ) ?? 'No transactions found. Check the statement format.');
                                               } else if (successCount === 0) {
                                                 setInvBrokerError('No transactions found in these documents. The statements may not contain activity for this period.');
                                               }
@@ -4330,20 +4333,9 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
                                             {/* ── Broker error ── */}
                                             {invBrokerError && (
-                                              <div className="flex items-start gap-2 px-3 py-2 rounded-[8px] bg-red-50 border border-red-200">
-                                                <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
-                                                <span className="text-base text-red-700 flex items-center gap-2 flex-wrap">
-                                                  {invBrokerError}
-                                                  {invBrokerError.includes('API key') && (
-                                                    <button
-                                                      type="button"
-                                                      onClick={() => setSettingsOpen(true)}
-                                                      className="underline underline-offset-2 hover:text-red-900 font-medium transition-colors shrink-0"
-                                                    >
-                                                      Open Settings →
-                                                    </button>
-                                                  )}
-                                                </span>
+                                              <div className="flex items-start gap-2 px-3 py-2.5 rounded-[10px] bg-red-50 border border-red-200 text-base text-red-700">
+                                                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-red-500" />
+                                                <span>{invBrokerError}</span>
                                               </div>
                                             )}
 
