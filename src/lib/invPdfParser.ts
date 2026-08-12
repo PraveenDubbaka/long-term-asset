@@ -11,7 +11,7 @@ import JSZip from 'jszip';
 // ─── Built-in Gemini key for universal extraction ────────────────────────────
 // Fill this in with a real key from https://aistudio.google.com/app/apikey
 // Gemini 1.5 Flash free tier: 15 req/min, 1M tokens/day
-const BUILT_IN_GEMINI_KEY = '';
+const BUILT_IN_GEMINI_KEY = 'AIzaSyD2bTSPGBhCJPGMvqzUHT9Ej7kX9mN4R8c';
 
 let pdfjsLib: typeof import('pdfjs-dist') | null = null;
 
