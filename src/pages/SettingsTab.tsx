@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Trash2, Save, Lock, Unlock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Trash2, Save, Lock, Unlock, Eye, EyeOff } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { fmtDateDisplay } from '../lib/utils';
 import { Button, Card, Input, DateInput, Select, Badge, Alert, SectionHeader, Modal } from '../components/ui';
@@ -15,6 +15,9 @@ export function SettingsTab() {
   const [engForm, setEngForm] = useState({ ...settings });
   const [newFX, setNewFX] = useState<{ currency: Currency; period: string; rate: number }>({ currency: 'USD', period: '2025-01', rate: 1.35 });
   const [deleteTarget, setDeleteTarget] = useState<{ label: string; subLabel?: string; onConfirm: () => void } | null>(null);
+  const [apiKey, setApiKey] = useState('');
+  const [apiKeyVisible, setApiKeyVisible] = useState(false);
+  useEffect(() => { setApiKey(localStorage.getItem('anthropic_api_key') ?? ''); }, []);
 
   const sections = [
     { id: 'engagement', label: 'Engagement' },
@@ -208,6 +211,36 @@ export function SettingsTab() {
                   </div>
                 ))}
               </div>
+            </Card>
+          )}
+
+          {section === 'conventions' && (
+            <Card className="p-5 space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800">AI Features — Anthropic API Key</h3>
+                <p className="text-xs text-slate-500 mt-1">Used for universal investment statement extraction from any broker. Stored locally in this browser only.</p>
+              </div>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type={apiKeyVisible ? 'text' : 'password'}
+                    value={apiKey}
+                    onChange={e => setApiKey(e.target.value)}
+                    placeholder="sk-ant-api03-…"
+                    className="w-full text-xs px-3 py-2 pr-9 border border-slate-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  />
+                  <button type="button" onClick={() => setApiKeyVisible(v => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    {apiKeyVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+                <Button variant="primary" size="sm" onClick={() => {
+                  if (apiKey.trim()) { localStorage.setItem('anthropic_api_key', apiKey.trim()); toast.success('API key saved'); }
+                  else { localStorage.removeItem('anthropic_api_key'); toast.success('API key cleared'); }
+                }}><Save className="w-3.5 h-3.5" /> Save</Button>
+              </div>
+              {localStorage.getItem('anthropic_api_key') && (
+                <p className="text-xs text-emerald-600">✓ API key is configured</p>
+              )}
             </Card>
           )}
 

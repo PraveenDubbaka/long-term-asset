@@ -207,6 +207,91 @@ function reconstructLines(
     .filter(l => l.length > 0);
 }
 
+// ─── Universal Claude-powered extractor ──────────────────────────────────────
+async function extractWithClaude(
+  pages: string[],
+  sourceFile: string,
+  account: string,
+): Promise<ParsedInvTransaction[]> {
+  const apiKey = localStorage.getItem('anthropic_api_key');
+  if (!apiKey) throw new Error('No Anthropic API key configured. Add it in Settings → Conventions.');
+
+  const fullText = pages.join('\n\n--- PAGE BREAK ---\n\n');
+  const truncated = fullText.length > 12000 ? fullText.slice(0, 12000) + '\n[...truncated]' : fullText;
+
+  const prompt = `You are an expert at reading Canadian investment brokerage statements.
+
+Extract ALL transactions from the following statement text. Return ONLY a valid JSON array — no explanation, no markdown fences, no preamble.
+
+Each transaction object must have these exact fields:
+- "settlementDate": string, format YYYY-MM-DD (use trade date if settlement not shown)
+- "tradeDate": string, format YYYY-MM-DD
+- "activity": string (exact description from statement e.g. "Buy", "Sold", "Dividend", "Return of Capital")
+- "security": string (full security name)
+- "ticker": string (ticker symbol if shown, else "")
+- "quantity": number or null
+- "price": number or null
+- "amount": number (negative for outflows/purchases, positive for inflows/sales/income)
+- "currency": "CAD" or "USD"
+- "fxRate": number or null (USD→CAD rate if shown)
+- "account": string (account number from statement)
+- "accountType": string (e.g. "RRSP", "TFSA", "Non-Registered", "IAA", "PMA", or "")
+
+Rules:
+- Do NOT include opening balance rows, closing balance rows, or total rows
+- Do NOT include rows that are purely informational headers
+- If amount sign is ambiguous, use: purchases/fees = negative, sales/distributions = positive
+- If quantity is shown as fractional units, preserve the decimal
+- If the document contains multiple accounts, extract transactions from all of them
+
+Statement text:
+${truncated}`;
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+
+  if (!response.ok) throw new Error(`Claude API error ${response.status}: ${await response.text()}`);
+  const data = await response.json();
+
+  const text = (data.content as Array<{ type: string; text: string }>)
+    .filter(b => b.type === 'text')
+    .map(b => b.text)
+    .join('');
+
+  const clean = text.replace(/```json|```/g, '').trim();
+  const rows: Array<Record<string, unknown>> = JSON.parse(clean);
+
+  return rows.map((r, i): ParsedInvTransaction => ({
+    id: `ai-${account || 'unknown'}-${String(r.settlementDate ?? i)}-${i}`,
+    settlementDate: String(r.settlementDate ?? ''),
+    tradeDate: String(r.tradeDate ?? r.settlementDate ?? ''),
+    activity: String(r.activity ?? ''),
+    security: String(r.security ?? ''),
+    ticker: String(r.ticker ?? ''),
+    quantity: r.quantity != null ? Number(r.quantity) : null,
+    price: r.price != null ? Number(r.price) : null,
+    amount: Number(r.amount ?? 0),
+    currency: (r.currency === 'USD' ? 'USD' : 'CAD') as 'CAD' | 'USD',
+    fxRate: r.fxRate != null ? Number(r.fxRate) : null,
+    account: String(r.account ?? account),
+    accountType: String(r.accountType ?? ''),
+    broker: 'AI-Extracted',
+    sourceFile,
+  }));
+}
+
 // ─── BMO InvestorLine parser ──────────────────────────────────────────────────
 const BMO_DATE_RE = /^((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\d{1,2}\s*,?\s*\d{4})\s+/i;
 
@@ -491,6 +576,7 @@ export async function extractInvTransactions(file: File): Promise<InvPdfParseRes
     const transactions: ParsedInvTransaction[] = [];
     let richAccount = account;
     let richAccountType = '';
+    const allPageTexts: string[] = [];
 
     for (let pi = 0; pi < allItems.length; pi++) {
       const lines = reconstructLines(allItems[pi]);
@@ -505,7 +591,16 @@ export async function extractInvTransactions(file: File): Promise<InvPdfParseRes
         transactions.push(...txns);
         richAccount = a;
         richAccountType = at;
+      } else {
+        allPageTexts.push(lines.join('\n'));
       }
+    }
+
+    // ── Claude fallback for unrecognised brokers ───────────────────────────
+    if (!isBmo && !isRichardson && allPageTexts.length > 0) {
+      broker = 'AI-Extracted';
+      const aiTxns = await extractWithClaude(allPageTexts, file.name, account);
+      transactions.push(...aiTxns);
     }
 
     return { broker, accountHolder, account, periodEnd, fxRateUsdCad, transactions };

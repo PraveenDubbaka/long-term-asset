@@ -1293,6 +1293,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   // null = no prompt; string[] = months missing (shown before review table)
   const [invMissingMonthsPrompt, setInvMissingMonthsPrompt] = useState<string[]|null>(null);
   const [invBrokerError, setInvBrokerError] = useState<string|null>(null);
+  const [invAiExtracted, setInvAiExtracted] = useState(false);
   const [invContinuityOk, setInvContinuityOk] = useState<boolean>(false); // true when all uploaded files are contiguous
   const [invExtracting, setInvExtracting] = useState(false); // spinner during PDF extraction
   const [invTableSort, setInvTableSort] = useState<{ field: keyof InvReviewRow; dir: "asc" | "desc" } | null>(null);
@@ -3758,6 +3759,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               return;
                                             }
                                             setInvBrokerError(null);
+                                            setInvAiExtracted(parseResults.some(r => r.broker === 'AI-Extracted'));
                                             const allTxns = parseResults.flatMap(r => r.transactions);
                                             if (allTxns.length > 0) {
                                               const rows: InvReviewRow[] = allTxns.map(t => ({
@@ -3782,7 +3784,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               const detectedBrokers = parseResults.map(r => r.broker).filter(b => b !== 'Unknown');
                                               const brokerMsg = detectedBrokers.length
                                                 ? `${detectedBrokers[0]} detected but no transactions found — the statement may not contain an "Account activity for this month" section, or all activity was filtered.`
-                                                : "Could not identify the broker — only BMO InvestorLine and Richardson Wealth statements are currently supported.";
+                                                : "No transactions found in this document. The statement may not contain activity for this period, or it could not be read. Try uploading a different month.";
                                               setInvBrokerError(fileErrors || brokerMsg);
                                             }
                                           } catch (err) {
@@ -4299,6 +4301,14 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                 ))}
                                               </div>
                                             </div>}
+
+                                            {/* ── AI-extracted notice ── */}
+                                            {invAiExtracted && (
+                                              <div className="flex items-start gap-2 px-3 py-2 rounded-[8px] bg-violet-50 border border-violet-200">
+                                                <Sparkles className="h-4 w-4 text-violet-600 shrink-0 mt-0.5" />
+                                                <p className="text-base text-violet-800">Transactions extracted via AI — review each row carefully before submitting.</p>
+                                              </div>
+                                            )}
 
                                             {/* ── Broker error ── */}
                                             {invBrokerError && (
