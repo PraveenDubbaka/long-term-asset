@@ -68,18 +68,20 @@ const fmtCAD = (n: number) =>
   n.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function FmtNumInput({
-  value, onCommit, decimals = 2, className, placeholder, ...rest
+  value, onCommit, decimals = 2, formatter, className, placeholder, ...rest
 }: {
   value: number | undefined | null;
   onCommit: (n: number) => void;
   decimals?: number;
+  formatter?: (n: number) => string;
   className?: string;
   placeholder?: string;
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "type">) {
   const [focused, setFocused] = useState(false);
   const [raw, setRaw] = useState("");
   const num = parseFloat(String(value ?? 0).replace(/,/g, "")) || 0;
-  const display = focused ? raw : (num !== 0 ? fmtNum(num, decimals) : "");
+  const fmt = formatter ?? ((n: number) => fmtNum(n, decimals));
+  const display = focused ? raw : (num !== 0 ? fmt(num) : "");
   return (
     <input
       {...rest}
@@ -1128,13 +1130,13 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
                           {/* Units Purchasing */}
                           <td className="px-2.5 py-1.5 text-right tabular-nums border-r border-border/20">
                             {isEditing
-                              ? <FmtNumInput value={getV("unitsIn")} onCommit={n => setV({ unitsIn: n })} className={`${IIC} w-20 text-right`} decimals={4} />
+                              ? <FmtNumInput value={getV("unitsIn")} onCommit={n => setV({ unitsIn: n })} className={`${IIC} w-20 text-right`} formatter={fmtUnits} />
                               : fmtUnits(r.unitsIn)}
                           </td>
                           {/* Units Closing */}
                           <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}>
                             {isEditing
-                              ? <FmtNumInput value={getV("cumUnits")} onCommit={n => setV({ cumUnits: n })} className={`${IIC} w-20 text-right`} decimals={4} />
+                              ? <FmtNumInput value={getV("cumUnits")} onCommit={n => setV({ cumUnits: n })} className={`${IIC} w-20 text-right`} formatter={fmtUnits} />
                               : fmtUnits(r.cumUnits)}
                           </td>
                           {/* WAC — always computed: cumCost ÷ cumUnits */}
@@ -1166,8 +1168,8 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
                         <td className="px-2.5 py-1 border-r border-border/20" style={{}}><FmtNumInput value={newRow.costIn ?? 0} onCommit={n => setNewRow(d => ({...d, costIn: n}))} className={`${IIC} w-24 text-right`} placeholder="0.00" /></td>
                         <td className="px-2.5 py-1" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}><FmtNumInput value={newRow.cumCost ?? 0} onCommit={n => setNewRow(d => ({...d, cumCost: n}))} className={`${IIC} w-24 text-right`} placeholder="0.00" /></td>
                         <td className="px-2.5 py-1 border-r border-border/20 text-right tabular-nums text-muted-foreground/60" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>{fmtUnits(allRows[allRows.length - 1]?.cumUnits ?? 0)}</td>
-                        <td className="px-2.5 py-1 border-r border-border/20"><FmtNumInput value={newRow.unitsIn ?? 0} onCommit={n => setNewRow(d => ({...d, unitsIn: n}))} className={`${IIC} w-20 text-right`} placeholder="0" decimals={4} /></td>
-                        <td className="px-2.5 py-1" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}><FmtNumInput value={newRow.cumUnits ?? 0} onCommit={n => setNewRow(d => ({...d, cumUnits: n}))} className={`${IIC} w-20 text-right`} placeholder="0.0000" decimals={4} /></td>
+                        <td className="px-2.5 py-1 border-r border-border/20"><FmtNumInput value={newRow.unitsIn ?? 0} onCommit={n => setNewRow(d => ({...d, unitsIn: n}))} className={`${IIC} w-20 text-right`} placeholder="0" formatter={fmtUnits} /></td>
+                        <td className="px-2.5 py-1" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}><FmtNumInput value={newRow.cumUnits ?? 0} onCommit={n => setNewRow(d => ({...d, cumUnits: n}))} className={`${IIC} w-20 text-right`} placeholder="0.0000" formatter={fmtUnits} /></td>
                         <td className="px-2.5 py-1 text-right tabular-nums text-muted-foreground border-r border-border/20">{fmtNum((newRow.cumUnits ?? 0) > 0 ? (newRow.cumCost ?? 0) / (newRow.cumUnits ?? 1) : 0, 4)}</td>
                         {(["eligibleDividend","capitalDividend","otherIncome","foreignIncome","nonResidentTax"] as const).map((field, fi) => (
                           <td key={field} className={`px-2.5 py-1 ${fi < 4 ? "border-r border-border/20" : ""}`} style={fi === 0 ? { borderLeft: "3px solid hsl(var(--foreground) / 0.3)" } : {}}>
@@ -1371,7 +1373,7 @@ function GainLossPanel({ schedules, yearEnd, editMode, allInvSources }: {
                       {d.settlementDate && d.settlementDate !== d.date ? fmtDate(d.settlementDate) : "—"}
                     </td>
                     <td className="px-3 py-1.5 text-right tabular-nums">
-                      {editMode ? <FmtNumInput value={ov.units ?? d.units} onCommit={n => rSet(i, { units: n })} className={`${EC} w-24 text-right`} decimals={4} /> : fmtUnits(d.units)}
+                      {editMode ? <FmtNumInput value={ov.units ?? d.units} onCommit={n => rSet(i, { units: n })} className={`${EC} w-24 text-right`} formatter={fmtUnits} /> : fmtUnits(d.units)}
                     </td>
                     <td className="px-3 py-1.5 text-right tabular-nums font-mono">
                       {d.fxRate !== 1 ? d.fxRate.toFixed(4) : "—"}
@@ -1463,7 +1465,7 @@ function GainLossPanel({ schedules, yearEnd, editMode, allInvSources }: {
                 <td className="px-3 py-1.5 font-mono">{s.ticker}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground whitespace-nowrap">{yearEndStr}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">
-                  {editMode ? <FmtNumInput value={uv.units ?? Math.max(0, s.closingUnits)} onCommit={n => uSet(s.key, { units: n })} className={`${EC} w-24 text-right`} decimals={4} /> : fmtUnits(Math.max(0, s.closingUnits))}
+                  {editMode ? <FmtNumInput value={uv.units ?? Math.max(0, s.closingUnits)} onCommit={n => uSet(s.key, { units: n })} className={`${EC} w-24 text-right`} formatter={fmtUnits} /> : fmtUnits(Math.max(0, s.closingUnits))}
                 </td>
                 <td className="px-3 py-1.5 text-right tabular-nums font-medium">
                   {editMode ? <FmtNumInput value={uv.fmvCAD ?? s.fmvCAD} onCommit={n => uSet(s.key, { fmvCAD: n })} className={`${EC} w-28 text-right`} /> : fmtCAD(s.fmvCAD)}
