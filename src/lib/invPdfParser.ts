@@ -21,33 +21,43 @@ async function getPdfJs() {
 // ─── Activity type map ────────────────────────────────────────────────────────
 
 const ACTIVITY_TYPE_MAP: [string, string][] = [
-  ['online banking',       'Transfer In'],
-  ['transfer of funds',    'Transfer In'],
-  ['multi-branch banking', 'Transfer'],
-  ['bought',               'Purchase'],
-  ['sold',                 'Sale'],
-  ['buy',                  'Purchase'],
-  ['sell',                 'Sale'],
-  ['reinvested dividend',  'Reinvested Dividend'],
-  ['cash distribution',    'Distribution'],
-  ['bond interest',        'Interest'],
-  ['interest in kind',     'Interest'],
-  ['accrued interest',     'Interest'],
-  ['return of capital',    'Return of Capital'],
-  ['return of',            'Return of Capital'],
-  ['iaa fee',              'Fee/Commission'],
-  ['pma fee',              'Fee/Commission'],
-  ['fee/frais',            'Fee/Commission'],
-  ['goods & services',     'Fee/Commission'],
-  ['goods and services',   'Fee/Commission'],
-  ['fee payment',          'Transfer'],
-  ['client movement',      'Transfer'],
-  ['cash transfer',        'Transfer'],
-  ['dividend',             'Dividend'],
-  ['distribution',         'Distribution'],
-  ['interest',             'Interest'],
-  ['commission',           'Fee/Commission'],
-  ['withholding',          'Withholding Tax'],
+  // Transfers
+  ['online banking',        'Transfer In'],
+  ['transfer of funds',     'Transfer In'],
+  ['instabank',             'Transfer In'],
+  ['multi-branch banking',  'Transfer'],
+  ['client movement',       'Transfer'],
+  ['cash transfer',         'Transfer'],
+  ['fee payment',           'Transfer'],
+  ['switch',                'Transfer'],
+  // Purchases / Sales
+  ['bought',                'Purchase'],
+  ['sold',                  'Sale'],
+  ['buy',                   'Purchase'],
+  ['sell',                  'Sale'],
+  ['exercise',              'Purchase'],
+  // Income — specific first, generic after
+  ['reinvested dividend',   'Reinvested Dividend'],
+  ['cash distribution',     'Distribution'],
+  ['bond interest',         'Interest'],
+  ['interest in kind',      'Interest'],
+  ['accrued interest',      'Interest'],
+  ['return of capital',     'Return of Capital'],
+  ['return of',             'Return of Capital'],
+  ['matured',               'Return of Capital'],
+  // Fees
+  ['iaa fee',               'Fee/Commission'],
+  ['pma fee',               'Fee/Commission'],
+  ['fee/frais',             'Fee/Commission'],
+  ['goods & services',      'Fee/Commission'],
+  ['goods and services',    'Fee/Commission'],
+  ['goods',                 'Fee/Commission'],
+  // Generic — after all specifics
+  ['dividend',              'Dividend'],
+  ['distribution',          'Distribution'],
+  ['interest',              'Interest'],
+  ['commission',            'Fee/Commission'],
+  ['withholding',           'Withholding Tax'],
 ];
 
 export function mapActivityToType(activity: string): string {
@@ -351,9 +361,23 @@ function parseRichardsonText(pages: string[], sourceFile: string): ParsedInvTran
         }
       }
 
-      const activityMatch = beforePrice.match(/^([A-Za-z&/\s]+?)(?:\s{2,}|\t)/);
-      let activity = activityMatch ? activityMatch[1].trim() : beforePrice.split(/\s{2,}/)[0].trim();
-      let security = beforePrice.slice(activity.length).trim();
+      const words = beforePrice.split(/\s+/);
+      let activity = words[0] || '';
+      let security = '';
+      let matched = false;
+      for (let w = Math.min(4, words.length); w >= 1; w--) {
+        const candidate = words.slice(0, w).join(' ').toLowerCase();
+        if (ACTIVITY_TYPE_MAP.some(([k]) => candidate.includes(k) || k.includes(candidate))) {
+          activity = words.slice(0, w).join(' ');
+          security = words.slice(w).join(' ');
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        activity = words[0] || '';
+        security = words.slice(1).join(' ');
+      }
 
       let quantity: number | null = null;
       const qtyInSec = security.match(/^([\d,]+(?:\.\d+)?)\s+/);
@@ -464,8 +488,19 @@ function parseBmoText(pages: string[], sourceFile: string): ParsedInvTransaction
       const beforeAmt = combined.slice(0, amtIdx).trim();
 
       const words = beforeAmt.split(/\s+/);
-      const activity = words[0] || '';
-      const security = words.slice(1).join(' ')
+      let activity = words[0] || '';
+      let security = '';
+      for (let w = Math.min(4, words.length); w >= 1; w--) {
+        const candidate = words.slice(0, w).join(' ').toLowerCase();
+        if (ACTIVITY_TYPE_MAP.some(([k]) => candidate.includes(k) || k.includes(candidate))) {
+          activity = words.slice(0, w).join(' ');
+          security = words.slice(w).join(' ');
+          break;
+        } else if (w === 1) {
+          security = words.slice(1).join(' ');
+        }
+      }
+      security = security
         .replace(/\s*-\s*[A-Z]{1,5}:[A-Z]{2}\s*$/, '')
         .replace(/CASH DIV ON.*$/i, '')
         .trim();
