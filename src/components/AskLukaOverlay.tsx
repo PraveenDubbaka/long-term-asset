@@ -3745,11 +3745,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                           const validFiles = invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
                                           if (validFiles.length === 0) return;
 
-                                          const apiKey = localStorage.getItem('anthropic_api_key') ?? '';
-                                          if (!apiKey) {
-                                            setInvBrokerError('Anthropic API key not configured. Add it in Settings → AI Configuration, then try again.');
-                                            return;
-                                          }
+                                          const apiKey = localStorage.getItem('anthropic_api_key') ?? undefined;
 
                                           setInvExtracting(true);
                                           try {
