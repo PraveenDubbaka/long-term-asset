@@ -2621,7 +2621,7 @@ function HoldingsPanel({ schedules }: { schedules: SecuritySchedule[] }) {
 }
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
-export function InvestmentScheduleResponse({ onEditTransactions, initialTransactions, engagementYearEnd, valuationMethod, recordingLevel, bankAccounts, brokerCount }: { onEditTransactions?: () => void; initialTransactions?: import("@/lib/luka/types").Transaction[]; engagementYearEnd?: string; valuationMethod?: 'cost' | 'fairValue'; recordingLevel?: 'security' | 'brokerage' | 'hybrid'; bankAccounts?: number; brokerCount?: number } = {}) {
+export function InvestmentScheduleResponse({ onEditTransactions, initialTransactions, engagementYearEnd, valuationMethod, recordingLevel, bankAccounts, brokerCount, openingBalMode, priorYearLotsProp }: { onEditTransactions?: () => void; initialTransactions?: import("@/lib/luka/types").Transaction[]; engagementYearEnd?: string; valuationMethod?: 'cost' | 'fairValue'; recordingLevel?: 'security' | 'brokerage' | 'hybrid'; bankAccounts?: number; brokerCount?: number; openingBalMode?: "FIRST_YEAR" | "UPLOAD_PRIOR" | "ROLL_FORWARD" | null; priorYearLotsProp?: import("@/lib/luka/types").PriorYearLot[] | null } = {}) {
   const settings = useStore(s => s.settings);
   const [activeTab, setActiveTab] = useState<TabId>("wac");
   const [invMode, setInvMode] = useState<"view" | "edit" | "add">("view");
@@ -2649,14 +2649,20 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
 
   // ── Prior-year lots ────────────────────────────────────────────────────────
   const [importedLots] = useState<PriorYearLot[] | null>(null);
-  // When real uploaded transactions are provided, use no prior-year mock lots —
-  // the uploaded transactions are the complete source of truth for this workpaper.
-  const effectivePY = useMemo(
-    () => (initialTransactions && initialTransactions.length > 0)
-      ? (importedLots ?? [])       // real data: start fresh — no mock prior-year positions
-      : (importedLots ?? priorYearLots), // demo mode: use mock prior-year data
-    [importedLots, initialTransactions]
-  );
+  const effectivePY = useMemo(() => {
+    // FIRST_YEAR: no prior positions — opening balances are zero
+    if (openingBalMode === "FIRST_YEAR") return [];
+    // UPLOAD_PRIOR or ROLL_FORWARD: use parsed lots from parent if provided
+    if (openingBalMode === "UPLOAD_PRIOR" || openingBalMode === "ROLL_FORWARD") {
+      return priorYearLotsProp ?? importedLots ?? [];
+    }
+    // Demo mode (no real data): fall back to mock prior-year lots
+    if (!initialTransactions || initialTransactions.length === 0) {
+      return importedLots ?? priorYearLots;
+    }
+    // Real data uploaded, no opening balance mode set yet: start from zero
+    return importedLots ?? [];
+  }, [openingBalMode, priorYearLotsProp, importedLots, initialTransactions]);
 
   // ── Transaction state ──────────────────────────────────────────────────────
   const [importedTxnsBySource] = useState<Record<string, Transaction[]>>({});

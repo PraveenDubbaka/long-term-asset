@@ -1253,6 +1253,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [invOpeningBalMode, setInvOpeningBalMode] = useState<"FIRST_YEAR" | "UPLOAD_PRIOR" | "ROLL_FORWARD" | null>(null);
   const [invFirstYearAnswer, setInvFirstYearAnswer] = useState<boolean | null>(null);
   const [invPriorScheduleFile, setInvPriorScheduleFile] = useState<{ name: string; id: string } | null>(null);
+  const [invParsedPriorLots, setInvParsedPriorLots] = useState<import("@/lib/luka/types").PriorYearLot[] | null>(null);
   const [invSelectedBankAccount, setInvSelectedBankAccount] = useState<string | null>(null);
   // ── Assessment questions (Q1 + Q2) — Q3/Q4 hardcoded per Jul 20 scope decision ──
   const [invValuationMethod, setInvValuationMethod] = useState<'cost' | 'fairValue' | null>(null);
@@ -1705,7 +1706,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
     setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
-    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvTableSort(null); setInvColumnFilters({}); setInvOpenFilterCol(null); setInvFilterDropdownPos(null); setInvFilterSearch(""); setInvSubmittedTxns([]); setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); setInvSelectedBankAccount(null); setInvValuationMethod(null); setInvRecordingLevel(null); setInvAssessmentDone(false); setInvActiveStatement(null);
+    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvTableSort(null); setInvColumnFilters({}); setInvOpenFilterCol(null); setInvFilterDropdownPos(null); setInvFilterSearch(""); setInvSubmittedTxns([]); setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); setInvParsedPriorLots(null); setInvSelectedBankAccount(null); setInvValuationMethod(null); setInvRecordingLevel(null); setInvAssessmentDone(false); setInvActiveStatement(null);
     setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
@@ -3801,7 +3802,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       : <span>Upload prior year investment schedule (XLSX or PDF)</span>}
                                                     <input type="file" accept=".xlsx,.xls,.pdf" className="hidden" onChange={e => {
                                                       const f = e.target.files?.[0];
-                                                      if (f) { setInvPriorScheduleFile({ name: f.name, id: crypto.randomUUID() }); setInvOpeningBalMode("UPLOAD_PRIOR"); }
+                                                      if (f) {
+                                                        setInvPriorScheduleFile({ name: f.name, id: crypto.randomUUID() });
+                                                        setInvOpeningBalMode("UPLOAD_PRIOR");
+                                                        import("@/lib/luka/mockData").then(({ priorYearLots: mockLots }) => {
+                                                          setInvParsedPriorLots(mockLots);
+                                                        });
+                                                      }
                                                     }} />
                                                   </label>
                                                 </div>
@@ -3839,7 +3846,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       : <span>Upload prior year investment schedule (XLSX or PDF)</span>}
                                                     <input type="file" accept=".xlsx,.xls,.pdf" className="hidden" onChange={e => {
                                                       const f = e.target.files?.[0];
-                                                      if (f) { setInvPriorScheduleFile({ name: f.name, id: crypto.randomUUID() }); setInvOpeningBalMode("UPLOAD_PRIOR"); }
+                                                      if (f) {
+                                                        setInvPriorScheduleFile({ name: f.name, id: crypto.randomUUID() });
+                                                        setInvOpeningBalMode("UPLOAD_PRIOR");
+                                                        import("@/lib/luka/mockData").then(({ priorYearLots: mockLots }) => {
+                                                          setInvParsedPriorLots(mockLots);
+                                                        });
+                                                      }
                                                     }} />
                                                   </label>
                                                   {!invPriorScheduleFile && (
@@ -4693,6 +4706,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                       recordingLevel={invRecordingLevel ?? undefined}
                                       bankAccounts={INV_BANK_ACCOUNTS}
                                       brokerCount={INV_BROKER_COUNT}
+                                      openingBalMode={invOpeningBalMode}
+                                      priorYearLotsProp={invParsedPriorLots}
                                     />
                                   </>
                                 )}
