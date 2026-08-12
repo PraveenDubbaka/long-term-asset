@@ -6,6 +6,7 @@
  */
 
 import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import JSZip from 'jszip';
 
 let pdfjsLib: typeof import('pdfjs-dist') | null = null;
 
@@ -209,7 +210,6 @@ async function extractPdfText(file: File): Promise<string[]> {
 
 async function extractZipText(file: File): Promise<{ pages: string[]; broker: string } | null> {
   try {
-    const { default: JSZip } = await import('jszip');
     const zip = await JSZip.loadAsync(await file.arrayBuffer());
     const manifestFile = zip.file('manifest.json');
     if (!manifestFile) return null;
@@ -230,7 +230,8 @@ async function extractZipText(file: File): Promise<{ pages: string[]; broker: st
       broker = 'BMO InvestorLine';
     }
     return { pages, broker };
-  } catch {
+  } catch (err) {
+    console.warn('[invPdfParser] extractZipText failed:', err);
     return null;
   }
 }

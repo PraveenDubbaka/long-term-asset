@@ -22,7 +22,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/wp-ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { setLukaOpen } from "@/lib/lukaOpenStore";
-import { extractInvTransactions, validateSingleBroker, mapActivityToType, defaultTbAccountForActivity } from "@/lib/invPdfParser";
+import { extractInvTransactions, validateSingleBroker, mapActivityToType, defaultTbAccountForActivity, InvPdfParseResult } from "@/lib/invPdfParser";
 import { PromptPicker } from "@/components/luka/PromptPicker";
 import { GrossMarginResponse } from "@/components/luka/GrossMarginResponse";
 import { LoanAmortizationPrompt } from "@/components/luka/LoanAmortizationPrompt";
@@ -3753,8 +3753,16 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             const parseResults = await Promise.all(
                                               validFiles.map(f => {
                                                 const realFile = invFileMapRef.current.get(f.name);
+                                                if (!realFile) {
+                                                  console.error('[upload] File not in ref map:', f.name, [...invFileMapRef.current.keys()]);
+                                                  return Promise.resolve<InvPdfParseResult>({
+                                                    broker: 'Unknown', accountHolder: '', account: '', periodEnd: '',
+                                                    fxRateUsdCad: null, transactions: [],
+                                                    error: `Could not read file: ${f.name}. Please remove and re-upload it.`,
+                                                  });
+                                                }
                                                 return extractInvTransactions(
-                                                  realFile ?? new File([], f.name, { type: "application/pdf" }),
+                                                  realFile,
                                                   apiKey,
                                                   (page, total) => setInvOcrProgress({ page, total, file: f.name }),
                                                 );
@@ -3788,9 +3796,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               }));
                                               setInvReviewRows(rows);
                                             } else {
-                                              const fileErrors = parseResults.filter(r => r.error).map(r => r.error).join(" ");
-                                              const brokerMsg = 'No transactions found in this document. The statement may not contain activity for this period, or the file could not be read. Try a different month or file format.';
-                                              setInvBrokerError(fileErrors || brokerMsg);
+                                              const errors = [...new Set(parseResults.filter(r => r.error).map(r => r.error))];
+                                              const successCount = parseResults.filter(r => r.transactions.length > 0).length;
+                                              if (errors.length > 0 && successCount === 0) {
+                                                setInvBrokerError(errors[0] ?? 'No transactions found. Check the statement format.');
+                                              } else if (successCount === 0) {
+                                                setInvBrokerError('No transactions found in these documents. The statements may not contain activity for this period.');
+                                              }
                                             }
                                           } catch (err) {
                                             setInvBrokerError("Could not parse the uploaded file: " + (err instanceof Error ? err.message : "unknown error") + ". Please ensure it is a valid broker statement PDF.");
