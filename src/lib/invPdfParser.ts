@@ -319,11 +319,14 @@ function parseRichardsonText(pages: string[], sourceFile: string): ParsedInvTran
   let accountType = '';
   let fxRateUsdCad: number | null = null;
   let inActivitySection = false;
+  let sectionEverSeen = false;
 
   const fullText = pages.join(' ');
   const fxMatch = fullText.match(/\$1USD\s*=\s*\$?([\d.]+)CAD/i)
                 ?? fullText.match(/1\s*USD\s*=\s*([\d.]+)\s*CAD/i);
   if (fxMatch) fxRateUsdCad = parseFloat(fxMatch[1]);
+
+  console.log('[parseRichardsonText] pages:', pages.length, 'preview:', pages[0]?.slice(0, 600));
 
   for (const pageText of pages) {
     const lines = pageText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
@@ -338,16 +341,33 @@ function parseRichardsonText(pages: string[], sourceFile: string): ParsedInvTran
           : line.toLowerCase().includes('pma') ? 'PMA' : '';
       }
 
-      if (/details of your account activity/i.test(line)) { inActivitySection = true; continue; }
-      if (inActivitySection && /holdings for your/i.test(line)) { inActivitySection = false; continue; }
-      if (!inActivitySection) continue;
+      if (/details\s+of\s+your\s+account\s+activity/i.test(line)
+        || /account\s+activity\s+for/i.test(line)
+        || /transaction\s+history/i.test(line)
+        || /account\s+transactions/i.test(line)) {
+        inActivitySection = true; sectionEverSeen = true; continue;
+      }
+      if (inActivitySection && (/holdings\s+for\s+your/i.test(line)
+        || /portfolio\s+holdings/i.test(line)
+        || /summary\s+of\s+holdings/i.test(line))) {
+        inActivitySection = false; continue;
+      }
+
+      // If section header was never found, treat entire document as activity (lenient mode)
+      if (!inActivitySection && !sectionEverSeen) {
+        // Skip obviously non-transaction lines when in lenient mode
+        if (/^\s*(page|statement|account|address|dear|sincerely|Richardson|wealth|your advisor)/i.test(line)) continue;
+      } else if (!inActivitySection) {
+        continue;
+      }
 
       if (/settlement\s+net\s+value/i.test(line)) continue;
       if (/activity\s+price/i.test(line)) continue;
       if (/opening cash balance|closing cash balance/i.test(line)) continue;
       if (/transactions\s+(settled|backdated)/i.test(line)) continue;
 
-      const dateMatch = line.match(/^(\d{2}\/\d{2}\/\d{4})/);
+      // Match dates: DD/MM/YYYY, MM/DD/YYYY at start of line (1 or 2 digit day/month)
+      const dateMatch = line.match(/^(\d{1,2}\/\d{1,2}\/\d{4})/);
       if (!dateMatch) continue;
 
       const rawDate = dateMatch[1];
@@ -830,10 +850,18 @@ export async function extractInvTransactions(
       const account = acctMatch ? acctMatch[1].replace(/\s+/g, '') : '';
 
       if (broker === 'Richardson Wealth Limited') {
-        return { broker, accountHolder, account, periodEnd, fxRateUsdCad, transactions: parseRichardsonText(pages, file.name) };
+        const txns = parseRichardsonText(pages, file.name);
+        console.log('[invPdfParser] Richardson direct parse result:', txns.length, 'transactions');
+        if (txns.length > 0) return { broker, accountHolder, account, periodEnd, fxRateUsdCad, transactions: txns };
+        console.log('[invPdfParser] Direct parse yielded 0 — falling back to Gemini AI');
+        return aiExtract({ type: 'text', pages }, file.name);
       }
       if (broker === 'BMO InvestorLine') {
-        return { broker, accountHolder, account, periodEnd, fxRateUsdCad, transactions: parseBmoText(pages, file.name) };
+        const txns = parseBmoText(pages, file.name);
+        console.log('[invPdfParser] BMO direct parse result:', txns.length, 'transactions');
+        if (txns.length > 0) return { broker, accountHolder, account, periodEnd, fxRateUsdCad, transactions: txns };
+        console.log('[invPdfParser] Direct parse yielded 0 — falling back to Gemini AI');
+        return aiExtract({ type: 'text', pages }, file.name);
       }
       return aiExtract({ type: 'text', pages }, file.name);
     }
@@ -848,14 +876,18 @@ export async function extractInvTransactions(
         const fxM = fullPdfText.match(/\$1USD\s*=\s*\$?([\d.]+)CAD/i);
         const pmatch = fullPdfText.match(/For the period ending\s+([A-Za-z]+\s+\d{1,2},?\s+\d{4})/i);
         const holderM = fullPdfText.match(/^([A-Z][A-Z\s]+(?:LTD|INC|CORP)\.?)/m);
-        return {
-          broker: 'Richardson Wealth Limited',
-          accountHolder: holderM?.[1]?.trim() ?? '',
-          account: acctM?.[1] ?? '',
-          periodEnd: pmatch ? parseDate(pmatch[1]) : '',
-          fxRateUsdCad: fxM ? parseFloat(fxM[1]) : null,
-          transactions: parseRichardsonText(pdfPages, file.name),
-        };
+        const rwTxns = parseRichardsonText(pdfPages, file.name);
+        if (rwTxns.length > 0) {
+          return {
+            broker: 'Richardson Wealth Limited',
+            accountHolder: holderM?.[1]?.trim() ?? '',
+            account: acctM?.[1] ?? '',
+            periodEnd: pmatch ? parseDate(pmatch[1]) : '',
+            fxRateUsdCad: fxM ? parseFloat(fxM[1]) : null,
+            transactions: rwTxns,
+          };
+        }
+        return aiExtract({ type: 'text', pages: pdfPages }, file.name);
       }
 
       if (/bmo\s*investor\s*line/i.test(fullPdfText) || /bmo\s*investorline/i.test(fullPdfText)) {
@@ -866,14 +898,18 @@ export async function extractInvTransactions(
         );
         const acctM = fullPdfText.match(/Non-registered account #([\d-]+)/i);
         const pmatch = fullPdfText.match(/([A-Za-z]+\s+\d{1,2},?\s+\d{4})\s+Last Statement/i);
-        return {
-          broker: 'BMO InvestorLine',
-          accountHolder: '',
-          account: acctM?.[1]?.replace(/\s+/g, '') ?? '',
-          periodEnd: pmatch ? parseDate(pmatch[1]) : '',
-          fxRateUsdCad: null,
-          transactions: parseBmoText(normalizedPages, file.name),
-        };
+        const bmoTxns = parseBmoText(normalizedPages, file.name);
+        if (bmoTxns.length > 0) {
+          return {
+            broker: 'BMO InvestorLine',
+            accountHolder: '',
+            account: acctM?.[1]?.replace(/\s+/g, '') ?? '',
+            periodEnd: pmatch ? parseDate(pmatch[1]) : '',
+            fxRateUsdCad: null,
+            transactions: bmoTxns,
+          };
+        }
+        return aiExtract({ type: 'text', pages: normalizedPages }, file.name);
       }
 
       return aiExtract({ type: 'text', pages: pdfPages }, file.name);
