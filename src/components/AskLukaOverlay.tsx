@@ -628,6 +628,7 @@ interface InvReviewRow {
   currency: string;
   account: string;
   accountType: string;  // IAA / PMA
+  tbAccount?: string;   // GL account code (pre-populated from type, editable)
   source: string;
   voided?: boolean;     // soft-delete: entry still visible, excluded from balance
   voidedAt?: string;    // ISO timestamp when voided
@@ -1302,6 +1303,9 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [invOpenFilterCol, setInvOpenFilterCol] = useState<string | null>(null);
   const [invFilterDropdownPos, setInvFilterDropdownPos] = useState<{ top: number; left: number } | null>(null);
   const [invFilterSearch, setInvFilterSearch] = useState("");
+  const [invSearchTerm, setInvSearchTerm] = useState("");
+  const [invPage, setInvPage] = useState(0);
+  const INV_PAGE_SIZE = 50;
   // files uploaded via the "Upload" button in the missing-months prompt
   const [invMissingReUploads, setInvMissingReUploads] = useState<Array<{id:string;name:string;ext:string}>>([]);
   // ── Free-prompt follow-up turns (context-aware after lt-debt summary) ──
@@ -1735,7 +1739,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
     setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
-    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvOcrProgress(null); setInvTableSort(null); setInvColumnFilters({}); setInvOpenFilterCol(null); setInvFilterDropdownPos(null); setInvFilterSearch(""); setInvSubmittedTxns([]); setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); setInvParsedPriorLots(null); setInvSelectedBankAccount(null); setInvValuationMethod(null); setInvRecordingLevel(null); setInvAssessmentDone(false); setInvActiveStatement(null);
+    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvOcrProgress(null); setInvTableSort(null); setInvColumnFilters({}); setInvOpenFilterCol(null); setInvFilterDropdownPos(null); setInvFilterSearch(""); setInvSearchTerm(""); setInvPage(0); setInvSubmittedTxns([]); setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); setInvParsedPriorLots(null); setInvSelectedBankAccount(null); setInvValuationMethod(null); setInvRecordingLevel(null); setInvAssessmentDone(false); setInvActiveStatement(null);
     setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
@@ -3792,6 +3796,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                 currency: t.currency,
                                                 account: t.account,
                                                 accountType: t.accountType,
+                                                tbAccount: defaultTbAccountForActivity(mapActivityToType(t.activity)),
                                                 source: t.sourceFile,
                                               }));
                                               setInvReviewRows(rows);
@@ -4353,7 +4358,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       <div className={cn("w-7 h-7 rounded-[6px] flex items-center justify-center shrink-0", isError ? "bg-red-50" : "bg-primary/10")}>
                                                         {f.ext === "pdf" ? <FileText className="h-5 w-5 text-primary shrink-0" /> : f.ext === "zip" ? <FolderOpen className="h-5 w-5 text-primary shrink-0" /> : <FileSpreadsheet className="h-5 w-5 text-primary shrink-0" />}
                                                       </div>
-                                                      <span className="flex-1 min-w-0 truncate font-medium text-foreground">{f.name}</span>
+                                                      <div className="flex-1 min-w-0 overflow-hidden">
+                                                        <p className="truncate font-medium text-foreground text-base leading-tight">{f.name}</p>
+                                                        <p className="text-[10px] text-muted-foreground leading-tight">{f.size ? `${(f.size / 1024).toFixed(0)} kb` : ""}</p>
+                                                      </div>
                                                       {isAmbig && (
                                                         <select onClick={e => e.stopPropagation()} defaultValue=""
                                                           onChange={e => {
@@ -4380,7 +4388,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             )}
 
                                             {/* ── Missing months / gap error ── */}
-                                            {invMissingMonthsPrompt !== null && invMissingMonthsPrompt.length > 0 && invReviewRows.length === 0 && (
+                                            {invMissingMonthsPrompt !== null && invMissingMonthsPrompt.length > 0 && (
                                               <div className="space-y-3">
                                                 <div className="rounded-[12px] border border-red-200 bg-red-50 px-4 py-3 space-y-2">
                                                   <div className="flex items-center gap-2">
@@ -4403,217 +4411,300 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             )}
 
                                             {/* ── Review table ── */}
-                                            {invReviewRows.length > 0 && (
-                                              <div className="space-y-2">
-                                                {/* Statement tabs */}
-                                                {(() => {
-                                                  const sources = [...new Set(invReviewRows.map(r => r.source).filter(Boolean))];
-                                                  if (sources.length <= 1) return null;
-                                                  return (
-                                                    <div className="flex items-center gap-1 flex-wrap">
-                                                      <button
-                                                        onClick={() => setInvActiveStatement(null)}
-                                                        className={`px-3 py-1 rounded-full text-base font-medium transition-all border ${invActiveStatement === null ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground hover:text-foreground hover:border-primary/40"}`}
-                                                      >
-                                                        All ({invReviewRows.length})
-                                                      </button>
-                                                      {sources.map(src => {
-                                                        const count = invReviewRows.filter(r => r.source === src).length;
-                                                        const label = src.replace(/\.[^.]+$/, "").slice(0, 28);
-                                                        return (
-                                                          <button
-                                                            key={src}
-                                                            onClick={() => setInvActiveStatement(src)}
-                                                            className={`px-3 py-1 rounded-full text-base font-medium transition-all border ${invActiveStatement === src ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground hover:text-foreground hover:border-primary/40"}`}
-                                                          >
-                                                            {label} ({count})
-                                                          </button>
-                                                        );
-                                                      })}
+                                            {invReviewRows.length > 0 && (() => {
+                                              const allAccounts = [...new Set(invReviewRows.map(r => r.account).filter(Boolean))];
+                                              const multipleAccounts = allAccounts.length > 1;
+
+                                              const visibleRows = invActiveStatement
+                                                ? invReviewRows.filter(r => r.source === invActiveStatement)
+                                                : invReviewRows;
+
+                                              const searchFiltered = invSearchTerm.trim()
+                                                ? visibleRows.filter(r =>
+                                                    r.security?.toLowerCase().includes(invSearchTerm.toLowerCase()) ||
+                                                    r.ticker?.toLowerCase().includes(invSearchTerm.toLowerCase()) ||
+                                                    r.type?.toLowerCase().includes(invSearchTerm.toLowerCase()) ||
+                                                    r.account?.toLowerCase().includes(invSearchTerm.toLowerCase())
+                                                  )
+                                                : visibleRows;
+
+                                              const filteredInvRows = Object.entries(invColumnFilters).reduce((rows, [field, vals]) => {
+                                                if (!vals.length) return rows;
+                                                return rows.filter(r => vals.includes(String(r[field as keyof InvReviewRow] ?? "")));
+                                              }, searchFiltered);
+
+                                              const sortedInvRows = invTableSort
+                                                ? [...filteredInvRows].sort((a, b) => {
+                                                    const av = String(a[invTableSort.field] ?? "");
+                                                    const bv = String(b[invTableSort.field] ?? "");
+                                                    const num = (s: string) => parseFloat(s.replace(/[^0-9.-]/g, ""));
+                                                    const aNum = num(av), bNum = num(bv);
+                                                    const cmp = isNaN(aNum) || isNaN(bNum) ? av.localeCompare(bv) : aNum - bNum;
+                                                    return invTableSort.dir === "asc" ? cmp : -cmp;
+                                                  })
+                                                : filteredInvRows;
+
+                                              const totalPages = Math.ceil(sortedInvRows.length / INV_PAGE_SIZE);
+                                              const pageRows = sortedInvRows.slice(invPage * INV_PAGE_SIZE, (invPage + 1) * INV_PAGE_SIZE);
+
+                                              const handleInvSort = (field: keyof InvReviewRow) => {
+                                                setInvTableSort(prev => prev?.field === field ? { field, dir: prev.dir === "asc" ? "desc" : "asc" } : { field, dir: "asc" });
+                                                setInvPage(0);
+                                              };
+                                              const handleInvFilter = (field: string, e: React.MouseEvent<HTMLButtonElement>) => {
+                                                e.stopPropagation();
+                                                if (invOpenFilterCol === field) { setInvOpenFilterCol(null); setInvFilterDropdownPos(null); return; }
+                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                setInvFilterDropdownPos({ top: rect.bottom + 4, left: rect.left });
+                                                setInvOpenFilterCol(field);
+                                                setInvFilterSearch("");
+                                              };
+                                              const openFilterVals: string[] = invOpenFilterCol
+                                                ? [...new Set(visibleRows.map(r => String(r[invOpenFilterCol as keyof InvReviewRow] ?? "")).filter(Boolean))].sort()
+                                                : [];
+
+                                              return (
+                                                <div className="space-y-2">
+                                                  {multipleAccounts && (
+                                                    <div className="flex items-start gap-3">
+                                                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                                                        <Sparkles className="w-4 h-4 text-white" />
+                                                      </div>
+                                                      <div className="flex-1 px-3 py-2 rounded-[10px] rounded-tl-[4px] bg-muted/50 border border-border/60 text-base text-foreground">
+                                                        Multiple brokerage accounts detected ({allAccounts.join(", ")}). Transactions are shown together — use the Account # filter to view each separately.
+                                                      </div>
                                                     </div>
-                                                  );
-                                                })()}
-                                                <div className="flex items-center justify-between">
-                                                  <span className="text-base font-semibold text-foreground">
-                                                    {(invActiveStatement ? invReviewRows.filter(r => r.source === invActiveStatement) : invReviewRows).length} transaction{invReviewRows.length !== 1 ? "s" : ""} extracted — review before submitting
-                                                  </span>
-                                                </div>
-                                                <div className="rounded-[8px] border border-border overflow-clip">
-                                                  <div className="w-full">
-                                                    {(() => {
-                                                      const visibleRows = invActiveStatement
-                                                        ? invReviewRows.filter(r => r.source === invActiveStatement)
-                                                        : invReviewRows;
-                                                      const handleInvSort = (field: keyof InvReviewRow) => {
-                                                        setInvTableSort(prev => prev?.field === field ? { field, dir: prev.dir === "asc" ? "desc" : "asc" } : { field, dir: "asc" });
-                                                      };
-                                                      const handleInvFilter = (field: string, e: React.MouseEvent<HTMLButtonElement>) => {
-                                                        e.stopPropagation();
-                                                        if (invOpenFilterCol === field) { setInvOpenFilterCol(null); setInvFilterDropdownPos(null); return; }
-                                                        const rect = e.currentTarget.getBoundingClientRect();
-                                                        setInvFilterDropdownPos({ top: rect.bottom + 4, left: rect.left });
-                                                        setInvOpenFilterCol(field);
-                                                        setInvFilterSearch("");
-                                                      };
-                                                      // Apply column filters before sorting
-                                                      const filteredInvRows = Object.entries(invColumnFilters).reduce((rows, [field, vals]) => {
-                                                        if (!vals.length) return rows;
-                                                        return rows.filter(r => vals.includes(String(r[field as keyof InvReviewRow] ?? "")));
-                                                      }, visibleRows);
-                                                      // Unique values for open filter column (from unfiltered visible rows)
-                                                      const openFilterVals: string[] = invOpenFilterCol
-                                                        ? [...new Set(visibleRows.map(r => String(r[invOpenFilterCol as keyof InvReviewRow] ?? "")).filter(Boolean))].sort()
-                                                        : [];
-                                                      const sortedInvRows = invTableSort
-                                                        ? [...filteredInvRows].sort((a, b) => {
-                                                            const av = String(a[invTableSort.field] ?? "");
-                                                            const bv = String(b[invTableSort.field] ?? "");
-                                                            const num = (s: string) => parseFloat(s.replace(/[^0-9.-]/g, ""));
-                                                            const aNum = num(av), bNum = num(bv);
-                                                            const cmp = isNaN(aNum) || isNaN(bNum) ? av.localeCompare(bv) : aNum - bNum;
-                                                            return invTableSort.dir === "asc" ? cmp : -cmp;
-                                                          })
-                                                        : filteredInvRows;
-                                                      return (
-                                                    <>
-                                                    <table className="w-full text-base" style={{ minWidth: 1640 }}>
-                                                      <thead className="sticky top-0 z-10 bg-background">
-                                                        <tr className="bg-muted/30 border-b border-border">
-                                                          {([
-                                                            ["settlement","Settlement †"],["date","Trade Date"],["account","Account #"],
-                                                            ["security","Security *"],["ticker","Ticker"],["type","Type *"],["currency","CCY"],
-                                                            ["units","Units"],["price","Price"],["amount","Amount (CAD)"],["fxRate","FX Rate"],["",""]
-                                                          ] as [keyof InvReviewRow | "", string][]).map(([field, label], i) => {
-                                                            const isSort = field && invTableSort?.field === field;
-                                                            const isLast = label === "";
-                                                            const hasFilter = field ? (invColumnFilters[field as string]?.length ?? 0) > 0 : false;
-                                                            return (
-                                                              <th key={i} className={`px-2 py-1.5 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${isLast ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10 text-left" : "text-left"}`}>
-                                                                {field ? (
-                                                                  <span className="inline-flex items-center gap-0.5">
-                                                                    <button onClick={() => handleInvSort(field as keyof InvReviewRow)} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">
-                                                                      {label.endsWith(" *") ? <>{label.slice(0,-2)} <span className="text-red-500">*</span></> : label}
-                                                                      {isSort
-                                                                        ? invTableSort!.dir === "asc"
-                                                                          ? <ArrowUp className="h-2.5 w-2.5 text-primary ml-0.5" />
-                                                                          : <ArrowDown className="h-2.5 w-2.5 text-primary ml-0.5" />
-                                                                        : <ArrowUpDown className="h-2.5 w-2.5 text-muted-foreground/40 ml-0.5" />}
-                                                                    </button>
-                                                                    <button
-                                                                      onClick={e => handleInvFilter(field as string, e)}
-                                                                      className={`ml-0.5 rounded p-0.5 transition-colors ${hasFilter ? "text-primary" : "text-muted-foreground/30 hover:text-muted-foreground"} ${invOpenFilterCol === field ? "bg-primary/10 text-primary" : ""}`}
-                                                                      title={`Filter by ${label.replace(" *","").replace(" †","")}`}
-                                                                    >
-                                                                      <Filter className="h-2.5 w-2.5" />
-                                                                    </button>
-                                                                  </span>
-                                                                ) : label}
-                                                              </th>
-                                                            );
-                                                          })}
-                                                        </tr>
-                                                      </thead>
-                                                      <tbody>
-                                                        {(() => {
-                                                          return sortedInvRows.map((row, ri) => {
-                                                          const IC = "h-6 text-base px-1.5 border rounded bg-background focus:outline-none w-full border-border focus:border-primary/40";
-                                                          const upd = (field: keyof InvReviewRow, val: string) =>
-                                                            setInvReviewRows(prev => prev.map(r => r.id === row.id ? { ...r, [field]: val } : r));
-                                                          const voidRow = () => {
-                                                            const isScanned = row.source && !row.isManual;
-                                                            if (isScanned && !row.voided) {
-                                                              setInvReviewRows(prev => prev.map(r => r.id === row.id ? { ...r, voided: true, voidedAt: new Date().toISOString() } : r));
-                                                            } else {
-                                                              setInvReviewRows(prev => prev.map(r => r.id === row.id ? { ...r, voided: true, voidedAt: new Date().toISOString() } : r));
-                                                            }
-                                                          };
-                                                          const restoreRow = () => setInvReviewRows(prev => prev.map(r => r.id === row.id ? { ...r, voided: false, voidedAt: undefined } : r));
-                                                          const insertAfter = () => setInvReviewRows(prev => {
-                                                            const idx = prev.findIndex(r => r.id === row.id);
-                                                            const newRow: InvReviewRow = { id: `ir-manual-${Date.now()}`, date: row.date, settlement: row.date, security: "", ticker: "", type: "Purchase", units: "", price: "", amount: "", fxRate: "", currency: row.currency, account: row.account, accountType: row.accountType, source: "", isManual: true };
-                                                            return [...prev.slice(0, idx + 1), newRow, ...prev.slice(idx + 1)];
-                                                          });
+                                                  )}
+
+                                                  {(() => {
+                                                    const sources = [...new Set(invReviewRows.map(r => r.source).filter(Boolean))];
+                                                    if (sources.length <= 1) return null;
+                                                    return (
+                                                      <div className="flex items-center gap-1 flex-wrap">
+                                                        <button onClick={() => setInvActiveStatement(null)} className={`px-3 py-1 rounded-full text-base font-medium transition-all border ${invActiveStatement === null ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground hover:text-foreground hover:border-primary/40"}`}>
+                                                          All ({invReviewRows.length})
+                                                        </button>
+                                                        {sources.map(src => {
+                                                          const count = invReviewRows.filter(r => r.source === src).length;
+                                                          const label = src.replace(/\.[^.]+$/, "").slice(0, 28);
                                                           return (
-                                                            <Fragment key={row.id}>
-                                                            <tr className={`border-b border-border/40 transition-all ${row.voided ? "opacity-50 bg-red-50/30 line-through-row" : ri % 2 === 1 ? "bg-muted/10" : ""}`}>
-                                                              <td className="px-1.5 py-1 min-w-[110px]"><input value={row.settlement ?? ""} onChange={e => upd("settlement", e.target.value)} type="date" className={IC} /></td>
-                                                              <td className={`px-1.5 py-1 min-w-[110px] ${!row.date && !row.voided ? "bg-amber-50/60" : ""}`} title={!row.date ? "Trade date not in statement — enter manually" : undefined}><input value={row.date} onChange={e => upd("date", e.target.value)} type="date" className={IC} /></td>
-                                                              <td className="px-1.5 py-1 min-w-[130px]"><input value={row.account ?? ""} onChange={e => upd("account", e.target.value)} className={cn(IC, "w-32 font-mono")} placeholder="H11-XXXX-X" /></td>
-                                                              <td className="px-1.5 py-1 min-w-[200px]"><input value={row.security} onChange={e => upd("security", e.target.value)} className={cn(IC, "w-52")} placeholder="Security name" /></td>
-                                                              <td className="px-1.5 py-1 min-w-[70px]"><input value={row.ticker} onChange={e => upd("ticker", e.target.value)} className={cn(IC, "w-16 font-mono uppercase")} placeholder="TICK" /></td>
-                                                              <td className="px-1.5 py-1 min-w-[130px]">
-                                                                <div className="relative">
-                                                                  <select value={row.type} onChange={e => upd("type", e.target.value)} className={cn(IC, "w-36 appearance-none pr-6 cursor-pointer")}>
-                                                                    {TX_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                                                                  </select>
-                                                                  <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                                                </div>
-                                                              </td>
-                                                              <td className="px-1.5 py-1 min-w-[55px]">
-                                                                <select value={row.currency} onChange={e => upd("currency", e.target.value)} className={cn(IC, "w-14 appearance-none")}>
-                                                                  {["CAD","USD","EUR","GBP"].map(c => <option key={c}>{c}</option>)}
-                                                                </select>
-                                                              </td>
-                                                              <td className="px-1.5 py-1 min-w-[80px]">
-                                                                {row.units ? (
-                                                                  <FmtStrInput value={row.units} onChange={s => upd("units", s)} className={cn(IC, "w-20 text-right tabular-nums")} placeholder="0.0000" decimals={4} />
-                                                                ) : (
-                                                                  <span className="text-base text-muted-foreground px-1.5">—</span>
-                                                                )}
-                                                              </td>
-                                                              <td className="px-1.5 py-1 min-w-[80px]"><FmtStrInput value={row.price} onChange={s => upd("price", s)} className={cn(IC, "w-20 text-right")} placeholder="0.000" decimals={4} /></td>
-                                                              <td className="px-1.5 py-1 min-w-[100px]">
-                                                                <FmtStrInput value={row.amount ?? ""} onChange={s => upd("amount", s)}
-                                                                  className={cn(IC, "w-24 text-right font-medium tabular-nums")}
-                                                                  placeholder="0.00" />
-                                                              </td>
-                                                              <td className="px-1.5 py-1 min-w-[75px]">
-                                                                {row.currency !== "CAD"
-                                                                  ? <input value={row.fxRate ?? ""} onChange={e => upd("fxRate", e.target.value)} className={cn(IC, "w-20 text-right font-mono")} placeholder="1.0000" />
-                                                                  : <span className="text-muted-foreground tabular-nums px-1">—</span>}
-                                                              </td>
-                                                              {/* Actions: void / restore + insert */}
-                                                              <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
-                                                                <div className="flex items-center gap-0.5">
-                                                                  {row.voided ? (
-                                                                    <button onClick={restoreRow} title="Restore entry" className="p-1 rounded hover:bg-green-50 text-green-600 hover:text-green-700 transition-colors">
-                                                                      <RotateCcw className="h-4 w-4" />
-                                                                    </button>
-                                                                  ) : (
-                                                                    <button onClick={voidRow} title={row.source && !row.isManual ? `Void — re-upload ${row.source} to restore` : "Void entry"} className="p-1 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors">
-                                                                      <Trash2 className="h-4 w-4" />
-                                                                    </button>
-                                                                  )}
-                                                                  <button onClick={insertAfter} title="Insert row after" className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors">
-                                                                    <Plus className="h-4 w-4" />
-                                                                  </button>
-                                                                </div>
-                                                              </td>
-                                                            </tr>
-                                                            {/* Voided banner below the row */}
-                                                            {row.voided && (
-                                                              <tr className="border-b border-red-100">
-                                                                <td colSpan={12} className="px-3 py-1 bg-red-50/50">
-                                                                  <div className="flex items-center gap-2">
-                                                                    <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
-                                                                    <span className="text-base text-red-600">
-                                                                      Entry voided — excluded from submitted transactions.
-                                                                      {row.source && !row.isManual && <> Re-upload <strong>{row.source}</strong> to restore this scanned transaction.</>}
+                                                            <button key={src} onClick={() => setInvActiveStatement(src)} className={`px-3 py-1 rounded-full text-base font-medium transition-all border ${invActiveStatement === src ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground hover:text-foreground hover:border-primary/40"}`}>
+                                                              {label} ({count})
+                                                            </button>
+                                                          );
+                                                        })}
+                                                      </div>
+                                                    );
+                                                  })()}
+
+                                                  <div className="flex items-start gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                                                      <Sparkles className="w-4 h-4 text-white" />
+                                                    </div>
+                                                    <div className="flex-1 px-3 py-2 rounded-[10px] rounded-tl-[4px] bg-muted/50 border border-border/60 text-base text-foreground">
+                                                      Successfully extracted and classified <strong>{invReviewRows.filter(r => !r.voided).length} transactions</strong> from the uploaded investment statements. Review and submit to generate the Investment Schedule.
+                                                    </div>
+                                                  </div>
+
+                                                  <div className="rounded-[10px] border border-border overflow-clip">
+                                                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/20">
+                                                      <div className="flex items-center gap-2">
+                                                        <div className="w-7 h-7 rounded-[6px] bg-primary/10 flex items-center justify-center">
+                                                          <Zap className="h-4 w-4 text-primary" />
+                                                        </div>
+                                                        <span className="text-base font-semibold text-foreground">Extracted Transactions</span>
+                                                        <span className="text-base text-muted-foreground tabular-nums">· {filteredInvRows.length}{filteredInvRows.length !== invReviewRows.length ? ` of ${invReviewRows.length}` : ""}</span>
+                                                      </div>
+                                                      {validFiles.length > 0 && (
+                                                        <button
+                                                          onClick={extractAllInvFiles}
+                                                          className="inline-flex items-center gap-1.5 h-7 px-3 text-base font-medium rounded-[6px] border border-border bg-background hover:bg-muted/40 transition-colors text-foreground"
+                                                        >
+                                                          <RefreshCw className="h-3.5 w-3.5" /> Re-analyze
+                                                        </button>
+                                                      )}
+                                                    </div>
+
+                                                    <div className="px-3 py-2 border-b border-border/60 bg-background">
+                                                      <div className="relative">
+                                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                                        <input
+                                                          type="text"
+                                                          value={invSearchTerm}
+                                                          onChange={e => { setInvSearchTerm(e.target.value); setInvPage(0); }}
+                                                          placeholder="Search by security, ticker, type or account…"
+                                                          className="w-full h-8 pl-8 pr-3 text-base rounded-[6px] border border-border bg-muted/20 focus:outline-none focus:border-primary/40 focus:bg-background transition-colors"
+                                                        />
+                                                        {invSearchTerm && (
+                                                          <button onClick={() => setInvSearchTerm("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                                                            <X className="h-3.5 w-3.5" />
+                                                          </button>
+                                                        )}
+                                                      </div>
+                                                    </div>
+
+                                                    <div className="w-full overflow-x-auto">
+                                                      <table className="w-full text-base" style={{ minWidth: 1800 }}>
+                                                        <thead className="sticky top-0 z-10 bg-background">
+                                                          <tr className="bg-muted/30 border-b border-border">
+                                                            {([
+                                                              ["settlement","Settlement †"],["date","Trade Date"],["account","Account #"],
+                                                              ["security","Security *"],["ticker","Ticker"],["type","Type *"],["tbAccount","GL Account"],["currency","CCY"],
+                                                              ["units","Units"],["price","Price"],["amount","Amount (CAD)"],["fxRate","FX Rate"],["",""]
+                                                            ] as [keyof InvReviewRow | "", string][]).map(([field, label], i) => {
+                                                              const isSort = field && invTableSort?.field === field;
+                                                              const isLast = label === "";
+                                                              const hasFilter = field ? (invColumnFilters[field as string]?.length ?? 0) > 0 : false;
+                                                              return (
+                                                                <th key={i} className={`px-2 py-1.5 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${isLast ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10 text-left" : "text-left"}`}>
+                                                                  {field ? (
+                                                                    <span className="inline-flex items-center gap-0.5">
+                                                                      <button onClick={() => handleInvSort(field as keyof InvReviewRow)} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">
+                                                                        {label.endsWith(" *") ? <>{label.slice(0,-2)} <span className="text-red-500">*</span></> : label}
+                                                                        {isSort
+                                                                          ? invTableSort!.dir === "asc"
+                                                                            ? <ArrowUp className="h-2.5 w-2.5 text-primary ml-0.5" />
+                                                                            : <ArrowDown className="h-2.5 w-2.5 text-primary ml-0.5" />
+                                                                          : <ArrowUpDown className="h-2.5 w-2.5 text-muted-foreground/40 ml-0.5" />}
+                                                                      </button>
+                                                                      <button
+                                                                        onClick={e => handleInvFilter(field as string, e)}
+                                                                        className={`ml-0.5 rounded p-0.5 transition-colors ${hasFilter ? "text-primary" : "text-muted-foreground/30 hover:text-muted-foreground"} ${invOpenFilterCol === field ? "bg-primary/10 text-primary" : ""}`}
+                                                                        title={`Filter by ${label.replace(" *","").replace(" †","")}`}
+                                                                      >
+                                                                        <Filter className="h-2.5 w-2.5" />
+                                                                      </button>
                                                                     </span>
-                                                                    <button onClick={insertAfter} className="ml-auto inline-flex items-center gap-0.5 text-base text-primary hover:underline">
-                                                                      <Plus className="h-2.5 w-2.5" /> Add replacement entry here
+                                                                  ) : label}
+                                                                </th>
+                                                              );
+                                                            })}
+                                                          </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                          {pageRows.map((row, ri) => {
+                                                            const IC = "h-6 text-base px-1.5 border rounded bg-background focus:outline-none w-full border-border focus:border-primary/40";
+                                                            const upd = (field: keyof InvReviewRow, val: string) =>
+                                                              setInvReviewRows(prev => prev.map(r => r.id === row.id ? { ...r, [field]: val } : r));
+                                                            const voidRow = () => setInvReviewRows(prev => prev.map(r => r.id === row.id ? { ...r, voided: true, voidedAt: new Date().toISOString() } : r));
+                                                            const restoreRow = () => setInvReviewRows(prev => prev.map(r => r.id === row.id ? { ...r, voided: false, voidedAt: undefined } : r));
+                                                            const insertAfter = () => setInvReviewRows(prev => {
+                                                              const idx = prev.findIndex(r => r.id === row.id);
+                                                              const newRow: InvReviewRow = { id: `ir-manual-${Date.now()}`, date: row.date, settlement: row.date, security: "", ticker: "", type: "Purchase", units: "", price: "", amount: "", fxRate: "", currency: row.currency, account: row.account, accountType: row.accountType, tbAccount: defaultTbAccountForActivity("Purchase"), source: "", isManual: true };
+                                                              return [...prev.slice(0, idx + 1), newRow, ...prev.slice(idx + 1)];
+                                                            });
+                                                            return (
+                                                              <Fragment key={row.id}>
+                                                              <tr className={`border-b border-border/40 transition-all ${row.voided ? "opacity-50 bg-red-50/30" : ri % 2 === 1 ? "bg-muted/10" : ""}`}>
+                                                                <td className="px-1.5 py-1 min-w-[110px]"><input value={row.settlement ?? ""} onChange={e => upd("settlement", e.target.value)} type="date" className={IC} /></td>
+                                                                <td className={`px-1.5 py-1 min-w-[110px] ${!row.date && !row.voided ? "bg-amber-50/60" : ""}`} title={!row.date ? "Trade date not in statement — enter manually" : undefined}><input value={row.date} onChange={e => upd("date", e.target.value)} type="date" className={IC} /></td>
+                                                                <td className="px-1.5 py-1 min-w-[130px]"><input value={row.account ?? ""} onChange={e => upd("account", e.target.value)} className={cn(IC, "w-32 font-mono")} placeholder="H11-XXXX-X" /></td>
+                                                                <td className="px-1.5 py-1 min-w-[200px]"><input value={row.security} onChange={e => upd("security", e.target.value)} className={cn(IC, "w-52")} placeholder="Security name" /></td>
+                                                                <td className="px-1.5 py-1 min-w-[70px]"><input value={row.ticker} onChange={e => upd("ticker", e.target.value)} className={cn(IC, "w-16 font-mono uppercase")} placeholder="TICK" /></td>
+                                                                <td className="px-1.5 py-1 min-w-[130px]">
+                                                                  <div className="relative">
+                                                                    <select value={row.type} onChange={e => { upd("type", e.target.value); upd("tbAccount", defaultTbAccountForActivity(e.target.value)); }} className={cn(IC, "w-36 appearance-none pr-6 cursor-pointer")}>
+                                                                      {TX_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                                                                    </select>
+                                                                    <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                                  </div>
+                                                                </td>
+                                                                <td className="px-1.5 py-1 min-w-[140px]">
+                                                                  <input value={row.tbAccount ?? defaultTbAccountForActivity(row.type)} onChange={e => upd("tbAccount", e.target.value)} className={cn(IC, "w-36 font-mono text-xs")} placeholder="e.g. 1310" />
+                                                                </td>
+                                                                <td className="px-1.5 py-1 min-w-[55px]">
+                                                                  <select value={row.currency} onChange={e => upd("currency", e.target.value)} className={cn(IC, "w-14 appearance-none")}>
+                                                                    {["CAD","USD","EUR","GBP"].map(c => <option key={c}>{c}</option>)}
+                                                                  </select>
+                                                                </td>
+                                                                <td className="px-1.5 py-1 min-w-[80px]">
+                                                                  {row.units ? (
+                                                                    <FmtStrInput value={row.units} onChange={s => upd("units", s)} className={cn(IC, "w-20 text-right tabular-nums")} placeholder="0.0000" decimals={4} />
+                                                                  ) : (
+                                                                    <span className="text-base text-muted-foreground px-1.5">—</span>
+                                                                  )}
+                                                                </td>
+                                                                <td className="px-1.5 py-1 min-w-[80px]"><FmtStrInput value={row.price} onChange={s => upd("price", s)} className={cn(IC, "w-20 text-right")} placeholder="0.000" decimals={4} /></td>
+                                                                <td className="px-1.5 py-1 min-w-[100px]">
+                                                                  <FmtStrInput value={row.amount ?? ""} onChange={s => upd("amount", s)} className={cn(IC, "w-24 text-right font-medium tabular-nums")} placeholder="0.00" />
+                                                                </td>
+                                                                <td className="px-1.5 py-1 min-w-[75px]">
+                                                                  {row.currency !== "CAD"
+                                                                    ? <input value={row.fxRate ?? ""} onChange={e => upd("fxRate", e.target.value)} className={cn(IC, "w-20 text-right font-mono")} placeholder="1.0000" />
+                                                                    : <span className="text-muted-foreground tabular-nums px-1">—</span>}
+                                                                </td>
+                                                                <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
+                                                                  <div className="flex items-center gap-0.5">
+                                                                    {row.voided ? (
+                                                                      <button onClick={restoreRow} title="Restore entry" className="p-1 rounded hover:bg-green-50 text-green-600 hover:text-green-700 transition-colors">
+                                                                        <RotateCcw className="h-4 w-4" />
+                                                                      </button>
+                                                                    ) : (
+                                                                      <button onClick={voidRow} title={row.source && !row.isManual ? `Void — re-upload ${row.source} to restore` : "Void entry"} className="p-1 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors">
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                      </button>
+                                                                    )}
+                                                                    <button onClick={insertAfter} title="Insert row after" className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors">
+                                                                      <Plus className="h-4 w-4" />
                                                                     </button>
                                                                   </div>
                                                                 </td>
                                                               </tr>
-                                                            )}
+                                                              {row.voided && (
+                                                                <tr className="border-b border-red-100">
+                                                                  <td colSpan={13} className="px-3 py-1 bg-red-50/50">
+                                                                    <div className="flex items-center gap-2">
+                                                                      <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
+                                                                      <span className="text-base text-red-600">Entry voided — excluded from submitted transactions.</span>
+                                                                    </div>
+                                                                  </td>
+                                                                </tr>
+                                                              )}
+                                                              </Fragment>
+                                                            );
+                                                          })}
+                                                          {pageRows.length === 0 && (
+                                                            <tr><td colSpan={13} className="px-4 py-6 text-center text-base text-muted-foreground">No transactions match your search or filters.</td></tr>
+                                                          )}
+                                                        </tbody>
+                                                      </table>
+                                                    </div>
+
+                                                    {totalPages > 1 && (
+                                                      <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-muted/10">
+                                                        <span className="text-base text-muted-foreground">
+                                                          Showing {invPage * INV_PAGE_SIZE + 1}–{Math.min((invPage + 1) * INV_PAGE_SIZE, sortedInvRows.length)} of {sortedInvRows.length}
+                                                        </span>
+                                                        <div className="flex items-center gap-1">
+                                                          <button
+                                                            onClick={() => setInvPage(p => Math.max(0, p - 1))}
+                                                            disabled={invPage === 0}
+                                                            className="h-7 w-7 flex items-center justify-center rounded-[6px] border border-border hover:bg-muted/40 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                                          >
+                                                            <ChevronLeft className="h-4 w-4" />
+                                                          </button>
+                                                          {Array.from({ length: totalPages }, (_, i) => i).filter(i => Math.abs(i - invPage) <= 2 || i === 0 || i === totalPages - 1).map((i, idx, arr) => (
+                                                            <Fragment key={i}>
+                                                              {idx > 0 && arr[idx - 1] !== i - 1 && <span className="text-muted-foreground px-1">…</span>}
+                                                              <button
+                                                                onClick={() => setInvPage(i)}
+                                                                className={`h-7 min-w-[28px] px-1.5 flex items-center justify-center rounded-[6px] text-base transition-colors ${i === invPage ? "bg-primary text-primary-foreground font-semibold" : "border border-border hover:bg-muted/40"}`}
+                                                              >
+                                                                {i + 1}
+                                                              </button>
                                                             </Fragment>
-                                                          );
-                                                          });
-                                                        })()}
-                                                      </tbody>
-                                                    </table>
-                                                    {/* Column filter portal */}
+                                                          ))}
+                                                          <button
+                                                            onClick={() => setInvPage(p => Math.min(totalPages - 1, p + 1))}
+                                                            disabled={invPage === totalPages - 1}
+                                                            className="h-7 w-7 flex items-center justify-center rounded-[6px] border border-border hover:bg-muted/40 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                                          >
+                                                            <ChevronRight className="h-4 w-4" />
+                                                          </button>
+                                                        </div>
+                                                      </div>
+                                                    )}
+
                                                     {invOpenFilterCol && invFilterDropdownPos && ReactDOM.createPortal(
                                                       <>
                                                         <div className="fixed inset-0 z-[9998]" onClick={() => { setInvOpenFilterCol(null); setInvFilterDropdownPos(null); }} />
@@ -4666,14 +4757,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       </>,
                                                       document.body
                                                     )}
-                                                    </>
-                                                      );
-                                                    })()}
                                                   </div>
-
                                                 </div>
-                                              </div>
-                                            )}
+                                              );
+                                            })()}
 
                                             {/* ── Continuity status (no manual button — extraction is automatic) ── */}
                                             {validFiles.length > 0 && invReviewRows.length === 0 && !invExtracting && !(invMissingMonthsPrompt !== null && invMissingMonthsPrompt.length > 0) && (
@@ -4724,14 +4811,25 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               </div>
                                             )}
 
-                                            {/* ── Submit (after extraction) ── */}
+                                            {/* ── Cancel + Submit ── */}
                                             {invReviewRows.length > 0 && (
-                                              <div className="flex items-center justify-end gap-2 pt-1">
+                                              <div className="flex items-center justify-between gap-2 pt-1">
+                                                <button
+                                                  onClick={() => {
+                                                    setInvReviewRows([]);
+                                                    setInvMissingMonthsPrompt(null);
+                                                    setInvContinuityOk(false);
+                                                    setInvSearchTerm("");
+                                                    setInvPage(0);
+                                                  }}
+                                                  className="inline-flex items-center gap-1.5 h-8 px-4 text-base font-medium rounded-[8px] border border-border hover:bg-muted/40 transition-colors text-foreground"
+                                                >
+                                                  Cancel
+                                                </button>
                                                 <div className="flex items-center gap-2">
-                                                  <span className="text-base text-muted-foreground">{invReviewRows.length} transaction{invReviewRows.length !== 1 ? "s" : ""}</span>
+                                                  <span className="text-base text-muted-foreground">{invReviewRows.filter(r => !r.voided).length} transaction{invReviewRows.filter(r => !r.voided).length !== 1 ? "s" : ""}</span>
                                                   <button
                                                     onClick={() => {
-                                                      // Convert review rows to Transaction[] for the schedule workpaper
                                                       const txns: import("@/lib/luka/types").Transaction[] = invReviewRows
                                                         .filter(r => !r.voided)
                                                         .map(r => ({
@@ -4750,7 +4848,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                           currency: (r.currency as "CAD" | "USD" | "EUR" | "GBP") || "CAD",
                                                           fxRate: parseFloat(r.fxRate) || 1,
                                                           status: "posted" as const,
-                                                          tbAccount: defaultTbAccountForActivity(r.type),
+                                                          tbAccount: r.tbAccount || defaultTbAccountForActivity(r.type),
                                                         }));
                                                       setInvSubmittedTxns(txns);
                                                       setInvSchedGenerated(true);
