@@ -192,6 +192,7 @@ async function extractAllText(file: File): Promise<string[]> {
 async function extractWithClaude(
   pages: string[],
   sourceFile: string,
+  apiKey: string,
 ): Promise<{
   transactions: ParsedInvTransaction[];
   broker: string;
@@ -200,11 +201,6 @@ async function extractWithClaude(
   periodEnd: string;
   fxRateUsdCad: number | null;
 }> {
-  const apiKey = localStorage.getItem('anthropic_api_key');
-  if (!apiKey) {
-    throw new Error('No Anthropic API key configured. Add it in Settings → Conventions.');
-  }
-
   const fullText = pages.join('\n\n--- PAGE BREAK ---\n\n');
   const truncated = fullText.length > 14000
     ? fullText.slice(0, 14000) + '\n[...truncated — additional pages omitted]'
@@ -317,7 +313,7 @@ ${truncated}`;
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-export async function extractInvTransactions(file: File): Promise<InvPdfParseResult> {
+export async function extractInvTransactions(file: File, apiKey: string): Promise<InvPdfParseResult> {
   try {
     const pages = await extractAllText(file);
 
@@ -329,7 +325,7 @@ export async function extractInvTransactions(file: File): Promise<InvPdfParseRes
       };
     }
 
-    const result = await extractWithClaude(pages, file.name);
+    const result = await extractWithClaude(pages, file.name, apiKey);
 
     return {
       broker: result.broker,

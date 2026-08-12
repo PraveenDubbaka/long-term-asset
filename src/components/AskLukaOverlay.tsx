@@ -3744,12 +3744,19 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                         const extractAllInvFiles = async () => {
                                           const validFiles = invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
                                           if (validFiles.length === 0) return;
+
+                                          const apiKey = localStorage.getItem('anthropic_api_key') ?? '';
+                                          if (!apiKey) {
+                                            setInvBrokerError('Anthropic API key not configured. Add it in Settings → Conventions to enable statement extraction.');
+                                            return;
+                                          }
+
                                           setInvExtracting(true);
                                           try {
                                             const parseResults = await Promise.all(
                                               validFiles.map(f => {
                                                 const realFile = invFileMapRef.current.get(f.name);
-                                                return extractInvTransactions(realFile ?? new File([], f.name, { type: "application/pdf" }));
+                                                return extractInvTransactions(realFile ?? new File([], f.name, { type: "application/pdf" }), apiKey);
                                               })
                                             );
                                             const brokerCheck = validateSingleBroker(parseResults);
