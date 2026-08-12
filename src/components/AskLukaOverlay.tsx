@@ -4509,7 +4509,11 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                                   className={cn(IC, "w-24 text-right font-medium tabular-nums")}
                                                                   placeholder="0.00" />
                                                               </td>
-                                                              <td className="px-1.5 py-1 min-w-[75px]"><input value={row.fxRate ?? ""} onChange={e => upd("fxRate", e.target.value)} className={cn(IC, "w-20 text-right font-mono")} placeholder="1.0000" /></td>
+                                                              <td className="px-1.5 py-1 min-w-[75px]">
+                                                                {row.currency !== "CAD"
+                                                                  ? <input value={row.fxRate ?? ""} onChange={e => upd("fxRate", e.target.value)} className={cn(IC, "w-20 text-right font-mono")} placeholder="1.0000" />
+                                                                  : <span className="text-muted-foreground tabular-nums px-1">—</span>}
+                                                              </td>
                                                               {/* Actions: void / restore + insert */}
                                                               <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
                                                                 <div className="flex items-center gap-0.5">
@@ -4677,7 +4681,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                           net: parseFloat(r.amount) || 0,
                                                           currency: (r.currency as "CAD" | "USD" | "EUR" | "GBP") || "CAD",
                                                           fxRate: parseFloat(r.fxRate) || 1,
-                                                          status: "published" as const,
+                                                          status: "posted" as const,
                                                           tbAccount: defaultTbAccountForActivity(r.type),
                                                         }));
                                                       setInvSubmittedTxns(txns);

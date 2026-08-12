@@ -82,14 +82,15 @@ function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     pending:   "bg-amber-50 text-amber-700 border-amber-200",
     approved:  "bg-blue-50 text-blue-700 border-blue-200",
-    published: "bg-green-50 text-green-700 border-green-200",
-    Draft:     "bg-muted text-muted-foreground border-border",
-    Approved:  "bg-blue-50 text-blue-700 border-blue-200",
-    Posted:    "bg-green-50 text-green-700 border-green-200",
+    published:  "bg-green-50 text-green-700 border-green-200",
+    posted:     "bg-green-50 text-green-700 border-green-200",
+    Draft:      "bg-muted text-muted-foreground border-border",
+    Approved:   "bg-blue-50 text-blue-700 border-blue-200",
+    Posted:     "bg-green-50 text-green-700 border-green-200",
   };
   const cls = map[status] ?? "bg-muted text-muted-foreground border-border";
   const icon =
-    status === "Approved" || status === "approved" || status === "published"
+    status === "Approved" || status === "approved" || status === "published" || status === "posted"
       ? <CheckCircle2 className="h-2.5 w-2.5" />
       : status === "pending"
       ? <AlertTriangle className="h-2.5 w-2.5" />
@@ -185,6 +186,10 @@ const TX_TYPES = [
 ] as const;
 type TxFormType = typeof TX_TYPES[number];
 
+const OUTFLOW_TYPES: Transaction["type"][] = [
+  "Purchase", "Fee/Commission", "Withholding Tax",
+];
+
 // Type badge colours matching workpapers
 function TxTypeBadge({ type }: { type: string }) {
   return (
@@ -197,7 +202,7 @@ function TxTypeBadge({ type }: { type: string }) {
 interface TxDraft {
   date: string; settlement: string; broker: string; security: string; ticker: string;
   type: TxFormType; qty: number; price: number; ccy: string;
-  fxRate: number; tbAccount: string; status: "pending" | "approved" | "published";
+  fxRate: number; tbAccount: string; status: "pending" | "approved" | "posted";
 }
 
 const EMPTY_TX_DRAFT = (): TxDraft => ({
@@ -236,7 +241,7 @@ function TransactionsPanel({
   const [editId, setEditId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<TxDraft>(EMPTY_TX_DRAFT());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [statusFilter,  setStatusFilter]  = useState<"all" | "pending" | "approved" | "published">("all");
+  const [statusFilter,  setStatusFilter]  = useState<"all" | "pending" | "approved" | "posted">("all");
   const [sourceFilter,  setSourceFilter]  = useState("all");
   const [txSearch,      setTxSearch]      = useState("");
   const [txTypeFilter,  setTxTypeFilter]  = useState("all");
@@ -467,7 +472,7 @@ function TransactionsPanel({
           <div className="flex flex-col gap-0.5">
             <span className="text-base text-muted-foreground uppercase">Status</span>
             <select value={d.status} onChange={e => setD("status", e.target.value)} className={SC}>
-              {["pending","approved","published"].map(s => <option key={s}>{s}</option>)}
+              {["pending","approved","posted"].map(s => <option key={s}>{s}</option>)}
             </select>
           </div>
           {/* Save / Cancel */}
@@ -531,7 +536,7 @@ function TransactionsPanel({
                 <option value="all">All</option>
                 <option value="pending">Pending</option>
                 <option value="approved">Approved</option>
-                <option value="published">Published</option>
+                <option value="posted">Posted</option>
               </select>
             </div>
           )}
@@ -539,7 +544,7 @@ function TransactionsPanel({
             <>
               <span className="text-base text-muted-foreground">{selectedIds.size} selected</span>
               <button onClick={() => bulkSetStatus("approved")} className="inline-flex items-center h-7 px-2.5 text-base font-medium rounded-[7px] border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">Approve</button>
-              <button onClick={() => bulkSetStatus("published")} className="inline-flex items-center h-7 px-2.5 text-base font-medium rounded-[7px] border border-green-200 bg-green-50 text-green-700 hover:bg-green-100 transition-colors">Publish</button>
+              <button onClick={() => bulkSetStatus("posted")} className="inline-flex items-center h-7 px-2.5 text-base font-medium rounded-[7px] border border-green-200 bg-green-50 text-green-700 hover:bg-green-100 transition-colors">Post</button>
             </>
           )}
         </div>
@@ -608,7 +613,7 @@ function TransactionsPanel({
               </th>
               {/* Status — ColFilter */}
               <th className="px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
-                <ColFilter label="Status" options={["pending","approved","published"]} value={statusFilter === "all" ? "" : statusFilter} onChange={v => setStatusFilter((v || "all") as typeof statusFilter)} />
+                <ColFilter label="Status" options={["pending","approved","posted"]} value={statusFilter === "all" ? "" : statusFilter} onChange={v => setStatusFilter((v || "all") as typeof statusFilter)} />
               </th>
             </tr>
           </thead>
@@ -732,19 +737,39 @@ function TransactionsPanel({
                   </td>
 
                   {/* FX */}
+                  {/* FX — only shown for non-CAD securities */}
                   <td className="px-2 py-1 text-right">
                     {isEditing
-                      ? <input type="number" step="0.0001" value={d.fxRate || ""} onChange={e => setD("fxRate", parseFloat(e.target.value) || 1)} className={`${IC} w-20 text-right`} placeholder="1.0000" />
+                      ? d.ccy !== "CAD"
+                        ? <input type="number" step="0.0001" value={d.fxRate || ""} onChange={e => setD("fxRate", parseFloat(e.target.value) || 1)} className={`${IC} w-20 text-right`} placeholder="1.0000" />
+                        : <span className="text-muted-foreground tabular-nums">—</span>
                       : isBatchEditing
-                      ? <input type="number" step="0.0001" value={String(bv?.fxRate ?? t.fxRate ?? 1)} onChange={e => bSet("fxRate", parseFloat(e.target.value) || 1)} className={`${IC} w-20 text-right`} placeholder="1.0000" />
-                      : <span className="tabular-nums text-foreground">{fmt4(t.fxRate ?? 1)}</span>}
+                      ? (bv?.currency ?? t.currency) !== "CAD"
+                        ? <input type="number" step="0.0001" value={String(bv?.fxRate ?? t.fxRate ?? 1)} onChange={e => bSet("fxRate", parseFloat(e.target.value) || 1)} className={`${IC} w-20 text-right`} placeholder="1.0000" />
+                        : <span className="text-muted-foreground tabular-nums">—</span>
+                      : t.currency !== "CAD"
+                        ? <span className="tabular-nums text-foreground">{fmt4(t.fxRate ?? 1)}</span>
+                        : <span className="text-muted-foreground tabular-nums">—</span>}
                   </td>
 
-                  {/* Amount — always read-only (computed) */}
+                  {/* Amount — signed by direction, colour-coded */}
                   <td className="px-2 py-1 text-right">
-                    <span className="tabular-nums font-medium">
-                      {isEditing ? fmt2(d.qty * d.price * d.fxRate) : fmt2(t.net * (t.fxRate ?? 1))}
-                    </span>
+                    {(() => {
+                      const raw = isEditing
+                        ? d.qty * d.price * d.fxRate
+                        : isBatchEditing
+                        ? Math.abs((bv?.net ?? t.net) * (bv?.fxRate ?? t.fxRate ?? 1))
+                        : t.net * (t.fxRate ?? 1);
+                      const type = isEditing ? d.type : isBatchEditing ? (bv?.type ?? t.type) : t.type;
+                      const isOutflow = OUTFLOW_TYPES.includes(type as Transaction["type"]);
+                      const signed = isOutflow ? -Math.abs(raw) : Math.abs(raw);
+                      const colour = isOutflow ? "text-red-600" : "text-emerald-700";
+                      return (
+                        <span className={`tabular-nums font-medium ${colour}`}>
+                          {signed < 0 ? "-" : "+"}{fmt2(Math.abs(signed))}
+                        </span>
+                      );
+                    })()}
                   </td>
 
                   {/* TB Account */}
@@ -774,11 +799,11 @@ function TransactionsPanel({
                   <td className="px-2 py-1 text-right">
                     {isEditing
                       ? <select value={d.status} onChange={e => setD("status", e.target.value as TxDraft["status"])} className={`${SC} w-24`}>
-                          {["pending","approved","published"].map(s => <option key={s}>{s}</option>)}
+                          {["pending","approved","posted"].map(s => <option key={s}>{s}</option>)}
                         </select>
                       : isBatchEditing
                       ? <select value={String(bv?.status ?? t.status ?? "pending")} onChange={e => bSet("status", e.target.value)} className={`${SC} w-24`}>
-                          {["pending","approved","published"].map(s => <option key={s}>{s}</option>)}
+                          {["pending","approved","posted"].map(s => <option key={s}>{s}</option>)}
                         </select>
                       : <StatusBadge status={t.status ?? "pending"} />}
                   </td>
@@ -3110,7 +3135,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                                   {CHART_OF_ACCOUNTS.map(a=><option key={a.code} value={a.code}>{a.code} · {a.name}</option>)}
                                 </select>
                               </td>
-                              <td className="px-1.5 py-1"><select value={row.status} onChange={e=>upd("status",e.target.value)} className="h-6 text-base px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer w-20">{["pending","approved","published"].map(s=><option key={s}>{s}</option>)}</select></td>
+                              <td className="px-1.5 py-1"><select value={row.status} onChange={e=>upd("status",e.target.value)} className="h-6 text-base px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer w-20">{["pending","approved","posted"].map(s=><option key={s}>{s}</option>)}</select></td>
                               <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
                                 <div className="flex items-center justify-end">
                                   <button onClick={()=>setPendingTxns(prev=>prev.filter(p=>p.id!==row.id))} className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors">

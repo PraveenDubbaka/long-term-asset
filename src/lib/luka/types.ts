@@ -28,7 +28,7 @@ export type TxType =
   | "Withholding Tax"
   | "Reinvested Dividend";
 
-export type TxStatus = "pending" | "approved" | "published";
+export type TxStatus = "pending" | "approved" | "posted" | "published";
 
 export interface Transaction {
   id: string;

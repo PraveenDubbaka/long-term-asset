@@ -37,7 +37,8 @@ const TxStatusBadge = ({ status }: { status: TxStatus }) => {
   const map = {
     pending: { cls: "border-yellow-400/40 bg-yellow-400/10 text-yellow-700", label: "Pending" },
     approved: { cls: "border-blue-400/40 bg-blue-400/10 text-blue-700", label: "Approved" },
-    published: { cls: "border-green-500/40 bg-green-500/10 text-green-700", label: "Published" },
+    published: { cls: "border-green-500/40 bg-green-500/10 text-green-700", label: "Posted" },
+    posted:    { cls: "border-green-500/40 bg-green-500/10 text-green-700", label: "Posted" },
   } as const;
   const v = map[status];
   return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium border ${v.cls}`}>{v.label}</span>;
@@ -257,11 +258,11 @@ export function InvTransactionsTab({
       filterTicker, filterCcy, filterTbAccount, filterTradeDate, allSources]);
 
   const txCounts = useMemo(() => {
-    const c: { all: number; pending: number; approved: number; published: number } = {
-      all: effectiveTxns.length, pending: 0, approved: 0, published: 0,
+    const c: { all: number; pending: number; approved: number; published: number; posted: number } = {
+      all: effectiveTxns.length, pending: 0, approved: 0, published: 0, posted: 0,
     };
     for (const t of effectiveTxns) {
-      const s = (t.status ?? "published") as TxStatus;
+      const s = (t.status ?? "posted") as TxStatus;
       c[s] = (c[s] ?? 0) + 1;
     }
     return c;
