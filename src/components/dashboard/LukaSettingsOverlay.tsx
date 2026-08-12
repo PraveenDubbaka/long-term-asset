@@ -794,71 +794,12 @@ const PromptVaultPanel = () => {
   );
 };
 
-const ApiKeySection = () => {
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('anthropic_api_key') ?? '');
-  const [saved, setSaved] = useState(!!localStorage.getItem('anthropic_api_key'));
-  const [visible, setVisible] = useState(false);
-
-  const save = () => {
-    const val = apiKey.trim();
-    if (val) { localStorage.setItem('anthropic_api_key', val); setSaved(true); }
-    else { localStorage.removeItem('anthropic_api_key'); setSaved(false); }
-  };
-
-  return (
-    <Section title="AI Configuration" description="Required for AI-powered investment statement extraction from any broker.">
-      <div>
-        <FieldLabel title="Anthropic API Key" sub="Used for investment statement extraction. Stored locally in this browser only — never sent to any server other than api.anthropic.com." />
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <input
-              type={visible ? "text" : "password"}
-              value={apiKey}
-              onChange={e => { setApiKey(e.target.value); setSaved(false); }}
-              onKeyDown={e => { if (e.key === "Enter") save(); }}
-              placeholder="sk-ant-api03-…"
-              className="w-full px-3 py-2 rounded-[10px] text-[13px] outline-none font-mono pr-9"
-              style={{ background: "hsl(0 0% 100%)", border: "1px solid hsl(220 20% 88%)", color: "hsl(222 30% 18%)" }}
-            />
-            <button
-              type="button"
-              onClick={() => setVisible(v => !v)}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2"
-              style={{ color: "hsl(222 15% 55%)" }}
-            >
-              {visible
-                ? <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                : <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              }
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={save}
-            className="px-3 py-2 rounded-[10px] text-[13px] font-medium"
-            style={{ background: "hsl(220 15% 95%)", border: "1px solid hsl(220 20% 88%)", color: "hsl(222 30% 25%)" }}
-          >
-            Save
-          </button>
-        </div>
-        {saved && (
-          <p className="mt-1.5 text-[11px] flex items-center gap-1" style={{ color: "hsl(142 60% 38%)" }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            API key configured
-          </p>
-        )}
-      </div>
-    </Section>
-  );
-};
-
 const GeneralTab = () => {
   const [vaultOpen, setVaultOpen] = useState(false);
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('anthropic_api_key') ?? '');
+  const [apiKeySaved, setApiKeySaved] = useState(false);
   return (
   <div className="space-y-5">
-
-    {/* AI Configuration */}
-    <ApiKeySection />
 
     {/* Profile */}
     <Section title="Profile" description="Personalize how Luka recognizes and addresses you.">
@@ -904,6 +845,63 @@ const GeneralTab = () => {
             color: "hsl(222 30% 18%)",
           }}
         />
+      </div>
+    </Section>
+
+    {/* AI Configuration */}
+    <Section title="AI Configuration" description="Required for AI-powered investment statement extraction.">
+      <div className="space-y-2">
+        <FieldLabel
+          title="Anthropic API Key"
+          sub="Used only for statement extraction. Sent directly to api.anthropic.com — never stored on any server."
+        />
+        <div className="flex items-center gap-2">
+          <input
+            type="password"
+            placeholder="sk-ant-api03-..."
+            value={apiKey}
+            onChange={e => { setApiKey(e.target.value); setApiKeySaved(false); }}
+            className="flex-1 px-3 py-2 rounded-[10px] text-[13px] outline-none font-mono"
+            style={{
+              background: 'hsl(0 0% 100%)',
+              border: '1px solid hsl(220 20% 88%)',
+              color: 'hsl(222 30% 18%)',
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              const trimmed = apiKey.trim();
+              if (trimmed) { localStorage.setItem('anthropic_api_key', trimmed); }
+              else { localStorage.removeItem('anthropic_api_key'); }
+              setApiKeySaved(true);
+            }}
+            className="px-3 py-2 rounded-[10px] text-[13px] font-medium shrink-0"
+            style={{
+              background: apiKeySaved ? 'hsl(142 60% 94%)' : 'hsl(220 15% 95%)',
+              border: `1px solid ${apiKeySaved ? 'hsl(142 50% 75%)' : 'hsl(220 20% 88%)'}`,
+              color: apiKeySaved ? 'hsl(142 60% 30%)' : 'hsl(222 30% 25%)',
+              transition: 'all 0.2s',
+            }}
+          >
+            {apiKeySaved ? '✓ Saved' : 'Save'}
+          </button>
+        </div>
+        {apiKey && !apiKeySaved && (
+          <p className="text-[11px]" style={{ color: 'hsl(40 80% 45%)' }}>
+            Unsaved changes — press Save to apply.
+          </p>
+        )}
+        {apiKeySaved && (
+          <p className="text-[11px]" style={{ color: 'hsl(142 60% 38%)' }}>
+            ✓ API key saved. Statement extraction is now enabled.
+          </p>
+        )}
+        {!apiKey && !apiKeySaved && !!localStorage.getItem('anthropic_api_key') && (
+          <p className="text-[11px]" style={{ color: 'hsl(142 60% 38%)' }}>
+            ✓ API key already configured.
+          </p>
+        )}
       </div>
     </Section>
 
