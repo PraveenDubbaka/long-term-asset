@@ -255,6 +255,42 @@ async function renderPdfPagesToImages(file: File, maxPages: number): Promise<str
   return images;
 }
 
+// ─── Scanned PDF → Tesseract OCR ─────────────────────────────────────────────
+
+async function ocrPdfPages(
+  file: File,
+  onProgress?: (page: number, total: number) => void,
+): Promise<string[]> {
+  const { createWorker } = await import('tesseract.js');
+  const lib = await getPdfJs();
+  const pdf = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const totalPages = pdf.numPages;
+  const results: string[] = [];
+  const worker = await createWorker('eng', 1, { logger: () => {} });
+  try {
+    for (let i = 1; i <= totalPages; i++) {
+      onProgress?.(i, totalPages);
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 2.0 });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext('2d')!;
+      await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+      const blob = await new Promise<Blob>(resolve =>
+        canvas.toBlob(b => resolve(b!), 'image/png')
+      );
+      const { data: { text } } = await worker.recognize(blob);
+      results.push(text);
+      canvas.width = 0;
+      canvas.height = 0;
+    }
+  } finally {
+    await worker.terminate();
+  }
+  return results;
+}
+
 // ─── Richardson Wealth text parser ───────────────────────────────────────────
 
 function parseRichardsonText(pages: string[], sourceFile: string): ParsedInvTransaction[] {
@@ -591,7 +627,11 @@ Rules:
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-export async function extractInvTransactions(file: File, apiKey?: string): Promise<InvPdfParseResult> {
+export async function extractInvTransactions(
+  file: File,
+  apiKey?: string,
+  onOcrProgress?: (page: number, total: number) => void,
+): Promise<InvPdfParseResult> {
   try {
     // ── ZIP format (Richardson Wealth + BMO — both use same ZIP structure) ─
     const zipResult = await extractZipText(file);
@@ -652,15 +692,60 @@ export async function extractInvTransactions(file: File, apiKey?: string): Promi
       return extractWithClaude({ type: 'text', pages }, file.name, apiKey);
     }
 
-    // PDF — text-based or scanned
+    // PDF — extract text to determine if text-based or scanned
     const pdfPages = await extractPdfText(file).catch(() => [] as string[]);
     if (pdfPages.some(p => p.trim().length > 100)) {
       return extractWithClaude({ type: 'text', pages: pdfPages }, file.name, apiKey);
     }
 
-    // Scanned PDF — render to images for Claude vision
-    const images = await renderPdfPagesToImages(file, 20);
-    return extractWithClaude({ type: 'images', pages: images }, file.name, apiKey);
+    // Scanned PDF — OCR with Tesseract (no API key needed)
+    const ocrPages = await ocrPdfPages(file, onOcrProgress);
+    const hasUsefulText = ocrPages.some(p => p.trim().length > 100);
+    if (!hasUsefulText) {
+      return {
+        broker: 'Unknown', accountHolder: '', account: '', periodEnd: '',
+        fxRateUsdCad: null, transactions: [],
+        error: 'Could not extract text from this PDF. It may be a very low quality scan.',
+      };
+    }
+
+    const ocrFullText = ocrPages.join(' ');
+    const ocrIsRichardson = /richardson\s*wealth/i.test(ocrFullText);
+    const ocrIsBmo = /bmo\s*investor\s*line/i.test(ocrFullText) || /bmo\s*investorline/i.test(ocrFullText);
+
+    if (ocrIsRichardson) {
+      const acctM = ocrFullText.match(/(H\d{2}-[A-Z0-9]+-[A-Z])/);
+      return {
+        broker: 'Richardson Wealth Limited',
+        accountHolder: '',
+        account: acctM ? acctM[1] : '',
+        periodEnd: '',
+        fxRateUsdCad: null,
+        transactions: parseRichardsonText(ocrPages, file.name),
+      };
+    }
+
+    if (ocrIsBmo) {
+      const acctM = ocrFullText.match(/Non-registered account #([\d-]+)/i);
+      return {
+        broker: 'BMO InvestorLine',
+        accountHolder: '',
+        account: acctM ? acctM[1].replace(/\s+/g, '') : '',
+        periodEnd: '',
+        fxRateUsdCad: null,
+        transactions: parseBmoText(ocrPages, file.name),
+      };
+    }
+
+    // Unknown broker after OCR — fall back to Claude text extraction
+    if (apiKey) {
+      return extractWithClaude({ type: 'text', pages: ocrPages }, file.name, apiKey);
+    }
+    return {
+      broker: 'Unknown', accountHolder: '', account: '', periodEnd: '',
+      fxRateUsdCad: null, transactions: [],
+      error: 'Statement broker not recognised after OCR. Add an Anthropic API key in Settings → AI Configuration for universal extraction.',
+    };
 
   } catch (err) {
     return {

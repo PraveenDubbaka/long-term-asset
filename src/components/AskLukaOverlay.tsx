@@ -1296,6 +1296,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [invAiExtracted, setInvAiExtracted] = useState(false);
   const [invContinuityOk, setInvContinuityOk] = useState<boolean>(false); // true when all uploaded files are contiguous
   const [invExtracting, setInvExtracting] = useState(false); // spinner during PDF extraction
+  const [invOcrProgress, setInvOcrProgress] = useState<{ page: number; total: number; file: string } | null>(null);
   const [invTableSort, setInvTableSort] = useState<{ field: keyof InvReviewRow; dir: "asc" | "desc" } | null>(null);
   const [invColumnFilters, setInvColumnFilters] = useState<Record<string, string[]>>({});
   const [invOpenFilterCol, setInvOpenFilterCol] = useState<string | null>(null);
@@ -1734,7 +1735,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
     setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
-    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvTableSort(null); setInvColumnFilters({}); setInvOpenFilterCol(null); setInvFilterDropdownPos(null); setInvFilterSearch(""); setInvSubmittedTxns([]); setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); setInvParsedPriorLots(null); setInvSelectedBankAccount(null); setInvValuationMethod(null); setInvRecordingLevel(null); setInvAssessmentDone(false); setInvActiveStatement(null);
+    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvOcrProgress(null); setInvTableSort(null); setInvColumnFilters({}); setInvOpenFilterCol(null); setInvFilterDropdownPos(null); setInvFilterSearch(""); setInvSubmittedTxns([]); setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); setInvParsedPriorLots(null); setInvSelectedBankAccount(null); setInvValuationMethod(null); setInvRecordingLevel(null); setInvAssessmentDone(false); setInvActiveStatement(null);
     setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
@@ -3752,7 +3753,11 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             const parseResults = await Promise.all(
                                               validFiles.map(f => {
                                                 const realFile = invFileMapRef.current.get(f.name);
-                                                return extractInvTransactions(realFile ?? new File([], f.name, { type: "application/pdf" }), apiKey);
+                                                return extractInvTransactions(
+                                                  realFile ?? new File([], f.name, { type: "application/pdf" }),
+                                                  apiKey,
+                                                  (page, total) => setInvOcrProgress({ page, total, file: f.name }),
+                                                );
                                               })
                                             );
                                             const brokerCheck = validateSingleBroker(parseResults);
@@ -3791,6 +3796,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             setInvBrokerError("Could not parse the uploaded file: " + (err instanceof Error ? err.message : "unknown error") + ". Please ensure it is a valid broker statement PDF.");
                                           }
                                           setInvExtracting(false);
+                                          setInvOcrProgress(null);
                                         };
                                         const validFiles = invUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
                                         const invInputMode: "upload" | "plaid" | null =
@@ -4697,10 +4703,20 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             )}
 
                                             {/* Extracting spinner */}
-                                            {invExtracting && (
+                                            {invExtracting && !invOcrProgress && (
                                               <div className="flex items-center gap-2 py-1">
                                                 <Loader2 className="h-5 w-5 text-primary animate-spin shrink-0" />
                                                 <span className="text-base text-foreground luka-thinking-text">Extracting transaction data from {validFiles.length} statement{validFiles.length !== 1 ? "s" : ""}…</span>
+                                              </div>
+                                            )}
+
+                                            {/* OCR progress */}
+                                            {invOcrProgress && (
+                                              <div className="flex items-center gap-2 px-3 py-2 rounded-[8px] bg-amber-50 border border-amber-200">
+                                                <span className="shrink-0 h-3 w-3 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
+                                                <span className="text-base text-amber-800">
+                                                  OCR scanning <span className="font-medium">{invOcrProgress.file}</span> — page {invOcrProgress.page} of {invOcrProgress.total}…
+                                                </span>
                                               </div>
                                             )}
 
