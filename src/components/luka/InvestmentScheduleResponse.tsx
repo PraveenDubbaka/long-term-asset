@@ -104,7 +104,7 @@ const WAC_ROW_TYPES = [
 ];
 
 // ─── Shared input / select class ──────────────────────────────────────────────
-const IC = "h-7 text-base px-2 border border-[#dcdfe4] rounded-[6px] bg-background text-foreground placeholder:text-muted-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] focus:outline-none focus:ring-1 focus:ring-primary/30 w-full";
+const IC = "h-7 text-[13px] px-2 border border-[#dcdfe4] rounded-[6px] bg-background text-foreground placeholder:text-muted-foreground transition-all duration-200 hover:border-[hsl(210_25%_75%)] focus:outline-none focus:ring-1 focus:ring-primary/30 w-full";
 const SC = `${IC} appearance-none cursor-pointer`;
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
@@ -126,7 +126,7 @@ function StatusBadge({ status }: { status: string }) {
       ? <AlertTriangle className="h-2.5 w-2.5" />
       : null;
   return (
-    <span className={`inline-flex items-center gap-1 text-base font-semibold px-1.5 py-0.5 rounded-full border ${cls}`}>
+    <span className={`inline-flex items-center gap-1 text-[13px] font-semibold px-1.5 py-0.5 rounded-full border ${cls}`}>
       {icon}{status}
     </span>
   );
@@ -143,13 +143,13 @@ function TableWrap({ title, subtitle, onAdd, addLabel, children }: {
   return (
     <div className="rounded-[8px] border border-border overflow-clip">
       <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
-        <span className="text-base font-semibold text-foreground">{title}</span>
+        <span className="text-[13px] font-semibold text-foreground">{title}</span>
         <div className="flex items-center gap-3">
-          {subtitle && <span className="text-base text-muted-foreground">{subtitle}</span>}
+          {subtitle && <span className="text-[13px] text-muted-foreground">{subtitle}</span>}
           {onAdd && (
             <button
               onClick={onAdd}
-              className="inline-flex items-center gap-1 h-7 px-2.5 text-base font-medium bg-primary text-primary-foreground rounded-[7px] hover:bg-primary/90 transition-colors shrink-0"
+              className="inline-flex items-center gap-1 h-7 px-2.5 text-[13px] font-medium bg-primary text-primary-foreground rounded-[7px] hover:bg-primary/90 transition-colors shrink-0"
             >
               <Plus className="w-3 h-3" />{addLabel ?? "Add Row"}
             </button>
@@ -223,7 +223,7 @@ const OUTFLOW_TYPES: Transaction["type"][] = [
 // Type badge colours matching workpapers
 function TxTypeBadge({ type }: { type: string }) {
   return (
-    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-base font-medium border whitespace-nowrap bg-transparent text-foreground border-border">
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[13px] font-medium border whitespace-nowrap bg-transparent text-foreground border-border">
       {type}
     </span>
   );
@@ -436,61 +436,61 @@ function TransactionsPanel({
         <div className="grid gap-1.5 items-end" style={{ gridTemplateColumns: "repeat(14, minmax(0,1fr))" }}>
           {/* Trade Date */}
           <div className="flex flex-col gap-0.5">
-            <span className="text-base text-muted-foreground uppercase">Trade Date</span>
+            <span className="text-[13px] text-muted-foreground uppercase">Trade Date</span>
             <input type="date" value={d.date} onChange={e => setD("date", e.target.value)} className={IC} />
           </div>
           {/* Settlement */}
           <div className="flex flex-col gap-0.5">
-            <span className="text-base text-muted-foreground uppercase">Settlement</span>
+            <span className="text-[13px] text-muted-foreground uppercase">Settlement</span>
             <input type="date" value={d.settlement} onChange={e => setD("settlement", e.target.value)} className={IC} />
           </div>
           {/* Source */}
           <div className="flex flex-col gap-0.5">
-            <span className="text-base text-muted-foreground uppercase">Source</span>
+            <span className="text-[13px] text-muted-foreground uppercase">Source</span>
             <input value={d.broker} onChange={e => setD("broker", e.target.value)} className={IC} placeholder="Broker" />
           </div>
           {/* Security */}
           <div className="flex flex-col gap-0.5 col-span-2">
-            <span className="text-base text-muted-foreground uppercase">Security</span>
+            <span className="text-[13px] text-muted-foreground uppercase">Security</span>
             <input value={d.security} onChange={e => setD("security", e.target.value)} className={IC} placeholder="Security name" />
           </div>
           {/* Ticker */}
           <div className="flex flex-col gap-0.5">
-            <span className="text-base text-muted-foreground uppercase">Ticker</span>
+            <span className="text-[13px] text-muted-foreground uppercase">Ticker</span>
             <input value={d.ticker} onChange={e => setD("ticker", e.target.value.toUpperCase())} className={IC} placeholder="AAPL" />
           </div>
           {/* CCY */}
           <div className="flex flex-col gap-0.5">
-            <span className="text-base text-muted-foreground uppercase">CCY</span>
+            <span className="text-[13px] text-muted-foreground uppercase">CCY</span>
             <select value={d.ccy} onChange={e => setD("ccy", e.target.value)} className={SC}>
               {["CAD","USD","EUR","GBP"].map(c => <option key={c}>{c}</option>)}
             </select>
           </div>
           {/* Type */}
           <div className="flex flex-col gap-0.5">
-            <span className="text-base text-muted-foreground uppercase">Type</span>
+            <span className="text-[13px] text-muted-foreground uppercase">Type</span>
             <select value={d.type} onChange={e => setD("type", e.target.value)} className={SC}>
               {TX_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
           {/* Units */}
           <div className="flex flex-col gap-0.5">
-            <span className="text-base text-muted-foreground uppercase">Units</span>
+            <span className="text-[13px] text-muted-foreground uppercase">Units</span>
             <FmtNumInput value={d.qty} onCommit={n => setD("qty", n)} className={IC} placeholder="0" decimals={0} />
           </div>
           {/* Price */}
           <div className="flex flex-col gap-0.5">
-            <span className="text-base text-muted-foreground uppercase">Price</span>
+            <span className="text-[13px] text-muted-foreground uppercase">Price</span>
             <FmtNumInput value={d.price} onCommit={n => setD("price", n)} className={IC} placeholder="0.00" />
           </div>
           {/* FX */}
           <div className="flex flex-col gap-0.5">
-            <span className="text-base text-muted-foreground uppercase">FX</span>
+            <span className="text-[13px] text-muted-foreground uppercase">FX</span>
             <input type="number" step="0.0001" value={d.fxRate || ""} onChange={e => setD("fxRate", parseFloat(e.target.value) || 1)} className={IC} placeholder="1.0000" />
           </div>
           {/* TB Account */}
           <div className="flex flex-col gap-0.5 col-span-2">
-            <span className="text-base text-muted-foreground uppercase">TB Acct</span>
+            <span className="text-[13px] text-muted-foreground uppercase">TB Acct</span>
             <select value={d.tbAccount} onChange={e => setD("tbAccount", e.target.value)} className={SC}>
               <option value="">— Select —</option>
               {CHART_OF_ACCOUNTS.map(a => (
@@ -500,7 +500,7 @@ function TransactionsPanel({
           </div>
           {/* Status */}
           <div className="flex flex-col gap-0.5">
-            <span className="text-base text-muted-foreground uppercase">Status</span>
+            <span className="text-[13px] text-muted-foreground uppercase">Status</span>
             <select value={d.status} onChange={e => setD("status", e.target.value)} className={SC}>
               {["pending","approved","posted"].map(s => <option key={s}>{s}</option>)}
             </select>
@@ -524,26 +524,26 @@ function TransactionsPanel({
       {/* Header */}
       <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="text-base font-semibold text-foreground">Transactions</span>
+          <span className="text-[13px] font-semibold text-foreground">Transactions</span>
           {batchEditMode && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-base font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[13px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
               <Pencil className="h-2.5 w-2.5" /> Editing
             </span>
           )}
           {batchEditMode && (
-            <span className="text-base text-muted-foreground">All rows editable — submit changes with Submit &amp; Rerun</span>
+            <span className="text-[13px] text-muted-foreground">All rows editable — submit changes with Submit &amp; Rerun</span>
           )}
         </div>
         <div className="flex items-center gap-2">
           {/* Brokerage / account filter */}
           {!batchEditMode && uniqueSources.length > 1 && (
             <div className="flex items-center gap-1.5">
-              <span className="text-base text-muted-foreground font-medium">Account:</span>
+              <span className="text-[13px] text-muted-foreground font-medium">Account:</span>
               <div className="relative">
                 <select
                   value={sourceFilter}
                   onChange={e => setSourceFilter(e.target.value)}
-                  className="h-7 text-base pl-2 pr-7 border border-border rounded-[7px] bg-background text-foreground appearance-none focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer font-mono"
+                  className="h-7 text-[13px] pl-2 pr-7 border border-border rounded-[7px] bg-background text-foreground appearance-none focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer font-mono"
                 >
                   <option value="all">All accounts ({uniqueSources.length})</option>
                   {uniqueSources.map(s => (
@@ -557,11 +557,11 @@ function TransactionsPanel({
           {/* Status filter dropdown */}
           {!batchEditMode && (
             <div className="flex items-center gap-1.5">
-              <span className="text-base text-muted-foreground font-medium">View:</span>
+              <span className="text-[13px] text-muted-foreground font-medium">View:</span>
               <select
                 value={statusFilter}
                 onChange={e => setStatusFilter(e.target.value as typeof statusFilter)}
-                className="h-7 text-base px-2 pr-6 border border-border rounded-[7px] bg-background text-foreground appearance-none focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer"
+                className="h-7 text-[13px] px-2 pr-6 border border-border rounded-[7px] bg-background text-foreground appearance-none focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer"
               >
                 <option value="all">All</option>
                 <option value="pending">Pending</option>
@@ -572,9 +572,9 @@ function TransactionsPanel({
           )}
           {!batchEditMode && selectedIds.size > 0 && (
             <>
-              <span className="text-base text-muted-foreground">{selectedIds.size} selected</span>
-              <button onClick={() => bulkSetStatus("approved")} className="inline-flex items-center h-7 px-2.5 text-base font-medium rounded-[7px] border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">Approve</button>
-              <button onClick={() => bulkSetStatus("posted")} className="inline-flex items-center h-7 px-2.5 text-base font-medium rounded-[7px] border border-green-200 bg-green-50 text-green-700 hover:bg-green-100 transition-colors">Post</button>
+              <span className="text-[13px] text-muted-foreground">{selectedIds.size} selected</span>
+              <button onClick={() => bulkSetStatus("approved")} className="inline-flex items-center h-7 px-2.5 text-[13px] font-medium rounded-[7px] border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">Approve</button>
+              <button onClick={() => bulkSetStatus("posted")} className="inline-flex items-center h-7 px-2.5 text-[13px] font-medium rounded-[7px] border border-green-200 bg-green-50 text-green-700 hover:bg-green-100 transition-colors">Post</button>
             </>
           )}
         </div>
@@ -583,7 +583,7 @@ function TransactionsPanel({
 
       {/* Table */}
       <div className="w-full">
-        <table className="w-full text-base" style={{ minWidth: 1100 }}>
+        <table className="w-full text-[13px]" style={{ minWidth: 1100 }}>
           <thead className="sticky top-0 z-10 bg-background">
             <tr className="bg-muted/30 border-b border-border">
               {/* Checkbox all */}
@@ -591,58 +591,58 @@ function TransactionsPanel({
                 <input type="checkbox" checked={allSelected} onChange={toggleAll} className="w-3.5 h-3.5 accent-primary rounded" />
               </th>
               {/* Source — ColFilter dropdown */}
-              <th className="px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left">
+              <th className="px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left">
                 <ColFilter label="Source" options={uniqueSources.map(s => s.id)} value={sourceFilter === "all" ? "" : sourceFilter} onChange={v => setSourceFilter(v || "all")} />
               </th>
               {/* Trade Date */}
-              <th className="px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left">
+              <th className="px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left">
                 <button onClick={() => handleTxSort("date")} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">Trade Date {txSortIcon("date")}</button>
               </th>
               {/* Settlement */}
-              <th className="px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left">
+              <th className="px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left">
                 <button onClick={() => handleTxSort("settlementDate")} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">Settlement {txSortIcon("settlementDate")}</button>
               </th>
               {/* Security — SearchFilter */}
-              <th className="px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left">
+              <th className="px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left">
                 <span className="flex items-center gap-1">
                   <button onClick={() => handleTxSort("security")} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">Security {txSortIcon("security")}</button>
                   <SearchFilter label="" value={txSearch} onChange={v => setTxSearch(v)} placeholder="Security or ticker…" />
                 </span>
               </th>
               {/* Ticker */}
-              <th className="px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left">
+              <th className="px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left">
                 <button onClick={() => handleTxSort("ticker")} className="inline-flex items-center gap-0.5 hover:text-foreground transition-colors">Ticker {txSortIcon("ticker")}</button>
               </th>
               {/* CCY — ColFilter */}
-              <th className="px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
+              <th className="px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
                 <ColFilter label="CCY" options={uniqueCcys.filter(c => c !== "all")} value={txCcyFilter === "all" ? "" : txCcyFilter} onChange={v => setTxCcyFilter(v || "all")} />
               </th>
               {/* Type — ColFilter */}
-              <th className="px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
+              <th className="px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
                 <ColFilter label="Type" options={uniqueTypes.filter(t => t !== "all")} value={txTypeFilter === "all" ? "" : txTypeFilter} onChange={v => setTxTypeFilter(v || "all")} />
               </th>
               {/* Units */}
-              <th className="px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
+              <th className="px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
                 <button onClick={() => handleTxSort("units")} className="inline-flex items-center justify-end gap-0.5 w-full hover:text-foreground transition-colors">Units {txSortIcon("units")}</button>
               </th>
               {/* Price */}
-              <th className="px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
+              <th className="px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
                 <button onClick={() => handleTxSort("price")} className="inline-flex items-center justify-end gap-0.5 w-full hover:text-foreground transition-colors">Price {txSortIcon("price")}</button>
               </th>
               {/* FX */}
-              <th className="px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
+              <th className="px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
                 <button onClick={() => handleTxSort("fxRate")} className="inline-flex items-center justify-end gap-0.5 w-full hover:text-foreground transition-colors">FX {txSortIcon("fxRate")}</button>
               </th>
               {/* Amount */}
-              <th className="px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
+              <th className="px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
                 <button onClick={() => handleTxSort("net")} className="inline-flex items-center justify-end gap-0.5 w-full hover:text-foreground transition-colors">Amount {txSortIcon("net")}</button>
               </th>
               {/* TB Account */}
-              <th className="px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
+              <th className="px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
                 <button onClick={() => handleTxSort("tbAccount")} className="inline-flex items-center justify-end gap-0.5 w-full hover:text-foreground transition-colors">TB Account {txSortIcon("tbAccount")}</button>
               </th>
               {/* Status — ColFilter */}
-              <th className="px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
+              <th className="px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-right">
                 <ColFilter label="Status" options={["pending","approved","posted"]} value={statusFilter === "all" ? "" : statusFilter} onChange={v => setStatusFilter((v || "all") as typeof statusFilter)} />
               </th>
             </tr>
@@ -717,7 +717,7 @@ function TransactionsPanel({
                       ? <input value={d.ticker} onChange={e => setD("ticker", e.target.value.toUpperCase())} className={`${IC} w-16`} placeholder="AAPL" />
                       : isBatchEditing
                       ? <input value={String(bv?.ticker ?? t.ticker ?? "")} onChange={e => bSet("ticker", e.target.value.toUpperCase())} className={`${IC} w-16`} placeholder="AAPL" />
-                      : <span className="font-mono text-base">{t.ticker}</span>}
+                      : <span className="font-mono text-[13px]">{t.ticker}</span>}
                   </td>
 
                   {/* CCY */}
@@ -730,7 +730,7 @@ function TransactionsPanel({
                       ? <select value={String(bv?.currency ?? t.currency)} onChange={e => bSet("currency", e.target.value)} className={`${SC} w-16`}>
                           {["CAD","USD","EUR","GBP"].map(c => <option key={c}>{c}</option>)}
                         </select>
-                      : <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-base font-semibold bg-muted text-foreground border border-border">{t.currency}</span>}
+                      : <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[13px] font-semibold bg-muted text-foreground border border-border">{t.currency}</span>}
                   </td>
 
                   {/* Type */}
@@ -822,7 +822,7 @@ function TransactionsPanel({
                             <option key={a.code} value={a.code}>{a.code} · {a.name}</option>
                           ))}
                         </select>
-                      : <span className="tabular-nums text-muted-foreground font-mono text-base">{t.tbAccount ?? "—"}</span>}
+                      : <span className="tabular-nums text-muted-foreground font-mono text-[13px]">{t.tbAccount ?? "—"}</span>}
                   </td>
 
                   {/* Status */}
@@ -955,7 +955,7 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schedules, filterSecurity, filterAccount, sortField, sortDir, rowOverrides]);
 
-  const IIC = "h-6 text-base px-1.5 border border-border rounded-[5px] bg-background focus:outline-none w-full";
+  const IIC = "h-6 text-[13px] px-1.5 border border-border rounded-[5px] bg-background focus:outline-none w-full";
 
   return (
     <div className="space-y-2">
@@ -966,7 +966,7 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
           <select
             value={filterAccount}
             onChange={e => setFilterAccount(e.target.value)}
-            className="h-7 pl-2 pr-7 text-base border border-border rounded-[7px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer"
+            className="h-7 pl-2 pr-7 text-[13px] border border-border rounded-[7px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer"
           >
             <option value="">All Accounts</option>
             {uniqueAccounts.map(a => (
@@ -976,20 +976,20 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
           <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
         </div>
         {(filterSecurity || filterType || filterAccount) && (
-          <button onClick={() => { setFilterSecurity(""); setFilterType(""); setFilterAccount(""); }} className="inline-flex items-center gap-1 h-7 px-2 text-base text-muted-foreground hover:text-foreground border border-border rounded-[7px] bg-background transition-colors">
+          <button onClick={() => { setFilterSecurity(""); setFilterType(""); setFilterAccount(""); }} className="inline-flex items-center gap-1 h-7 px-2 text-[13px] text-muted-foreground hover:text-foreground border border-border rounded-[7px] bg-background transition-colors">
             <X className="h-3 w-3" /> Clear filters
           </button>
         )}
-        <span className="ml-auto text-base text-muted-foreground">{sortedSchedules.length} securities · WAC roll-forward</span>
+        <span className="ml-auto text-[13px] text-muted-foreground">{sortedSchedules.length} securities · WAC roll-forward</span>
       </div>
 
       {/* Spreadsheet table */}
       <div className="rounded-[8px] border border-border overflow-clip">
         <div className="w-full">
-          <table className="w-full border-collapse text-base" style={{ minWidth: 900 }}>
+          <table className="w-full border-collapse text-[13px]" style={{ minWidth: 900 }}>
             <thead className="sticky top-0 z-10 bg-background">
               {/* Group header row */}
-              <tr className="bg-[#e8eaed] border-b border-border/60 text-base font-bold text-muted-foreground uppercase tracking-wider">
+              <tr className="bg-[#e8eaed] border-b border-border/60 text-[13px] font-bold text-muted-foreground uppercase tracking-wider">
                 <th colSpan={4} className="px-2.5 py-1 text-left border-r border-border/40" />
                 <th colSpan={3} className="px-2.5 py-1 text-center bg-violet-50/40" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)", borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}>
                   Cost
@@ -1004,58 +1004,58 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
               </tr>
               <tr className="bg-[#f0f2f5] border-b-2 border-border">
                 {/* Security — sort + SearchFilter */}
-                <th className="text-left min-w-[100px] max-w-[180px] px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                <th className="text-left min-w-[100px] max-w-[180px] px-2.5 py-2 text-[13px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
                   <span className="flex items-center gap-1">
                     <button onClick={() => handleSort("security")} className="flex items-center gap-1 hover:text-foreground transition-colors">Security {sortIcon("security")}</button>
                     <SearchFilter label="" value={filterSecurity} onChange={setFilterSecurity} placeholder="Ticker or name…" options={[...schedules].sort((a,b)=>a.ticker.localeCompare(b.ticker)).map(s => ({ value: s.ticker, label: `${s.ticker} · ${s.security}` }))} />
                   </span>
                 </th>
                 {/* Ticker */}
-                <th className="text-left w-16 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                <th className="text-left w-16 px-2.5 py-2 text-[13px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
                   <button onClick={() => handleSort("ticker")} className="flex items-center gap-1 hover:text-foreground transition-colors">Ticker {sortIcon("ticker")}</button>
                 </th>
                 {/* Date */}
-                <th className="text-left w-28 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                <th className="text-left w-28 px-2.5 py-2 text-[13px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
                   <button onClick={() => handleSort("date")} className="flex items-center gap-1 hover:text-foreground transition-colors">Date {sortIcon("date")}</button>
                 </th>
                 {/* Type — ColFilter */}
-                <th className="text-left min-w-[140px] px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                <th className="text-left min-w-[140px] px-2.5 py-2 text-[13px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
                   <ColFilter label="Type" options={uniqueTypes} value={filterType} onChange={setFilterType} />
                 </th>
                 {/* Cost Opening */}
-                <th className="text-right w-28 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-violet-50/20" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>
+                <th className="text-right w-28 px-2.5 py-2 text-[13px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-violet-50/20" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>
                   <button onClick={() => handleSort("openingCost")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Opening {sortIcon("openingCost")}</button>
                 </th>
                 {/* Cost Purchasing */}
-                <th className="text-right w-28 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                <th className="text-right w-28 px-2.5 py-2 text-[13px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
                   <button onClick={() => handleSort("costIn")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Purchasing {sortIcon("costIn")}</button>
                 </th>
                 {/* Cost Closing */}
-                <th className="text-right w-28 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}>
+                <th className="text-right w-28 px-2.5 py-2 text-[13px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}>
                   <button onClick={() => handleSort("cumCost")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Closing {sortIcon("cumCost")}</button>
                 </th>
                 {/* Units Opening */}
-                <th className="text-right w-24 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>
+                <th className="text-right w-24 px-2.5 py-2 text-[13px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>
                   <button onClick={() => handleSort("openingUnits")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Opening {sortIcon("openingUnits")}</button>
                 </th>
                 {/* Units Purchasing */}
-                <th className="text-right w-24 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                <th className="text-right w-24 px-2.5 py-2 text-[13px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
                   <button onClick={() => handleSort("unitsIn")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Purchasing {sortIcon("unitsIn")}</button>
                 </th>
                 {/* Units Closing */}
-                <th className="text-right w-24 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap bg-blue-50/20" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}>
+                <th className="text-right w-24 px-2.5 py-2 text-[13px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap bg-blue-50/20" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}>
                   <button onClick={() => handleSort("cumUnits")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">Closing {sortIcon("cumUnits")}</button>
                 </th>
                 {/* WAC */}
-                <th className="text-right w-24 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
+                <th className="text-right w-24 px-2.5 py-2 text-[13px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40">
                   <button onClick={() => handleSort("wac")} className="flex items-center justify-end gap-1 w-full hover:text-foreground transition-colors">WAC {sortIcon("wac")}</button>
                 </th>
                 {/* Distribution columns */}
-                <th className="text-right w-28 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-emerald-50/20" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>Elig Div</th>
-                <th className="text-right w-28 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-emerald-50/20">Cap Div</th>
-                <th className="text-right w-28 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-emerald-50/20">Other Inc</th>
-                <th className="text-right w-28 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-emerald-50/20">Foreign Inc</th>
-                <th className="text-right w-24 px-2.5 py-2 text-base font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap bg-emerald-50/20">NR Tax</th>
+                <th className="text-right w-28 px-2.5 py-2 text-[13px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-emerald-50/20" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>Elig Div</th>
+                <th className="text-right w-28 px-2.5 py-2 text-[13px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-emerald-50/20">Cap Div</th>
+                <th className="text-right w-28 px-2.5 py-2 text-[13px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-emerald-50/20">Other Inc</th>
+                <th className="text-right w-28 px-2.5 py-2 text-[13px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border/40 bg-emerald-50/20">Foreign Inc</th>
+                <th className="text-right w-24 px-2.5 py-2 text-[13px] font-bold text-muted-foreground uppercase tracking-wide whitespace-nowrap bg-emerald-50/20">NR Tax</th>
               </tr>
             </thead>
             <tbody>
@@ -1083,12 +1083,12 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
                           <td className="px-2.5 py-1.5 border-r border-border/20 max-w-[180px]">
                             {rowI === 0
                               ? <span className="font-semibold text-foreground truncate block overflow-hidden text-ellipsis" title={s.security}>{s.security}</span>
-                              : <span className="text-muted-foreground/30 text-base italic select-none">{s.ticker}</span>}
+                              : <span className="text-muted-foreground/30 text-[13px] italic select-none">{s.ticker}</span>}
                           </td>
                           {/* Ticker */}
                           <td className="px-2.5 py-1.5 border-r border-border/20 font-mono font-semibold text-foreground">{s.ticker}</td>
                           {/* Date */}
-                          <td className="px-2.5 py-1.5 border-r border-border/20 font-mono text-muted-foreground whitespace-nowrap text-base">
+                          <td className="px-2.5 py-1.5 border-r border-border/20 font-mono text-muted-foreground whitespace-nowrap text-[13px]">
                             {isEditing
                               ? <input type="date" value={getV("date")} onChange={e => setV({ date: e.target.value })} className={`${IIC} w-28`} />
                               : fmtDate(r.date)}
@@ -1100,9 +1100,9 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
                                 {WAC_ROW_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                               </select>
                             ) : isOB ? (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-base font-medium border whitespace-nowrap bg-transparent text-foreground border-border">{r.type}</span>
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[13px] font-medium border whitespace-nowrap bg-transparent text-foreground border-border">{r.type}</span>
                             ) : r.type === "Closing Balance" ? (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-base font-medium border whitespace-nowrap bg-transparent text-foreground border-border">{r.type}</span>
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[13px] font-medium border whitespace-nowrap bg-transparent text-foreground border-border">{r.type}</span>
                             ) : (
                               <TxTypeBadge type={r.type} />
                             )}
@@ -1160,8 +1160,8 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
                     {/* Inline new-row form */}
                     {addingFor === s.key && (
                       <tr className="border-b border-dashed border-primary/50 bg-primary/5">
-                        <td className="px-2.5 py-1 border-r border-border/20 text-base text-muted-foreground italic">{s.security}</td>
-                        <td className="px-2.5 py-1 border-r border-border/20 font-mono font-semibold text-base">{s.ticker}</td>
+                        <td className="px-2.5 py-1 border-r border-border/20 text-[13px] text-muted-foreground italic">{s.security}</td>
+                        <td className="px-2.5 py-1 border-r border-border/20 font-mono font-semibold text-[13px]">{s.ticker}</td>
                         <td className="px-2.5 py-1 border-r border-border/20"><input type="date" value={newRow.date ?? ""} onChange={e => setNewRow(d => ({...d, date: e.target.value}))} className={`${IIC} w-28`} /></td>
                         <td className="px-2.5 py-1 border-r border-border/20"><select value={newRow.type ?? "Adjustment"} onChange={e => setNewRow(d => ({...d, type: e.target.value}))} className={`${IIC} w-36`}>{WAC_ROW_TYPES.map(t => <option key={t}>{t}</option>)}</select></td>
                         <td className="px-2.5 py-1 border-r border-border/20 text-right tabular-nums text-muted-foreground/60" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>{fmtCAD(allRows[allRows.length - 1]?.cumCost ?? 0)}</td>
@@ -1181,13 +1181,13 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
 
                     {/* Closing balance row */}
                     <tr className="border-b-[3px] border-slate-300/80 font-semibold bg-[#f0f2f5]">
-                      <td className="px-2.5 py-2 border-r border-border/30 text-base font-bold max-w-[180px] truncate overflow-hidden text-ellipsis" title={s.security}>{s.security}</td>
+                      <td className="px-2.5 py-2 border-r border-border/30 text-[13px] font-bold max-w-[180px] truncate overflow-hidden text-ellipsis" title={s.security}>{s.security}</td>
                       <td className="px-2.5 py-2 border-r border-border/30 font-mono font-bold">{s.ticker}</td>
-                      <td className="px-2.5 py-2 border-r border-border/30 font-mono text-muted-foreground text-base whitespace-nowrap">
+                      <td className="px-2.5 py-2 border-r border-border/30 font-mono text-muted-foreground text-[13px] whitespace-nowrap">
                         {yearEndDate}
                       </td>
                       <td className="px-2.5 py-2 border-r border-border/30">
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-base font-medium border whitespace-nowrap bg-transparent text-foreground border-border">Closing Balance</span>
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[13px] font-medium border whitespace-nowrap bg-transparent text-foreground border-border">Closing Balance</span>
                       </td>
                       <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground/60" style={{ borderLeft: "3px solid hsl(var(--foreground) / 0.3)" }}>{fmtCAD(0)}</td>
                       <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground/60">{fmtCAD(0)}</td>
@@ -1310,10 +1310,10 @@ function GainLossPanel({ schedules, yearEnd, editMode, allInvSources }: {
     <div className="space-y-3">
       <TableWrap title="Realized Gain / Loss">
         <div className="overflow-x-auto">
-          <table className="w-full text-base">
+          <table className="w-full text-[13px]">
             <thead className="sticky top-0 z-10 bg-background">
               <tr className="bg-muted/30 border-b border-border">
-                <th className="px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left min-w-[220px]">
+                <th className="px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-left min-w-[220px]">
                   <ColFilter label="Security" options={uniqueTickers} value={filterSecurity} onChange={setFilterSecurity} />
                 </th>
                 {(([
@@ -1331,7 +1331,7 @@ function GainLossPanel({ schedules, yearEnd, editMode, allInvSources }: {
                   { h: "Bank Account",   l: false },
                   { h: "TB Account",     l: false },
                 ]) as Array<{ h: string; l: boolean; hint?: boolean; filter?: { opts: string[]; val: string; set: (v: string) => void } }>).map(({ h, l, hint, filter }) => (
-                  <th key={h} className={`px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${l ? "text-left" : "text-right"}`}>
+                  <th key={h} className={`px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${l ? "text-left" : "text-right"}`}>
                     {hint ? (
                       <span className="flex flex-col items-end gap-0.5">
                         <span>Realized G/L</span>
@@ -1346,11 +1346,11 @@ function GainLossPanel({ schedules, yearEnd, editMode, allInvSources }: {
             </thead>
             <tbody>
               {disposals.length === 0 && (
-                <tr><td colSpan={14} className="px-3 py-4 text-center text-base text-muted-foreground">No disposals in this period</td></tr>
+                <tr><td colSpan={14} className="px-3 py-4 text-center text-[13px] text-muted-foreground">No disposals in this period</td></tr>
               )}
               {disposals.map((d, i) => {
                 const ov = rOvr[i] ?? {};
-                const EC = "h-6 text-base px-1.5 border border-border rounded-[5px] bg-background focus:outline-none w-full";
+                const EC = "h-6 text-[13px] px-1.5 border border-border rounded-[5px] bg-background focus:outline-none w-full";
                 const gp  = ov.grossProceeds ?? d.grossProceeds;
                 const co  = ov.costOut ?? d.costOut;
                 const adj = adjustments[i] ?? 0;
@@ -1418,8 +1418,8 @@ function GainLossPanel({ schedules, yearEnd, editMode, allInvSources }: {
             </tbody>
             <tfoot>
               <tr className="bg-muted/30 border-t border-border font-semibold">
-                <td className="px-3 py-2 text-base" colSpan={11}>Total</td>
-                <td className="px-3 py-2 text-right text-base">{fmtGL(totGL)}</td>
+                <td className="px-3 py-2 text-[13px]" colSpan={11}>Total</td>
+                <td className="px-3 py-2 text-right text-[13px]">{fmtGL(totGL)}</td>
                 <td className="px-3 py-2" colSpan={2} />
               </tr>
             </tfoot>
@@ -1428,7 +1428,7 @@ function GainLossPanel({ schedules, yearEnd, editMode, allInvSources }: {
       </TableWrap>
 
       <TableWrap title="Unrealized Gain / Loss">
-        <table className="w-full text-base">
+        <table className="w-full text-[13px]">
           <thead className="sticky top-0 z-10 bg-background">
             <tr className="bg-muted/30 border-b border-border">
               {([
@@ -1442,7 +1442,7 @@ function GainLossPanel({ schedules, yearEnd, editMode, allInvSources }: {
                 { label: "Bank Account",      align: "right" },
                 { label: "TB Account",        align: "right" },
               ] as Array<{ label: string; align: string; hint?: boolean; filter?: { opts: string[]; val: string; set: (v: string) => void } }>).map(h => (
-                <th key={h.label} className={`px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-${h.align}`}>
+                <th key={h.label} className={`px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap text-${h.align}`}>
                   {h.hint ? (
                     <span className="flex flex-col items-end gap-0.5">
                       <span>{h.label}</span>
@@ -1458,7 +1458,7 @@ function GainLossPanel({ schedules, yearEnd, editMode, allInvSources }: {
           <tbody>
             {filteredSchedules.map((s, i) => {
               const uv = uOvr[s.key] ?? {};
-              const EC = "h-6 text-base px-1.5 border border-border rounded-[5px] bg-background focus:outline-none w-full";
+              const EC = "h-6 text-[13px] px-1.5 border border-border rounded-[5px] bg-background focus:outline-none w-full";
               return (
               <tr key={s.key} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
                 <td className="px-3 py-1.5 font-medium">{s.security}</td>
@@ -1507,11 +1507,11 @@ function GainLossPanel({ schedules, yearEnd, editMode, allInvSources }: {
           </tbody>
           <tfoot>
             <tr className="bg-muted/30 border-t border-border font-semibold">
-              <td className="px-3 py-2 text-base" colSpan={3}>Total</td>
-              <td className="px-3 py-2 text-right tabular-nums text-base">{fmtNum(filteredSchedules.reduce((a, s) => a + s.closingUnits, 0), 4)}</td>
-              <td className="px-3 py-2 text-right tabular-nums text-base font-bold">{fmtCAD(filteredSchedules.reduce((a, s) => a + s.fmvCAD, 0))}</td>
-              <td className="px-3 py-2 text-right tabular-nums text-base font-bold">{fmtCAD(filteredSchedules.reduce((a, s) => a + s.closingCostCAD, 0))}</td>
-              <td className="px-3 py-2 text-right tabular-nums text-base">{fmtGL(totUnrealized)}</td>
+              <td className="px-3 py-2 text-[13px]" colSpan={3}>Total</td>
+              <td className="px-3 py-2 text-right tabular-nums text-[13px]">{fmtNum(filteredSchedules.reduce((a, s) => a + s.closingUnits, 0), 4)}</td>
+              <td className="px-3 py-2 text-right tabular-nums text-[13px] font-bold">{fmtCAD(filteredSchedules.reduce((a, s) => a + s.fmvCAD, 0))}</td>
+              <td className="px-3 py-2 text-right tabular-nums text-[13px] font-bold">{fmtCAD(filteredSchedules.reduce((a, s) => a + s.closingCostCAD, 0))}</td>
+              <td className="px-3 py-2 text-right tabular-nums text-[13px]">{fmtGL(totUnrealized)}</td>
               <td className="px-3 py-2" colSpan={2} />
             </tr>
           </tfoot>
@@ -1543,11 +1543,11 @@ function FXPanel({ fxSchedule }: { fxSchedule: { rates: import("@/lib/luka/types
   return (
     <div className="space-y-3">
       <TableWrap title="Period Rates">
-        <table className="w-full text-base">
+        <table className="w-full text-[13px]">
           <thead>
             <tr className="bg-muted/30 border-b border-border">
               {["CCY","Opening Rate","Closing Rate","Average Rate",""].map((h, i) => (
-                <th key={i} className={`px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i === 0 ? "text-left" : "text-right"}`}>{h}</th>
+                <th key={i} className={`px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i === 0 ? "text-left" : "text-right"}`}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -1573,9 +1573,9 @@ function FXPanel({ fxSchedule }: { fxSchedule: { rates: import("@/lib/luka/types
                     <tr className="border-b border-primary/30 bg-primary/[0.04]">
                       <td colSpan={5} className="px-3 py-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-base text-muted-foreground w-16 shrink-0">Closing:</span>
+                          <span className="text-[13px] text-muted-foreground w-16 shrink-0">Closing:</span>
                           <input type="number" step="0.0001" value={editDraft.closingRate} onChange={e => setEditDraft(p => ({ ...p, closingRate: parseFloat(e.target.value) || 1 }))} className={`${IC} w-32`} />
-                          <span className="text-base text-muted-foreground w-16 shrink-0">Average:</span>
+                          <span className="text-[13px] text-muted-foreground w-16 shrink-0">Average:</span>
                           <input type="number" step="0.0001" value={editDraft.averageRate} onChange={e => setEditDraft(p => ({ ...p, averageRate: parseFloat(e.target.value) || 1 }))} className={`${IC} w-32`} />
                           <button onClick={saveEditRate} className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-primary text-primary-foreground hover:bg-primary/90">
                             <Check className="w-3 h-3" />
@@ -1595,17 +1595,17 @@ function FXPanel({ fxSchedule }: { fxSchedule: { rates: import("@/lib/luka/types
       </TableWrap>
 
       <TableWrap title="FX Translation Events">
-        <table className="w-full text-base">
+        <table className="w-full text-[13px]">
           <thead>
             <tr className="bg-muted/30 border-b border-border">
               {["Date","Security","Ticker","CCY","Amount (Local)","FX Rate","Amount CAD"].map((h, i) => (
-                <th key={h} className={`px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 4 ? "text-left" : "text-right"}`}>{h}</th>
+                <th key={h} className={`px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 4 ? "text-left" : "text-right"}`}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {fxSchedule.events.length === 0 && (
-              <tr><td colSpan={7} className="px-3 py-4 text-center text-base text-muted-foreground">No FX events</td></tr>
+              <tr><td colSpan={7} className="px-3 py-4 text-center text-[13px] text-muted-foreground">No FX events</td></tr>
             )}
             {fxSchedule.events.map((ev, i) => (
               <tr key={`${ev.ticker}-${ev.date}-${i}`} className={`border-b border-border/40 ${i % 2 === 1 ? "bg-muted/10" : ""}`}>
@@ -1632,7 +1632,7 @@ function IncomePanel({ incomeMatrix, editMode }: { incomeMatrix: ReturnType<type
   const [expenseAccts, setExpenseAccts] = useState<Record<string, string>>({});
   const [incOvr, setIncOvr] = useState<Record<string, { date?: string; description?: string; amountCAD?: number }>>({});
   const [expOvr, setExpOvr] = useState<Record<string, { date?: string; description?: string; amountCAD?: number }>>({});
-  const EC = "h-6 text-base px-1.5 border border-border rounded-[5px] bg-background focus:outline-none w-full";
+  const EC = "h-6 text-[13px] px-1.5 border border-border rounded-[5px] bg-background focus:outline-none w-full";
 
   const acctDropdown = (
     row: import("@/lib/luka/compute").IncomeTxRow,
@@ -1657,7 +1657,7 @@ function IncomePanel({ incomeMatrix, editMode }: { incomeMatrix: ReturnType<type
   const headerRow = (cols: string[]) => (
     <tr className="bg-muted/30 border-b border-border">
       {cols.map((h, i) => (
-        <th key={h} className={`px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i >= cols.length - 1 ? "text-right" : "text-left"}`}>
+        <th key={h} className={`px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i >= cols.length - 1 ? "text-right" : "text-left"}`}>
           {h}
         </th>
       ))}
@@ -1668,7 +1668,7 @@ function IncomePanel({ incomeMatrix, editMode }: { incomeMatrix: ReturnType<type
     <div className="space-y-3">
       {/* ── Income ── */}
       <TableWrap title="Income">
-        <table className="w-full text-base">
+        <table className="w-full text-[13px]">
           <thead className="sticky top-0 z-10 bg-background">{headerRow(["Date", "Account #", "Entry / Description", "CCY", "Amount (CAD)"])}</thead>
           <tbody>
             {incomeTxRows.length === 0 && (
@@ -1694,8 +1694,8 @@ function IncomePanel({ incomeMatrix, editMode }: { incomeMatrix: ReturnType<type
           </tbody>
           <tfoot>
             <tr className="bg-muted/30 border-t border-border font-semibold">
-              <td className="px-3 py-2 text-base" colSpan={4}>Total Income</td>
-              <td className="px-3 py-2 text-right tabular-nums text-base font-bold">{fmtGL(incomeTotal)}</td>
+              <td className="px-3 py-2 text-[13px]" colSpan={4}>Total Income</td>
+              <td className="px-3 py-2 text-right tabular-nums text-[13px] font-bold">{fmtGL(incomeTotal)}</td>
             </tr>
           </tfoot>
         </table>
@@ -1703,7 +1703,7 @@ function IncomePanel({ incomeMatrix, editMode }: { incomeMatrix: ReturnType<type
 
       {/* ── Expenses ── */}
       <TableWrap title="Expenses">
-        <table className="w-full text-base">
+        <table className="w-full text-[13px]">
           <thead className="sticky top-0 z-10 bg-background">{headerRow(["Date", "Account #", "Description", "Amount (CAD)"])}</thead>
           <tbody>
             {expenseTxRows.length === 0 && (
@@ -1728,8 +1728,8 @@ function IncomePanel({ incomeMatrix, editMode }: { incomeMatrix: ReturnType<type
           </tbody>
           <tfoot>
             <tr className="bg-muted/30 border-t border-border font-semibold">
-              <td className="px-3 py-2 text-base" colSpan={3}>Total Expenses</td>
-              <td className="px-3 py-2 text-right tabular-nums text-base font-bold">{fmtGL(expenseTotal)}</td>
+              <td className="px-3 py-2 text-[13px]" colSpan={3}>Total Expenses</td>
+              <td className="px-3 py-2 text-right tabular-nums text-[13px] font-bold">{fmtGL(expenseTotal)}</td>
             </tr>
           </tfoot>
         </table>
@@ -1743,7 +1743,7 @@ function IncomePanel({ incomeMatrix, editMode }: { incomeMatrix: ReturnType<type
 function SectionHead({ title }: { title: string }) {
   return (
     <div className="px-4 py-2 bg-muted/20 border-b border-border">
-      <span className="text-base font-bold text-foreground uppercase tracking-wider">{title}</span>
+      <span className="text-[13px] font-bold text-foreground uppercase tracking-wider">{title}</span>
     </div>
   );
 }
@@ -1770,13 +1770,13 @@ function BrokerReconPanel({
       {/* Panel intro */}
       <div className="flex items-center justify-between px-1">
         <div>
-          <p className="text-base text-muted-foreground">
+          <p className="text-[13px] text-muted-foreground">
             One annual reconciliation per broker — full fiscal year {fiscalYear} · {invRecon.length} broker account{invRecon.length !== 1 ? "s" : ""} reconciled
           </p>
         </div>
         <div className="flex items-center gap-1.5">
           {invRecon.map(g => (
-            <span key={g.sourceId} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-base font-semibold border whitespace-nowrap ${g.pass ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
+            <span key={g.sourceId} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[13px] font-semibold border whitespace-nowrap ${g.pass ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
               {g.pass ? "✓" : "⚠"} {g.institution.split(" ")[0]}
             </span>
           ))}
@@ -1847,14 +1847,14 @@ function BrokerReconPanel({
 
         // Reusable activity sub-table
         const ActivityTable = ({ txns, sign }: { txns: typeof effectiveTxns; sign: 1 | -1 }) => {
-          if (!txns.length) return <p className="px-4 py-2 text-base text-muted-foreground italic">No transactions in period</p>;
+          if (!txns.length) return <p className="px-4 py-2 text-[13px] text-muted-foreground italic">No transactions in period</p>;
           const total = txns.reduce((a, t) => a + Math.abs((t.net ?? t.gross ?? 0) * (t.fxRate ?? 1)), 0);
           return (
-            <table className="w-full text-base">
+            <table className="w-full text-[13px]">
               <thead>
                 <tr className="bg-muted/10 border-b border-border">
                   {["Date","Security","Ticker","Type","CCY","Foreign Amt","FX Rate","CAD Equiv"].map((h, i) => (
-                    <th key={h} className={`px-3 py-1.5 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 4 ? "text-left" : "text-right"}`}>{h}</th>
+                    <th key={h} className={`px-3 py-1.5 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 4 ? "text-left" : "text-right"}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -1880,8 +1880,8 @@ function BrokerReconPanel({
               </tbody>
               <tfoot>
                 <tr className="bg-muted/30 border-t border-border font-semibold">
-                  <td className="px-3 py-1.5 text-base" colSpan={7}>{sign > 0 ? "Total" : "Total"}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums text-base font-bold">{sign > 0 ? "" : "("}{fmtCAD(total)}{sign > 0 ? "" : ")"}</td>
+                  <td className="px-3 py-1.5 text-[13px]" colSpan={7}>{sign > 0 ? "Total" : "Total"}</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums text-[13px] font-bold">{sign > 0 ? "" : "("}{fmtCAD(total)}{sign > 0 ? "" : ")"}</td>
                 </tr>
               </tfoot>
             </table>
@@ -1894,22 +1894,22 @@ function BrokerReconPanel({
             {/* ── Broker Header — single inline row ── */}
             <div className="px-4 py-2.5 bg-muted/50 border-b-2 border-border flex items-center gap-3 flex-wrap">
               {/* #N tag */}
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-base font-bold uppercase tracking-wider border bg-background text-muted-foreground border-border shrink-0">
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[13px] font-bold uppercase tracking-wider border bg-background text-muted-foreground border-border shrink-0">
                 #{groupIdx + 1}/{invRecon.length}
               </span>
               {/* Institution */}
-              <span className="text-base font-bold text-foreground shrink-0">{group.institution}</span>
-              <span className="text-base text-muted-foreground font-mono bg-background border border-border px-1.5 py-0.5 rounded-[4px] shrink-0">…{group.last4}</span>
+              <span className="text-[13px] font-bold text-foreground shrink-0">{group.institution}</span>
+              <span className="text-[13px] text-muted-foreground font-mono bg-background border border-border px-1.5 py-0.5 rounded-[4px] shrink-0">…{group.last4}</span>
               {/* Status */}
-              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-base font-semibold border whitespace-nowrap shrink-0 ${reconciled ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
+              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[13px] font-semibold border whitespace-nowrap shrink-0 ${reconciled ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
                 {reconciled ? "✓ Reconciled" : "⚠ Variance"}
               </span>
               {/* Divider */}
               <span className="text-border">|</span>
               {/* Meta */}
-              <span className="text-base text-muted-foreground shrink-0">CCY: <strong className="text-foreground">{group.currency}</strong></span>
-              <span className="text-base text-muted-foreground shrink-0">Period: <strong className="text-foreground">{yearStart} — {yearEnd}</strong></span>
-              <span className="text-base text-muted-foreground shrink-0">Annual · FY {fiscalYear}</span>
+              <span className="text-[13px] text-muted-foreground shrink-0">CCY: <strong className="text-foreground">{group.currency}</strong></span>
+              <span className="text-[13px] text-muted-foreground shrink-0">Period: <strong className="text-foreground">{yearStart} — {yearEnd}</strong></span>
+              <span className="text-[13px] text-muted-foreground shrink-0">Annual · FY {fiscalYear}</span>
               {/* Divider */}
               <span className="text-border">|</span>
               {/* KPIs inline */}
@@ -1918,7 +1918,7 @@ function BrokerReconPanel({
                 { label: "Closing",  val: booksClosingPerBooks },
                 { label: "Variance", val: Math.abs(closingVar) },
               ].map((k, ki) => (
-                <span key={k.label} className="inline-flex items-center gap-1 text-base shrink-0">
+                <span key={k.label} className="inline-flex items-center gap-1 text-[13px] shrink-0">
                   {ki > 0 && <span className="text-border/50">·</span>}
                   <span className="text-muted-foreground">{k.label}:</span>
                   <span className="font-bold tabular-nums text-foreground">{fmtCAD(k.val)}</span>
@@ -1929,12 +1929,12 @@ function BrokerReconPanel({
             {/* ── Section 1: Opening Balance ── */}
             <SectionHead title="Opening Balance" />
             <div className="w-full overflow-x-auto">
-              <table className="w-full text-base">
+              <table className="w-full text-[13px]">
                 <tbody>
                   <tr className="border-b border-border/40 bg-amber-50/40">
                     <td className="px-4 py-2 font-semibold text-foreground w-64">Opening Balance — Jan 1</td>
                     <td className="px-4 py-2 text-right tabular-nums font-bold">{fmtCAD(booksOpening)}</td>
-                    <td className="px-4 py-2 text-base text-muted-foreground">Per prior year WAC schedule</td>
+                    <td className="px-4 py-2 text-[13px] text-muted-foreground">Per prior year WAC schedule</td>
                   </tr>
                 </tbody>
               </table>
@@ -1943,11 +1943,11 @@ function BrokerReconPanel({
             {/* ── Section 2: Activity During the Period — single unified table ── */}
             <SectionHead title="Activity During the Period" />
             <div className="overflow-x-auto border-b border-border/40">
-              <table className="w-full text-base">
+              <table className="w-full text-[13px]">
                 <thead>
                   <tr className="bg-muted/20 border-b-2 border-border">
                     {["Date","Security","Ticker","Type","CCY","Foreign Amt","FX Rate","CAD Equiv"].map((h, i) => (
-                      <th key={h} className={`px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 4 ? "text-left" : "text-right"}`}>{h}</th>
+                      <th key={h} className={`px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 4 ? "text-left" : "text-right"}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1962,17 +1962,17 @@ function BrokerReconPanel({
                     <Fragment key={group2.label}>
                       {/* Category group header row */}
                       <tr className={`border-b border-border/30 ${group2.bg}`}>
-                        <td className="px-3 py-1.5 text-base font-bold text-foreground" colSpan={7}>
+                        <td className="px-3 py-1.5 text-[13px] font-bold text-foreground" colSpan={7}>
                           {group2.label}
-                          <span className="ml-2 text-base font-normal text-muted-foreground">({group2.txns.length} transaction{group2.txns.length !== 1 ? "s" : ""})</span>
+                          <span className="ml-2 text-[13px] font-normal text-muted-foreground">({group2.txns.length} transaction{group2.txns.length !== 1 ? "s" : ""})</span>
                         </td>
-                        <td className="px-3 py-1.5 text-right text-base font-bold tabular-nums">
+                        <td className="px-3 py-1.5 text-right text-[13px] font-bold tabular-nums">
                           {group2.subtotal < 0 ? `(${fmtCAD(Math.abs(group2.subtotal))})` : fmtCAD(group2.subtotal)}
                         </td>
                       </tr>
                       {/* Transaction rows */}
                       {group2.txns.length === 0
-                        ? <tr className="border-b border-border/20"><td colSpan={8} className="px-3 py-1.5 text-base text-muted-foreground italic pl-6">No transactions</td></tr>
+                        ? <tr className="border-b border-border/20"><td colSpan={8} className="px-3 py-1.5 text-[13px] text-muted-foreground italic pl-6">No transactions</td></tr>
                         : group2.txns.map((t, i) => {
                             const cadAmt = Math.abs((t.net ?? t.gross ?? 0) * (t.fxRate ?? 1));
                             return (
@@ -1994,8 +1994,8 @@ function BrokerReconPanel({
                 </tbody>
                 <tfoot>
                   <tr className="bg-muted/30 border-t-2 border-border font-semibold">
-                    <td className="px-3 py-2 text-base" colSpan={7}>Net Activity</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-base font-bold">
+                    <td className="px-3 py-2 text-[13px]" colSpan={7}>Net Activity</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-[13px] font-bold">
                       {fmtCAD(booksPurchases - booksSales + booksIncome - booksExpenses)}
                     </td>
                   </tr>
@@ -2008,11 +2008,11 @@ function BrokerReconPanel({
               <>
                 <SectionHead title="Foreign Exchange Differences" />
                 <div className="overflow-x-auto border-b border-border/40">
-                  <table className="w-full text-base">
+                  <table className="w-full text-[13px]">
                     <thead>
                       <tr className="bg-muted/10 border-b border-border">
                         {["Security","Ticker","CCY","Opening FX","Closing FX","FX Change","Opening Cost (Foreign)","FX Translation Diff"].map((h, i) => (
-                          <th key={h} className={`px-3 py-1.5 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 3 ? "text-left" : "text-right"}`}>{h}</th>
+                          <th key={h} className={`px-3 py-1.5 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 3 ? "text-left" : "text-right"}`}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -2032,8 +2032,8 @@ function BrokerReconPanel({
                     </tbody>
                     <tfoot>
                       <tr className="bg-muted/30 border-t border-border font-semibold">
-                        <td className="px-3 py-2 text-base" colSpan={7}>Total FX Translation Difference</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-base font-bold">{totalFxDiff >= 0 ? "" : "("}{fmtCAD(Math.abs(totalFxDiff))}{totalFxDiff >= 0 ? "" : ")"}</td>
+                        <td className="px-3 py-2 text-[13px]" colSpan={7}>Total FX Translation Difference</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-[13px] font-bold">{totalFxDiff >= 0 ? "" : "("}{fmtCAD(Math.abs(totalFxDiff))}{totalFxDiff >= 0 ? "" : ")"}</td>
                       </tr>
                     </tfoot>
                   </table>
@@ -2044,14 +2044,14 @@ function BrokerReconPanel({
             {/* ── Section 4: Closing Balance ── */}
             <SectionHead title="Closing Balances" />
             <div className="w-full overflow-x-auto">
-              <table className="w-full text-base">
+              <table className="w-full text-[13px]">
                 <thead>
                   <tr className="bg-muted/20 border-b border-border">
-                    <th className="px-4 py-2 text-left text-base font-semibold text-muted-foreground uppercase tracking-wide w-64">Item</th>
-                    <th className="px-4 py-2 text-right text-base font-semibold text-muted-foreground uppercase tracking-wide">Per Books (CAD)</th>
-                    <th className="px-4 py-2 text-right text-base font-semibold text-muted-foreground uppercase tracking-wide">Per Broker Stmt</th>
-                    <th className="px-4 py-2 text-right text-base font-semibold text-muted-foreground uppercase tracking-wide">Variance</th>
-                    <th className="px-4 py-2 text-center text-base font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
+                    <th className="px-4 py-2 text-left text-[13px] font-semibold text-muted-foreground uppercase tracking-wide w-64">Item</th>
+                    <th className="px-4 py-2 text-right text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Per Books (CAD)</th>
+                    <th className="px-4 py-2 text-right text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Per Broker Stmt</th>
+                    <th className="px-4 py-2 text-right text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Variance</th>
+                    <th className="px-4 py-2 text-center text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2075,7 +2075,7 @@ function BrokerReconPanel({
                         <td className="px-4 py-2 text-right tabular-nums">{fmtCAD(Math.abs(variance))}</td>
                         <td className="px-4 py-2 text-center">
                           {isFinal && (
-                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-base font-semibold border whitespace-nowrap ${ok ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
+                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[13px] font-semibold border whitespace-nowrap ${ok ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
                               {ok ? "✓ Reconciled" : "✗ Variance"}
                             </span>
                           )}
@@ -2090,11 +2090,11 @@ function BrokerReconPanel({
             {/* ── Section 5: Closing Position Detail ── */}
             <SectionHead title="Closing Position Detail — Per Security" />
             <div className="w-full overflow-x-auto">
-              <table className="w-full text-base">
+              <table className="w-full text-[13px]">
                 <thead>
                   <tr className="bg-muted/10 border-b border-border">
                     {["Security","Ticker","CCY","Units (Books)","Units (Broker)","Cost (Books)","Cost (Broker)","Variance","Status"].map((h, i) => (
-                      <th key={h} className={`px-3 py-1.5 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 3 ? "text-left" : i === 8 ? "text-center" : "text-right"}`}>{h}</th>
+                      <th key={h} className={`px-3 py-1.5 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 3 ? "text-left" : i === 8 ? "text-center" : "text-right"}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -2110,7 +2110,7 @@ function BrokerReconPanel({
                       <td className="px-3 py-1.5 text-right tabular-nums">{fmtCAD(p.perStmtCost)}</td>
                       <td className="px-3 py-1.5 text-right tabular-nums font-medium">{fmtCAD(Math.abs(p.varianceCost))}</td>
                       <td className="px-3 py-1.5 text-center">
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-base font-semibold border whitespace-nowrap ${p.pass ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[13px] font-semibold border whitespace-nowrap ${p.pass ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
                           {p.pass ? "✓" : "✗"}
                         </span>
                       </td>
@@ -2119,12 +2119,12 @@ function BrokerReconPanel({
                 </tbody>
                 <tfoot>
                   <tr className="bg-muted/30 border-t border-border font-semibold">
-                    <td className="px-3 py-2 text-base" colSpan={5}>Total Closing Positions</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-base">{fmtCAD(group.positions.reduce((a, p) => a + p.perScheduleCost, 0))}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-base">{fmtCAD(group.positions.reduce((a, p) => a + p.perStmtCost, 0))}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-base font-bold">{fmtCAD(Math.abs(closingVar))}</td>
+                    <td className="px-3 py-2 text-[13px]" colSpan={5}>Total Closing Positions</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-[13px]">{fmtCAD(group.positions.reduce((a, p) => a + p.perScheduleCost, 0))}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-[13px]">{fmtCAD(group.positions.reduce((a, p) => a + p.perStmtCost, 0))}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-[13px] font-bold">{fmtCAD(Math.abs(closingVar))}</td>
                     <td className="px-3 py-2 text-center">
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-base font-semibold border whitespace-nowrap ${reconciled ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[13px] font-semibold border whitespace-nowrap ${reconciled ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
                         {reconciled ? "✓ Reconciled" : "✗ Variance"}
                       </span>
                     </td>
@@ -2169,17 +2169,17 @@ function TaxReconPanel({ schedules }: { schedules: SecuritySchedule[] }) {
 
   return (
     <TableWrap title="Tax Recon">
-      <table className="w-full text-base">
+      <table className="w-full text-[13px]">
         <thead>
           <tr className="bg-muted/30 border-b border-border">
             {["Security","Ticker","Date","Units","Proceeds","Book ACB","Book G/L","Tax ACB","Tax G/L","Adj Type",""].map((h, i) => (
-              <th key={i} className={`px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 3 ? "text-left" : "text-right"} ${i === 10 ? "text-right" : ""}`}>{h}</th>
+              <th key={i} className={`px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 3 ? "text-left" : "text-right"} ${i === 10 ? "text-right" : ""}`}>{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {disposals.length === 0 && (
-            <tr><td colSpan={11} className="px-3 py-4 text-center text-base text-muted-foreground">No disposals</td></tr>
+            <tr><td colSpan={11} className="px-3 py-4 text-center text-[13px] text-muted-foreground">No disposals</td></tr>
           )}
           {disposals.map((d, i) => {
             const ov = overrides[d.key];
@@ -2210,9 +2210,9 @@ function TaxReconPanel({ schedules }: { schedules: SecuritySchedule[] }) {
                   <tr className="border-b border-primary/30 bg-primary/[0.04]">
                     <td colSpan={11} className="px-3 py-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-base text-muted-foreground shrink-0">Tax ACB:</span>
+                        <span className="text-[13px] text-muted-foreground shrink-0">Tax ACB:</span>
                         <input type="number" step="0.01" value={editDraft.taxACB} onChange={e => setEditDraft(p => ({ ...p, taxACB: parseFloat(e.target.value) || 0 }))} className={`${IC} w-32`} />
-                        <span className="text-base text-muted-foreground shrink-0">Adj Type:</span>
+                        <span className="text-[13px] text-muted-foreground shrink-0">Adj Type:</span>
                         <select value={editDraft.adjType} onChange={e => setEditDraft(p => ({ ...p, adjType: e.target.value as AdjType }))} className={`${SC} w-36`}>
                           {ADJ_TYPES.map(a => <option key={a}>{a}</option>)}
                         </select>
@@ -2285,7 +2285,7 @@ function JEAccountSelect({ value, disabled, onChange }: {
   return (
     <div className="relative">
       <select
-        className="input-double-border h-8 w-full pl-2 pr-7 text-base border border-[#dcdfe4] rounded-[8px] bg-white dark:bg-card text-transparent appearance-none focus:outline-none"
+        className="input-double-border h-8 w-full pl-2 pr-7 text-[13px] border border-[#dcdfe4] rounded-[8px] bg-white dark:bg-card text-transparent appearance-none focus:outline-none"
         value={value}
         disabled={disabled}
         onChange={e => onChange(e.target.value)}
@@ -2295,7 +2295,7 @@ function JEAccountSelect({ value, disabled, onChange }: {
           <option key={a.code} value={`${a.code} · ${a.name}`}>{a.code} · {a.name}</option>
         ))}
       </select>
-      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-base font-mono text-foreground pointer-events-none select-none">
+      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[13px] font-mono text-foreground pointer-events-none select-none">
         {value ? acctCode(value) : <span className="font-sans text-muted-foreground">Select</span>}
       </span>
     </div>
@@ -2319,43 +2319,43 @@ function AddJECard({ onSave, onCancel }: {
   return (
     <div className="rounded-[8px] border-2 border-primary/30 bg-primary/[0.02] overflow-hidden mb-2">
       <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between bg-primary/5">
-        <span className="text-base font-semibold text-primary uppercase tracking-wide">New Adjusting Entry</span>
+        <span className="text-[13px] font-semibold text-primary uppercase tracking-wide">New Adjusting Entry</span>
         <button onClick={onCancel} className="text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>
       </div>
       {/* Top fields row */}
       <div className="px-4 pt-3 pb-2 grid grid-cols-4 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-base font-semibold text-muted-foreground uppercase tracking-wider">Ref</label>
+          <label className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider">Ref</label>
           <input value={d.ref} onChange={e => set("ref", e.target.value)} className={IC} placeholder="AE-01" />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-base font-semibold text-muted-foreground uppercase tracking-wider">Type</label>
+          <label className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider">Type</label>
           <select value={d.type} onChange={e => set("type", e.target.value)} className={SC}>
             {AJE_TYPE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-base font-semibold text-muted-foreground uppercase tracking-wider">Confidence</label>
+          <label className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider">Confidence</label>
           <select value={d.confidence} onChange={e => set("confidence", e.target.value)} className={SC}>
             {AJE_CONF_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-base font-semibold text-muted-foreground uppercase tracking-wider">Amount</label>
+          <label className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider">Amount</label>
           <FmtNumInput value={d.amount} onCommit={n => set("amount", n)} className={IC} placeholder="0.00" />
         </div>
       </div>
       <div className="px-4 pb-2">
-        <label className="text-base font-semibold text-muted-foreground uppercase tracking-wider">Description</label>
+        <label className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider">Description</label>
         <input value={d.description} onChange={e => set("description", e.target.value)} className={`${IC} mt-1 w-full`} placeholder="Describe this entry…" />
       </div>
       {/* DR / CR lines */}
       <div className="border-t border-border/60">
-        <table className="w-full text-base">
+        <table className="w-full text-[13px]">
           <thead>
             <tr className="bg-muted/40">
               {["Acc No.","Description","Debit","Credit"].map((h, i) => (
-                <th key={h} className={`px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wider ${i >= 2 ? "text-right w-32" : "text-left"}`}>{h}</th>
+                <th key={h} className={`px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wider ${i >= 2 ? "text-right w-32" : "text-left"}`}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -2364,29 +2364,29 @@ function AddJECard({ onSave, onCancel }: {
               <td className="px-3 py-2 w-36"><JEAccountSelect value={d.drAccount} onChange={v => set("drAccount", v)} /></td>
               <td className="px-3 py-2"><input value={d.drDescription} onChange={e => set("drDescription", e.target.value)} className={IC} placeholder="Line description…" /></td>
               <td className="px-3 py-2 w-32"><FmtNumInput value={d.amount} onCommit={n => set("amount", n)} className={`${IC} text-right`} /></td>
-              <td className="px-3 py-2 w-32"><div className="h-7 flex items-center justify-end px-2 rounded-md border border-border/40 bg-muted/30 text-base text-muted-foreground">0.00</div></td>
+              <td className="px-3 py-2 w-32"><div className="h-7 flex items-center justify-end px-2 rounded-md border border-border/40 bg-muted/30 text-[13px] text-muted-foreground">0.00</div></td>
             </tr>
             <tr>
               <td className="px-3 py-2 w-36"><JEAccountSelect value={d.crAccount} onChange={v => set("crAccount", v)} /></td>
               <td className="px-3 py-2"><input value={d.crDescription} onChange={e => set("crDescription", e.target.value)} className={IC} placeholder="Line description…" /></td>
-              <td className="px-3 py-2 w-32"><div className="h-7 flex items-center justify-end px-2 rounded-md border border-border/40 bg-muted/30 text-base text-muted-foreground">0.00</div></td>
-              <td className="px-3 py-2 w-32"><div className="h-7 flex items-center justify-end px-2 rounded-md border border-[#dcdfe4] bg-muted/20 text-base tabular-nums text-foreground">{fmt2(d.amount)}</div></td>
+              <td className="px-3 py-2 w-32"><div className="h-7 flex items-center justify-end px-2 rounded-md border border-border/40 bg-muted/30 text-[13px] text-muted-foreground">0.00</div></td>
+              <td className="px-3 py-2 w-32"><div className="h-7 flex items-center justify-end px-2 rounded-md border border-[#dcdfe4] bg-muted/20 text-[13px] tabular-nums text-foreground">{fmt2(d.amount)}</div></td>
             </tr>
           </tbody>
         </table>
       </div>
       {/* Notes */}
       <div className="px-4 py-3 border-t border-border/60">
-        <label className="text-base font-semibold text-muted-foreground uppercase tracking-wider">Notes</label>
+        <label className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider">Notes</label>
         <textarea rows={2} value={d.notes} onChange={e => set("notes", e.target.value)}
-          className="mt-1 w-full h-14 text-base px-2 py-1.5 border border-border rounded-md bg-background resize-none focus:outline-none"
+          className="mt-1 w-full h-14 text-[13px] px-2 py-1.5 border border-border rounded-md bg-background resize-none focus:outline-none"
           placeholder="Add a note…" />
       </div>
       {/* Footer */}
       <div className="px-4 py-2.5 border-t border-border/60 bg-muted/20 flex justify-end gap-2">
-        <button onClick={onCancel} className="h-7 px-3 text-base border border-border rounded-[7px] text-muted-foreground hover:bg-muted transition-colors">Cancel</button>
+        <button onClick={onCancel} className="h-7 px-3 text-[13px] border border-border rounded-[7px] text-muted-foreground hover:bg-muted transition-colors">Cancel</button>
         <button onClick={() => onSave({ ...d, _id: `aje-local-${Date.now()}` })}
-          className="h-7 px-3 text-base bg-primary text-primary-foreground rounded-[7px] hover:bg-primary/90 transition-colors">
+          className="h-7 px-3 text-[13px] bg-primary text-primary-foreground rounded-[7px] hover:bg-primary/90 transition-colors">
           Save Entry
         </button>
       </div>
@@ -2467,12 +2467,12 @@ function AJEsPanel({ ajes, ajeQueue, clearAjeQueue, editMode }: {
       <div className="flex items-center gap-3 flex-wrap">
         {/* Status filter */}
         <div className="flex items-center gap-1.5">
-          <span className="text-base text-muted-foreground shrink-0">View:</span>
+          <span className="text-[13px] text-muted-foreground shrink-0">View:</span>
           <div className="relative">
             <select
               value={filterStatus}
               onChange={e => setFilterStatus(e.target.value as typeof filterStatus)}
-              className="h-7 pl-2.5 pr-7 text-base font-medium border border-border rounded-[7px] bg-background text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 hover:border-primary/40 transition-colors"
+              className="h-7 pl-2.5 pr-7 text-[13px] font-medium border border-border rounded-[7px] bg-background text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 hover:border-primary/40 transition-colors"
             >
               <option value="All">All ({active.length})</option>
               <option value="Draft">Draft ({draftCnt})</option>
@@ -2485,12 +2485,12 @@ function AJEsPanel({ ajes, ajeQueue, clearAjeQueue, editMode }: {
         </div>
         {/* Type filter */}
         <div className="flex items-center gap-1.5">
-          <span className="text-base text-muted-foreground shrink-0">Type:</span>
+          <span className="text-[13px] text-muted-foreground shrink-0">Type:</span>
           <div className="relative">
             <select
               value={filterType}
               onChange={e => setFilterType(e.target.value as typeof filterType)}
-              className="h-7 pl-2.5 pr-7 text-base font-medium border border-border rounded-[7px] bg-background text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 hover:border-primary/40 transition-colors"
+              className="h-7 pl-2.5 pr-7 text-[13px] font-medium border border-border rounded-[7px] bg-background text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 hover:border-primary/40 transition-colors"
             >
               <option value="All">All types</option>
               {(Object.entries(TYPE_LABELS) as [AJE["type"], string][]).map(([k, label]) =>
@@ -2518,12 +2518,12 @@ function AJEsPanel({ ajes, ajeQueue, clearAjeQueue, editMode }: {
                 className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-muted/30 transition-colors text-left"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-base text-muted-foreground font-mono shrink-0">{je.ref.toUpperCase()}</span>
-                  <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-base font-semibold text-foreground shrink-0">{je.type}</span>
-                  <span className="text-base text-muted-foreground truncate">{je.description}</span>
+                  <span className="text-[13px] text-muted-foreground font-mono shrink-0">{je.ref.toUpperCase()}</span>
+                  <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[13px] font-semibold text-foreground shrink-0">{je.type}</span>
+                  <span className="text-[13px] text-muted-foreground truncate">{je.description}</span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-2">
-                  <span className={`inline-flex items-center gap-1 text-base font-semibold px-1.5 py-0.5 rounded-full border ${statusCls}`}>
+                  <span className={`inline-flex items-center gap-1 text-[13px] font-semibold px-1.5 py-0.5 rounded-full border ${statusCls}`}>
                     {je.status === "Posted" && <CheckCircle2 className="h-2.5 w-2.5" />}
                     {je.status}
                   </span>
@@ -2535,13 +2535,13 @@ function AJEsPanel({ ajes, ajeQueue, clearAjeQueue, editMode }: {
               {isExpanded && (
                 <div className="border-t border-border">
                   {/* Lines table */}
-                  <table className="w-full text-base border-collapse">
+                  <table className="w-full text-[13px] border-collapse">
                     <thead>
                       <tr className="border-b border-border bg-muted/50">
-                        <th className="py-2 px-3 text-base font-semibold text-muted-foreground uppercase tracking-wide text-left whitespace-nowrap">Acc No.</th>
-                        <th className="py-2 px-3 text-base font-semibold text-muted-foreground uppercase tracking-wide text-left">Description</th>
-                        <th className="py-2 px-3 text-base font-semibold text-muted-foreground uppercase tracking-wide text-right">Debit</th>
-                        <th className="py-2 px-3 text-base font-semibold text-muted-foreground uppercase tracking-wide text-right">Credit</th>
+                        <th className="py-2 px-3 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide text-left whitespace-nowrap">Acc No.</th>
+                        <th className="py-2 px-3 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide text-left">Description</th>
+                        <th className="py-2 px-3 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide text-right">Debit</th>
+                        <th className="py-2 px-3 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide text-right">Credit</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2553,18 +2553,18 @@ function AJEsPanel({ ajes, ajeQueue, clearAjeQueue, editMode }: {
                           <input type="number" step="0.01" className={`${IC} text-right`} value={je.amount || ""} disabled={je.deleted}
                             onChange={e => updateJE(je._id, { amount: parseFloat(e.target.value) || 0 })} placeholder="0.00" />
                         </td>
-                        <td className="py-1.5 px-3 w-24"><div className="h-7 flex items-center justify-end px-2 rounded-[6px] border border-border/40 bg-muted/30 text-base text-muted-foreground">0.00</div></td>
+                        <td className="py-1.5 px-3 w-24"><div className="h-7 flex items-center justify-end px-2 rounded-[6px] border border-border/40 bg-muted/30 text-[13px] text-muted-foreground">0.00</div></td>
                       </tr>
                       {/* CR line */}
                       <tr className="hover:bg-muted/20">
                         <td className="py-1.5 px-3"><JEAccountSelect value={je.crAccount} disabled={je.deleted} onChange={v => updateJE(je._id, { crAccount: v })} /></td>
                         <td className="py-1.5 px-3"><input className={IC} value={je.crDescription} disabled={je.deleted} onChange={e => updateJE(je._id, { crDescription: e.target.value })} placeholder="Line description…" /></td>
-                        <td className="py-1.5 px-3"><div className="h-7 flex items-center justify-end px-2 rounded-[6px] border border-border/40 bg-muted/30 text-base text-muted-foreground">0.00</div></td>
-                        <td className="py-1.5 px-3"><div className="h-7 flex items-center justify-end px-2 rounded-[6px] border border-[#dcdfe4] bg-muted/20 text-base tabular-nums text-foreground">{fmt2(je.amount)}</div></td>
+                        <td className="py-1.5 px-3"><div className="h-7 flex items-center justify-end px-2 rounded-[6px] border border-border/40 bg-muted/30 text-[13px] text-muted-foreground">0.00</div></td>
+                        <td className="py-1.5 px-3"><div className="h-7 flex items-center justify-end px-2 rounded-[6px] border border-[#dcdfe4] bg-muted/20 text-[13px] tabular-nums text-foreground">{fmt2(je.amount)}</div></td>
                       </tr>
                     </tbody>
                     <tfoot>
-                      <tr className="border-t border-border bg-muted/30 font-semibold text-base">
+                      <tr className="border-t border-border bg-muted/30 font-semibold text-[13px]">
                         <td className="py-2 px-3 text-foreground" colSpan={2}>Total</td>
                         <td className="py-2 px-3 text-right tabular-nums">{fmt2(je.amount)}</td>
                         <td className="py-2 px-3 text-right tabular-nums">{fmt2(je.amount)}</td>
@@ -2574,8 +2574,8 @@ function AJEsPanel({ ajes, ajeQueue, clearAjeQueue, editMode }: {
 
                   {/* Notes */}
                   <div className="px-3 py-2.5 border-t border-border bg-background">
-                    <label className="block text-base font-semibold text-muted-foreground uppercase tracking-wide mb-1">Notes</label>
-                    <textarea rows={2} className="w-full text-base px-2.5 py-2 rounded-[6px] border border-[#dcdfe4] bg-background text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary/40"
+                    <label className="block text-[13px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Notes</label>
+                    <textarea rows={2} className="w-full text-[13px] px-2.5 py-2 rounded-[6px] border border-[#dcdfe4] bg-background text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary/40"
                       placeholder="Add a note for this entry…"
                       value={je.notes}
                       disabled={je.deleted}
@@ -2586,13 +2586,13 @@ function AJEsPanel({ ajes, ajeQueue, clearAjeQueue, editMode }: {
                   <div className="flex items-center gap-2 px-3 py-2.5 border-t border-border bg-muted/20">
                     {je.deleted ? (
                       <>
-                        <span className="text-base text-muted-foreground italic flex-1">Deleted</span>
+                        <span className="text-[13px] text-muted-foreground italic flex-1">Deleted</span>
                         <button onClick={() => restoreJE(je._id)}
-                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] border border-border bg-background text-base font-medium text-foreground hover:bg-muted transition-colors">
+                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] border border-border bg-background text-[13px] font-medium text-foreground hover:bg-muted transition-colors">
                           <RotateCcw className="h-3 w-3" /> Restore
                         </button>
                         <button onClick={() => purgeJE(je._id)}
-                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] border border-red-200 bg-background text-base font-medium text-red-500 hover:text-red-700 hover:border-red-300 transition-colors">
+                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] border border-red-200 bg-background text-[13px] font-medium text-red-500 hover:text-red-700 hover:border-red-300 transition-colors">
                           <Trash2 className="h-3 w-3" /> Delete Permanently
                         </button>
                       </>
@@ -2600,12 +2600,12 @@ function AJEsPanel({ ajes, ajeQueue, clearAjeQueue, editMode }: {
                       <>
                         {je.status !== "Posted" && (
                           <button onClick={() => updateJE(je._id, { status: "Posted" })}
-                            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] bg-primary text-primary-foreground text-base font-medium hover:bg-primary/90 transition-colors">
+                            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] bg-primary text-primary-foreground text-[13px] font-medium hover:bg-primary/90 transition-colors">
                             <Send className="h-3 w-3" /> Post
                           </button>
                         )}
                         <button onClick={() => softDelete(je._id)}
-                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] border border-red-200 bg-background text-base font-medium text-red-500 hover:text-red-700 hover:border-red-300 transition-colors">
+                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[6px] border border-red-200 bg-background text-[13px] font-medium text-red-500 hover:text-red-700 hover:border-red-300 transition-colors">
                           <Trash2 className="h-3 w-3" /> Delete
                         </button>
                       </>
@@ -2617,7 +2617,7 @@ function AJEsPanel({ ajes, ajeQueue, clearAjeQueue, editMode }: {
           );
         })}
         {filtered.length === 0 && (
-          <p className="text-center py-8 text-base text-muted-foreground">No journal entries match the filter</p>
+          <p className="text-center py-8 text-[13px] text-muted-foreground">No journal entries match the filter</p>
         )}
       </div>
     </div>
@@ -2632,11 +2632,11 @@ function HoldingsPanel({ schedules }: { schedules: SecuritySchedule[] }) {
 
   return (
     <TableWrap title="Holdings">
-      <table className="w-full text-base">
+      <table className="w-full text-[13px]">
         <thead>
           <tr className="bg-muted/30 border-b border-border">
             {["Security","Ticker","CCY","Units","WAC","Cost CAD","FMV CAD","Unrealized G/L","G/L %"].map((h, i) => (
-              <th key={h} className={`px-3 py-2 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 3 ? "text-left" : "text-right"}`}>{h}</th>
+              <th key={h} className={`px-3 py-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${i < 3 ? "text-left" : "text-right"}`}>{h}</th>
             ))}
           </tr>
         </thead>
@@ -2662,10 +2662,10 @@ function HoldingsPanel({ schedules }: { schedules: SecuritySchedule[] }) {
         </tbody>
         <tfoot>
           <tr className="bg-muted/30 border-t border-border font-semibold">
-            <td className="px-3 py-2 text-base" colSpan={5}>Total</td>
-            <td className="px-3 py-2 text-right tabular-nums text-base font-bold">{fmt(totCost)}</td>
-            <td className="px-3 py-2 text-right tabular-nums text-base font-bold">{fmt(totFMV)}</td>
-            <td className="px-3 py-2 text-right text-base font-bold">{fmtGL(totUnrealized)}</td>
+            <td className="px-3 py-2 text-[13px]" colSpan={5}>Total</td>
+            <td className="px-3 py-2 text-right tabular-nums text-[13px] font-bold">{fmt(totCost)}</td>
+            <td className="px-3 py-2 text-right tabular-nums text-[13px] font-bold">{fmt(totFMV)}</td>
+            <td className="px-3 py-2 text-right text-[13px] font-bold">{fmtGL(totUnrealized)}</td>
             <td className="px-3 py-2" />
           </tr>
         </tfoot>
@@ -2887,7 +2887,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
   return (
     <div className="min-w-0 space-y-3 animate-in fade-in slide-in-from-bottom-1 duration-300">
       {/* Intro */}
-      <p className="text-base text-foreground leading-relaxed">
+      <p className="text-[14px] text-foreground leading-relaxed">
         Here&apos;s a full summary of your <strong>Investment Schedule</strong> workpaper for{" "}
         <span className="font-medium text-primary">{client}</span> as at{" "}
         <span className="font-medium">{dateStr}</span>:
@@ -2928,7 +2928,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
               <button
                 key={id}
                 onClick={() => { if (locked) return; setActiveTab(id); }}
-                className={`flex items-center gap-1 px-3 py-2 text-base font-bold border-b-2 transition-colors whitespace-nowrap shrink-0 ${
+                className={`flex items-center gap-1 px-3 py-2 text-[13px] font-bold border-b-2 transition-colors whitespace-nowrap shrink-0 ${
                   isActive
                     ? "border-primary text-primary bg-primary/5"
                     : locked
@@ -2947,7 +2947,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
           {invMode !== "view" && (
             <button
               onClick={discardMode}
-              className="inline-flex items-center gap-1 h-6 px-2 rounded-[6px] border border-red-200 bg-red-50 text-base font-medium text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors"
+              className="inline-flex items-center gap-1 h-6 px-2 rounded-[6px] border border-red-200 bg-red-50 text-[13px] font-medium text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors"
             >
               <X className="h-3 w-3" /> Discard
             </button>
@@ -2969,7 +2969,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                   <button
                     onClick={handleScheduleClick}
                     disabled={invMode !== "view" && !canSubmit}
-                    className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-base transition-all ${
+                    className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[13px] transition-all ${
                       invMode === "view"
                         ? "font-semibold bg-background text-foreground shadow-sm border border-border/60"
                         : canSubmit
@@ -2980,7 +2980,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                     <BarChart2 className="w-3 h-3" /> Schedule
                   </button>
                   {tooltip && (
-                    <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-1 rounded-[6px] bg-foreground text-background text-base font-medium opacity-0 group-hover/sched:opacity-100 transition-opacity pointer-events-none z-50">
+                    <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-1 rounded-[6px] bg-foreground text-background text-[13px] font-medium opacity-0 group-hover/sched:opacity-100 transition-opacity pointer-events-none z-50">
                       {tooltip}
                     </div>
                   )}
@@ -2989,7 +2989,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
             })()}
             <button
               onClick={() => { setInvMode("edit"); setTxEdits({}); }}
-              className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-base transition-all ${
+              className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[13px] transition-all ${
                 invMode === "edit"
                   ? "font-semibold bg-background text-primary shadow-sm border border-primary/30"
                   : "font-medium text-muted-foreground hover:text-foreground"
@@ -3000,7 +3000,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
             {activeTab === "transactions" && (
               <button
                 onClick={() => { setInvMode("add"); setActiveTab("transactions"); setPendingTxns([]); }}
-                className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-base transition-all ${
+                className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[13px] transition-all ${
                   invMode === "add"
                     ? "font-semibold bg-background text-primary shadow-sm border border-primary/30"
                     : "font-medium text-muted-foreground hover:text-foreground"
@@ -3021,13 +3021,13 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
             <div className="absolute inset-y-0 w-[120px] bg-gradient-to-r from-transparent via-primary/10 to-transparent animate-shimmer-sweep" />
             <div className="absolute inset-y-0 w-[60px] bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer-sweep" style={{ animationDelay: "0.5s", animationDuration: "1.8s" }} />
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-background/95 shadow-xl border border-border/80 text-base font-medium text-foreground">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-background/95 shadow-xl border border-border/80 text-[13px] font-medium text-foreground">
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
                 Analysing data and generating workpaper…
               </div>
               <div className="flex items-center gap-1.5">
                 {TABS.map(({ id, label }) => (
-                  <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-base font-medium text-primary border border-primary/15">
+                  <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-[13px] font-medium text-primary border border-primary/15">
                     <span className="w-1 h-1 rounded-full bg-primary animate-pulse" style={{ animationDelay: `${TABS.findIndex(t=>t.id===id)*0.15}s` }} />
                     {label}
                   </span>
@@ -3062,7 +3062,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                           <Loader2 className="w-4 h-4 text-white animate-spin" />
                         </div>
                       </div>
-                      <p className="text-base font-medium text-primary">Extracting transaction data…</p>
+                      <p className="text-[13px] font-medium text-primary">Extracting transaction data…</p>
                     </>
                   ) : (
                     <>
@@ -3073,10 +3073,10 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                         </div>
                       </div>
                       <div>
-                        <p className="text-base font-semibold text-foreground">Import documents</p>
-                        <p className="text-base text-muted-foreground mt-0.5">Broker statements · Trade confirms<br />Registers · PDF · XLSX · ZIP</p>
+                        <p className="text-[13px] font-semibold text-foreground">Import documents</p>
+                        <p className="text-[13px] text-muted-foreground mt-0.5">Broker statements · Trade confirms<br />Registers · PDF · XLSX · ZIP</p>
                       </div>
-                      <span className="inline-flex items-center gap-1 text-base font-medium text-primary group-hover:underline">
+                      <span className="inline-flex items-center gap-1 text-[13px] font-medium text-primary group-hover:underline">
                         Click to browse or drag &amp; drop
                       </span>
                     </>
@@ -3090,7 +3090,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
             {addUploadedFiles.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {addUploadedFiles.map(f => (
-                  <div key={f.id} className="inline-flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-[10px] border border-border bg-background text-base max-w-[260px]">
+                  <div key={f.id} className="inline-flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-[10px] border border-border bg-background text-[13px] max-w-[260px]">
                     <div className="w-7 h-7 rounded-[6px] flex items-center justify-center shrink-0 bg-primary/10">
                       {f.ext === "pdf"
                         ? <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
@@ -3098,7 +3098,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                         ? <FolderOpen className="h-3.5 w-3.5 text-primary shrink-0" />
                         : <FileSpreadsheet className="h-3.5 w-3.5 text-primary shrink-0" />}
                     </div>
-                    <span className="flex-1 min-w-0 truncate font-medium text-foreground text-base">{f.name}</span>
+                    <span className="flex-1 min-w-0 truncate font-medium text-foreground text-[13px]">{f.name}</span>
                     <button
                       onClick={() => setAddUploadedFiles(prev => prev.filter(x => x.id !== f.id))}
                       className="shrink-0 text-muted-foreground/50 hover:text-red-500 transition-colors"
@@ -3114,17 +3114,17 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
             {pendingTxns.length > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-base font-semibold text-foreground">
+                  <span className="text-[13px] font-semibold text-foreground">
                     {pendingTxns.length} transaction{pendingTxns.length !== 1 ? "s" : ""} extracted — review and complete before submitting
                   </span>
                 </div>
                 <div className="rounded-[8px] border border-border overflow-hidden">
                   <div className="w-full overflow-x-auto">
-                    <table className="w-full text-base" style={{ minWidth: 1400 }}>
+                    <table className="w-full text-[13px]" style={{ minWidth: 1400 }}>
                       <thead>
                         <tr className="bg-muted/30 border-b border-border">
                           {["Date *","Settlement","Source","Security *","Ticker","CCY","Type *","Units *","Price *","FX Rate","TB Account","Status",""].map((h, i) => (
-                            <th key={i} className={`px-2 py-1.5 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10 text-right" : ["Units *","Price *","FX Rate"].includes(h) ? "text-right" : "text-left"}`}>
+                            <th key={i} className={`px-2 py-1.5 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10 text-right" : ["Units *","Price *","FX Rate"].includes(h) ? "text-right" : "text-left"}`}>
                               {h.endsWith(" *") ? <>{h.slice(0,-2)} <span className="text-red-500">*</span></> : h}
                             </th>
                           ))}
@@ -3133,7 +3133,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                       <tbody>
                         {pendingTxns.map((row, ri) => {
                           const fc = (field: keyof InvAddRow, req: boolean) =>
-                            `h-6 text-base px-1.5 border rounded bg-background focus:outline-none w-full ${req && invAddRowMissing(row, field) ? "border-red-400 bg-red-50/60 placeholder:text-red-400 text-red-600 focus:border-red-500" : "border-border focus:border-primary/40"}`;
+                            `h-6 text-[13px] px-1.5 border rounded bg-background focus:outline-none w-full ${req && invAddRowMissing(row, field) ? "border-red-400 bg-red-50/60 placeholder:text-red-400 text-red-600 focus:border-red-500" : "border-border focus:border-primary/40"}`;
                           const upd = (field: keyof InvAddRow, value: string) =>
                             setPendingTxns(prev => prev.map(p => p.id === row.id ? { ...p, [field]: value } : p));
                           return (
@@ -3143,18 +3143,18 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                               <td className="px-1.5 py-1 min-w-[100px]"><input value={row.broker} onChange={e=>upd("broker",e.target.value)} className={`${fc("broker",false)} w-24`} placeholder="Broker" /></td>
                               <td className="px-1.5 py-1 min-w-[140px]"><input value={row.security} onChange={e=>upd("security",e.target.value)} className={`${fc("security",true)} w-36`} placeholder="Security name" /></td>
                               <td className="px-1.5 py-1 min-w-[70px]"><input value={row.ticker} onChange={e=>upd("ticker",e.target.value.toUpperCase())} className={`${fc("ticker",false)} w-16`} placeholder="AAPL" /></td>
-                              <td className="px-1.5 py-1"><select value={row.ccy} onChange={e=>upd("ccy",e.target.value)} className="h-6 text-base px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer w-14">{["CAD","USD","EUR","GBP"].map(c=><option key={c}>{c}</option>)}</select></td>
-                              <td className="px-1.5 py-1"><select value={row.type} onChange={e=>upd("type",e.target.value)} className="h-6 text-base px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer w-32">{TX_TYPES.map(t=><option key={t} value={t}>{t}</option>)}</select></td>
+                              <td className="px-1.5 py-1"><select value={row.ccy} onChange={e=>upd("ccy",e.target.value)} className="h-6 text-[13px] px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer w-14">{["CAD","USD","EUR","GBP"].map(c=><option key={c}>{c}</option>)}</select></td>
+                              <td className="px-1.5 py-1"><select value={row.type} onChange={e=>upd("type",e.target.value)} className="h-6 text-[13px] px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer w-32">{TX_TYPES.map(t=><option key={t} value={t}>{t}</option>)}</select></td>
                               <td className="px-1.5 py-1"><input value={row.qty} onChange={e=>upd("qty",e.target.value)} className={`${fc("qty",true)} w-20 text-right`} placeholder="0" /></td>
                               <td className="px-1.5 py-1"><input value={row.price} onChange={e=>upd("price",e.target.value)} className={`${fc("price",true)} w-20 text-right`} placeholder="0.00" /></td>
                               <td className="px-1.5 py-1"><input value={row.fxRate} onChange={e=>upd("fxRate",e.target.value)} className={`${fc("fxRate",false)} w-16 text-right font-mono`} placeholder="1.0000" /></td>
                               <td className="px-1.5 py-1 min-w-[160px]">
-                                <select value={row.tbAccount} onChange={e=>upd("tbAccount",e.target.value)} className="h-6 text-base px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer w-44">
+                                <select value={row.tbAccount} onChange={e=>upd("tbAccount",e.target.value)} className="h-6 text-[13px] px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer w-44">
                                   <option value="">— Select —</option>
                                   {CHART_OF_ACCOUNTS.map(a=><option key={a.code} value={a.code}>{a.code} · {a.name}</option>)}
                                 </select>
                               </td>
-                              <td className="px-1.5 py-1"><select value={row.status} onChange={e=>upd("status",e.target.value)} className="h-6 text-base px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer w-20">{["pending","approved","posted"].map(s=><option key={s}>{s}</option>)}</select></td>
+                              <td className="px-1.5 py-1"><select value={row.status} onChange={e=>upd("status",e.target.value)} className="h-6 text-[13px] px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer w-20">{["pending","approved","posted"].map(s=><option key={s}>{s}</option>)}</select></td>
                               <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
                                 <div className="flex items-center justify-end">
                                   <button onClick={()=>setPendingTxns(prev=>prev.filter(p=>p.id!==row.id))} className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors">
@@ -3209,16 +3209,16 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
       <div className="flex items-center gap-2 pt-1 border-t border-border flex-wrap">
         {invMode === "view" && (
           <>
-            <button ref={saveBtnRef} onClick={openSaveFlow} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-primary text-primary-foreground text-base font-medium hover:bg-primary/90 transition-colors">
+            <button ref={saveBtnRef} onClick={openSaveFlow} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-primary text-primary-foreground text-[13px] font-medium hover:bg-primary/90 transition-colors">
               <Save className="h-3.5 w-3.5" /> Save to Engagement
             </button>
-            <button onClick={() => toast.success("Downloading workpaper…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-base font-medium text-foreground hover:bg-muted transition-colors">
+            <button onClick={() => toast.success("Downloading workpaper…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-[13px] font-medium text-foreground hover:bg-muted transition-colors">
               <Download className="h-3.5 w-3.5" /> Download
             </button>
-            <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success("Link copied to clipboard"); }} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-base font-medium text-foreground hover:bg-muted transition-colors">
+            <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success("Link copied to clipboard"); }} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-[13px] font-medium text-foreground hover:bg-muted transition-colors">
               <Copy className="h-3.5 w-3.5" /> Copy
             </button>
-            <button onClick={triggerRerun} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-base font-medium text-foreground hover:bg-muted transition-colors">
+            <button onClick={triggerRerun} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-[13px] font-medium text-foreground hover:bg-muted transition-colors">
               <RotateCcw className="h-3.5 w-3.5" /> Rerun
             </button>
           </>
@@ -3237,8 +3237,8 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
               style={{ top: saveMenuRect.bottom + 6, left: saveMenuRect.left }}
             >
               <div className="px-3 pt-3 pb-2 border-b border-border">
-                <p className="text-base font-semibold text-foreground">Select document type</p>
-                <p className="text-base text-muted-foreground mt-0.5">Choose what to save to the engagement</p>
+                <p className="text-[13px] font-semibold text-foreground">Select document type</p>
+                <p className="text-[13px] text-muted-foreground mt-0.5">Choose what to save to the engagement</p>
               </div>
               <div className="p-1.5 space-y-0.5">
                 {DOC_TYPES.map(dt => (
@@ -3251,8 +3251,8 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                       <dt.icon className="h-3.5 w-3.5 text-primary" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-base font-medium text-foreground">{dt.label}</p>
-                      <p className="text-base text-muted-foreground">{dt.desc}</p>
+                      <p className="text-[13px] font-medium text-foreground">{dt.label}</p>
+                      <p className="text-[13px] text-muted-foreground">{dt.desc}</p>
                     </div>
                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/50 ml-auto shrink-0 -rotate-90" />
                   </button>
@@ -3276,13 +3276,13 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                       <Check className="h-5 w-5 text-green-600" />
                     </div>
                     <div>
-                      <p className="text-base font-semibold text-foreground">Saved to engagement</p>
-                      <p className="text-base text-muted-foreground mt-0.5">
+                      <p className="text-[13px] font-semibold text-foreground">Saved to engagement</p>
+                      <p className="text-[13px] text-muted-foreground mt-0.5">
                         {DOC_TYPES.find(d => d.id === saveDocType)?.label} saved to{" "}
                         <strong>{MOCK_ENGAGEMENTS.find(e => e.id === selectedEngId)?.client}</strong>
                       </p>
                     </div>
-                    <button onClick={closeSaveFlow} className="mt-1 h-8 px-6 text-base font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors">
+                    <button onClick={closeSaveFlow} className="mt-1 h-8 px-6 text-[13px] font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors">
                       Done
                     </button>
                   </div>
@@ -3290,9 +3290,9 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                   <>
                     <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
                       <div>
-                        <p className="text-base font-semibold text-foreground">Select Engagement</p>
+                        <p className="text-[13px] font-semibold text-foreground">Select Engagement</p>
                         {saveDocType && (
-                          <p className="text-base text-muted-foreground mt-0.5">
+                          <p className="text-[13px] text-muted-foreground mt-0.5">
                             Saving: <span className="font-medium text-primary">{DOC_TYPES.find(d => d.id === saveDocType)?.label}</span>
                           </p>
                         )}
@@ -3305,7 +3305,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                             value={engSearch}
                             onChange={e => setEngSearch(e.target.value)}
                             placeholder="Search"
-                            className="h-8 pl-8 pr-3 w-40 text-base border border-border rounded-[8px] bg-background focus:outline-none focus:border-primary/50"
+                            className="h-8 pl-8 pr-3 w-40 text-[13px] border border-border rounded-[8px] bg-background focus:outline-none focus:border-primary/50"
                           />
                         </div>
                         <button onClick={closeSaveFlow} className="p-1.5 rounded-[6px] hover:bg-muted transition-colors text-muted-foreground">
@@ -3314,11 +3314,11 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                       </div>
                     </div>
                     <div className="overflow-auto flex-1">
-                      <table className="w-full text-base">
+                      <table className="w-full text-[13px]">
                         <thead className="sticky top-0 bg-muted/40 border-b border-border">
                           <tr>
                             {["Client Name","Engagement ID","Year End","Status","Date Created"].map(h => (
-                              <th key={h} className="px-4 py-2.5 text-left text-base font-semibold text-foreground/70 whitespace-nowrap">
+                              <th key={h} className="px-4 py-2.5 text-left text-[13px] font-semibold text-foreground/70 whitespace-nowrap">
                                 <span className="inline-flex items-center gap-1">{h} <ChevronDown className="h-3 w-3 opacity-40" /></span>
                               </th>
                             ))}
@@ -3334,16 +3334,16 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                                   className={`border-b border-border/50 cursor-pointer transition-colors ${isSel ? "bg-primary/[0.06]" : "hover:bg-muted/40"}`}
                                 >
                                   <td className="px-4 py-3"><span className={`font-medium ${isSel ? "text-primary" : "text-foreground"}`}>{eng.client}</span></td>
-                                  <td className="px-4 py-3 text-muted-foreground font-mono text-base">{eng.engId}</td>
+                                  <td className="px-4 py-3 text-muted-foreground font-mono text-[13px]">{eng.engId}</td>
                                   <td className="px-4 py-3 text-muted-foreground">{eng.yearEnd}</td>
                                   <td className="px-4 py-3">
-                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-base font-medium border ${
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[13px] font-medium border ${
                                       eng.status === "In Progress"
                                         ? "bg-primary/5 text-primary border-primary/20"
                                         : "bg-amber-50 text-amber-700 border-amber-200"
                                     }`}>{eng.status}</span>
                                   </td>
-                                  <td className="px-4 py-3 text-muted-foreground text-base">{eng.created}</td>
+                                  <td className="px-4 py-3 text-muted-foreground text-[13px]">{eng.created}</td>
                                 </tr>
                               );
                             })}
@@ -3353,7 +3353,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                     <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20 shrink-0">
                       <button
                         onClick={() => setSaveFlowStep("doc-type")}
-                        className="inline-flex items-center gap-1.5 h-8 px-3 text-base font-medium text-muted-foreground hover:text-foreground border border-border rounded-[8px] bg-background hover:bg-muted transition-colors"
+                        className="inline-flex items-center gap-1.5 h-8 px-3 text-[13px] font-medium text-muted-foreground hover:text-foreground border border-border rounded-[8px] bg-background hover:bg-muted transition-colors"
                       >
                         <ChevronDown className="h-3.5 w-3.5 rotate-90" /> Back
                       </button>
@@ -3367,7 +3367,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
                           const eng = MOCK_ENGAGEMENTS.find(e => e.id === selectedEngId);
                           toast.success(`Saved to ${eng?.client} · ${eng?.engId}`);
                         }}
-                        className={`inline-flex items-center gap-1.5 h-8 px-4 text-base font-medium rounded-[8px] transition-colors ${
+                        className={`inline-flex items-center gap-1.5 h-8 px-4 text-[13px] font-medium rounded-[8px] transition-colors ${
                           !selectedEngId || saveFlowStep === "saving"
                             ? "bg-primary/30 text-primary-foreground/50 cursor-not-allowed"
                             : "bg-primary text-primary-foreground hover:bg-primary/90"
