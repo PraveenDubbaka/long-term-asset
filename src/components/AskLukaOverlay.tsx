@@ -3422,16 +3422,14 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
                                 {/* ── Engagement Check: past → compact selection summary ── */}
                                 {reached("engagement-check") && past("engagement-check") && (
-                                  <div className="space-y-2">
-                                    <p className="text-[14px] font-medium" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Connect to an Engagement</p>
-                                    {invSelectedEngId
-                                      ? <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-green-50 border border-green-200">
-                                          <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
-                                          <span className="text-[14px] text-green-800 font-medium" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>Connected to <strong>{invSelectedEngId}</strong></span>
-                                        </div>
-                                      : <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-muted border border-border">
-                                          <span className="text-[14px]" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Skipped — no engagement selected</span>
-                                        </div>}
+                                  <div style={{ borderTop: "1px solid hsl(220 20% 92%)" }}>
+                                    <div className="flex items-start gap-3 py-2.5">
+                                      <div className="flex-1">
+                                        <p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Connect to an Engagement</p>
+                                        <p className="text-[13px] mt-0.5" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invSelectedEngId ?? "Skipped — no engagement selected"}</p>
+                                      </div>
+                                      <CheckCircle2 size={15} className="shrink-0 mt-0.5" style={{ color: invSelectedEngId ? "hsl(145 63% 42%)" : "hsl(222 20% 75%)" }} />
+                                    </div>
                                   </div>
                                 )}
 
@@ -3478,12 +3476,16 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
                                 {/* ── TB Check: past → keep full analysis visible ── */}
                                 {reached("tb-check") && past("tb-check") && invTBAnalysis && (
-                                  <div className="space-y-3">
-                                    <div className="flex items-center gap-2">
-                                      <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
-                                      <span className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Trial Balance found in <strong>{invSelectedEngId}</strong></span>
+                                  <div>
+                                    <div style={{ borderTop: "1px solid hsl(220 20% 92%)" }}>
+                                      <div className="flex items-start gap-3 py-2.5">
+                                        <div className="flex-1">
+                                          <p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Trial Balance found</p>
+                                          <p className="text-[13px] mt-0.5" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invSelectedEngId}</p>
+                                        </div>
+                                        <CheckCircle2 size={15} className="shrink-0 mt-0.5" style={{ color: "hsl(145 63% 42%)" }} />
+                                      </div>
                                     </div>
-                                    <p className="text-[14px] font-semibold" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Trial Balance Analysis</p>
                                     <div>
                                       <div className="flex items-start gap-3 py-2.5" style={{ borderTop: "1px solid hsl(220 20% 92%)" }}>
                                         <span className="text-[13px] font-semibold w-4 shrink-0 mt-0.5" style={{ color: "hsl(222 20% 65%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>1</span>
