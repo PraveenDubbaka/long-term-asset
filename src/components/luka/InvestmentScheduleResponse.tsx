@@ -2915,16 +2915,6 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
               {brokerCount ?? 1} broker{(brokerCount ?? 1) !== 1 ? 's' : ''}
             </span>
           </div>
-          {onEditTransactions && (
-            <button
-              onClick={() => {
-                if (window.confirm('Changing setup questions will regenerate the schedule. Return to setup?')) {
-                  onEditTransactions();
-                }
-              }}
-              className="text-base text-primary hover:underline underline-offset-2 transition-colors shrink-0 ml-2"
-            >Edit settings</button>
-          )}
         </div>
       )}
 

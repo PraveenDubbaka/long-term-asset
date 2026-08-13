@@ -3423,12 +3423,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                 {/* ── Engagement Check: past → compact selection summary ── */}
                                 {reached("engagement-check") && past("engagement-check") && (
                                   <div style={{ borderTop: "1px solid hsl(220 20% 92%)" }}>
-                                    <div className="flex items-start gap-3 py-2.5">
-                                      <div className="flex-1">
-                                        <p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Connect to an Engagement</p>
-                                        <p className="text-[13px] mt-0.5" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invSelectedEngId ?? "Skipped — no engagement selected"}</p>
+                                    <div className="flex items-center gap-3 py-2">
+                                      <div className="flex-1 flex items-center gap-1.5 min-w-0">
+                                        <p className="text-[13px] font-medium shrink-0" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Connect to an Engagement</p>
+                                        <span className="text-[12px] shrink-0" style={{ color: "hsl(222 20% 78%)" }}>·</span>
+                                        <p className="text-[13px] truncate" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invSelectedEngId ?? "Skipped"}</p>
                                       </div>
-                                      <CheckCircle2 size={15} className="shrink-0 mt-0.5" style={{ color: invSelectedEngId ? "hsl(145 63% 42%)" : "hsl(222 20% 75%)" }} />
+                                      <CheckCircle2 size={14} className="shrink-0" style={{ color: invSelectedEngId ? "hsl(145 63% 42%)" : "hsl(222 20% 75%)" }} />
                                     </div>
                                   </div>
                                 )}
@@ -3478,38 +3479,42 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                 {reached("tb-check") && past("tb-check") && invTBAnalysis && (
                                   <div>
                                     <div style={{ borderTop: "1px solid hsl(220 20% 92%)" }}>
-                                      <div className="flex items-start gap-3 py-2.5">
-                                        <div className="flex-1">
-                                          <p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Trial Balance found</p>
-                                          <p className="text-[13px] mt-0.5" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invSelectedEngId}</p>
+                                      <div className="flex items-center gap-3 py-2">
+                                        <div className="flex-1 flex items-center gap-1.5 min-w-0">
+                                          <p className="text-[13px] font-medium shrink-0" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Trial Balance found</p>
+                                          <span className="text-[12px] shrink-0" style={{ color: "hsl(222 20% 78%)" }}>·</span>
+                                          <p className="text-[13px] truncate" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invSelectedEngId}</p>
                                         </div>
-                                        <CheckCircle2 size={15} className="shrink-0 mt-0.5" style={{ color: "hsl(145 63% 42%)" }} />
+                                        <CheckCircle2 size={14} className="shrink-0" style={{ color: "hsl(145 63% 42%)" }} />
                                       </div>
                                     </div>
                                     <div>
-                                      <div className="flex items-start gap-3 py-2.5" style={{ borderTop: "1px solid hsl(220 20% 92%)" }}>
-                                        <span className="text-[13px] font-semibold w-4 shrink-0 mt-0.5" style={{ color: "hsl(222 20% 65%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>1</span>
-                                        <div className="flex-1"><p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Years of TB detected</p><p className="text-[13px] mt-0.5" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invTBAnalysis.years}</p></div>
-                                        <CheckCircle2 size={15} className="shrink-0 mt-0.5" style={{ color: "hsl(145 63% 42%)" }} />
-                                      </div>
-                                      <div className="flex items-start gap-3 py-2.5" style={{ borderTop: "1px solid hsl(220 20% 92%)" }}>
-                                        <span className="text-[13px] font-semibold w-4 shrink-0 mt-0.5" style={{ color: "hsl(222 20% 65%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>2</span>
-                                        <div className="flex-1">
-                                          <p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Bank account</p>
-                                          <div className="mt-1.5">
-                                            {invSelectedBankAccount && (
-                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[13px] font-medium bg-green-50 text-green-800 border border-green-200">
-                                                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />{invSelectedBankAccount}
-                                              </span>
-                                            )}
-                                          </div>
+                                      <div className="flex items-center gap-3 py-2" style={{ borderTop: "1px solid hsl(220 20% 92%)" }}>
+                                        <span className="text-[12px] font-semibold w-4 shrink-0" style={{ color: "hsl(222 20% 65%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>1</span>
+                                        <div className="flex-1 flex items-center gap-1.5 min-w-0">
+                                          <p className="text-[13px] font-medium shrink-0" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Years of TB detected</p>
+                                          <span className="text-[12px] shrink-0" style={{ color: "hsl(222 20% 78%)" }}>·</span>
+                                          <p className="text-[13px] truncate" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invTBAnalysis.years}</p>
                                         </div>
-                                        <CheckCircle2 size={15} className="shrink-0 mt-0.5" style={{ color: "hsl(145 63% 42%)" }} />
+                                        <CheckCircle2 size={14} className="shrink-0" style={{ color: "hsl(145 63% 42%)" }} />
                                       </div>
-                                      <div className="flex items-start gap-3 py-2.5" style={{ borderTop: "1px solid hsl(220 20% 92%)" }}>
-                                        <span className="text-[13px] font-semibold w-4 shrink-0 mt-0.5" style={{ color: "hsl(222 20% 65%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>3</span>
-                                        <div className="flex-1"><p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Recording method</p><p className="text-[13px] mt-0.5" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invTBAnalysis.recordingMethod}</p></div>
-                                        <CheckCircle2 size={15} className="shrink-0 mt-0.5" style={{ color: "hsl(145 63% 42%)" }} />
+                                      <div className="flex items-center gap-3 py-2" style={{ borderTop: "1px solid hsl(220 20% 92%)" }}>
+                                        <span className="text-[12px] font-semibold w-4 shrink-0" style={{ color: "hsl(222 20% 65%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>2</span>
+                                        <div className="flex-1 flex items-center gap-1.5 min-w-0">
+                                          <p className="text-[13px] font-medium shrink-0" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Bank account</p>
+                                          <span className="text-[12px] shrink-0" style={{ color: "hsl(222 20% 78%)" }}>·</span>
+                                          <p className="text-[13px] truncate" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invSelectedBankAccount ?? "—"}</p>
+                                        </div>
+                                        <CheckCircle2 size={14} className="shrink-0" style={{ color: "hsl(145 63% 42%)" }} />
+                                      </div>
+                                      <div className="flex items-center gap-3 py-2" style={{ borderTop: "1px solid hsl(220 20% 92%)" }}>
+                                        <span className="text-[12px] font-semibold w-4 shrink-0" style={{ color: "hsl(222 20% 65%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>3</span>
+                                        <div className="flex-1 flex items-center gap-1.5 min-w-0">
+                                          <p className="text-[13px] font-medium shrink-0" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Recording method</p>
+                                          <span className="text-[12px] shrink-0" style={{ color: "hsl(222 20% 78%)" }}>·</span>
+                                          <p className="text-[13px] truncate" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invTBAnalysis.recordingMethod}</p>
+                                        </div>
+                                        <CheckCircle2 size={14} className="shrink-0" style={{ color: "hsl(145 63% 42%)" }} />
                                       </div>
                                     </div>
                                   </div>
