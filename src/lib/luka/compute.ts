@@ -152,6 +152,7 @@ export function compute(
         unitsIn: tx.units, unitsOut: 0,
         price: tx.price, costIn: costCAD, costOut: 0,
         openingCost: 0, openingUnits: 0, cumUnits: 0, cumCost: 0, wac: 0,
+        eligibleDividend: costCAD,
         notes: "DRIP increases units & cost",
       });
     } else if (tx.type === "Return of Capital") {
