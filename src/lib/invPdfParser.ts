@@ -584,7 +584,7 @@ function parseBmoText(pages: string[], sourceFile: string): ParsedInvTransaction
 
       for (let w = Math.min(5, words.length); w >= 1; w--) {
         const candidate = words.slice(0, w).join(' ').toLowerCase();
-        if (ACTIVITY_TYPE_MAP.some(([k]) => candidate === k || candidate.includes(k))) {
+        if (ACTIVITY_TYPE_MAP.some(([k]) => candidate === k || k.includes(candidate))) {
           activity = words.slice(0, w).join(' ');
           securityFromFirst = words.slice(w).join(' ');
           break;
@@ -598,8 +598,6 @@ function parseBmoText(pages: string[], sourceFile: string): ParsedInvTransaction
       secStr = secStr.replace(/\s+(-?[\d,]+\.\d+)\s*$/, '').trim();
       secStr = secStr.replace(/\s+(-?[\d,]+\.\d+)\s*$/, '').trim();
       secStr = secStr.replace(/\s+-?[\d,]+\s*$/, '').trim();
-      // If what remains is purely numeric (qty/price artifact with no text), blank it
-      if (/^-?[\d,. ]+$/.test(secStr)) secStr = '';
 
       // ── Append continuation lines (e.g. security name wrapping to next line)
       const security = [secStr, ...continuationParts].filter(Boolean).join(' ').trim();
