@@ -1195,6 +1195,16 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
                       <td className="px-2.5 py-2 text-right tabular-nums border-r border-border/30 text-muted-foreground/60">{fmtUnits(0)}</td>
                       <td className="px-2.5 py-2 text-right tabular-nums" style={{ borderRight: "3px solid hsl(var(--foreground) / 0.3)" }}>{fmtUnits(s.closingUnits)}</td>
                       <td className="px-2.5 py-2 text-right tabular-nums">{fmtNum(s.closingWac, 4)}</td>
+                      {(["eligibleDividend","capitalDividend","otherIncome","foreignIncome","nonResidentTax"] as const).map((field, fi) => {
+                        const total = allRows.reduce((sum, r) => sum + (r[field] ?? 0), 0);
+                        return (
+                          <td key={field} className={`px-2.5 py-2 text-right tabular-nums ${fi < 4 ? "border-r border-border/30" : ""}`} style={fi === 0 ? { borderLeft: "3px solid hsl(var(--foreground) / 0.3)" } : {}}>
+                            {total > 0
+                              ? <span className={field === "nonResidentTax" ? "text-red-600 font-semibold" : "text-emerald-700 font-semibold"}>{fmtCAD(total)}</span>
+                              : <span className="text-muted-foreground/25">—</span>}
+                          </td>
+                        );
+                      })}
                     </tr>
 
                   </Fragment>
