@@ -509,6 +509,9 @@ function parseBmoText(pages: string[], sourceFile: string): ParsedInvTransaction
     /^ASOF\d/i,
     /^\d{4}-[\d-]{6,}/,
     /^2\d{3}-\d{4}-\d/,
+    // Page number artifacts: "4 of 7", "Page 4 of 7", "4of7"
+    /^(?:page\s+)?\d+\s*of\s*\d+$/i,
+    /^\d+\s+\d+\s+of\s+\d+$/i,
   ];
 
   // Activity types that have no associated security (cash movements)
@@ -595,6 +598,8 @@ function parseBmoText(pages: string[], sourceFile: string): ParsedInvTransaction
       secStr = secStr.replace(/\s+(-?[\d,]+\.\d+)\s*$/, '').trim();
       secStr = secStr.replace(/\s+(-?[\d,]+\.\d+)\s*$/, '').trim();
       secStr = secStr.replace(/\s+-?[\d,]+\s*$/, '').trim();
+      // If what remains is purely numeric (qty/price artifact with no text), blank it
+      if (/^-?[\d,. ]+$/.test(secStr)) secStr = '';
 
       // ── Append continuation lines (e.g. security name wrapping to next line)
       const security = [secStr, ...continuationParts].filter(Boolean).join(' ').trim();
