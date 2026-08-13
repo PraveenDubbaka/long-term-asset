@@ -3423,14 +3423,14 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                 {/* ── Engagement Check: past → compact selection summary ── */}
                                 {reached("engagement-check") && past("engagement-check") && (
                                   <div className="space-y-2">
-                                    <p className="text-base text-muted-foreground font-medium">Connect to an Engagement</p>
+                                    <p className="text-[14px] font-medium" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Connect to an Engagement</p>
                                     {invSelectedEngId
                                       ? <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-green-50 border border-green-200">
                                           <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
-                                          <span className="text-base text-green-800 font-medium">Connected to <strong>{invSelectedEngId}</strong></span>
+                                          <span className="text-[14px] text-green-800 font-medium" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>Connected to <strong>{invSelectedEngId}</strong></span>
                                         </div>
                                       : <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-muted border border-border">
-                                          <span className="text-base text-muted-foreground">Skipped — no engagement selected</span>
+                                          <span className="text-[14px]" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Skipped — no engagement selected</span>
                                         </div>}
                                   </div>
                                 )}
@@ -3454,21 +3454,22 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                     <div className="rounded-[12px] border border-red-200 bg-red-50 px-4 py-3 space-y-2">
                                       <div className="flex items-center gap-2">
                                         <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
-                                        <p className="text-base font-semibold text-red-900">Source Connection Detected</p>
+                                        <p className="text-[14px] font-semibold text-red-900" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>Source Connection Detected</p>
                                       </div>
-                                      <p className="text-base text-red-800 leading-relaxed">
+                                      <p className="text-[14px] text-red-800 leading-relaxed" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
                                         The engagement <strong>{invSelectedEngId}</strong> is connected to{" "}
                                         <strong className="capitalize">{invSourceConnected}</strong>. The Investment Schedule
                                         workpaper cannot be generated for source-connected engagements — data must be imported
                                         directly from brokerage statements.
                                       </p>
-                                      <div className="pt-1 flex items-center gap-2 text-base text-red-700 font-medium">
+                                      <div className="pt-1 flex items-center gap-2 text-[14px] text-red-700 font-medium" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
                                         <span>To proceed, select a non-source engagement (e.g. <strong>Phoenix Marie / COM-DEF-May312024</strong>)</span>
                                       </div>
                                     </div>
                                     <button
                                       onClick={() => { setInvSelectedEngId(null); setInvEngagementConnected(false); setInvSourceConnected(null); setInvSchedPhase("engagement-check"); }}
-                                      className="h-8 px-4 text-base font-medium rounded-[8px] border border-border bg-background text-foreground hover:bg-muted transition-colors"
+                                      className="h-8 px-4 text-[14px] font-medium rounded-[8px] border border-border bg-background text-foreground hover:bg-muted transition-colors"
+                                      style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}
                                     >
                                       ← Choose a different engagement
                                     </button>
@@ -3483,27 +3484,30 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                       <span className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Trial Balance found in <strong>{invSelectedEngId}</strong></span>
                                     </div>
                                     <p className="text-[14px] font-semibold" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Trial Balance Analysis</p>
-                                    <div className="space-y-3">
-                                      <div className="flex items-start gap-3">
-                                        <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-base font-bold shrink-0">1</span>
-                                        <div><p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Years of TB detected</p><p className="text-[14px]" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invTBAnalysis.years}</p></div>
+                                    <div>
+                                      <div className="flex items-start gap-3 py-2.5" style={{ borderTop: "1px solid hsl(220 20% 92%)" }}>
+                                        <span className="text-[13px] font-semibold w-4 shrink-0 mt-0.5" style={{ color: "hsl(222 20% 65%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>1</span>
+                                        <div className="flex-1"><p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Years of TB detected</p><p className="text-[13px] mt-0.5" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invTBAnalysis.years}</p></div>
+                                        <CheckCircle2 size={15} className="shrink-0 mt-0.5" style={{ color: "hsl(145 63% 42%)" }} />
                                       </div>
-                                      <div className="flex items-start gap-3">
-                                        <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-base font-bold shrink-0">2</span>
-                                        <div>
+                                      <div className="flex items-start gap-3 py-2.5" style={{ borderTop: "1px solid hsl(220 20% 92%)" }}>
+                                        <span className="text-[13px] font-semibold w-4 shrink-0 mt-0.5" style={{ color: "hsl(222 20% 65%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>2</span>
+                                        <div className="flex-1">
                                           <p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Bank account</p>
-                                          <div className="mt-2">
+                                          <div className="mt-1.5">
                                             {invSelectedBankAccount && (
-                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-[13px] font-medium bg-green-50 text-green-800 border border-green-200">
+                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[13px] font-medium bg-green-50 text-green-800 border border-green-200">
                                                 <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />{invSelectedBankAccount}
                                               </span>
                                             )}
                                           </div>
                                         </div>
+                                        <CheckCircle2 size={15} className="shrink-0 mt-0.5" style={{ color: "hsl(145 63% 42%)" }} />
                                       </div>
-                                      <div className="flex items-start gap-3">
-                                        <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-700 text-base font-bold shrink-0">3</span>
-                                        <div><p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Recording method</p><p className="text-[14px]" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invTBAnalysis.recordingMethod}</p></div>
+                                      <div className="flex items-start gap-3 py-2.5" style={{ borderTop: "1px solid hsl(220 20% 92%)" }}>
+                                        <span className="text-[13px] font-semibold w-4 shrink-0 mt-0.5" style={{ color: "hsl(222 20% 65%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>3</span>
+                                        <div className="flex-1"><p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Recording method</p><p className="text-[13px] mt-0.5" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invTBAnalysis.recordingMethod}</p></div>
+                                        <CheckCircle2 size={15} className="shrink-0 mt-0.5" style={{ color: "hsl(145 63% 42%)" }} />
                                       </div>
                                     </div>
                                   </div>
@@ -3515,10 +3519,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                     {/* Step 1: Searching */}
                                     {invTBChecking && (
                                       <div className="flex items-center gap-2 py-1">
-                                        <Loader2 className="h-5 w-5 text-primary shrink-0 animate-spin" />
-                                        <span className="text-base text-foreground luka-thinking-text">
-                                          Searching for Trial Balance in <strong>{invSelectedEngId}</strong>…
-                                        </span>
+                                        <span className="text-[14px] font-semibold italic" style={{ color: "hsl(222 30% 22%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Searching Trial Balance in <strong>{invSelectedEngId}</strong>…</span>
+                                        <span className="flex items-center gap-1">{[0,1,2].map(i => <motion.span key={i} className="w-1.5 h-1.5 rounded-full" style={{ background: "hsl(265 75% 60%)" }} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.25 }} />)}</span>
                                       </div>
                                     )}
 
@@ -3526,11 +3528,11 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                     {!invTBChecking && invTBFound === false && (
                                       <div className="space-y-2">
                                         <div className="rounded-[12px] border border-red-200 bg-red-50 px-4 py-3 space-y-1">
-                                          <div className="flex items-center gap-2"><AlertCircle className="h-4 w-4 text-red-600 shrink-0" /><p className="text-base font-semibold text-red-900">No Trial Balance Found</p></div>
-                                          <p className="text-base text-red-800 leading-relaxed">No Trial Balance was found in <strong>{invSelectedEngId}</strong>. The Investment Schedule workpaper requires a Trial Balance to reconcile investment account balances.</p>
+                                          <div className="flex items-center gap-2"><AlertCircle className="h-4 w-4 text-red-600 shrink-0" /><p className="text-[14px] font-semibold text-red-900" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>No Trial Balance Found</p></div>
+                                          <p className="text-[14px] text-red-800 leading-relaxed" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>No Trial Balance was found in <strong>{invSelectedEngId}</strong>. The Investment Schedule workpaper requires a Trial Balance to reconcile investment account balances.</p>
                                           <div className="pt-1 space-y-1">
-                                            <p className="text-base text-red-700 font-semibold">To proceed:</p>
-                                            <ol className="text-base text-red-700 space-y-0.5 pl-4 list-decimal">
+                                            <p className="text-[14px] text-red-700 font-semibold" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>To proceed:</p>
+                                            <ol className="text-[14px] text-red-700 space-y-0.5 pl-4 list-decimal" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
                                               <li>Go to <strong>Engagements → {invSelectedEngId}</strong></li>
                                               <li>Navigate to <strong>TB / Trial Balance</strong> section</li>
                                               <li>Upload or generate a Trial Balance for the engagement</li>
@@ -3538,7 +3540,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             </ol>
                                           </div>
                                         </div>
-                                        <button onClick={() => { setInvSelectedEngId(null); setInvEngagementConnected(false); setInvSchedPhase("engagement-check"); }} className="h-8 px-4 text-base font-medium rounded-[8px] border border-border bg-background text-foreground hover:bg-muted transition-colors">← Choose a different engagement</button>
+                                        <button onClick={() => { setInvSelectedEngId(null); setInvEngagementConnected(false); setInvSchedPhase("engagement-check"); }} className="h-8 px-4 text-[14px] font-medium rounded-[8px] border border-border bg-background text-foreground hover:bg-muted transition-colors" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>← Choose a different engagement</button>
                                       </div>
                                     )}
 
@@ -3546,55 +3548,61 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                     {!invTBChecking && invTBFound === true && (
                                       <div className="flex items-center gap-2">
                                         <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
-                                        <span className="text-base text-foreground font-medium">Trial Balance found in <strong>{invSelectedEngId}</strong></span>
+                                        <span className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Trial Balance found in <strong>{invSelectedEngId}</strong></span>
                                       </div>
                                     )}
 
                                     {/* Step 3: Analyzing */}
                                     {invTBAnalyzing && (
                                       <div className="flex items-center gap-2">
-                                        <Loader2 className="h-5 w-5 text-primary shrink-0 animate-spin" />
-                                        <span className="text-base text-foreground luka-thinking-text">Analysing Trial Balance structure…</span>
+                                        <span className="text-[14px] font-semibold italic" style={{ color: "hsl(222 30% 22%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Analysing Trial Balance structure…</span>
+                                        <span className="flex items-center gap-1">{[0,1,2].map(i => <motion.span key={i} className="w-1.5 h-1.5 rounded-full" style={{ background: "hsl(265 75% 60%)" }} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.25 }} />)}</span>
                                       </div>
                                     )}
 
                                     {/* Step 4: Analysis findings — revealed sequentially */}
                                     {invTBAnalysis && !invTBAnalyzing && (
-                                      <div className="space-y-3">
-                                        <p className="text-base font-semibold text-foreground">Trial Balance Analysis</p>
-                                        <div className="space-y-3">
-                                          {invTBAnalysisStep >= 1 && (
-                                            <div className="flex items-start gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
-                                              <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-base font-bold shrink-0">1</span>
-                                              <div><p className="text-base font-medium text-foreground">Years of TB detected</p><p className="text-base text-muted-foreground">{invTBAnalysis.years}</p></div>
+                                      <div>
+                                        <p className="text-[14px] font-semibold mb-1" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Trial Balance Analysis</p>
+                                        {invTBAnalysisStep >= 1 && (
+                                          <div className="animate-in fade-in duration-300" style={{ borderTop: "1px solid hsl(220 20% 92%)" }}>
+                                            <div className="flex items-start gap-3 py-2.5">
+                                              <span className="text-[13px] font-semibold w-4 shrink-0 mt-0.5" style={{ color: "hsl(222 20% 65%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>1</span>
+                                              <div className="flex-1"><p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Years of TB detected</p><p className="text-[13px] mt-0.5" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invTBAnalysis.years}</p></div>
+                                              <CheckCircle2 size={15} className="shrink-0 mt-0.5" style={{ color: "hsl(145 63% 42%)" }} />
                                             </div>
-                                          )}
-                                          {invTBAnalysisStep >= 2 && (
-                                            <div className="flex items-start gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
-                                              <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-100 text-green-700 text-base font-bold shrink-0">2</span>
-                                              <div>
-                                                <p className="text-base font-medium text-foreground">Investment accounts present ({invTBAnalysis.investmentAccounts.length})</p>
-                                                <div className="flex flex-wrap gap-2 mt-2">
-                                                  {invTBAnalysis.investmentAccounts.map(a => <span key={a} className="inline-flex items-center px-2.5 py-1.5 rounded-[6px] text-base font-medium bg-primary/8 text-primary border border-primary/15">{a}</span>)}
+                                          </div>
+                                        )}
+                                        {invTBAnalysisStep >= 2 && (
+                                          <div className="animate-in fade-in duration-300" style={{ borderTop: "1px solid hsl(220 20% 92%)" }}>
+                                            <div className="flex items-start gap-3 py-2.5">
+                                              <span className="text-[13px] font-semibold w-4 shrink-0 mt-0.5" style={{ color: "hsl(222 20% 65%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>2</span>
+                                              <div className="flex-1">
+                                                <p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Investment accounts present ({invTBAnalysis.investmentAccounts.length})</p>
+                                                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                                  {invTBAnalysis.investmentAccounts.map(a => <span key={a} className="inline-flex items-center px-2 py-1 rounded-[5px] text-[12px] font-medium" style={{ background: "hsl(265 75% 96%)", color: "hsl(265 65% 45%)", border: "1px solid hsl(265 60% 88%)" }}>{a}</span>)}
                                                 </div>
                                               </div>
+                                              <CheckCircle2 size={15} className="shrink-0 mt-0.5" style={{ color: "hsl(145 63% 42%)" }} />
                                             </div>
-                                          )}
-                                          {invTBAnalysisStep >= 3 && (
-                                            <div className="flex items-start gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
-                                              <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-base font-bold shrink-0">3</span>
+                                          </div>
+                                        )}
+                                        {invTBAnalysisStep >= 3 && (
+                                          <div className="animate-in fade-in duration-300" style={{ borderTop: "1px solid hsl(220 20% 92%)" }}>
+                                            <div className="flex items-start gap-3 py-2.5">
+                                              <span className="text-[13px] font-semibold w-4 shrink-0 mt-0.5" style={{ color: "hsl(222 20% 65%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>3</span>
                                               <div className="flex-1">
-                                                <p className="text-base font-medium text-foreground">
+                                                <p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
                                                   {invTBAnalysis.bankAccounts.length === 1 ? "Bank account" : `Bank accounts detected (${invTBAnalysis.bankAccounts.length}) — select one to use`}
                                                 </p>
                                                 {invTBAnalysis.bankAccounts.length === 1 ? (
-                                                  <div className="mt-2">
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-base font-medium bg-green-50 text-green-800 border border-green-200">
+                                                  <div className="mt-1.5">
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[13px] font-medium bg-green-50 text-green-800 border border-green-200">
                                                       <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />{invTBAnalysis.bankAccounts[0]}
                                                     </span>
                                                   </div>
                                                 ) : (
-                                                  <div className="mt-2 relative w-full max-w-xs">
+                                                  <div className="mt-1.5 relative w-full max-w-xs">
                                                     <select
                                                       value={invSelectedBankAccount ?? ""}
                                                       onChange={e => setInvSelectedBankAccount(e.target.value || null)}
@@ -3607,19 +3615,25 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   </div>
                                                 )}
                                               </div>
+                                              {invSelectedBankAccount
+                                                ? <CheckCircle2 size={15} className="shrink-0 mt-0.5" style={{ color: "hsl(145 63% 42%)" }} />
+                                                : <motion.div className="w-[15px] h-[15px] rounded-full shrink-0 mt-0.5" style={{ border: "2px solid hsl(220 20% 85%)" }} animate={{ borderColor: ["hsl(220 20% 85%)", "hsl(265 75% 60%)", "hsl(220 20% 85%)"] }} transition={{ duration: 1.7, repeat: Infinity }} />}
                                             </div>
-                                          )}
-                                          {invTBAnalysisStep >= 4 && invSelectedBankAccount && (
-                                            <div className="flex items-start gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
-                                              <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-700 text-base font-bold shrink-0">4</span>
-                                              <div><p className="text-base font-medium text-foreground">Recording method</p><p className="text-base text-muted-foreground">{invTBAnalysis.recordingMethod}</p></div>
-                                            </div>
-                                          )}
-                                        </div>
+                                          </div>
+                                        )}
                                         {invTBAnalysisStep >= 4 && invSelectedBankAccount && (
-                                          <div className="flex items-center gap-2 pt-1 animate-in fade-in duration-300">
-                                            <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" />
-                                            <span className="text-base text-muted-foreground luka-thinking-text">Preparing upload prompt…</span>
+                                          <div className="animate-in fade-in duration-300" style={{ borderTop: "1px solid hsl(220 20% 92%)" }}>
+                                            <div className="flex items-start gap-3 py-2.5">
+                                              <span className="text-[13px] font-semibold w-4 shrink-0 mt-0.5" style={{ color: "hsl(222 20% 65%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>4</span>
+                                              <div className="flex-1"><p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Recording method</p><p className="text-[13px] mt-0.5" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invTBAnalysis.recordingMethod}</p></div>
+                                              <CheckCircle2 size={15} className="shrink-0 mt-0.5" style={{ color: "hsl(145 63% 42%)" }} />
+                                            </div>
+                                          </div>
+                                        )}
+                                        {invTBAnalysisStep >= 4 && invSelectedBankAccount && (
+                                          <div className="flex items-center gap-2 pt-2 animate-in fade-in duration-300">
+                                            <span className="text-[13px] italic" style={{ color: "hsl(222 20% 55%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Preparing upload prompt…</span>
+                                            <span className="flex items-center gap-1">{[0,1,2].map(i => <motion.span key={i} className="w-1.5 h-1.5 rounded-full" style={{ background: "hsl(265 75% 60%)" }} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.25 }} />)}</span>
                                           </div>
                                         )}
                                       </div>
@@ -3639,13 +3653,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                   if (!invSchedSrcLabel && allFiles.length === 0) return null;
                                   return (
                                   <div className="space-y-1.5">
-                                    <p className="text-base text-muted-foreground">
+                                    <p className="text-[14px] font-medium" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
                                       {invSchedSrcLabel?.startsWith("Plaid") ? "Connected via Plaid" : `Uploaded documents (${allFiles.length})`}
                                     </p>
                                     {invSchedSrcLabel?.startsWith("Plaid") ? (
                                       <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-green-50 border border-green-200">
                                         <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
-                                        <span className="text-base text-green-800 font-medium">{invSchedSrcLabel.replace("Plaid — ", "")}</span>
+                                        <span className="text-[14px] text-green-800 font-medium" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invSchedSrcLabel.replace("Plaid — ", "")}</span>
                                       </div>
                                     ) : (
                                       <div className="flex flex-wrap gap-2">
@@ -3654,7 +3668,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             <div className="w-5 h-5 rounded-[4px] flex items-center justify-center shrink-0 bg-primary/10">
                                               {f.ext === "pdf" ? <FileText className="h-4 w-4 text-primary shrink-0" /> : f.ext === "zip" ? <FolderOpen className="h-4 w-4 text-primary shrink-0" /> : <FileSpreadsheet className="h-4 w-4 text-primary shrink-0" />}
                                             </div>
-                                            <span className="flex-1 min-w-0 truncate text-base font-medium text-foreground">{f.name}</span>
+                                            <span className="flex-1 min-w-0 truncate text-[13px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{f.name}</span>
                                           </div>
                                         ))}
                                       </div>
@@ -3834,13 +3848,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             {/* ── Prior-year gate — conditional per scenario ── */}
                                             {invPriorScenario !== null && invSelectedBankAccount !== null && (
                                             <div className="space-y-2 mb-3">
-                                              <p className="text-base font-semibold text-foreground">Prior year opening balance</p>
+                                              <p className="text-[14px] font-semibold" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Prior year opening balance</p>
 
                                               {/* Scenario A — ROLL_FORWARD: prior year already in Countable */}
                                               {invPriorScenario === "ROLL_FORWARD" && (
                                                 <div className="flex items-center gap-2 px-3 py-2 rounded-[8px] bg-green-50 border border-green-200">
                                                   <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
-                                                  <span className="text-base text-green-800">
+                                                  <span className="text-[14px] text-green-800" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
                                                     Opening balances will be carried forward automatically from{" "}
                                                     <strong>{ENGAGEMENTS_PANEL.find(e => e.id === invSelectedEngId)?.priorEngagementId}</strong>.
                                                   </span>
@@ -3852,11 +3866,11 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                 <div className="space-y-2">
                                                   <div className="flex items-start gap-2 px-3 py-2 rounded-[8px] bg-amber-50 border border-amber-200">
                                                     <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                                                    <span className="text-base text-amber-900">
+                                                    <span className="text-[14px] text-amber-900" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
                                                       Prior year data detected in this trial balance. Upload last year's investment schedule to carry forward cost basis per security.
                                                     </span>
                                                   </div>
-                                                  <label className="flex items-center gap-2 px-3 py-2 rounded-[8px] border border-dashed border-border bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors text-base text-muted-foreground">
+                                                  <label className="flex items-center gap-2 px-3 py-2 rounded-[8px] border border-dashed border-border bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors text-[14px]" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
                                                     <Upload className="h-4 w-4 shrink-0" />
                                                     {invPriorScheduleFile
                                                       ? <span className="text-foreground font-medium">{invPriorScheduleFile.name}</span>
@@ -3878,7 +3892,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               {/* Scenario C — ASK: no prior year detected, ask user */}
                                               {invPriorScenario === "ASK" && invFirstYearAnswer === null && (
                                                 <div className="space-y-2">
-                                                  <p className="text-base text-foreground">Is this the first year of operations for this client?</p>
+                                                  <p className="text-[14px]" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Is this the first year of operations for this client?</p>
                                                   <div className="relative w-40">
                                                     <select
                                                       defaultValue=""
@@ -3900,10 +3914,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               {/* Scenario C — answered No: show prior schedule upload */}
                                               {invPriorScenario === "ASK" && invFirstYearAnswer === false && (
                                                 <div className="space-y-2">
-                                                  <label className="flex items-center gap-2 px-3 py-2 rounded-[8px] border border-dashed border-border bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors text-base text-muted-foreground">
+                                                  <label className="flex items-center gap-2 px-3 py-2 rounded-[8px] border border-dashed border-border bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors text-[14px]" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
                                                     <Upload className="h-4 w-4 shrink-0" />
                                                     {invPriorScheduleFile
-                                                      ? <span className="text-foreground font-medium">{invPriorScheduleFile.name}</span>
+                                                      ? <span className="font-medium" style={{ color: "hsl(222 35% 16%)" }}>{invPriorScheduleFile.name}</span>
                                                       : <span>Upload prior year investment schedule (XLSX or PDF)</span>}
                                                     <input type="file" accept=".xlsx,.xls,.pdf" className="hidden" onChange={e => {
                                                       const f = e.target.files?.[0];
@@ -3919,7 +3933,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   {!invPriorScheduleFile && (
                                                     <button
                                                       onClick={() => setInvOpeningBalMode("UPLOAD_PRIOR")}
-                                                      className="text-base text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+                                                      className="text-[14px] underline underline-offset-2 hover:text-foreground transition-colors"
+                                                      style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}
                                                     >Skip for now</button>
                                                   )}
                                                 </div>
@@ -3929,7 +3944,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               {invPriorScenario === "ASK" && invFirstYearAnswer === true && (
                                                 <div className="inline-flex items-center gap-2 px-3 py-2 rounded-[8px] bg-muted border border-border">
                                                   <Check className="h-4 w-4 text-muted-foreground shrink-0" />
-                                                  <span className="text-base text-muted-foreground">First year — opening balances default to zero.</span>
+                                                  <span className="text-[14px]" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>First year — opening balances default to zero.</span>
                                                 </div>
                                               )}
                                             </div>
@@ -3939,10 +3954,11 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             {invOpeningBalMode !== null && !invAssessmentDone && (
                                             <div className="space-y-3 mb-3">
                                               <div className="flex items-center justify-between">
-                                                <p className="text-base font-semibold text-foreground">Setup questions</p>
+                                                <p className="text-[14px] font-semibold" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Setup questions</p>
                                                 <button
                                                   onClick={() => { setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); }}
-                                                  className="flex items-center gap-1 text-base text-muted-foreground hover:text-foreground transition-colors"
+                                                  className="flex items-center gap-1 text-[14px] hover:text-foreground transition-colors"
+                                                  style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}
                                                 >
                                                   <ArrowLeft className="h-3.5 w-3.5" /> Back
                                                 </button>
@@ -3954,7 +3970,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               {/* Q1 — Valuation method */}
                                               <div className="rounded-[10px] border border-border bg-background p-3 space-y-2">
                                                 <div>
-                                                  <p className="text-base font-medium text-foreground">How does this client record investments?</p>
+                                                  <p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>How does this client record investments?</p>
                                                   {invDetectedValuation && (
                                                     <p className="text-[11px] text-muted-foreground mt-0.5">Auto-detected from trial balance accounts</p>
                                                   )}
@@ -3983,7 +3999,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               {/* Q2 — Recording level */}
                                               <div className="rounded-[10px] border border-border bg-background p-3 space-y-2">
                                                 <div>
-                                                  <p className="text-base font-medium text-foreground">How are investments recorded in the books?</p>
+                                                  <p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>How are investments recorded in the books?</p>
                                                   {invDetectedRecordingLevel && (
                                                     <p className="text-[11px] text-muted-foreground mt-0.5">Auto-detected from trial balance accounts</p>
                                                   )}
@@ -4007,7 +4023,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                 <div>
                                                   <button
                                                     onClick={() => setInvAssessmentDone(true)}
-                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-primary text-primary-foreground text-base font-medium hover:bg-primary/90 transition-colors"
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-primary text-primary-foreground text-[14px] font-medium hover:bg-primary/90 transition-colors"
                                                   >
                                                     Confirm and continue →
                                                   </button>
@@ -4019,14 +4035,15 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             {/* Assessment summary — collapsed after confirmed */}
                                             {invOpeningBalMode !== null && invAssessmentDone && (
                                               <div className="flex items-center justify-between px-3 py-2 rounded-[8px] bg-muted/30 border border-border mb-3">
-                                                <div className="flex items-center gap-2 flex-wrap text-[11px] text-muted-foreground">
-                                                  <span className="font-medium text-foreground text-base">Setup</span>
-                                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] bg-background border border-border text-base">{invValuationMethod === 'fairValue' ? 'Fair value' : 'Cost'}</span>
-                                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] bg-background border border-border text-base">{invRecordingLevel === 'security' ? 'By security' : invRecordingLevel === 'brokerage' ? 'By brokerage' : 'Hybrid'}</span>
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                  <span className="text-[14px] font-semibold" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Setup</span>
+                                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] bg-background border border-border text-[13px]" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invValuationMethod === 'fairValue' ? 'Fair value' : 'Cost'}</span>
+                                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] bg-background border border-border text-[13px]" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invRecordingLevel === 'security' ? 'By security' : invRecordingLevel === 'brokerage' ? 'By brokerage' : 'Hybrid'}</span>
                                                 </div>
                                                 <button
                                                   onClick={() => setInvAssessmentDone(false)}
-                                                  className="text-base text-primary hover:underline underline-offset-2 transition-colors shrink-0"
+                                                  className="text-[13px] text-primary hover:underline underline-offset-2 transition-colors shrink-0"
+                                                  style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}
                                                 >Edit</button>
                                               </div>
                                             )}
@@ -4057,10 +4074,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     </div>
                                                   </div>
                                                   <div>
-                                                    <p className="text-base font-semibold text-foreground">Import documents</p>
-                                                    <p className="text-base text-muted-foreground mt-0.5">Brokerage statements · Trade confirms<br />Statements · PDF · XLSX · CSV</p>
+                                                    <p className="text-[14px] font-semibold" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Import documents</p>
+                                                    <p className="text-[13px] mt-0.5" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Brokerage statements · Trade confirms<br />Statements · PDF · XLSX · CSV</p>
                                                   </div>
-                                                  <span className="inline-flex items-center gap-1 text-base font-medium text-primary group-hover:underline">
+                                                  <span className="inline-flex items-center gap-1 text-[13px] font-medium text-primary group-hover:underline" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
                                                     Click to browse or drag &amp; drop
                                                   </span>
                                                 </div>}
@@ -4068,7 +4085,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                 {/* OR — hidden once a method is chosen */}
                                                 {invInputMode === null && <div className="flex flex-col items-center justify-center px-3 gap-2">
                                                   <div className="w-px flex-1 bg-gradient-to-b from-transparent via-border to-transparent" />
-                                                  <span className="text-base font-bold text-muted-foreground/50">or</span>
+                                                  <span className="text-[13px] font-bold text-muted-foreground/50" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>or</span>
                                                   <div className="w-px flex-1 bg-gradient-to-b from-transparent via-border to-transparent" />
                                                 </div>}
 
