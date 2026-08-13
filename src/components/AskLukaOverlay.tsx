@@ -3477,7 +3477,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
                                 {/* ── TB Check: past → keep full analysis visible ── */}
                                 {reached("tb-check") && past("tb-check") && invTBAnalysis && (
-                                  <div style={{ marginTop: "-1.25rem" }}>
+                                  <div style={{ marginTop: "0" }}>
                                     <div style={{ borderTop: "1px solid hsl(220 20% 92%)" }}>
                                       <div className="flex items-center gap-3 py-2">
                                         <div className="flex-1 flex items-center gap-1.5 min-w-0">
