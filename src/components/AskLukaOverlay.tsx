@@ -40,6 +40,8 @@ import WorkspaceEmptyState from "@/components/dashboard/workspace/WorkspaceEmpty
 import AddEngagementModal from "@/components/dashboard/workspace/AddEngagementModal";
 import EngagementWorkspaceShell from "@/components/dashboard/workspace/EngagementWorkspaceShell";
 import lukaLogo from "@/assets/luka-logo.png";
+import lukaIdle from "@/assets/luka-idle.gif";
+import lukaResponding from "@/assets/luka-responding.gif";
 import quickbooksLogo from "@/assets/quickbooks-intuit-logo.png";
 import { useStore } from "@/store/useStore";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
@@ -2990,23 +2992,27 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                       </div>
                     </div>
                   ) : (
-                    <div className="px-6 py-4 space-y-4 min-w-0 max-w-full">
+                    <div className="w-full max-w-full md:max-w-[92%] lg:max-w-[960px] mx-auto px-6 py-8 space-y-8 min-w-0">
                       <div className="flex justify-end">
                         <div className="max-w-[80%] px-4 py-3 rounded-[12px] bg-primary text-primary-foreground text-base">{sentMessage}</div>
                       </div>
                       {(isThinking || aiResponse) && (
-                        <div className="flex items-start gap-3 min-w-0 max-w-full">
-                          <div className={cn("w-9 h-9 rounded-full bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(265_80%_55%)] flex items-center justify-center shrink-0", isThinking && "luka-thinking-spin")}>
-                            <LukaIcon size={16} />
+                        <div className="flex items-start gap-4 min-w-0 max-w-full">
+                          <div className="shrink-0 mt-0.5 w-8 h-8 flex items-center justify-center">
+                            <img
+                              src={isThinking ? lukaResponding : lukaIdle}
+                              alt="Luka"
+                              className={isThinking ? "w-11 h-11 object-contain -m-1.5" : "w-8 h-8 object-contain transition-transform duration-200 hover:scale-110"}
+                            />
                           </div>
-                          <div className="flex-1 pt-1.5 min-h-[28px] min-w-0">
+                          <div className="flex-1 pt-1 min-h-[28px] min-w-0">
                             {isThinking ? (
-                              <div className="flex items-center gap-2">
-                                <span className="text-base font-medium text-foreground luka-thinking-text">Thinking</span>
-                                <span className="flex gap-0.5">
-                                  <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-1" />
-                                  <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-2" />
-                                  <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-3" />
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[14px] font-semibold italic" style={{ color: "hsl(222 30% 22%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Thinking in progress</span>
+                                <span className="flex items-center gap-1">
+                                  {[0,1,2].map(i => (
+                                    <motion.span key={i} className="w-1.5 h-1.5 rounded-full" style={{ background: "hsl(265 75% 60%)" }} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.25 }} />
+                                  ))}
                                 </span>
                               </div>
                             ) : richResponseType === "lt-debt" ? (
@@ -3409,8 +3415,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                 {reached("thinking") && (
                                   <div className="py-1">
                                     {at("thinking")
-                                      ? <span className="text-base text-foreground luka-thinking-text">Checking your engagement setup…</span>
-                                      : <span className="inline-flex items-center gap-2 text-base text-muted-foreground"><Check className="w-4 h-4 text-green-600" />Checked engagement setup</span>}
+                                      ? <div className="flex items-center gap-2"><span className="text-[14px] font-semibold italic" style={{ color: "hsl(222 30% 22%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Checking your engagement setup…</span><span className="flex items-center gap-1">{[0,1,2].map(i => <motion.span key={i} className="w-1.5 h-1.5 rounded-full" style={{ background: "hsl(265 75% 60%)" }} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.25 }} />)}</span></div>
+                                      : <span className="inline-flex items-center gap-2 text-[14px]" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}><Check className="w-4 h-4 text-green-600" />Checked engagement setup</span>}
                                   </div>
                                 )}
 
@@ -3432,7 +3438,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                 {/* ── Engagement Check active ── */}
                                 {at("engagement-check") && (
                                   <div className="flex items-start gap-3 py-1">
-                                    <p className="text-base text-foreground leading-relaxed flex-1">
+                                    <p className="text-[15px] leading-relaxed flex-1" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
                                       Please select an engagement from the engagement button{" "}
                                       <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-muted border border-border align-middle mx-0.5">
                                         <Inbox className="w-5 h-5 text-muted-foreground" />
@@ -3474,21 +3480,21 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                   <div className="space-y-3">
                                     <div className="flex items-center gap-2">
                                       <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
-                                      <span className="text-base text-foreground font-medium">Trial Balance found in <strong>{invSelectedEngId}</strong></span>
+                                      <span className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Trial Balance found in <strong>{invSelectedEngId}</strong></span>
                                     </div>
-                                    <p className="text-base font-semibold text-foreground">Trial Balance Analysis</p>
+                                    <p className="text-[14px] font-semibold" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Trial Balance Analysis</p>
                                     <div className="space-y-3">
                                       <div className="flex items-start gap-3">
                                         <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-base font-bold shrink-0">1</span>
-                                        <div><p className="text-base font-medium text-foreground">Years of TB detected</p><p className="text-base text-muted-foreground">{invTBAnalysis.years}</p></div>
+                                        <div><p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Years of TB detected</p><p className="text-[14px]" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invTBAnalysis.years}</p></div>
                                       </div>
                                       <div className="flex items-start gap-3">
                                         <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-base font-bold shrink-0">2</span>
                                         <div>
-                                          <p className="text-base font-medium text-foreground">Bank account</p>
+                                          <p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Bank account</p>
                                           <div className="mt-2">
                                             {invSelectedBankAccount && (
-                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-base font-medium bg-green-50 text-green-800 border border-green-200">
+                                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-[13px] font-medium bg-green-50 text-green-800 border border-green-200">
                                                 <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />{invSelectedBankAccount}
                                               </span>
                                             )}
@@ -3497,7 +3503,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                       </div>
                                       <div className="flex items-start gap-3">
                                         <span className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-700 text-base font-bold shrink-0">3</span>
-                                        <div><p className="text-base font-medium text-foreground">Recording method</p><p className="text-base text-muted-foreground">{invTBAnalysis.recordingMethod}</p></div>
+                                        <div><p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Recording method</p><p className="text-[14px]" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>{invTBAnalysis.recordingMethod}</p></div>
                                       </div>
                                     </div>
                                   </div>
@@ -4466,13 +4472,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               return (
                                                 <div className="space-y-2">
                                                   {multipleAccounts && (
-                                                    <div className="flex items-start gap-3">
-                                                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-                                                        <Sparkles className="w-4 h-4 text-white" />
+                                                    <div className="flex items-start gap-4">
+                                                      <div className="shrink-0 mt-0.5 w-8 h-8 flex items-center justify-center">
+                                                        <img src={lukaIdle} alt="Luka" className="w-8 h-8 object-contain" />
                                                       </div>
-                                                      <div className="flex-1 px-3 py-2 rounded-[10px] rounded-tl-[4px] bg-muted/50 border border-border/60 text-base text-foreground">
+                                                      <p className="flex-1 text-[15px] leading-relaxed" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
                                                         Multiple brokerage accounts detected ({allAccounts.join(", ")}). Transactions are shown together — use the Account # filter to view each separately.
-                                                      </div>
+                                                      </p>
                                                     </div>
                                                   )}
 
@@ -4497,13 +4503,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     );
                                                   })()}
 
-                                                  <div className="flex items-start gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-                                                      <Sparkles className="w-4 h-4 text-white" />
+                                                  <div className="flex items-start gap-4">
+                                                    <div className="shrink-0 mt-0.5 w-8 h-8 flex items-center justify-center">
+                                                      <img src={lukaIdle} alt="Luka" className="w-8 h-8 object-contain" />
                                                     </div>
-                                                    <div className="flex-1 px-3 py-2 rounded-[10px] rounded-tl-[4px] bg-muted/50 border border-border/60 text-base text-foreground">
+                                                    <p className="flex-1 text-[15px] leading-relaxed" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
                                                       Successfully extracted and classified <strong>{invReviewRows.filter(r => !r.voided).length} transactions</strong> from the uploaded investment statements. Review and submit to generate the Investment Schedule.
-                                                    </div>
+                                                    </p>
                                                   </div>
 
                                                   <div className="rounded-[10px] border border-border overflow-clip">
@@ -4963,21 +4969,16 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                           </div>
 
                           {/* Luka response */}
-                          <div className="flex items-start gap-3 min-w-0 max-w-full">
-                            <div className={cn(
-                              "w-9 h-9 rounded-full bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(265_80%_55%)] flex items-center justify-center shrink-0",
-                              loanAmortStep === "thinking" && "luka-thinking-spin",
-                            )}>
-                              <LukaIcon size={16} />
+                          <div className="flex items-start gap-4 min-w-0 max-w-full">
+                            <div className="shrink-0 mt-0.5 w-8 h-8 flex items-center justify-center">
+                              <img src={loanAmortStep === "thinking" ? lukaResponding : lukaIdle} alt="Luka" className={loanAmortStep === "thinking" ? "w-11 h-11 object-contain -m-1.5" : "w-8 h-8 object-contain transition-transform duration-200 hover:scale-110"} />
                             </div>
-                            <div className="flex-1 pt-1.5 min-h-[28px] min-w-0">
+                            <div className="flex-1 pt-1 min-h-[28px] min-w-0">
                               {loanAmortStep === "thinking" ? (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-base font-medium text-foreground luka-thinking-text">Analysing Long-term Asset workpaper</span>
-                                  <span className="flex gap-0.5">
-                                    <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-1" />
-                                    <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-2" />
-                                    <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-3" />
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-[14px] font-semibold italic" style={{ color: "hsl(222 30% 22%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Analysing Long-term Asset workpaper</span>
+                                  <span className="flex items-center gap-1">
+                                    {[0,1,2].map(i => <motion.span key={i} className="w-1.5 h-1.5 rounded-full" style={{ background: "hsl(265 75% 60%)" }} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.25 }} />)}
                                   </span>
                                 </div>
                               ) : (
@@ -4999,11 +5000,11 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                           </div>
 
                           {/* Luka response */}
-                          <div className="flex items-start gap-3 min-w-0 max-w-full">
-                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(265_80%_55%)] flex items-center justify-center shrink-0">
-                              <LukaIcon size={16} />
+                          <div className="flex items-start gap-4 min-w-0 max-w-full">
+                            <div className="shrink-0 mt-0.5 w-8 h-8 flex items-center justify-center">
+                              <img src={lukaIdle} alt="Luka" className="w-8 h-8 object-contain transition-transform duration-200 hover:scale-110" />
                             </div>
-                            <div className="flex-1 pt-1.5 min-w-0 overflow-x-auto">
+                            <div className="flex-1 pt-1 min-w-0 overflow-x-auto">
                               <LongTermAssetResponse onEditLoans={() => { setLtDebtGenerated(false); setLtDebtPhase("upload-prompt"); }} />
                               {followUpTurns.length === 0 && !addMoreLoansActive && (
                                 <div className="mt-4 space-y-2">
@@ -5048,14 +5049,14 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                               </div>
                             </div>
                             {/* Luka response */}
-                            <div className="flex items-start gap-3 min-w-0 max-w-full">
-                              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(265_80%_55%)] flex items-center justify-center shrink-0">
-                                <LukaIcon size={16} />
+                            <div className="flex items-start gap-4 min-w-0 max-w-full">
+                              <div className="shrink-0 mt-0.5 w-8 h-8 flex items-center justify-center">
+                                <img src={lukaIdle} alt="Luka" className="w-8 h-8 object-contain transition-transform duration-200 hover:scale-110" />
                               </div>
-                              <div className="flex-1 pt-1.5 min-w-0 space-y-3">
+                              <div className="flex-1 pt-1 min-w-0 space-y-3">
                                 {!addMoreDone ? (
                                   <>
-                                    <p className="text-base text-foreground">Upload loan documents or add entries manually below, then click <strong>Submit</strong> to append to the workpaper.</p>
+                                    <p className="text-[15px] leading-relaxed" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Upload loan documents or add entries manually below, then click <strong>Submit</strong> to append to the workpaper.</p>
 
                                     {/* Drop zone */}
                                     <label className="flex flex-col items-center justify-center gap-2 h-20 rounded-[10px] border-2 border-dashed border-border bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors text-center px-4">
@@ -5610,18 +5611,16 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                             </div>
 
                             {/* Luka response bubble */}
-                            <div className="flex items-start gap-3 min-w-0 max-w-full">
-                              <div className={cn("w-9 h-9 rounded-full bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(265_80%_55%)] flex items-center justify-center shrink-0", (isThinkingTurn || isWorking) && "luka-thinking-spin")}>
-                                <LukaIcon size={16} />
+                            <div className="flex items-start gap-4 min-w-0 max-w-full">
+                              <div className="shrink-0 mt-0.5 w-8 h-8 flex items-center justify-center">
+                                <img src={(isThinkingTurn || isWorking) ? lukaResponding : lukaIdle} alt="Luka" className={(isThinkingTurn || isWorking) ? "w-11 h-11 object-contain -m-1.5" : "w-8 h-8 object-contain transition-transform duration-200 hover:scale-110"} />
                               </div>
-                              <div className="flex-1 pt-1.5 min-w-0">
+                              <div className="flex-1 pt-1 min-w-0">
                                 {isThinkingTurn && (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-base font-medium text-foreground luka-thinking-text">Analysing your question</span>
-                                    <span className="flex gap-0.5">
-                                      <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-1" />
-                                      <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-2" />
-                                      <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-3" />
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-[14px] font-semibold italic" style={{ color: "hsl(222 30% 22%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Analysing your question</span>
+                                    <span className="flex items-center gap-1">
+                                      {[0,1,2].map(i => <motion.span key={i} className="w-1.5 h-1.5 rounded-full" style={{ background: "hsl(265 75% 60%)" }} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.25 }} />)}
                                     </span>
                                   </div>
                                 )}
