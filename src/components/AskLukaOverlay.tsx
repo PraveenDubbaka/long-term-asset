@@ -3949,10 +3949,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
                                               {/* Scenario C — answered Yes: confirm */}
                                               {invPriorScenario === "ASK" && invFirstYearAnswer === true && (
-                                                <div className="inline-flex items-center gap-2 px-3 py-2 rounded-[8px] bg-muted border border-border">
-                                                  <Check className="h-4 w-4 text-muted-foreground shrink-0" />
-                                                  <span className="text-[14px]" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>First year — opening balances default to zero.</span>
-                                                </div>
+                                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[5px] bg-background border border-border text-[13px]" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+                                                  <Check className="h-3 w-3 shrink-0" />
+                                                  First year — opening balances default to zero
+                                                </span>
                                               )}
                                             </div>
                                             )}

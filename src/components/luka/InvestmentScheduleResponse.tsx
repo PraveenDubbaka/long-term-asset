@@ -2895,23 +2895,23 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
 
       {/* Settings strip — read-only summary of setup questions */}
       {(valuationMethod || recordingLevel) && (
-        <div className="flex items-center justify-between px-3 py-2 rounded-[8px] bg-muted/30 border border-border text-[11px] text-muted-foreground">
+        <div className="flex items-center justify-between px-3 py-2 rounded-[8px] bg-muted/30 border border-border">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-foreground text-base">Schedule settings</span>
+            <span className="text-[13px] font-semibold" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Schedule settings</span>
             {valuationMethod && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] bg-background border border-border text-base">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] bg-background border border-border text-[13px]" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
                 {valuationMethod === 'fairValue' ? 'Fair value' : 'Cost'}
               </span>
             )}
             {recordingLevel && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] bg-background border border-border text-base">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] bg-background border border-border text-[13px]" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
                 {recordingLevel === 'security' ? 'By security' : recordingLevel === 'brokerage' ? 'By brokerage' : 'Hybrid'}
               </span>
             )}
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] bg-background border border-border text-base">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] bg-background border border-border text-[13px]" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
               {bankAccounts ?? 1} bank account{(bankAccounts ?? 1) !== 1 ? 's' : ''}
             </span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] bg-background border border-border text-base">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] bg-background border border-border text-[13px]" style={{ color: "hsl(222 15% 50%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
               {brokerCount ?? 1} broker{(brokerCount ?? 1) !== 1 ? 's' : ''}
             </span>
           </div>
