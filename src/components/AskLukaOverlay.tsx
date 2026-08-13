@@ -2992,7 +2992,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                       </div>
                     </div>
                   ) : (
-                    <div className="w-full max-w-full md:max-w-[92%] lg:max-w-[960px] mx-auto px-6 py-8 space-y-8 min-w-0">
+                    <div className="w-full max-w-full px-6 py-8 space-y-8 min-w-0">
                       <div className="flex justify-end">
                         <div className="max-w-[80%] px-4 py-3 rounded-[12px] bg-primary text-primary-foreground text-base">{sentMessage}</div>
                       </div>
