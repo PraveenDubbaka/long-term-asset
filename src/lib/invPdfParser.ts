@@ -463,103 +463,157 @@ function parseRichardsonText(pages: string[], sourceFile: string): ParsedInvTran
 
 // ─── BMO InvestorLine text parser ────────────────────────────────────────────
 
+function respaceBmoLine(s: string): string {
+  return s
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]{2,})([A-Z][a-z])/g, '$1 $2')
+    .replace(/([A-Za-z])(\d)/g, '$1 $2')
+    .replace(/(\d)([A-Za-z])/g, '$1 $2')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 function parseBmoText(pages: string[], sourceFile: string): ParsedInvTransaction[] {
   const txns: ParsedInvTransaction[] = [];
-
   const fullText = pages.join('\n');
+
   const fxMatch = fullText.match(/1\s*USD\s*=\s*([\d.]+)\s*CAD/i);
   const fxRateUsdCad = fxMatch ? parseFloat(fxMatch[1]) : null;
 
-  const acctMatch = fullText.match(/Non-registered account #([\d-]+)/i);
+  const acctMatch = fullText.match(/Non-registered\s*account\s*#\s*([\d-]+)/i);
   const account = acctMatch ? acctMatch[1].replace(/\s+/g, '') : '';
 
   const DATE_RE = /^((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4})\s+/i;
-  const SKIP = [
-    /Opening Cash Balance/i,
-    /Closing Cash Balance/i,
-    /This report includes/i,
-    /Account activity for this month/i,
+
+  // Lines to skip entirely (headers, footers, balance lines)
+  const SKIP_RE = [
+    /Opening\s*Cash\s*Balance/i,
+    /Closing\s*Cash\s*Balance/i,
+    /Account\s*activity\s*for\s*this\s*month/i,
     /^Date\s+Activity/i,
-    /^Cash Account$/i,
+    /^Cash\s*Account$/i,
+    /This\s*report\s*includes/i,
+    /^account\s*at:/i,
+    /^\d+of\d+$/,
+    /^\x95$/,
   ];
+
+  // Continuation lines that are BMO boilerplate — discard, don't append to security
+  const JUNK_RE = [
+    /^CASH\s*DIV\s*ON\b/i,
+    /^REC\s*\d/i,
+    /^UNSOLICITED$/i,
+    /^SUB-?VTG$/i,
+    /^RELATED\s*OR\s*CONNECTED/i,
+    /^RELATEDORCONNECTED/i,
+    /^ASOF\d/i,
+    /^\d{4}-[\d-]{6,}/,
+    /^2\d{3}-\d{4}-\d/,
+  ];
+
+  // Activity types that have no associated security (cash movements)
+  const NO_SECURITY_TYPES = new Set(['Transfer In', 'Transfer Out', 'Fee/Commission', 'Withholding Tax']);
 
   let inActivity = false;
   let currentCcy: 'CAD' | 'USD' = 'CAD';
 
   for (const pageText of pages) {
-    const lines = pageText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-    let i = 0;
+    // Apply date normalization then respacing to every line
+    const lines = pageText
+      .split(/\r?\n/)
+      .map(l => l.trim())
+      .filter(l => l.length > 0)
+      .map(l =>
+        respaceBmoLine(
+          l
+            .replace(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(\d)/gi, '$1 $2')
+            .replace(/(\d{1,2}),(\d{4})/g, '$1, $2')
+        )
+      );
 
+    let i = 0;
     while (i < lines.length) {
       const line = lines[i];
 
-      if (/Canadian Dollar Investments/i.test(line)) { currentCcy = 'CAD'; i++; continue; }
-      if (/U\.?S\.? Dollar Investments/i.test(line)) { currentCcy = 'USD'; i++; continue; }
-      if (/Account activity for this month/i.test(line)) { inActivity = true; i++; continue; }
-      if (inActivity && /important information/i.test(line)) { inActivity = false; i++; continue; }
+      if (/Canadian\s*Dollar\s*Investments/i.test(line)) { currentCcy = 'CAD'; i++; continue; }
+      if (/U\.?S\.?\s*Dollar\s*Investments/i.test(line)) { currentCcy = 'USD'; i++; continue; }
+      if (/Account\s*activity\s*for\s*this\s*month/i.test(line)) { inActivity = true; i++; continue; }
+      if (inActivity && /important\s*information/i.test(line)) { inActivity = false; i++; continue; }
       if (!inActivity) { i++; continue; }
-      if (SKIP.some(re => re.test(line))) { i++; continue; }
+      if (SKIP_RE.some(re => re.test(line))) { i++; continue; }
+      if (JUNK_RE.some(re => re.test(line))) { i++; continue; }
 
       const dateMatch = line.match(DATE_RE);
       if (!dateMatch) { i++; continue; }
 
       const rawDate = dateMatch[1];
-      let combined = line.slice(dateMatch[0].length).trim();
+      const firstChunk = line.slice(dateMatch[0].length).trim();
 
+      // Collect continuation lines: non-date, non-skip lines that don't end
+      // with a dollar amount (those are the start of a new transaction).
+      // Discard junk lines but keep scanning past them.
+      const continuationParts: string[] = [];
       let j = i + 1;
       while (j < lines.length) {
-        const next = lines[j];
-        if (DATE_RE.test(next)) break;
-        if (SKIP.some(re => re.test(next))) break;
-        combined = combined + ' ' + next.trim();
+        const nxt = lines[j];
+        if (!nxt) { j++; continue; }
+        if (DATE_RE.test(nxt)) break;
+        if (SKIP_RE.some(re => re.test(nxt))) break;
+        if (JUNK_RE.some(re => re.test(nxt))) { j++; continue; }
+        if (/(-?[\d,]+\.\d{2})\s*$/.test(nxt)) break;
+        continuationParts.push(nxt);
         j++;
-        if (/(-?[\d,]+\.\d{2})\s*$/.test(combined)) break;
       }
       i = j;
 
-      const numMatches = [...combined.matchAll(/(-?[\d,]+\.\d{2})/g)];
-      if (numMatches.length === 0) continue;
+      // ── Parse numbers out of firstChunk ──────────────────────────────────
+      const nums = [...firstChunk.matchAll(/(-?[\d,]+\.\d{2})/g)];
+      if (nums.length === 0) continue;
 
-      const rawAmount = numMatches[numMatches.length - 1][1];
+      const rawAmount = nums[nums.length - 1][1];
       const amount = parseFloat(rawAmount.replace(/,/g, ''));
-      const amtIdx = combined.lastIndexOf(rawAmount);
-      const beforeAmt = combined.slice(0, amtIdx).trim();
+      const beforeAmt = firstChunk.slice(0, firstChunk.lastIndexOf(rawAmount)).trim();
 
+      // ── Extract activity via longest-match against ACTIVITY_TYPE_MAP ──────
       const words = beforeAmt.split(/\s+/);
       let activity = words[0] || '';
-      let security = '';
-      for (let w = Math.min(4, words.length); w >= 1; w--) {
+      let securityFromFirst = '';
+
+      for (let w = Math.min(5, words.length); w >= 1; w--) {
         const candidate = words.slice(0, w).join(' ').toLowerCase();
-        if (ACTIVITY_TYPE_MAP.some(([k]) => candidate.includes(k) || k.includes(candidate))) {
+        if (ACTIVITY_TYPE_MAP.some(([k]) => candidate === k || candidate.includes(k))) {
           activity = words.slice(0, w).join(' ');
-          security = words.slice(w).join(' ');
+          securityFromFirst = words.slice(w).join(' ');
           break;
         } else if (w === 1) {
-          security = words.slice(1).join(' ');
+          securityFromFirst = words.slice(1).join(' ');
         }
       }
-      security = security
-        .replace(/\s*-\s*[A-Z]{1,5}:[A-Z]{2}\s*$/, '')
-        .replace(/CASH DIV ON.*$/i, '')
-        .trim();
 
+      // ── Strip embedded qty/price numbers from security fragment ───────────
+      let secStr = securityFromFirst;
+      secStr = secStr.replace(/\s+(-?[\d,]+\.\d+)\s*$/, '').trim();
+      secStr = secStr.replace(/\s+(-?[\d,]+\.\d+)\s*$/, '').trim();
+      secStr = secStr.replace(/\s+-?[\d,]+\s*$/, '').trim();
+
+      // ── Append continuation lines (e.g. security name wrapping to next line)
+      const security = [secStr, ...continuationParts].filter(Boolean).join(' ').trim();
+
+      // ── For cash-movement types, security is blank ────────────────────────
+      const txType = mapActivityToType(activity);
+      const finalSecurity = NO_SECURITY_TYPES.has(txType) ? '' : security;
+
+      // ── Extract qty and price from number positions ───────────────────────
       let quantity: number | null = null;
       let price: number | null = null;
-      if (numMatches.length >= 3) {
-        quantity = parseFloat(numMatches[numMatches.length - 3][1].replace(/,/g, ''));
-        price = parseFloat(numMatches[numMatches.length - 2][1].replace(/,/g, ''));
-        // Strip the qty/price numbers that got embedded in the security string
-        security = security
-          .replace(/\s+(-?[\d,]+\.\d+)\s*$/, '')
-          .replace(/\s+(-?[\d,]+\.\d+)\s*$/, '')
-          .trim();
-      } else if (numMatches.length === 2) {
-        quantity = parseFloat(numMatches[numMatches.length - 2][1].replace(/,/g, ''));
-        security = security.replace(/\s+(-?[\d,]+\.\d+)\s*$/, '').trim();
+      if (nums.length >= 3) {
+        quantity = parseFloat(nums[nums.length - 3][1].replace(/,/g, ''));
+        price    = parseFloat(nums[nums.length - 2][1].replace(/,/g, ''));
+      } else if (nums.length === 2) {
+        quantity = parseFloat(nums[nums.length - 2][1].replace(/,/g, ''));
       }
 
-      const type = mapActivityToType(activity);
-      const signedAmount = type === 'Purchase' ? -Math.abs(amount) : Math.abs(amount);
+      const signedAmount = txType === 'Purchase' ? -Math.abs(amount) : Math.abs(amount);
       const amountCad = currentCcy === 'USD' ? signedAmount * (fxRateUsdCad ?? 1) : signedAmount;
 
       txns.push({
@@ -567,8 +621,8 @@ function parseBmoText(pages: string[], sourceFile: string): ParsedInvTransaction
         settlementDate: parseDate(rawDate),
         tradeDate: parseDate(rawDate),
         activity,
-        security: security || activity,
-        ticker: lookupTicker(security),
+        security: finalSecurity,
+        ticker: lookupTicker(finalSecurity),
         quantity: quantity && quantity > 0 ? quantity : null,
         price: price && price > 0 ? price : null,
         amount: amountCad,
