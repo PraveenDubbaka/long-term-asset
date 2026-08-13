@@ -793,9 +793,8 @@ function TransactionsPanel({
                       const type = isEditing ? d.type : isBatchEditing ? (bv?.type ?? t.type) : t.type;
                       const isOutflow = OUTFLOW_TYPES.includes(type as Transaction["type"]);
                       const signed = isOutflow ? -Math.abs(raw) : Math.abs(raw);
-                      const colour = isOutflow ? "text-red-600" : "text-emerald-700";
                       return (
-                        <span className={`tabular-nums font-medium ${colour}`}>
+                        <span className="tabular-nums font-medium text-foreground">
                           {signed < 0 ? "-" : "+"}{fmt2(Math.abs(signed))}
                         </span>
                       );
