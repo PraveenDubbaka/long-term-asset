@@ -461,7 +461,7 @@ export function buildIncomeMatrix(
   expenseTotal: number;
 } {
   const all = transactionsOverride ?? currentYearTransactions;
-  const txns = all.filter((t) => (t.status ?? "published") === "published");
+  const txns = all.filter((t) => { const s = t.status ?? "posted"; return (s === "posted" || s === "published"); });
   const tbMap: Record<IncomeType, string> = {
     Dividend: "4100",
     Interest: "4150",
@@ -562,7 +562,7 @@ export function buildFxSchedule(
   priorYearOverride?: PriorYearLot[],
 ): FxScheduleResult {
   const all = transactionsOverride ?? currentYearTransactions;
-  const txns = all.filter((t) => (t.status ?? "published") === "published" && t.currency !== "CAD");
+  const txns = all.filter((t) => { const s = t.status ?? "posted"; return (s === "posted" || s === "published") && t.currency !== "CAD"; });
   const py = priorYearOverride ?? priorYearLots;
 
   const events: FxEvent[] = [];
