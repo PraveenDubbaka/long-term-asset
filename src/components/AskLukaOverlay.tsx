@@ -3539,7 +3539,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         totalInterest += int;
                                                         totalPrincipal += prin;
                                                         bal = end;
-                                                        d = new Date(d.getFullYear(), d.getMonth() + 1, d.getDate());
+                                                        d = new Date(d.getFullYear(), d.getMonth() + 2, 0);
                                                       }
                                                       const closingBal = bal;
                                                       // Current portion: next 12 months of principal
@@ -3552,7 +3552,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         const prin2 = Math.min(payment - int2, bal2);
                                                         curPortion += prin2;
                                                         bal2 -= prin2;
-                                                        d2 = new Date(d2.getFullYear(), d2.getMonth() + 1, d2.getDate());
+                                                        d2 = new Date(d2.getFullYear(), d2.getMonth() + 2, 0);
                                                       }
                                                       const ltPortion = closingBal - curPortion;
                                                       // Accrued interest: 0 if last payment on FY end, else days since last payment
