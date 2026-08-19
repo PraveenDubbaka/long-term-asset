@@ -40,7 +40,7 @@ const EMPTY_LT_ADD_ROW = (): LtAddRow => ({
   ioPeriod: "", balloonAmt: "", collateral: "", status: "Active", glPrincipal: "2100",
 });
 const LT_ADD_REQUIRED: (keyof LtAddRow)[] = ["name","lender","currentBalance","rate","startDate","maturityDate","glPrincipal"];
-const LT_ADD_RIGHT_COLS = new Set(["Int. Rate % *","Mo. Payment","Orig. Loan Amt","FX Rate","Opening Bal. *","IO Period (mo.)","Balloon Amt"]);
+const LT_ADD_RIGHT_COLS = new Set(["Int. Rate % *","Mo. Payment","Orig. Loan Amt","FX Rate","Opening Bal. *","Interest-Only Period (Mo.)","Balloon Amt"]);
 const LT_ADD_SCR = "h-6 text-[10px] px-1 border border-border rounded bg-background focus:outline-none appearance-none cursor-pointer";
 function ltAddRowMissing(row: LtAddRow, field: keyof LtAddRow) { return !String(row[field] ?? "").trim(); }
 
@@ -620,7 +620,7 @@ function LoansTab({
     { h: "Maturity",           left: false },
     { h: "Tenure (Mo.)",       left: false },
     { h: "First Payment",      left: false },
-    { h: "CCY",                left: false },
+    { h: "Currency",                left: false },
     { h: "Mo. Payment",        left: false },
     { h: "Orig. Loan Amt",     left: false },
     { h: "FX Rate",            left: false },
@@ -630,11 +630,11 @@ function LoansTab({
     { h: "Day Count",          left: false },
     { h: "Payment Type",       left: false },
     { h: "Compounding",        left: false },
-    { h: "IO Period (mo.)",    left: false },
+    { h: "Interest-Only Period (Mo.)",    left: false },
     { h: "Balloon Amt",        left: false },
     { h: "Status",             left: false },
     { h: "Current Portion",   left: false },
-    { h: "LT Portion",        left: false },
+    { h: "Long-Term Portion",        left: false },
     { h: "GL Diff",           left: false },
   ];
   // compact = narrower table (text cols constrained), expanded = full width; both scroll
@@ -761,7 +761,7 @@ function LoansTab({
                   <table className="w-full text-[10px]" style={{ minWidth: 2400 }}>
                     <thead>
                       <tr className="bg-muted/30 border-b border-border">
-                        {["Loan Name *","Lender *","Current Collateral","Type","Rate Type","Int. Rate % *","Start *","Maturity *","First Payment","CCY","Mo. Payment","Orig. Loan Amt","FX Rate","Opening Bal. *","GL Principal *","Day Count","Payment Type","Freq.","Compounding","IO Period (mo.)","Balloon Amt",""].map((h, i) => (
+                        {["Loan Name *","Lender *","Current Collateral","Type","Rate Type","Int. Rate % *","Start *","Maturity *","First Payment","Currency","Mo. Payment","Orig. Loan Amt","FX Rate","Opening Bal. *","GL Principal *","Day Count","Payment Type","Freq.","Compounding","Interest-Only Period (Mo.)","Balloon Amt",""].map((h, i) => (
                           <th key={i} className={`px-2 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${LT_ADD_RIGHT_COLS.has(h) ? "text-right" : "text-left"} ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10" : ""}`}>
                             {h.endsWith(" *") ? <>{h.slice(0,-2)} <span className="text-red-500">*</span></> : h}
                           </th>
@@ -962,7 +962,7 @@ function LoansTab({
                     <input type="date" value={draft.firstPaymentDate??""} onChange={e=>setD("firstPaymentDate",e.target.value)} className={`${IC} ${draft.firstPaymentDate && draft.startDate && draft.firstPaymentDate < draft.startDate ? "border-red-400 bg-red-50/60" : ""}`} />
                     {draft.firstPaymentDate && draft.startDate && draft.firstPaymentDate < draft.startDate && <p className="text-[9px] text-red-500 mt-0.5 whitespace-nowrap">Before start date</p>}
                   </td>}
-                  {!hid.has("CCY")                 && <td className="px-1.5 py-1"><select value={draft.currency??"CAD"} onChange={e=>setD("currency",e.target.value)} className={ICS}>{["CAD","USD","EUR","GBP"].map(c=><option key={c}>{c}</option>)}</select></td>}
+                  {!hid.has("Currency")                 && <td className="px-1.5 py-1"><select value={draft.currency??"CAD"} onChange={e=>setD("currency",e.target.value)} className={ICS}>{["CAD","USD","EUR","GBP"].map(c=><option key={c}>{c}</option>)}</select></td>}
                   {!hid.has("Mo. Payment")         && <td className="px-1.5 py-1"><input type="number" step="100" value={draft.monthlyPayment||""} onChange={e=>setD("monthlyPayment",parseFloat(e.target.value)||undefined)} className={IC} placeholder="auto" /></td>}
                   {!hid.has("Orig. Loan Amt")      && <td className="px-1.5 py-1"><input type="number" step="1000" value={draft.originalPrincipal||""} onChange={e=>setD("originalPrincipal",parseFloat(e.target.value)||0)} className={IC} placeholder="0" /></td>}
                   {!hid.has("FX Rate")             && <td className="px-1.5 py-1"><input type="number" step="0.0001" value={draft.fxRateToCAD||""} onChange={e=>setD("fxRateToCAD",parseFloat(e.target.value)||undefined)} className={IC} placeholder="1.000" /></td>}
@@ -972,7 +972,7 @@ function LoansTab({
                   {!hid.has("Day Count")           && <td className="px-1.5 py-1"><select value={draft.dayCountBasis??"ACT/365"} onChange={e=>setD("dayCountBasis",e.target.value)} className={ICS}>{["ACT/365","ACT/360","30/360"].map(d=><option key={d}>{d}</option>)}</select></td>}
                   {!hid.has("Payment Type")        && <td className="px-1.5 py-1"><select value={draft.paymentType??"P&I"} onChange={e=>setD("paymentType",e.target.value)} className={ICS}>{["P&I","Interest-only","Balloon"].map(t=><option key={t}>{t}</option>)}</select></td>}
                   {!hid.has("Compounding")         && <td className="px-1.5 py-1"><select value={draft.compoundingFrequency??"Monthly"} onChange={e=>setD("compoundingFrequency",e.target.value)} className={ICS}>{["Monthly","Quarterly","Semi-annual","Annual"].map(f=><option key={f}>{f}</option>)}</select></td>}
-                  {!hid.has("IO Period (mo.)")     && <td className="px-1.5 py-1"><input type="number" step="1" value={draft.interestOnlyPeriodMonths||""} onChange={e=>setD("interestOnlyPeriodMonths",parseInt(e.target.value)||undefined)} className={IC} placeholder="00" /></td>}
+                  {!hid.has("Interest-Only Period (Mo.)")     && <td className="px-1.5 py-1"><input type="number" step="1" value={draft.interestOnlyPeriodMonths||""} onChange={e=>setD("interestOnlyPeriodMonths",parseInt(e.target.value)||undefined)} className={IC} placeholder="00" /></td>}
                   {!hid.has("Balloon Amt")         && <td className="px-1.5 py-1"><input type="number" step="1000" value={draft.balloonAmount||""} onChange={e=>setD("balloonAmount",parseFloat(e.target.value)||undefined)} className={IC} placeholder="00" /></td>}
                   {!hid.has("Status")              && <td className="px-1.5 py-1"><select value={draft.status??"Active"} onChange={e=>setD("status",e.target.value as Loan["status"])} className={ICS}>{["Active","Paid Off","Refinanced","Defaulted"].map(s=><option key={s}>{s}</option>)}</select></td>}
                 </>;
@@ -1050,7 +1050,7 @@ function LoansTab({
                           {!hid.has("Maturity")      && <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{fmtDate(l.maturityDate)}</td>}
                           {!hid.has("Tenure (Mo.)")  && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{getTenure(l)}</td>}
                           {!hid.has("First Payment") && <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{l.firstPaymentDate ? fmtDate(l.firstPaymentDate) : "—"}</td>}
-                          {!hid.has("CCY") && (
+                          {!hid.has("Currency") && (
                             <td className="px-2.5 py-1.5 text-right">
                               <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">{l.currency}</span>
                             </td>
@@ -1083,11 +1083,11 @@ function LoansTab({
                           {!hid.has("Day Count")        && <td className="px-2.5 py-1.5 text-right font-mono whitespace-nowrap text-foreground">{l.dayCountBasis}</td>}
                           {!hid.has("Payment Type")     && <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{l.paymentType}</td>}
                           {!hid.has("Compounding")      && <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{l.compoundingFrequency ?? "Monthly"}</td>}
-                          {!hid.has("IO Period (mo.)")  && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{l.interestOnlyPeriodMonths ?? "00"}</td>}
+                          {!hid.has("Interest-Only Period (Mo.)")  && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{l.interestOnlyPeriodMonths ?? "00"}</td>}
                           {!hid.has("Balloon Amt")      && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{l.balloonAmount ? fmt(l.balloonAmount) : "00"}</td>}
                           {!hid.has("Status")           && <td className="px-2.5 py-1.5 text-right"><StatusBadge status={l.status} /></td>}
                           {!hid.has("Current Portion") && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{l.currentPortion > 0 ? fmt(toCAD(l.currentPortion, l.currency)) : "00"}</td>}
-                          {!hid.has("LT Portion") && (() => {
+                          {!hid.has("Long-Term Portion") && (() => {
                             const closing = l.closingBalance ?? l.currentBalance;
                             const sanityOk = Math.abs(closing - l.currentPortion - l.longTermPortion) < 1;
                             return (
@@ -1158,7 +1158,7 @@ function LoansTab({
                   if (h === "Converted Amt")  return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+l.originalPrincipal*getFxRate(l),0))}</td>;
                   if (h === "Closing Balance") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+toCAD(l.closingBalance??l.currentBalance,l.currency),0))}</td>;
                   if (h === "Current Portion") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+toCAD(l.currentPortion,l.currency),0))}</td>;
-                  if (h === "LT Portion") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+toCAD(l.longTermPortion,l.currency),0))}</td>;
+                  if (h === "Long-Term Portion") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+toCAD(l.longTermPortion,l.currency),0))}</td>;
                   if (h === "GL Diff") {
                     const withGL = loans.filter(l => l.glBalance !== undefined);
                     if (withGL.length === 0) return <td key={h} className="px-2.5 py-2 text-right text-muted-foreground text-[11px]">$—</td>;
