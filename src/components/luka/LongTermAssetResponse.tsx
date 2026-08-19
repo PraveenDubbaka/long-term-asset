@@ -761,7 +761,7 @@ function LoansTab({
                   <table className="w-full text-[10px]" style={{ minWidth: 2400 }}>
                     <thead>
                       <tr className="bg-muted/30 border-b border-border">
-                        {["Loan Name *","Lender *","Current Collateral","Type","Rate Type","Int. Rate % *","Start *","Maturity *","First Payment","CCY","Mo. Payment","Orig. Loan Amt","FX Rate","Opening Bal. *","GL Principal *","Day Count","Payment Type","Freq.","Compounding","IO Period (mo.)","Balloon Amt","Status",""].map((h, i) => (
+                        {["Loan Name *","Lender *","Current Collateral","Type","Rate Type","Int. Rate % *","Start *","Maturity *","First Payment","CCY","Mo. Payment","Orig. Loan Amt","FX Rate","Opening Bal. *","GL Principal *","Day Count","Payment Type","Freq.","Compounding","IO Period (mo.)","Balloon Amt",""].map((h, i) => (
                           <th key={i} className={`px-2 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${LT_ADD_RIGHT_COLS.has(h) ? "text-right" : "text-left"} ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10" : ""}`}>
                             {h.endsWith(" *") ? <>{h.slice(0,-2)} <span className="text-red-500">*</span></> : h}
                           </th>
@@ -776,17 +776,27 @@ function LoansTab({
                           <tr key={row.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
                             <td className="px-1.5 py-1 min-w-[130px]"><input value={row.name} onChange={e=>updatePending(row.id,"name",e.target.value)} className={`${fc("name",true)} w-32`} placeholder="Loan name" /></td>
                             <td className="px-1.5 py-1 min-w-[110px]"><input value={row.lender} onChange={e=>updatePending(row.id,"lender",e.target.value)} className={`${fc("lender",true)} w-28`} placeholder="Lender" /></td>
-                            <td className="px-1.5 py-1 min-w-[120px]"><input value={row.collateral} onChange={e=>updatePending(row.id,"collateral",e.target.value)} className={`${fc("collateral",false)} w-28`} placeholder="e.g. Real property" /></td>
+                            <td className="px-1.5 py-1 min-w-[130px]"><textarea rows={3} value={row.collateral} onChange={e=>updatePending(row.id,"collateral",e.target.value)} className={`text-[10px] px-1.5 py-1 border rounded bg-background focus:outline-none w-32 resize-none ${ltAddRowMissing(row,"collateral") ? "border-red-400 bg-red-50/60" : "border-border focus:border-primary/40"}`} placeholder="e.g. Real property" /></td>
                             <td className="px-1.5 py-1"><select value={row.type} onChange={e=>updatePending(row.id,"type",e.target.value)} className={`${LT_ADD_SCR} w-20`}>{["Term","LOC","Revolver","Mortgage","Bridge"].map(t=><option key={t}>{t}</option>)}</select></td>
                             <td className="px-1.5 py-1"><select value={row.interestType} onChange={e=>updatePending(row.id,"interestType",e.target.value)} className={`${LT_ADD_SCR} w-22`}>{["Fixed","Variable","Floating","Hybrid","Step Rate"].map(t=><option key={t}>{t}</option>)}</select></td>
                             <td className="px-1.5 py-1"><input value={row.rate} onChange={e=>updatePending(row.id,"rate",e.target.value)} className={`${fc("rate",true)} w-14 text-right`} placeholder="%" /></td>
                             <td className="px-1.5 py-1"><input type="date" value={row.startDate} onChange={e=>updatePending(row.id,"startDate",e.target.value)} className={`${fc("startDate",true)} w-28`} /></td>
                             <td className="px-1.5 py-1"><input type="date" value={row.maturityDate} onChange={e=>updatePending(row.id,"maturityDate",e.target.value)} className={`${fc("maturityDate",true)} w-28`} /></td>
-                            <td className="px-1.5 py-1"><input type="date" value={row.firstPaymentDate} onChange={e=>updatePending(row.id,"firstPaymentDate",e.target.value)} className={`${fc("firstPaymentDate",false)} w-28`} /></td>
+                            <td className="px-1.5 py-1">
+                              <input type="date" value={row.firstPaymentDate} onChange={e=>updatePending(row.id,"firstPaymentDate",e.target.value)} className={`${fc("firstPaymentDate",false)} w-28 ${row.firstPaymentDate && row.startDate && row.firstPaymentDate < row.startDate ? "border-red-400 bg-red-50/60" : ""}`} />
+                              {row.firstPaymentDate && row.startDate && row.firstPaymentDate < row.startDate && (
+                                <p className="text-[9px] text-red-500 mt-0.5 whitespace-nowrap">Before start date</p>
+                              )}
+                            </td>
                             <td className="px-1.5 py-1"><select value={row.currency} onChange={e=>updatePending(row.id,"currency",e.target.value)} className={`${LT_ADD_SCR} w-14`}>{["CAD","USD","EUR","GBP"].map(c=><option key={c}>{c}</option>)}</select></td>
                             <td className="px-1.5 py-1"><input value={row.monthlyPayment} onChange={e=>updatePending(row.id,"monthlyPayment",e.target.value)} className={`${fc("monthlyPayment",false)} w-24 text-right`} placeholder="auto" /></td>
                             <td className="px-1.5 py-1"><input value={row.originalPrincipal} onChange={e=>updatePending(row.id,"originalPrincipal",e.target.value)} className={`${fc("originalPrincipal",false)} w-24 text-right`} placeholder="0" /></td>
-                            <td className="px-1.5 py-1"><input value={row.fxRate} onChange={e=>updatePending(row.id,"fxRate",e.target.value)} className={`${fc("fxRate",false)} w-16 text-right font-mono`} placeholder="1.000" /></td>
+                            <td className="px-1.5 py-1">
+                              {row.currency === "CAD"
+                                ? <input value="1.000" readOnly className="h-6 text-[10px] px-1.5 w-16 text-right font-mono border border-border rounded bg-muted/30 text-muted-foreground cursor-default" />
+                                : <input value={row.fxRate} onChange={e=>updatePending(row.id,"fxRate",e.target.value)} className={`${fc("fxRate",true)} w-16 text-right font-mono`} placeholder="req." />
+                              }
+                            </td>
                             <td className="px-1.5 py-1"><input value={row.currentBalance} onChange={e=>updatePending(row.id,"currentBalance",e.target.value)} className={`${fc("currentBalance",true)} w-24 text-right`} placeholder="Balance" /></td>
                             <td className="px-1.5 py-1 min-w-[160px]"><GLComboboxMiniAdd value={row.glPrincipal} onChange={v=>updatePending(row.id,"glPrincipal",v)} required={ltAddRowMissing(row,"glPrincipal")} /></td>
                             <td className="px-1.5 py-1"><select value={row.dayCount} onChange={e=>updatePending(row.id,"dayCount",e.target.value)} className={`${LT_ADD_SCR} w-20`}>{["ACT/365","ACT/360","30/360"].map(d=><option key={d}>{d}</option>)}</select></td>
@@ -795,7 +805,6 @@ function LoansTab({
                             <td className="px-1.5 py-1"><select value={row.compounding} onChange={e=>updatePending(row.id,"compounding",e.target.value)} className={`${LT_ADD_SCR} w-22`}>{["Monthly","Quarterly","Semi-annual","Annual"].map(f=><option key={f}>{f}</option>)}</select></td>
                             <td className="px-1.5 py-1"><input value={row.ioPeriod} onChange={e=>updatePending(row.id,"ioPeriod",e.target.value)} className={`${fc("ioPeriod",false)} w-14 text-right`} placeholder="0" /></td>
                             <td className="px-1.5 py-1"><input value={row.balloonAmt} onChange={e=>updatePending(row.id,"balloonAmt",e.target.value)} className={`${fc("balloonAmt",false)} w-24 text-right`} placeholder="0" /></td>
-                            <td className="px-1.5 py-1"><select value={row.status} onChange={e=>updatePending(row.id,"status",e.target.value)} className={`${LT_ADD_SCR} w-20`}>{["Active","Closed","Replaced","Inactive"].map(s=><option key={s}>{s}</option>)}</select></td>
                             <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
                               <div className="flex items-center justify-end">
                                 <button onClick={()=>removePending(row.id)} className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors">
