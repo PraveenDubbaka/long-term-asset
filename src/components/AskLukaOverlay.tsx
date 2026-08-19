@@ -3556,7 +3556,9 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       const ltPortion = closingBal - curPortion;
                                                       // Accrued interest: 0 if last payment on FY end, else days since last payment
                                                       const lastRow = rows[rows.length - 1];
-                                                      const accruedInt = lastRow && Math.abs(lastRow.d.getTime() - fyEnd.getTime()) < 86400000 ? 0 : closingBal * monthlyRate;
+                                                      const lastDateStr = lastRow?.d.toISOString().slice(0, 10);
+                                                      const fyEndStr    = fyEnd.toISOString().slice(0, 10);
+                                                      const accruedInt  = lastDateStr === fyEndStr ? 0 : closingBal * monthlyRate;
                                                       return { ...loan, rows, totalInterest, totalPrincipal, closingBal, curPortion, ltPortion, accruedInt };
                                                     });
 

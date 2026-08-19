@@ -937,6 +937,7 @@ function LoansTab({
                   );
                   return <th key={h} className={cls}>{h}</th>;
                 })}
+                <th className="sticky right-0 z-10 bg-muted/30 border-l border-border/40 px-2 py-2 w-[52px]" />
               </tr>
             </thead>
             <tbody>
@@ -1123,6 +1124,26 @@ function LoansTab({
                             );
                           })()}
                         </>}
+                        <td className="px-2 py-1 sticky right-0 z-10 bg-background border-l border-border/40">
+                          {!l.locked ? (
+                            <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={e => { e.stopPropagation(); setEditingId(l.id); setEditDraft({}); }}
+                                className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                                title="Edit"
+                              ><Pencil className="w-3 h-3" /></button>
+                              <button
+                                onClick={e => { e.stopPropagation(); handleDeleteLoan(l.id, l.name); }}
+                                className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors"
+                                title="Delete"
+                              ><Trash2 className="w-3 h-3" /></button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-end px-1">
+                              <LockIcon className="w-3 h-3 text-muted-foreground/40" />
+                            </div>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
@@ -1146,6 +1167,7 @@ function LoansTab({
                   }
                   return <td key={h} className="px-2.5 py-2" />;
                 })}
+                <td className="sticky right-0 z-10 bg-muted/50 border-l border-border/40 px-2 py-2 w-[52px]" />
               </tr>
             </tfoot>
           </table>
