@@ -84,6 +84,8 @@ interface Store {
   addBanDocument: (doc: BanDocument) => void;
   removeBanDocument: (id: string) => void;
 
+  setLoans: (loans: Loan[]) => void;
+
   resolveReviewItem: (id: string) => void;
   updateSettings: (updates: Partial<EngagementSettings>) => void;
 
@@ -120,6 +122,7 @@ export const useStore = create<Store>((set) => ({
     importWizardType: null,
   },
 
+  setLoans: (loans) => set(() => ({ loans, amortization: [], continuity: [] })),
   addLoan: (loan) => set(s => ({ loans: [...s.loans, loan] })),
   updateLoan: (id, updates) => set(s => ({
     loans: s.loans.map(l => l.id === id ? { ...l, ...updates } : l)

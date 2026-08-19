@@ -45,7 +45,7 @@ import lukaResponding from "@/assets/luka-responding.gif";
 import quickbooksLogo from "@/assets/quickbooks-intuit-logo.png";
 import { useStore } from "@/store/useStore";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import type { Loan } from "@/types";
+import type { Loan, LoanType, Currency, InterestType, DayCountBasis, PaymentFrequency, PaymentType, LoanStatus, CompoundingFrequency } from "@/types";
 
 // ─── Autopilot types ────────────────────────────────────────────────────────
 type AutopilotStep =
@@ -494,6 +494,7 @@ interface LtDebtReviewRow {
   ioPeriod: string; balloonAmt: string;
   collateral: string; status: string;
   glPrincipal: string;
+  locked?: boolean;
 }
 
 const EMPTY_LT_ROW = (): LtDebtReviewRow => ({
@@ -1225,12 +1226,15 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [amortUploadFile, setAmortUploadFile]    = useState<string|null>(null);
   const [amortWizRect,    setAmortWizRect]       = useState<{left:number;right:number;bottom:number}|null>(null);
   // ── Agentic Long-term Debt (chat-based upload) ──
-  const [ltDebtPhase,       setLtDebtPhase]      = useState<"idle"|"upload-prompt"|"done">("idle");
+  const [ltDebtPhase,       setLtDebtPhase]      = useState<"idle"|"prior-year-gate"|"upload-prompt"|"done">("idle");
   const [ltDebtUploadFiles, setLtDebtUploadFiles] = useState<LtDebtFile[]>([]);
   const [ltDebtGenerated,   setLtDebtGenerated]  = useState(false);
   const [ltDebtSrcLabel,    setLtDebtSrcLabel]   = useState<string|null>(null);
   const [ltReviewRows,      setLtReviewRows]     = useState<LtDebtReviewRow[]>([]);
   const [ltProcessedFileIds,setLtProcessedFileIds]= useState<Set<string>>(new Set());
+  const [ltPriorFile,       setLtPriorFile]      = useState<{id: string; name: string}|null>(null);
+  const [ltPriorExtracting, setLtPriorExtracting]= useState(false);
+  const [ltPriorRows,       setLtPriorRows]      = useState<LtDebtReviewRow[]>([]);
   // ── Add-more-loans turn ──
   const [addMoreLoansActive,  setAddMoreLoansActive]  = useState(false);
   const [addMoreLtFiles,      setAddMoreLtFiles]      = useState<LtDebtFile[]>([]);
@@ -1322,6 +1326,11 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   // ── Store ──
   const loans = useStore(s => s.loans);
   const settings = useStore(s => s.settings);
+  const addLoanToStore = useStore(s => s.addLoan);
+  const setLoansInStore = useStore(s => s.setLoans);
+  const addAmortRowToStore = useStore(s => s.addAmortRow);
+  const addContinuityRowToStore = useStore(s => s.addContinuityRow);
+  const addJEToStore = useStore(s => s.addJE);
 
   // ── Autopilot state ──
   const [autopilotLoanId, setAutopilotLoanId] = useState<string | null>(null);
@@ -1753,7 +1762,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
       setIsThinking(false);
       if (isLtDebt) {
         setRichResponseType("lt-debt"); setAiResponse("__rich__");
-        setLtDebtPhase("upload-prompt");
+        setLtDebtPhase("prior-year-gate");
       } else if (isInvSched) {
         setRichResponseType("investment"); setAiResponse("__rich__");
         setInvSchedPhase("thinking");
@@ -3019,6 +3028,104 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                               <div className="space-y-3 py-0.5 max-w-full">
                                 {!ltDebtGenerated ? (
                                   <>
+                                    {/* ── Gate 1: prior-year schedule upload ── */}
+                                    {ltDebtPhase === "prior-year-gate" && (() => {
+                                      const handlePriorFile = (f: File) => {
+                                        setLtPriorFile({ id: `py-${Date.now()}`, name: f.name });
+                                        setLtPriorExtracting(true);
+                                        setTimeout(() => {
+                                          const uid = () => `ltr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+                                          const rows: LtDebtReviewRow[] = [
+                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 1", lender: "BDC", type: "Term", currency: "CAD", originalPrincipal: "400,000", currentBalance: "356,687.18", rate: "4.000", interestType: "Fixed", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "P&I", dayCount: "ACT/365", compounding: "Monthly", ioPeriod: "", balloonAmt: "", collateral: "", status: "Active", glPrincipal: "2100" },
+                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 2", lender: "BDC", type: "Term", currency: "CAD", originalPrincipal: "400,000", currentBalance: "356,687.18", rate: "4.000", interestType: "Fixed", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "P&I", dayCount: "ACT/365", compounding: "Monthly", ioPeriod: "", balloonAmt: "", collateral: "", status: "Active", glPrincipal: "2100" },
+                                          ];
+                                          setLtPriorRows(rows);
+                                          setLtPriorExtracting(false);
+                                        }, 1400);
+                                      };
+                                      return (
+                                        <div className="space-y-3">
+                                          <p className="text-base text-foreground leading-relaxed">
+                                            Upload your prior-year long-term debt schedule so Luka can pre-fill opening balances.
+                                          </p>
+                                          <div
+                                            className="flex flex-col items-center gap-2.5 p-5 rounded-[10px] border border-dashed border-primary/25 bg-primary/[0.03] cursor-pointer hover:bg-primary/[0.07] hover:border-primary/45 transition-all group text-center"
+                                            onClick={() => {
+                                              const inp = document.createElement("input");
+                                              inp.type = "file"; inp.accept = ".pdf,.xlsx,.xls"; inp.multiple = false;
+                                              inp.onchange = e => { const f = (e.target as HTMLInputElement).files?.[0]; if (f) handlePriorFile(f); };
+                                              inp.click();
+                                            }}
+                                            onDragOver={e => e.preventDefault()}
+                                            onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) handlePriorFile(f); }}
+                                          >
+                                            <div className="relative">
+                                              <div className="absolute inset-0 rounded-full bg-primary/20 blur-md group-hover:bg-primary/30 transition-all" />
+                                              <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shadow-sm">
+                                                <Upload className="w-4 h-4 text-white" />
+                                              </div>
+                                            </div>
+                                            {ltPriorExtracting ? (
+                                              <div className="flex items-center gap-2 mt-1">
+                                                <div className="w-3 h-3 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                                                <p className="text-base text-muted-foreground">Extracting opening balances…</p>
+                                              </div>
+                                            ) : ltPriorFile ? (
+                                              <p className="text-base font-medium text-foreground mt-1">{ltPriorFile.name}</p>
+                                            ) : (
+                                              <div className="mt-1">
+                                                <p className="text-base font-semibold text-foreground">Prior-year long-term debt schedule</p>
+                                                <p className="text-base text-muted-foreground mt-0.5">PDF · XLSX — opening balances auto-extracted</p>
+                                              </div>
+                                            )}
+                                          </div>
+                                          {ltPriorRows.length > 0 && (
+                                            <div className="rounded-[8px] border border-border overflow-hidden">
+                                              <table className="w-full text-base">
+                                                <thead>
+                                                  <tr className="bg-muted/30 border-b border-border">
+                                                    {["Loan Name","Lender","Opening Balance","Rate %","Start","Maturity"].map(h => (
+                                                      <th key={h} className="px-3 py-1.5 text-left text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{h}</th>
+                                                    ))}
+                                                  </tr>
+                                                </thead>
+                                                <tbody>
+                                                  {ltPriorRows.map((r, ri) => (
+                                                    <tr key={r.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
+                                                      <td className="px-3 py-1.5 font-medium">{r.name}</td>
+                                                      <td className="px-3 py-1.5 text-muted-foreground">{r.lender || <span className="text-amber-500 font-medium">—</span>}</td>
+                                                      <td className="px-3 py-1.5 text-right font-medium">{r.currentBalance ? `$${r.currentBalance}` : <span className="text-amber-500 font-medium">missing</span>}</td>
+                                                      <td className="px-3 py-1.5 text-right">{r.rate ? `${r.rate}%` : <span className="text-amber-500">—</span>}</td>
+                                                      <td className="px-3 py-1.5">{r.startDate || <span className="text-amber-500">—</span>}</td>
+                                                      <td className="px-3 py-1.5">{r.maturityDate || <span className="text-amber-500">—</span>}</td>
+                                                    </tr>
+                                                  ))}
+                                                </tbody>
+                                              </table>
+                                            </div>
+                                          )}
+                                          <div className="flex items-center justify-between pt-1">
+                                            <button
+                                              onClick={() => { setLtPriorRows([]); setLtPriorFile(null); setLtDebtPhase("upload-prompt"); }}
+                                              className="text-base text-muted-foreground hover:text-foreground underline underline-offset-2"
+                                            >
+                                              Skip prior year
+                                            </button>
+                                            {ltPriorRows.length > 0 && (
+                                              <button
+                                                onClick={() => { setLtReviewRows(ltPriorRows); setLtDebtPhase("upload-prompt"); }}
+                                                className="inline-flex items-center gap-2 h-9 px-5 text-base font-medium rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer transition-colors"
+                                              >
+                                                Confirm opening balances
+                                              </button>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })()}
+
+                                    {/* ── Gate 2: current-year loan upload ── */}
+                                    {ltDebtPhase !== "prior-year-gate" && (<>
                                     {/* Intro text */}
                                     <p className="text-base text-foreground leading-relaxed">
                                       Upload or enter your loan data below, then click <strong>Submit</strong>.
@@ -3049,9 +3156,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                       };
                                       const validFiles = ltDebtUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized");
                                       const ambigFiles = ltDebtUploadFiles.filter(f => f.kind === "ambiguous" && !f.userKind);
-                                      const missingCount = ltReviewRows.reduce((sum, row) =>
+                                      const missingCount = ltReviewRows.filter(r => !r.locked).reduce((sum, row) =>
                                         sum + LT_REVIEW_REQUIRED.filter(f => ltRowMissing(row, f)).length, 0);
-                                      const canSubmit = (validFiles.length > 0 || ltReviewRows.length > 0) && ambigFiles.length === 0 && missingCount === 0;
+                                      const canSubmit = ltReviewRows.length > 0 && ambigFiles.length === 0 && missingCount === 0 ||
+                                        (validFiles.length > 0 && ambigFiles.length === 0 && missingCount === 0);
 
                                       const triggerUpload = () => {
                                             const inp = document.createElement("input");
@@ -3192,7 +3300,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   <table className="w-full text-base" style={{ minWidth: 2400 }}>
                                                     <thead>
                                                       <tr className="bg-muted/30 border-b border-border">
-                                                        {["Loan Name *","Lender *","Current Collateral","Type","Rate Type","Int. Rate % *","Start *","Maturity *","First Payment","CCY","Mo. Payment","Orig. Loan Amt","FX Rate","Opening Bal. *","GL Principal *","Day Count","Payment Type","Freq.","Compounding","IO Period (mo.)","Balloon Amt","Status",""].map((h, i) => (
+                                                        {["Loan Name *","Lender *","Current Collateral","Type","Rate Type","Int. Rate % *","Start *","Maturity *","First Payment","CCY","Mo. Payment","Orig. Loan Amt","FX Rate","Opening Bal. *","GL Principal *","Day Count","Payment Type","Freq.","Compounding","IO Period (mo.)","Balloon Amt",""].map((h, i) => (
                                                           <th key={i} className={`px-2 py-1.5 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${LT_RIGHT_COLS.has(h) ? "text-right" : "text-left"} ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10" : ""}`}>
                                                             {h.endsWith(" *")
                                                               ? <>{h.slice(0, -2)} <span className="text-red-500">*</span></>
@@ -3203,6 +3311,32 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     </thead>
                                                     <tbody>
                                                       {ltReviewRows.map((row, ri) => {
+                                                        if (row.locked) return (
+                                                          <tr key={row.id} className="border-b border-border/40 bg-muted/25">
+                                                            <td className="px-1.5 py-2 min-w-[130px]"><div className="flex items-center gap-1.5"><Lock className="w-3 h-3 text-muted-foreground shrink-0" /><span className="text-base font-medium text-foreground">{row.name}</span></div></td>
+                                                            <td className="px-1.5 py-2 text-base text-muted-foreground">{row.lender || "—"}</td>
+                                                            <td className="px-1.5 py-2 text-base text-muted-foreground">{row.collateral || "—"}</td>
+                                                            <td className="px-1.5 py-2 text-base text-muted-foreground">{row.type}</td>
+                                                            <td className="px-1.5 py-2 text-base text-muted-foreground">{row.interestType}</td>
+                                                            <td className="px-1.5 py-2 text-base text-right text-muted-foreground">{row.rate}%</td>
+                                                            <td className="px-1.5 py-2 text-base text-muted-foreground">{row.startDate}</td>
+                                                            <td className="px-1.5 py-2 text-base text-muted-foreground">{row.maturityDate}</td>
+                                                            <td className="px-1.5 py-2 text-base text-muted-foreground">{row.firstPaymentDate || "—"}</td>
+                                                            <td className="px-1.5 py-2 text-base text-muted-foreground">{row.currency}</td>
+                                                            <td className="px-1.5 py-2 text-base text-right text-muted-foreground">{row.monthlyPayment || "—"}</td>
+                                                            <td className="px-1.5 py-2 text-base text-right text-muted-foreground">{row.originalPrincipal}</td>
+                                                            <td className="px-1.5 py-2 text-base text-right text-muted-foreground">{row.fxRate || "—"}</td>
+                                                            <td className="px-1.5 py-2 text-base text-right font-medium text-foreground">${row.currentBalance}</td>
+                                                            <td className="px-1.5 py-2 text-base text-muted-foreground">{row.glPrincipal}</td>
+                                                            <td className="px-1.5 py-2 text-base text-muted-foreground">{row.dayCount}</td>
+                                                            <td className="px-1.5 py-2 text-base text-muted-foreground">{row.paymentType}</td>
+                                                            <td className="px-1.5 py-2 text-base text-muted-foreground">{row.paymentFrequency}</td>
+                                                            <td className="px-1.5 py-2 text-base text-muted-foreground">{row.compounding}</td>
+                                                            <td className="px-1.5 py-2 text-base text-right text-muted-foreground">{row.ioPeriod || "—"}</td>
+                                                            <td className="px-1.5 py-2 text-base text-right text-muted-foreground">{row.balloonAmt || "—"}</td>
+                                                            <td className="px-1.5 py-2 sticky right-0 bg-muted/25 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10" />
+                                                          </tr>
+                                                        );
                                                         const fc = (field: keyof LtDebtReviewRow, req: boolean) =>
                                                           cn("h-6 text-base px-1.5 border rounded bg-background focus:outline-none w-full",
                                                             req && ltRowMissing(row, field)
@@ -3308,12 +3442,6 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                             <td className="px-1.5 py-1">
                                                               <input value={row.balloonAmt} onChange={e => updateLtRow(row.id,"balloonAmt",e.target.value)} className={cn(fc("balloonAmt",false),"w-24 text-right")} placeholder="0" />
                                                             </td>
-                                                            {/* Status */}
-                                                            <td className="px-1.5 py-1">
-                                                              <select value={row.status} onChange={e => updateLtRow(row.id,"status",e.target.value)} className={cn(SCR,"w-20")}>
-                                                                {["Active","Closed","Replaced","Inactive"].map(s => <option key={s}>{s}</option>)}
-                                                              </select>
-                                                            </td>
                                                             {/* Delete */}
                                                             <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
                                                               <div className="flex items-center justify-end">
@@ -3355,6 +3483,163 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     const manualCount = ltReviewRows.filter(r => !r.sourceFile).length;
                                                     const manualPart = manualCount > 0 ? `${manualCount} manual entr${manualCount !== 1 ? "ies" : "y"}` : "";
                                                     setLtDebtSrcLabel([docPart, manualPart].filter(Boolean).join(" + ") || `${ltReviewRows.length} manual entries`);
+
+                                                    // Convert review rows to Loan objects and save to store
+                                                    const parseNum = (s: string) => parseFloat((s || "0").replace(/,/g, "")) || 0;
+                                                    const fyEnd = new Date(settings.fiscalYearEnd || "2025-09-30");
+
+                                                    const newLoans: Loan[] = ltReviewRows.map(row => ({
+                                                      id: `loan-luka-${row.id}`,
+                                                      refNumber: `LTD-${Date.now()}-${Math.random().toString(36).slice(2,5).toUpperCase()}`,
+                                                      name: row.name,
+                                                      lender: row.lender,
+                                                      type: row.type as LoanType,
+                                                      currency: row.currency as Currency,
+                                                      originalPrincipal: parseNum(row.originalPrincipal),
+                                                      currentBalance: parseNum(row.currentBalance),
+                                                      rate: parseNum(row.rate),
+                                                      interestType: row.interestType as InterestType,
+                                                      dayCountBasis: (row.dayCount || "ACT/365") as DayCountBasis,
+                                                      startDate: row.startDate,
+                                                      maturityDate: row.maturityDate,
+                                                      firstPaymentDate: row.firstPaymentDate || undefined,
+                                                      monthlyPayment: parseNum(row.monthlyPayment) || undefined,
+                                                      paymentFrequency: row.paymentFrequency as PaymentFrequency,
+                                                      paymentType: row.paymentType as PaymentType,
+                                                      status: "Active" as LoanStatus,
+                                                      compoundingFrequency: (row.compounding || "Monthly") as CompoundingFrequency,
+                                                      fxRateToCAD: parseNum(row.fxRate) || undefined,
+                                                      securityDescription: row.collateral || undefined,
+                                                      glPrincipalAccount: row.glPrincipal,
+                                                      glAccruedInterestAccount: "",
+                                                      glInterestExpenseAccount: "",
+                                                      covenantIds: [],
+                                                      currentPortion: 0,
+                                                      longTermPortion: parseNum(row.currentBalance),
+                                                      accruedInterest: 0,
+                                                      attachments: [],
+                                                      locked: row.locked,
+                                                    }));
+
+                                                    // Auto-run amortization (Gate 2)
+                                                    const computedLoans = newLoans.map(loan => {
+                                                      const monthlyRate = loan.rate / 100 / 12;
+                                                      const payment = loan.monthlyPayment ?? 0;
+                                                      const firstPmt = loan.firstPaymentDate ? new Date(loan.firstPaymentDate) : new Date(loan.startDate);
+                                                      let bal = loan.currentBalance;
+                                                      let totalInterest = 0, totalPrincipal = 0;
+                                                      let d = new Date(firstPmt);
+                                                      const rows = [];
+                                                      while (d <= fyEnd && bal > 0.01) {
+                                                        const int = bal * monthlyRate;
+                                                        const prin = Math.min(payment - int, bal);
+                                                        const end = bal - prin;
+                                                        rows.push({ d: new Date(d), int, prin, end });
+                                                        totalInterest += int;
+                                                        totalPrincipal += prin;
+                                                        bal = end;
+                                                        d = new Date(d.getFullYear(), d.getMonth() + 1, d.getDate());
+                                                      }
+                                                      const closingBal = bal;
+                                                      // Current portion: next 12 months of principal
+                                                      let curPortion = 0;
+                                                      const fyNext = new Date(fyEnd.getFullYear() + 1, fyEnd.getMonth(), fyEnd.getDate());
+                                                      let bal2 = closingBal;
+                                                      let d2 = new Date(d);
+                                                      while (d2 <= fyNext && bal2 > 0.01) {
+                                                        const int2 = bal2 * monthlyRate;
+                                                        const prin2 = Math.min(payment - int2, bal2);
+                                                        curPortion += prin2;
+                                                        bal2 -= prin2;
+                                                        d2 = new Date(d2.getFullYear(), d2.getMonth() + 1, d2.getDate());
+                                                      }
+                                                      const ltPortion = closingBal - curPortion;
+                                                      // Accrued interest: 0 if last payment on FY end, else days since last payment
+                                                      const lastRow = rows[rows.length - 1];
+                                                      const accruedInt = lastRow && Math.abs(lastRow.d.getTime() - fyEnd.getTime()) < 86400000 ? 0 : closingBal * monthlyRate;
+                                                      return { ...loan, rows, totalInterest, totalPrincipal, closingBal, curPortion, ltPortion, accruedInt };
+                                                    });
+
+                                                    setLoansInStore(computedLoans.map(l => ({
+                                                      ...l,
+                                                      closingBalance: l.closingBal,
+                                                      currentPortion: Math.round(l.curPortion * 100) / 100,
+                                                      longTermPortion: Math.round(l.ltPortion * 100) / 100,
+                                                      accruedInterest: Math.round(l.accruedInt * 100) / 100,
+                                                    })));
+
+                                                    // Populate amortization rows
+                                                    computedLoans.forEach(loan => {
+                                                      loan.rows.forEach(r => {
+                                                        addAmortRowToStore({
+                                                          id: `ar-${loan.id}-${r.d.toISOString().slice(0,7)}`,
+                                                          loanId: loan.id,
+                                                          periodDate: r.d.toISOString().slice(0,10),
+                                                          openingBalance: r.end + r.prin,
+                                                          interest: r.int,
+                                                          payment: loan.monthlyPayment ?? 0,
+                                                          principal: r.prin,
+                                                          endingBalance: r.end,
+                                                        });
+                                                      });
+                                                    });
+
+                                                    // Populate continuity rows
+                                                    const fyLabel = `FY${fyEnd.getFullYear()}`;
+                                                    const fyPeriod = `${fyEnd.getFullYear()}-${String(fyEnd.getMonth() + 1).padStart(2, "0")}`;
+                                                    computedLoans.forEach(loan => {
+                                                      addContinuityRowToStore({
+                                                        id: `cr-${loan.id}-${fyLabel}`,
+                                                        loanId: loan.id,
+                                                        period: fyPeriod,
+                                                        openingBalance: loan.currentBalance,
+                                                        newBorrowings: 0,
+                                                        repayments: Math.round((loan.totalPrincipal + loan.totalInterest) * 100) / 100,
+                                                        principalRepayments: Math.round(loan.totalPrincipal * 100) / 100,
+                                                        interestRepayments: Math.round(loan.totalInterest * 100) / 100,
+                                                        fxTranslation: 0,
+                                                        closingBalance: Math.round(loan.closingBal * 100) / 100,
+                                                        currentPortion: Math.round(loan.curPortion * 100) / 100,
+                                                        longTermPortion: Math.round(loan.ltPortion * 100) / 100,
+                                                        accruedInterest: Math.round(loan.accruedInt * 100) / 100,
+                                                      });
+                                                    });
+
+                                                    // Generate AJEs
+                                                    const totalCurPortion = computedLoans.reduce((s, l) => s + l.curPortion, 0);
+                                                    const totalAccrued = computedLoans.reduce((s, l) => s + l.accruedInt, 0);
+                                                    const now = new Date().toISOString();
+                                                    if (totalCurPortion > 0) {
+                                                      addJEToStore({
+                                                        id: `je-luka-reclass-${Date.now()}`,
+                                                        type: "CurrentPortionReclass",
+                                                        description: "Reclassify current portion of long-term debt",
+                                                        lines: [
+                                                          { id: `jel-r1-${Date.now()}`, account: "Long-term Debt", description: "Dr — current portion", debit: Math.round(totalCurPortion * 100) / 100, credit: 0 },
+                                                          { id: `jel-r2-${Date.now()}`, account: "Current Portion of LTD", description: "Cr — current portion", debit: 0, credit: Math.round(totalCurPortion * 100) / 100 },
+                                                        ],
+                                                        status: "Draft",
+                                                        fiscalYear: fyLabel,
+                                                        preparedBy: "Luka",
+                                                        createdAt: now,
+                                                      });
+                                                    }
+                                                    if (totalAccrued > 0.01) {
+                                                      addJEToStore({
+                                                        id: `je-luka-accrual-${Date.now()}`,
+                                                        type: "AccruedInterest",
+                                                        description: "Accrue interest on long-term debt",
+                                                        lines: [
+                                                          { id: `jel-a1-${Date.now()}`, account: "Interest Expense", description: "Dr — accrued interest", debit: Math.round(totalAccrued * 100) / 100, credit: 0 },
+                                                          { id: `jel-a2-${Date.now()}`, account: "Accrued Interest Payable", description: "Cr — accrued interest", debit: 0, credit: Math.round(totalAccrued * 100) / 100 },
+                                                        ],
+                                                        status: "Draft",
+                                                        fiscalYear: fyLabel,
+                                                        preparedBy: "Luka",
+                                                        createdAt: now,
+                                                      });
+                                                    }
+
                                                     setLtDebtGenerated(true);
                                                     setLtDebtPhase("done");
                                                   }}
@@ -3373,6 +3658,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                         </div>
                                       );
                                     })()}
+                                    </>)}
                                   </>
                                 ) : (
                                   <div className="space-y-2">

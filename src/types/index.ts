@@ -57,6 +57,8 @@ export interface Loan {
   fxRateType?: FxRateType; // exchange rate type used for translation
   monthlyPayment?: number; // manual override; if absent, computed from PMT
   closingBalance?: number; // closing balance as at the fiscal year-end date
+  locked?: boolean;        // true for prior-year opening balance rows (read-only)
+  glBalance?: number;      // GL balance entered manually for tie-out
 }
 
 export interface AmortizationRow {

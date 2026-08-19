@@ -7,8 +7,9 @@ import {
   Building2, FileText, BookOpen, Receipt, Layers, FileCheck, Send, TrendingUp,
   Download, Copy, RotateCcw, X, Trash2, Search, Check, Pencil, Folder,
   Upload, Loader2, Maximize2, Minimize2, SlidersHorizontal, Save, FolderOpen,
-  Clock, FilePlus, PenLine, GitCommit,
+  Clock, FilePlus, PenLine, GitCommit, Lock as LockIcon,
 } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/wp-ui/tooltip";
 import { COVENANT_TEMPLATES, GL_ACCOUNTS, GL_CATEGORY_ORDER, GL_CATEGORY_LABELS } from "@/lib/covenantTemplates";
 import type { GlCategory } from "@/lib/covenantTemplates";
 import { accountMappings as allGLAccountsForAdd } from "@/data/mockData";
@@ -632,6 +633,9 @@ function LoansTab({
     { h: "IO Period (mo.)",    left: false },
     { h: "Balloon Amt",        left: false },
     { h: "Status",             left: false },
+    { h: "Current Portion",   left: false },
+    { h: "LT Portion",        left: false },
+    { h: "GL Diff",           left: false },
   ];
   // compact = narrower table (text cols constrained), expanded = full width; both scroll
   const fit = !tableExpanded;
@@ -908,12 +912,22 @@ function LoansTab({
           >
             <thead>
               <tr className="bg-muted/30 border-b border-border">
-                {HEADERS.filter(({ h }) => !hiddenCols.has(h)).map(({ h, left }) => (
-                  <th
-                    key={h}
-                    className={`px-2.5 py-2 font-semibold text-muted-foreground uppercase tracking-wide text-[10px] whitespace-nowrap ${left ? "text-left" : "text-right"}`}
-                  >{h}</th>
-                ))}
+                {HEADERS.filter(({ h }) => !hiddenCols.has(h)).map(({ h, left }) => {
+                  const cls = `px-2.5 py-2 font-semibold text-muted-foreground uppercase tracking-wide text-[10px] whitespace-nowrap ${left ? "text-left" : "text-right"}`;
+                  if (h === "GL Diff") return (
+                    <th key={h} className={cls}>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="cursor-default underline underline-offset-2 decoration-dotted">{h}</span>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="text-[11px]">GL Balance (manual entry) minus Closing Balance from amortization engine</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </th>
+                  );
+                  return <th key={h} className={cls}>{h}</th>;
+                })}
               </tr>
             </thead>
             <tbody>
@@ -979,14 +993,17 @@ function LoansTab({
                     const convAmt    = l.originalPrincipal * fx;
                     const closingCAD = (l.closingBalance ?? l.currentBalance) * fx;
                     return (
-                      <tr key={l.id} className={`group border-b border-border transition-colors ${isGlobalEdit ? "bg-primary/[0.02]" : isEditing ? "bg-primary/[0.04]" : "hover:bg-muted/30 cursor-pointer"}`}>
+                      <tr key={l.id} className={`group border-b border-border transition-colors ${l.locked ? "bg-muted/25" : isGlobalEdit ? "bg-primary/[0.02]" : isEditing ? "bg-primary/[0.04]" : "hover:bg-muted/30 cursor-pointer"}`}>
                         {(isGlobalEdit || isEditing) ? newRowCells(
                           isGlobalEdit ? mergedDraft : editDraft,
                           isGlobalEdit ? batchSetter : (k, v) => setEditDraft(p => ({ ...p, [k]: v }))
                         ) : <>
                           {!hid.has("Loan Name") && (
                             <td className="px-2.5 py-1.5">
-                              <div className={fit ? "max-w-[110px] truncate font-medium text-foreground" : "font-medium text-foreground whitespace-nowrap min-w-[140px]"} title={l.name}>{l.name}</div>
+                              <div className={`flex items-center gap-1.5 ${fit ? "max-w-[110px]" : "min-w-[140px]"}`} title={l.name}>
+                                {l.locked && <LockIcon className="w-3 h-3 text-muted-foreground shrink-0" />}
+                                <span className="font-medium text-foreground truncate">{l.name}</span>
+                              </div>
                             </td>
                           )}
                           {!hid.has("Lender") && (
@@ -1056,6 +1073,34 @@ function LoansTab({
                           {!hid.has("IO Period (mo.)")  && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{l.interestOnlyPeriodMonths ?? "00"}</td>}
                           {!hid.has("Balloon Amt")      && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{l.balloonAmount ? fmt(l.balloonAmount) : "00"}</td>}
                           {!hid.has("Status")           && <td className="px-2.5 py-1.5 text-right"><StatusBadge status={l.status} /></td>}
+                          {!hid.has("Current Portion") && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{l.currentPortion > 0 ? fmt(toCAD(l.currentPortion, l.currency)) : "00"}</td>}
+                          {!hid.has("LT Portion") && (() => {
+                            const closing = l.closingBalance ?? l.currentBalance;
+                            const sanityOk = Math.abs(closing - l.currentPortion - l.longTermPortion) < 1;
+                            return (
+                              <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap">
+                                <span className="text-foreground">{l.longTermPortion > 0 ? fmt(toCAD(l.longTermPortion, l.currency)) : "00"}</span>
+                                {!sanityOk && l.currentPortion > 0 && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <AlertTriangle className="inline ml-1 w-3 h-3 text-amber-500 cursor-default" />
+                                    </TooltipTrigger>
+                                    <TooltipContent side="left" className="text-[11px]">Current + Long-term does not equal closing balance</TooltipContent>
+                                  </Tooltip>
+                                )}
+                              </td>
+                            );
+                          })()}
+                          {!hid.has("GL Diff") && (() => {
+                            if (l.glBalance === undefined || l.glBalance === null) return <td key="gld" className="px-2.5 py-1.5 text-right text-muted-foreground tabular-nums">$—</td>;
+                            const diff = l.glBalance - closingCAD;
+                            const isZero = Math.abs(diff) < 0.01;
+                            return (
+                              <td key="gld" className={`px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap font-medium ${isZero ? "text-muted-foreground" : "text-destructive"}`}>
+                                {isZero ? <span className="text-muted-foreground">$—</span> : fmt(diff)}
+                              </td>
+                            );
+                          })()}
                         </>}
                       </tr>
                     );
@@ -1070,6 +1115,14 @@ function LoansTab({
                   if (h === "Orig. Loan Amt") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+l.originalPrincipal,0))}</td>;
                   if (h === "Converted Amt")  return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+l.originalPrincipal*getFxRate(l),0))}</td>;
                   if (h === "Closing Balance") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+toCAD(l.closingBalance??l.currentBalance,l.currency),0))}</td>;
+                  if (h === "Current Portion") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+toCAD(l.currentPortion,l.currency),0))}</td>;
+                  if (h === "LT Portion") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+toCAD(l.longTermPortion,l.currency),0))}</td>;
+                  if (h === "GL Diff") {
+                    const withGL = loans.filter(l => l.glBalance !== undefined);
+                    if (withGL.length === 0) return <td key={h} className="px-2.5 py-2 text-right text-muted-foreground text-[11px]">$—</td>;
+                    const totalDiff = withGL.reduce((s,l)=>s+(l.glBalance!-toCAD(l.closingBalance??l.currentBalance,l.currency)),0);
+                    return <td key={h} className={`px-2.5 py-2 text-right tabular-nums text-[11px] font-bold ${Math.abs(totalDiff)<1?"text-muted-foreground":"text-destructive"}`}>{Math.abs(totalDiff)<1?"$—":fmt(totalDiff)}</td>;
+                  }
                   return <td key={h} className="px-2.5 py-2" />;
                 })}
               </tr>
@@ -2123,8 +2176,9 @@ function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
   );
 }
 
-function NotesTabPanel({ loans, continuity, reconciliation, settings }: {
+function NotesTabPanel({ loans, amortization, continuity, reconciliation, settings }: {
   loans: Loan[];
+  amortization: AmortizationRow[];
   continuity: ContinuityRow[];
   reconciliation: ReconciliationItem[];
   settings: EngagementSettings;
@@ -2134,44 +2188,109 @@ function NotesTabPanel({ loans, continuity, reconciliation, settings }: {
     ? (() => { const d = new Date(yearEnd.slice(0,10) + "T00:00:00"); d.setFullYear(d.getFullYear() - 1); return d.toISOString().slice(0,10); })()
     : null;
 
+  // Section C: repayment schedule bucketed from amortization rows (per-year principal sum)
   const repayBuckets = useMemo(() => {
-    const yr = yearEnd ? new Date(yearEnd.slice(0,10) + "T00:00:00").getFullYear() : new Date().getFullYear();
-    const term = loans.filter(l => l.type !== "LOC" && l.type !== "Revolver");
+    const fyDate = yearEnd ? new Date(yearEnd.slice(0,10) + "T00:00:00") : new Date();
+    const yr = fyDate.getFullYear();
+    const fyMonth = fyDate.getMonth(); // 0-based
+    const fyDay   = fyDate.getDate();
     const b: Record<string, number> = {};
     for (let i = 1; i <= 5; i++) b[String(yr + i)] = 0;
     b["thereafter"] = 0;
-    term.forEach(l => {
-      const matYear = l.maturityDate ? new Date(l.maturityDate + "T00:00:00").getFullYear() : null;
-      if (!matYear) return;
-      const key = matYear > yr + 5 ? "thereafter" : String(matYear);
-      b[key] = (b[key] ?? 0) + toCAD(l.currentPortion || l.currentBalance || 0, l.currency);
+
+    // For each amortization row after FY end, sum principal into fiscal-year buckets
+    loans.forEach(l => {
+      const loanAmort = amortization.filter(r => r.loanId === l.id);
+      loanAmort.forEach(r => {
+        const d = new Date(r.periodDate.slice(0,10) + "T00:00:00");
+        if (d <= fyDate) return; // only rows after fiscal year end
+        // Determine which fiscal year this payment falls into
+        // A fiscal year ending mm/dd has payments from (prev_yr+1 mm/dd+1) to (yr mm/dd)
+        // Find the fiscal year end that this date falls before
+        let bucketFYEnd = yr + 1;
+        for (let i = 1; i <= 5; i++) {
+          const fe = new Date(yr + i, fyMonth, fyDay);
+          if (d <= fe) { bucketFYEnd = yr + i; break; }
+          if (i === 5) bucketFYEnd = yr + 6; // thereafter
+        }
+        const key = bucketFYEnd > yr + 5 ? "thereafter" : String(bucketFYEnd);
+        b[key] = (b[key] ?? 0) + toCAD(r.principal, l.currency);
+      });
     });
+
+    // Fallback to maturity-date bucketing if no amortization rows present
+    if (amortization.length === 0) {
+      loans.filter(l => l.type !== "LOC" && l.type !== "Revolver").forEach(l => {
+        const matYear = l.maturityDate ? new Date(l.maturityDate + "T00:00:00").getFullYear() : null;
+        if (!matYear) return;
+        const key = matYear > yr + 5 ? "thereafter" : String(matYear);
+        b[key] = (b[key] ?? 0) + toCAD(l.closingBalance ?? l.currentBalance, l.currency);
+      });
+    }
+
     const cols = [...Array(5).keys()].map(i => String(yr + i + 1));
     const total = cols.reduce((s, y) => s + (b[y] || 0), 0) + (b["thereafter"] || 0);
-    return { b, cols, total };
-  }, [loans, yearEnd]);
+    return { b, cols, total, yr };
+  }, [loans, amortization, yearEnd]);
+
   const rows = useMemo(() => loans.map(loan => {
-    const recon = reconciliation.find(r => r.loanId === loan.id && r.accountType === "Principal");
-    const tbBal = recon?.tbBalance ?? loan.currentBalance;
+    const closing = toCAD(loan.closingBalance ?? loan.currentBalance, loan.currency);
     const pyRows = continuity.filter(r => r.loanId === loan.id).sort((a,b) => a.period.localeCompare(b.period));
     const pyBal = pyRows.length > 0 ? pyRows[0].openingBalance : null;
     const ccy = loan.currency !== "CAD" ? `${loan.currency} ` : "";
     const typeLabel = loan.type === "LOC" ? "line of credit" : loan.type === "Revolver" ? "revolving credit facility" : loan.type === "Mortgage" ? "mortgage" : "term loan";
     const note = `${loan.name} — ${ccy}${typeLabel} with ${loan.lender} at ${loan.rate}% per annum, ${loan.interestType.toLowerCase()} rate, payable in ${loan.paymentFrequency.toLowerCase()} ${loan.paymentType} payments, matures ${fmtDate(loan.maturityDate)}.`;
-    return { loan, tbBal, pyBal, note };
-  }), [loans, continuity, reconciliation]);
+    return { loan, closing, pyBal, note };
+  }), [loans, continuity]);
 
-  const totalCY = rows.reduce((s,r)=>s+toCAD(r.tbBal, r.loan.currency), 0);
-  const totalCurr = loans.reduce((s,l)=>s+toCAD(l.currentPortion, l.currency), 0);
+  const totalCY    = rows.reduce((s,r) => s + r.closing, 0);
+  const totalCurr  = loans.reduce((s,l) => s + toCAD(l.currentPortion,  l.currency), 0);
+  const totalLT    = loans.reduce((s,l) => s + toCAD(l.longTermPortion, l.currency), 0);
+  const expectedLT = totalCY - totalCurr;
+  const ltMismatch = Math.abs(expectedLT - totalLT) >= 1 && totalCurr > 0;
+
+  const handleCopy = () => {
+    const lines: string[] = [];
+    lines.push("NOTE 8 — LONG-TERM DEBT");
+    lines.push("");
+    lines.push("A. Loan details");
+    rows.forEach(r => {
+      lines.push(`  ${r.note}  Balance: ${fmtNum(r.closing)}`);
+    });
+    lines.push("");
+    lines.push("B. Summary");
+    lines.push(`  Total long-term debt    ${fmtNum(totalCY)}`);
+    lines.push(`  Less: current portion  (${fmtNum(totalCurr)})`);
+    lines.push(`  Long-term portion       ${fmtNum(totalCY - totalCurr)}`);
+    lines.push("");
+    lines.push("C. Principal repayments — next five fiscal years");
+    repayBuckets.cols.forEach(y => {
+      lines.push(`  ${y}  ${fmtNum(repayBuckets.b[y] || 0)}`);
+    });
+    lines.push(`  Thereafter  ${fmtNum(repayBuckets.b["thereafter"] || 0)}`);
+    lines.push(`  Total       ${fmtNum(repayBuckets.total)}`);
+    navigator.clipboard.writeText(lines.join("\n")).then(() => toast.success("Note 8 copied to clipboard")).catch(() => toast.error("Copy failed"));
+  };
 
   return (
     <div className="space-y-3">
+      {/* Validation warning */}
+      {ltMismatch && (
+        <div className="flex items-start gap-2 rounded-[8px] border border-amber-400/60 bg-amber-50 dark:bg-amber-950/30 px-3 py-2">
+          <AlertTriangle className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
+          <p className="text-[11px] text-amber-700 dark:text-amber-300">
+            Section B long-term portion ({fmtNum(totalLT)}) does not equal closing balance minus current portion ({fmtNum(expectedLT)}). Recalculate or verify amortization engine output.
+          </p>
+        </div>
+      )}
+
+      {/* Section A + B: Loan list with totals */}
       <div className="rounded-[8px] border border-border overflow-hidden">
         <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-foreground">Long-term Debt</span>
           </div>
-          <span className="text-[10px] text-muted-foreground">Auto-populated from Loan Register & Continuity</span>
+          <span className="text-[10px] text-muted-foreground">Auto-populated from Loan Register &amp; Continuity</span>
         </div>
         <table className="w-full text-[11px]">
           <thead>
@@ -2187,7 +2306,7 @@ function NotesTabPanel({ loans, continuity, reconciliation, settings }: {
                 <td className="px-3 py-2 align-top">
                   <p className="text-[11px] text-foreground leading-snug">{r.note}</p>
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums font-medium align-top">{fmtNum(toCAD(r.tbBal, r.loan.currency))}</td>
+                <td className="px-3 py-2 text-right tabular-nums font-medium align-top">{fmtNum(r.closing)}</td>
                 <td className="px-3 py-2 text-right tabular-nums text-muted-foreground align-top">{r.pyBal !== null ? fmtNum(toCAD(r.pyBal, r.loan.currency)) : "n/a"}</td>
               </tr>
             ))}
@@ -2215,11 +2334,11 @@ function NotesTabPanel({ loans, continuity, reconciliation, settings }: {
         </table>
       </div>
 
-      {/* Principal Repayment Schedule */}
+      {/* Section C: Principal Repayment Schedule */}
       <div className="rounded-[8px] border border-border overflow-hidden">
         <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
           <span className="text-sm font-semibold text-foreground">Principal Repayment Schedule — Next Five Fiscal Years</span>
-          <span className="text-[10px] text-muted-foreground">Derived from maturity dates in loan register</span>
+          <span className="text-[10px] text-muted-foreground">{amortization.length > 0 ? "Derived from amortization engine" : "Derived from maturity dates in loan register"}</span>
         </div>
         <div className="w-full overflow-x-auto">
           <table className="w-full text-[11px]">
@@ -2249,11 +2368,17 @@ function NotesTabPanel({ loans, continuity, reconciliation, settings }: {
         </div>
       </div>
 
-      {/* Post to Notes action */}
-      <div className="flex items-center justify-end pt-1">
+      {/* Actions */}
+      <div className="flex items-center justify-end gap-2 pt-1">
+        <button
+          onClick={handleCopy}
+          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border text-foreground text-xs font-medium hover:bg-muted transition-colors"
+        >
+          <Copy className="h-3.5 w-3.5" /> Copy Note 8
+        </button>
         <button
           onClick={() => toast.success("Long-term Debt note posted to workpaper")}
-          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors shrink-0 ml-3"
+          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
         >
           <FileCheck className="h-3.5 w-3.5" /> Post to Notes
         </button>
@@ -2518,7 +2643,7 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
         {activeTab === "amortization" && loanMode === "view" && <AmortizationTabPanel loans={loans} amortization={amortization} />}
         {/* Covenants tab hidden — removed from scope 2026-05-26 */}
         {activeTab === "ajes"         && loanMode === "view" && <AJEsTabPanel jes={jes} loans={loans} />}
-        {activeTab === "notes"        && loanMode === "view" && <NotesTabPanel loans={loans} continuity={continuity} reconciliation={reconciliation} settings={settings} />}
+        {activeTab === "notes"        && loanMode === "view" && <NotesTabPanel loans={loans} amortization={amortization} continuity={continuity} reconciliation={reconciliation} settings={settings} />}
       </div>
 
       {/* Action buttons */}
