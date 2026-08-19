@@ -3486,7 +3486,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
                                                     // Convert review rows to Loan objects and save to store
                                                     const parseNum = (s: string) => parseFloat((s || "0").replace(/,/g, "")) || 0;
-                                                    const fyEnd = new Date(settings.fiscalYearEnd || "2025-09-30");
+                                                    const [fyY, fyM, fyD] = (settings.fiscalYearEnd || "2025-09-30").split("-").map(Number);
+                                                    const fyEnd = new Date(fyY, fyM - 1, fyD);
 
                                                     const newLoans: Loan[] = ltReviewRows.map(row => ({
                                                       id: `loan-luka-${row.id}`,
@@ -3556,9 +3557,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       const ltPortion = closingBal - curPortion;
                                                       // Accrued interest: 0 if last payment on FY end, else days since last payment
                                                       const lastRow = rows[rows.length - 1];
-                                                      const lastDateStr = lastRow?.d.toISOString().slice(0, 10);
-                                                      const fyEndStr    = fyEnd.toISOString().slice(0, 10);
-                                                      const accruedInt  = lastDateStr === fyEndStr ? 0 : closingBal * monthlyRate;
+                                                      const toLocalStr = (dt: Date) =>
+                                                        dt.getFullYear() + "-" +
+                                                        String(dt.getMonth() + 1).padStart(2, "0") + "-" +
+                                                        String(dt.getDate()).padStart(2, "0");
+                                                      const accruedInt = toLocalStr(lastRow?.d ?? new Date(0)) === toLocalStr(fyEnd)
+                                                        ? 0
+                                                        : closingBal * monthlyRate;
                                                       return { ...loan, rows, totalInterest, totalPrincipal, closingBal, curPortion, ltPortion, accruedInt };
                                                     });
 
