@@ -3346,15 +3346,15 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                           <tr key={row.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
                                                             {/* Loan Name */}
                                                             <td className="px-1.5 py-1 min-w-[130px]">
-                                                              <input value={row.name} onChange={e => updateLtRow(row.id,"name",e.target.value)} className={cn(fc("name",true),"w-32")} placeholder="Loan name" />
+                                                              <textarea rows={2} value={row.name} onChange={e => updateLtRow(row.id,"name",e.target.value)} className={cn(fc("name",true).replace("h-6",""),"w-32 resize-none")} placeholder="Loan name" />
                                                             </td>
                                                             {/* Lender */}
                                                             <td className="px-1.5 py-1 min-w-[110px]">
-                                                              <input value={row.lender} onChange={e => updateLtRow(row.id,"lender",e.target.value)} className={cn(fc("lender",true),"w-28")} placeholder="Lender" />
+                                                              <textarea rows={2} value={row.lender} onChange={e => updateLtRow(row.id,"lender",e.target.value)} className={cn(fc("lender",true).replace("h-6",""),"w-28 resize-none")} placeholder="Lender" />
                                                             </td>
                                                             {/* Current Collateral */}
                                                             <td className="px-1.5 py-1 min-w-[120px]">
-                                                              <input value={row.collateral} onChange={e => updateLtRow(row.id,"collateral",e.target.value)} className={cn(fc("collateral",false),"w-28")} placeholder="e.g. Real property" />
+                                                              <textarea rows={2} value={row.collateral} onChange={e => updateLtRow(row.id,"collateral",e.target.value)} className={cn(fc("collateral",false).replace("h-6",""),"w-28 resize-none")} placeholder="e.g. Real property" />
                                                             </td>
                                                             {/* Type */}
                                                             <td className="px-1.5 py-1">
@@ -5433,9 +5433,9 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       : "border-border focus:border-primary/40");
                                                 return (
                                                   <tr key={row.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
-                                                    <td className="px-1.5 py-1 min-w-[130px]"><input value={row.name} onChange={e => updateAddMoreRow(row.id,"name",e.target.value)} className={cn(fc2("name",true),"w-32")} placeholder="Loan name" /></td>
-                                                    <td className="px-1.5 py-1 min-w-[110px]"><input value={row.lender} onChange={e => updateAddMoreRow(row.id,"lender",e.target.value)} className={cn(fc2("lender",true),"w-28")} placeholder="Lender" /></td>
-                                                    <td className="px-1.5 py-1 min-w-[120px]"><input value={row.collateral} onChange={e => updateAddMoreRow(row.id,"collateral",e.target.value)} className={cn(fc2("collateral",false),"w-28")} placeholder="e.g. Real property" /></td>
+                                                    <td className="px-1.5 py-1 min-w-[130px]"><textarea rows={2} value={row.name} onChange={e => updateAddMoreRow(row.id,"name",e.target.value)} className={cn(fc2("name",true).replace("h-6",""),"w-32 resize-none")} placeholder="Loan name" /></td>
+                                                    <td className="px-1.5 py-1 min-w-[110px]"><textarea rows={2} value={row.lender} onChange={e => updateAddMoreRow(row.id,"lender",e.target.value)} className={cn(fc2("lender",true).replace("h-6",""),"w-28 resize-none")} placeholder="Lender" /></td>
+                                                    <td className="px-1.5 py-1 min-w-[120px]"><textarea rows={2} value={row.collateral} onChange={e => updateAddMoreRow(row.id,"collateral",e.target.value)} className={cn(fc2("collateral",false).replace("h-6",""),"w-28 resize-none")} placeholder="e.g. Real property" /></td>
                                                     <td className="px-1.5 py-1"><select value={row.type} onChange={e => updateAddMoreRow(row.id,"type",e.target.value)} className={cn(SCR,"w-20")}>{["Term","LOC","Revolver","Mortgage","Bridge"].map(t=><option key={t}>{t}</option>)}</select></td>
                                                     <td className="px-1.5 py-1"><select value={row.interestType} onChange={e => updateAddMoreRow(row.id,"interestType",e.target.value)} className={cn(SCR,"w-22")}>{["Fixed","Variable","Floating","Hybrid","Step Rate"].map(t=><option key={t}>{t}</option>)}</select></td>
                                                     <td className="px-1.5 py-1"><input value={row.rate} onChange={e => updateAddMoreRow(row.id,"rate",e.target.value)} className={cn(fc2("rate",true),"w-14 text-right")} placeholder="%" /></td>
