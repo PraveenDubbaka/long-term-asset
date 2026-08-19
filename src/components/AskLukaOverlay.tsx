@@ -3085,7 +3085,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                 <thead>
                                                   <tr className="bg-muted/30 border-b border-border">
                                                     {["Loan Name","Lender","Opening Balance","Rate %","Start","Maturity"].map(h => (
-                                                      <th key={h} className="px-3 py-1.5 text-left text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{h}</th>
+                                                      <th key={h} className={`px-3 py-1.5 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${["Opening Balance","Rate %"].includes(h) ? "text-right" : "text-left"}`}>{h}</th>
                                                     ))}
                                                   </tr>
                                                 </thead>
