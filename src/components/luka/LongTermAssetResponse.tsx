@@ -957,7 +957,10 @@ function LoansTab({
                   {!hid.has("Start")               && <td className="px-1.5 py-1"><input type="date" value={draft.startDate??""} onChange={e=>setD("startDate",e.target.value)} className={IC} /></td>}
                   {!hid.has("Maturity")            && <td className="px-1.5 py-1"><input type="date" value={draft.maturityDate??""} onChange={e=>setD("maturityDate",e.target.value)} className={IC} /></td>}
                   {!hid.has("Tenure (Mo.)")        && <td className="px-1.5 py-1 text-right text-muted-foreground text-[11px]">—</td>}
-                  {!hid.has("First Payment")       && <td className="px-1.5 py-1"><input type="date" value={draft.firstPaymentDate??""} onChange={e=>setD("firstPaymentDate",e.target.value)} className={IC} /></td>}
+                  {!hid.has("First Payment")       && <td className="px-1.5 py-1">
+                    <input type="date" value={draft.firstPaymentDate??""} onChange={e=>setD("firstPaymentDate",e.target.value)} className={`${IC} ${draft.firstPaymentDate && draft.startDate && draft.firstPaymentDate < draft.startDate ? "border-red-400 bg-red-50/60" : ""}`} />
+                    {draft.firstPaymentDate && draft.startDate && draft.firstPaymentDate < draft.startDate && <p className="text-[9px] text-red-500 mt-0.5 whitespace-nowrap">Before start date</p>}
+                  </td>}
                   {!hid.has("CCY")                 && <td className="px-1.5 py-1"><select value={draft.currency??"CAD"} onChange={e=>setD("currency",e.target.value)} className={ICS}>{["CAD","USD","EUR","GBP"].map(c=><option key={c}>{c}</option>)}</select></td>}
                   {!hid.has("Mo. Payment")         && <td className="px-1.5 py-1"><input type="number" step="100" value={draft.monthlyPayment||""} onChange={e=>setD("monthlyPayment",parseFloat(e.target.value)||undefined)} className={IC} placeholder="auto" /></td>}
                   {!hid.has("Orig. Loan Amt")      && <td className="px-1.5 py-1"><input type="number" step="1000" value={draft.originalPrincipal||""} onChange={e=>setD("originalPrincipal",parseFloat(e.target.value)||0)} className={IC} placeholder="0" /></td>}
@@ -1003,7 +1006,7 @@ function LoansTab({
                     const closingCAD = (l.closingBalance ?? l.currentBalance) * fx;
                     return (
                       <tr key={l.id} className={`group border-b border-border transition-colors ${l.locked ? "bg-muted/25" : isGlobalEdit ? "bg-primary/[0.02]" : isEditing ? "bg-primary/[0.04]" : "hover:bg-muted/30 cursor-pointer"}`}>
-                        {(isGlobalEdit || isEditing) ? newRowCells(
+                        {(isGlobalEdit || isEditing) && !l.locked ? newRowCells(
                           isGlobalEdit ? mergedDraft : editDraft,
                           isGlobalEdit ? batchSetter : (k, v) => setEditDraft(p => ({ ...p, [k]: v }))
                         ) : <>
@@ -1101,7 +1104,16 @@ function LoansTab({
                             );
                           })()}
                           {!hid.has("GL Diff") && (() => {
-                            if (l.glBalance === undefined || l.glBalance === null) return <td key="gld" className="px-2.5 py-1.5 text-right text-muted-foreground tabular-nums">$—</td>;
+                            if (l.glBalance === undefined || l.glBalance === null) return (
+                              <td key="gld" className="px-2.5 py-1.5 text-right">
+                                <input
+                                  type="number" step="0.01" placeholder="Enter GL bal."
+                                  className="h-6 w-[90px] text-[10px] px-1.5 text-right border border-dashed border-border/60 rounded-[4px] bg-background text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40"
+                                  onBlur={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) updateLoan(l.id, { glBalance: v }); }}
+                                  onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                                />
+                              </td>
+                            );
                             const diff = l.glBalance - closingCAD;
                             const isZero = Math.abs(diff) < 0.01;
                             return (
@@ -1195,7 +1207,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
     addJE:    s.addJE,
     jes:      s.jes,
   }));
-  const [contView, setContView] = useState<"rollforward" | "repayment">("rollforward");
+  const [contView, setContView] = useState<"rollforward" | "repayment" | "comparative">("rollforward");
 
   const postAJE = (loan: Loan, accruedInterest: number) => {
     if (!accruedInterest || accruedInterest <= 0) {
@@ -1289,6 +1301,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
           >
             <option value="rollforward">Roll-Forward</option>
             <option value="repayment">Repayment Schedule</option>
+            <option value="comparative">Comparative (2-Year)</option>
           </select>
           <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
         </div>
@@ -1464,6 +1477,94 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
           </div>
         </div>
       )}
+
+      {/* ── Comparative (2-Year) view ── */}
+      {contView === "comparative" && (() => {
+        const fyEnd   = settings?.fiscalYearEnd ?? `${baseYear}-12-31`;
+        const fyMM    = fyEnd.slice(5, 7);  // "09" or "12"
+        const curPeriod  = `${baseYear}-${fyMM}`;
+        const priorPeriod = `${baseYear - 1}-${fyMM}`;
+        const CY_HDR = `FY${baseYear}`;
+        const PY_HDR = `FY${baseYear - 1}`;
+        const COLS = ["Opening Bal.", "+New Borr.", "−Principal", "−Interest", "±FX", "Closing Bal.", "Current", "LT"];
+
+        const compRows = loans.map(loan => {
+          const fx = toCAD(1, loan.currency);
+          const allRows = continuity.filter(r => r.loanId === loan.id);
+          const cyRow = allRows.find(r => r.period === curPeriod)
+            ?? allRows.sort((a,b) => b.period.localeCompare(a.period))[0]
+            ?? null;
+          const pyRow = allRows.find(r => r.period === priorPeriod)
+            ?? allRows.sort((a,b) => a.period.localeCompare(b.period))[0]
+            ?? null;
+          const toCells = (r: ContinuityRow | null) => r ? [
+            r.openingBalance, r.newBorrowings, r.principalRepayments ?? 0,
+            r.interestRepayments ?? 0, r.fxTranslation,
+            r.closingBalance, r.currentPortion, r.longTermPortion,
+          ].map(v => v * fx) : Array(8).fill(null);
+          return { loan, cy: toCells(cyRow), py: toCells(pyRow) };
+        });
+
+        const colTotals = (arr: (number | null)[]) => arr.reduce<number>((s, v) => s + (v ?? 0), 0);
+        const cyTotals = COLS.map((_, i) => compRows.reduce((s, r) => s + (r.cy[i] ?? 0), 0));
+        const pyTotals = COLS.map((_, i) => compRows.reduce((s, r) => s + (r.py[i] ?? 0), 0));
+
+        return (
+          <div className="rounded-[8px] border border-border overflow-hidden">
+            <div className="px-3 py-2 bg-muted/40 border-b border-border">
+              <span className="text-sm font-semibold text-foreground">Comparative Roll-Forward</span>
+              <span className="text-[10px] text-muted-foreground ml-2">Side-by-side {PY_HDR} vs {CY_HDR} (CAD equiv.)</span>
+            </div>
+            <div className="w-full overflow-x-auto">
+              <table className="w-full text-[11px]">
+                <thead>
+                  <tr className="bg-muted/20 border-b border-border">
+                    <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-left whitespace-nowrap" rowSpan={2}>Facility</th>
+                    <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-center whitespace-nowrap border-l border-border/40" colSpan={8}>{CY_HDR}</th>
+                    <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-center whitespace-nowrap border-l border-border/40" colSpan={8}>{PY_HDR}</th>
+                  </tr>
+                  <tr className="bg-muted/10 border-b border-border">
+                    {[...COLS, ...COLS].map((h, i) => (
+                      <th key={`${h}-${i}`} className={`px-2.5 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide text-right whitespace-nowrap ${i === 0 || i === 8 ? "border-l border-border/40" : ""}`}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {compRows.map(({ loan, cy, py }, ri) => (
+                    <tr key={loan.id} className={`border-b border-border/40 ${ri%2===0?"":"bg-muted/10"}`}>
+                      <td className="px-3 py-1.5 whitespace-nowrap">
+                        <p className="font-medium text-foreground">{loan.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{loan.lender} · {loan.currency}</p>
+                      </td>
+                      {cy.map((v, i) => (
+                        <td key={`cy-${i}`} className={`px-2.5 py-1.5 text-right tabular-nums ${v === null ? "text-muted-foreground/40" : "text-foreground"} ${i === 0 ? "border-l border-border/40" : ""}`}>
+                          {v === null ? "—" : v !== 0 ? fmtNum(Math.abs(v)) : "00"}
+                        </td>
+                      ))}
+                      {py.map((v, i) => (
+                        <td key={`py-${i}`} className={`px-2.5 py-1.5 text-right tabular-nums ${v === null ? "text-muted-foreground/40" : "text-muted-foreground"} ${i === 0 ? "border-l border-border/40" : ""}`}>
+                          {v === null ? "—" : v !== 0 ? fmtNum(Math.abs(v)) : "00"}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-muted/30 border-t border-border font-semibold">
+                    <td className="px-3 py-2 text-[11px] text-muted-foreground">Total</td>
+                    {cyTotals.map((v, i) => (
+                      <td key={`cyt-${i}`} className={`px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground ${i === 0 ? "border-l border-border/40" : ""}`}>{v > 0 ? fmtNum(v) : "00"}</td>
+                    ))}
+                    {pyTotals.map((v, i) => (
+                      <td key={`pyt-${i}`} className={`px-2.5 py-2 text-right tabular-nums text-[11px] text-muted-foreground ${i === 0 ? "border-l border-border/40" : ""}`}>{v > 0 ? fmtNum(v) : "00"}</td>
+                    ))}
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );
