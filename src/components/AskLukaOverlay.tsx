@@ -3369,7 +3369,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                               </select>
                                                             </td>
                                                             {/* Int. Rate % * */}
-                                                            <td className="px-1.5 py-1">
+                                                            <td className="px-1.5 py-1 text-right">
                                                               <input value={row.rate} onChange={e => updateLtRow(row.id,"rate",e.target.value)} className={cn(fc("rate",true),"w-14 text-right")} placeholder="%" />
                                                             </td>
                                                             {/* Start */}
@@ -3391,19 +3391,19 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                               </select>
                                                             </td>
                                                             {/* Mo. Payment */}
-                                                            <td className="px-1.5 py-1">
+                                                            <td className="px-1.5 py-1 text-right">
                                                               <input value={row.monthlyPayment} onChange={e => updateLtRow(row.id,"monthlyPayment",e.target.value)} className={cn(fc("monthlyPayment",false),"w-24 text-right")} placeholder="auto" />
                                                             </td>
                                                             {/* Orig. Loan Amt */}
-                                                            <td className="px-1.5 py-1">
+                                                            <td className="px-1.5 py-1 text-right">
                                                               <input value={row.originalPrincipal} onChange={e => updateLtRow(row.id,"originalPrincipal",e.target.value)} className={cn(fc("originalPrincipal",false),"w-24 text-right")} placeholder="0" />
                                                             </td>
                                                             {/* FX Rate */}
-                                                            <td className="px-1.5 py-1">
+                                                            <td className="px-1.5 py-1 text-right">
                                                               <input value={row.fxRate} onChange={e => updateLtRow(row.id,"fxRate",e.target.value)} className={cn(fc("fxRate",false),"w-16 text-right font-mono")} placeholder="1.000" />
                                                             </td>
                                                             {/* Opening Bal. * */}
-                                                            <td className="px-1.5 py-1">
+                                                            <td className="px-1.5 py-1 text-right">
                                                               <input value={row.currentBalance} onChange={e => updateLtRow(row.id,"currentBalance",e.target.value)} className={cn(fc("currentBalance",true),"w-24 text-right")} placeholder="Balance" />
                                                             </td>
                                                             {/* GL Principal * */}
@@ -3435,11 +3435,11 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                               </select>
                                                             </td>
                                                             {/* Interest-Only Period (Mo.) */}
-                                                            <td className="px-1.5 py-1">
+                                                            <td className="px-1.5 py-1 text-right">
                                                               <input value={row.ioPeriod} onChange={e => updateLtRow(row.id,"ioPeriod",e.target.value)} className={cn(fc("ioPeriod",false),"w-14 text-right")} placeholder="0" />
                                                             </td>
                                                             {/* Balloon Amt */}
-                                                            <td className="px-1.5 py-1">
+                                                            <td className="px-1.5 py-1 text-right">
                                                               <input value={row.balloonAmt} onChange={e => updateLtRow(row.id,"balloonAmt",e.target.value)} className={cn(fc("balloonAmt",false),"w-24 text-right")} placeholder="0" />
                                                             </td>
                                                             {/* Delete */}
@@ -5438,22 +5438,22 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     <td className="px-1.5 py-1 min-w-[200px]"><textarea rows={1} value={row.collateral} onChange={e => updateAddMoreRow(row.id,"collateral",e.target.value)} onInput={e => { const t = e.currentTarget; t.style.height = "auto"; t.style.height = `${t.scrollHeight}px`; }} ref={el => { if (el) { el.style.height = "auto"; el.style.height = `${el.scrollHeight}px`; } }} className={cn(fc2("collateral",false).replace("h-6",""),"w-48 resize-none overflow-hidden")} placeholder="e.g. Real property" /></td>
                                                     <td className="px-1.5 py-1"><select value={row.type} onChange={e => updateAddMoreRow(row.id,"type",e.target.value)} className={cn(SCR,"w-20")}>{["Term","LOC","Revolver","Mortgage","Bridge"].map(t=><option key={t}>{t}</option>)}</select></td>
                                                     <td className="px-1.5 py-1"><select value={row.interestType} onChange={e => updateAddMoreRow(row.id,"interestType",e.target.value)} className={cn(SCR,"w-22")}>{["Fixed","Variable","Floating","Hybrid","Step Rate"].map(t=><option key={t}>{t}</option>)}</select></td>
-                                                    <td className="px-1.5 py-1"><input value={row.rate} onChange={e => updateAddMoreRow(row.id,"rate",e.target.value)} className={cn(fc2("rate",true),"w-14 text-right")} placeholder="%" /></td>
+                                                    <td className="px-1.5 py-1 text-right"><input value={row.rate} onChange={e => updateAddMoreRow(row.id,"rate",e.target.value)} className={cn(fc2("rate",true),"w-14 text-right")} placeholder="%" /></td>
                                                     <td className="px-1.5 py-1"><input type="date" value={row.startDate} onChange={e => updateAddMoreRow(row.id,"startDate",e.target.value)} className={cn(fc2("startDate",true),"w-28")} /></td>
                                                     <td className="px-1.5 py-1"><input type="date" value={row.maturityDate} onChange={e => updateAddMoreRow(row.id,"maturityDate",e.target.value)} className={cn(fc2("maturityDate",true),"w-28")} /></td>
                                                     <td className="px-1.5 py-1"><input type="date" value={row.firstPaymentDate} onChange={e => updateAddMoreRow(row.id,"firstPaymentDate",e.target.value)} className={cn(fc2("firstPaymentDate",false),"w-28")} /></td>
                                                     <td className="px-1.5 py-1"><select value={row.currency} onChange={e => updateAddMoreRow(row.id,"currency",e.target.value)} className={cn(SCR,"w-14")}>{["CAD","USD","EUR","GBP"].map(c=><option key={c}>{c}</option>)}</select></td>
-                                                    <td className="px-1.5 py-1"><input value={row.monthlyPayment} onChange={e => updateAddMoreRow(row.id,"monthlyPayment",e.target.value)} className={cn(fc2("monthlyPayment",false),"w-24 text-right")} placeholder="auto" /></td>
-                                                    <td className="px-1.5 py-1"><input value={row.originalPrincipal} onChange={e => updateAddMoreRow(row.id,"originalPrincipal",e.target.value)} className={cn(fc2("originalPrincipal",false),"w-24 text-right")} placeholder="0" /></td>
-                                                    <td className="px-1.5 py-1"><input value={row.fxRate} onChange={e => updateAddMoreRow(row.id,"fxRate",e.target.value)} className={cn(fc2("fxRate",false),"w-16 text-right font-mono")} placeholder="1.000" /></td>
-                                                    <td className="px-1.5 py-1"><input value={row.currentBalance} onChange={e => updateAddMoreRow(row.id,"currentBalance",e.target.value)} className={cn(fc2("currentBalance",true),"w-24 text-right")} placeholder="Balance" /></td>
+                                                    <td className="px-1.5 py-1 text-right"><input value={row.monthlyPayment} onChange={e => updateAddMoreRow(row.id,"monthlyPayment",e.target.value)} className={cn(fc2("monthlyPayment",false),"w-24 text-right")} placeholder="auto" /></td>
+                                                    <td className="px-1.5 py-1 text-right"><input value={row.originalPrincipal} onChange={e => updateAddMoreRow(row.id,"originalPrincipal",e.target.value)} className={cn(fc2("originalPrincipal",false),"w-24 text-right")} placeholder="0" /></td>
+                                                    <td className="px-1.5 py-1 text-right"><input value={row.fxRate} onChange={e => updateAddMoreRow(row.id,"fxRate",e.target.value)} className={cn(fc2("fxRate",false),"w-16 text-right font-mono")} placeholder="1.000" /></td>
+                                                    <td className="px-1.5 py-1 text-right"><input value={row.currentBalance} onChange={e => updateAddMoreRow(row.id,"currentBalance",e.target.value)} className={cn(fc2("currentBalance",true),"w-24 text-right")} placeholder="Balance" /></td>
                                                     <td className="px-1.5 py-1 min-w-[160px]"><GLComboboxMini value={row.glPrincipal} onChange={v => updateAddMoreRow(row.id,"glPrincipal",v)} required={ltRowMissing(row,"glPrincipal")} /></td>
                                                     <td className="px-1.5 py-1"><select value={row.dayCount} onChange={e => updateAddMoreRow(row.id,"dayCount",e.target.value)} className={cn(SCR,"w-20")}>{["ACT/365","ACT/360","30/360"].map(d=><option key={d}>{d}</option>)}</select></td>
                                                     <td className="px-1.5 py-1"><select value={row.paymentType} onChange={e => updateAddMoreRow(row.id,"paymentType",e.target.value)} className={cn(SCR,"w-24")}>{["P&I","Interest-only","Balloon"].map(p=><option key={p}>{p}</option>)}</select></td>
                                                     <td className="px-1.5 py-1"><select value={row.paymentFrequency} onChange={e => updateAddMoreRow(row.id,"paymentFrequency",e.target.value)} className={cn(SCR,"w-22")}>{["Monthly","Quarterly","Semi-annual","Annual"].map(f=><option key={f}>{f}</option>)}</select></td>
                                                     <td className="px-1.5 py-1"><select value={row.compounding} onChange={e => updateAddMoreRow(row.id,"compounding",e.target.value)} className={cn(SCR,"w-22")}>{["Monthly","Quarterly","Semi-annual","Annual"].map(f=><option key={f}>{f}</option>)}</select></td>
-                                                    <td className="px-1.5 py-1"><input value={row.ioPeriod} onChange={e => updateAddMoreRow(row.id,"ioPeriod",e.target.value)} className={cn(fc2("ioPeriod",false),"w-14 text-right")} placeholder="0" /></td>
-                                                    <td className="px-1.5 py-1"><input value={row.balloonAmt} onChange={e => updateAddMoreRow(row.id,"balloonAmt",e.target.value)} className={cn(fc2("balloonAmt",false),"w-24 text-right")} placeholder="0" /></td>
+                                                    <td className="px-1.5 py-1 text-right"><input value={row.ioPeriod} onChange={e => updateAddMoreRow(row.id,"ioPeriod",e.target.value)} className={cn(fc2("ioPeriod",false),"w-14 text-right")} placeholder="0" /></td>
+                                                    <td className="px-1.5 py-1 text-right"><input value={row.balloonAmt} onChange={e => updateAddMoreRow(row.id,"balloonAmt",e.target.value)} className={cn(fc2("balloonAmt",false),"w-24 text-right")} placeholder="0" /></td>
                                                     <td className="px-1.5 py-1"><select value={row.status} onChange={e => updateAddMoreRow(row.id,"status",e.target.value)} className={cn(SCR,"w-20")}>{["Active","Closed","Replaced","Inactive"].map(s=><option key={s}>{s}</option>)}</select></td>
                                                     <td className="px-1.5 py-1 sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10">
                                                       <button onClick={() => deleteAddMoreRow(row.id)} className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
