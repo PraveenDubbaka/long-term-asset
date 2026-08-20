@@ -30,6 +30,7 @@ import { LoanAmortizationResponse } from "@/components/luka/LoanAmortizationResp
 import type { LoanAmortData } from "@/components/luka/LoanAmortizationPrompt";
 import { LongTermAssetResponse } from "@/components/luka/LongTermAssetResponse";
 import { InvestmentScheduleResponse } from "@/components/luka/InvestmentScheduleResponse";
+import { priorYearLots as mockPriorYearLots } from "@/lib/luka/mockData";
 import { LukaResponseActions } from "@/components/luka/LukaResponseActions";
 import LukaActivityPanel, { type ActivityEntry } from "@/components/dashboard/LukaActivityPanel";
 import LukaSettingsOverlay from "@/components/dashboard/LukaSettingsOverlay";
@@ -5195,12 +5196,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                       onEditTransactions={() => { setInvSchedPhase("upload-prompt"); setInvAssessmentDone(false); }}
                                       initialTransactions={invSubmittedTxns.length > 0 ? invSubmittedTxns : undefined}
                                       engagementYearEnd={ENGAGEMENTS_PANEL.find(e => e.id === invSelectedEngId)?.yearEnd}
+                                      engagementClient={ENGAGEMENTS_PANEL.find(e => e.id === invSelectedEngId)?.client}
                                       valuationMethod={invValuationMethod ?? undefined}
                                       recordingLevel={invRecordingLevel ?? undefined}
                                       bankAccounts={INV_BANK_ACCOUNTS}
                                       brokerCount={INV_BROKER_COUNT}
                                       openingBalMode={invOpeningBalMode}
-                                      priorYearLotsProp={invParsedPriorLots}
+                                      priorYearLotsProp={invOpeningBalMode !== 'FIRST_YEAR' ? (invParsedPriorLots ?? mockPriorYearLots) : null}
                                     />
                                   </>
                                 )}

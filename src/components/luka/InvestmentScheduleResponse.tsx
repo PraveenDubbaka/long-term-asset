@@ -2684,7 +2684,7 @@ function HoldingsPanel({ schedules }: { schedules: SecuritySchedule[] }) {
 }
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
-export function InvestmentScheduleResponse({ onEditTransactions, initialTransactions, engagementYearEnd, valuationMethod, recordingLevel, bankAccounts, brokerCount, openingBalMode, priorYearLotsProp }: { onEditTransactions?: () => void; initialTransactions?: import("@/lib/luka/types").Transaction[]; engagementYearEnd?: string; valuationMethod?: 'cost' | 'fairValue'; recordingLevel?: 'security' | 'brokerage' | 'hybrid'; bankAccounts?: number; brokerCount?: number; openingBalMode?: "FIRST_YEAR" | "UPLOAD_PRIOR" | "ROLL_FORWARD" | null; priorYearLotsProp?: import("@/lib/luka/types").PriorYearLot[] | null } = {}) {
+export function InvestmentScheduleResponse({ onEditTransactions, initialTransactions, engagementYearEnd, engagementClient, valuationMethod, recordingLevel, bankAccounts, brokerCount, openingBalMode, priorYearLotsProp }: { onEditTransactions?: () => void; initialTransactions?: import("@/lib/luka/types").Transaction[]; engagementYearEnd?: string; engagementClient?: string; valuationMethod?: 'cost' | 'fairValue'; recordingLevel?: 'security' | 'brokerage' | 'hybrid'; bankAccounts?: number; brokerCount?: number; openingBalMode?: "FIRST_YEAR" | "UPLOAD_PRIOR" | "ROLL_FORWARD" | null; priorYearLotsProp?: import("@/lib/luka/types").PriorYearLot[] | null } = {}) {
   const settings = useStore(s => s.settings);
   const [activeTab, setActiveTab] = useState<TabId>("wac");
   const [invMode, setInvMode] = useState<"view" | "edit" | "add">("view");
@@ -2696,7 +2696,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
 
   useEffect(() => { if (invMode !== "add") setAddUploadedFiles([]); }, [invMode]);
 
-  const client  = settings.client || baseSources[0]?.entityName || "this engagement";
+  const client  = engagementClient || settings.client || baseSources[0]?.entityName || "this engagement";
   // engagementYearEnd is already a display string ("May 31, 2024"); use it directly.
   // settings.fiscalYearEnd is ISO ("2024-12-31") and needs fmtDate.
   const dateStr = engagementYearEnd

@@ -26,6 +26,10 @@ async function getPdfJs() {
 // ─── Activity type map ────────────────────────────────────────────────────────
 
 const ACTIVITY_TYPE_MAP: [string, string][] = [
+  // Transfers — TD Direct specific first
+  ['web banking deposit',    'Transfer In'],
+  ['web banking wdl',        'Transfer Out'],
+  ['web banking withdrawal', 'Transfer Out'],
   // Transfers
   ['online banking',        'Transfer In'],
   ['transfer of funds',     'Transfer In'],
@@ -664,7 +668,7 @@ export function parseTdDirectText(pages: string[], sourceFile: string): ParsedIn
   const ORDER_NUM_RE = /^[A-Z]{1,3}-\d{4,}$/;
   const BALANCE_LINE_RE = /ending cash balance|beginning cash balance/i;
   const ACTIVITY_SECTION_RE = /activity in your account this period/i;
-  const SKIP_LINE_RE = /^cash$|^date\s+activity|details of investment income|summary of your|your investment account/i;
+  const SKIP_LINE_RE = /^cash$|^date\s+activity|details of investment income|summary of your|your investment account|continued on next page|order-execution-only|page\s+\d+\s+of\s+\d+/i;
   const KNOWN_ACTIVITIES = [
     'Reinvested Dividends','Web Banking Deposit','Web Banking Wdl','Web Banking Withdrawal',
     'Return of Capital','Withholding Tax','Transfer In','Transfer Out',
@@ -712,7 +716,9 @@ export function parseTdDirectText(pages: string[], sourceFile: string): ParsedIn
     }
 
     if (amount === null) return;
-    const security = isCash ? '' : s.trim();
+    let security = isCash ? '' : s.trim();
+    // Strip order reference codes (e.g. "EI-771045", "VQ-865050") and trailing balance amounts
+    security = security.replace(/\b[A-Z]{2,3}-\d{6,}\b/g, '').replace(/\$[\d,]+\.\d{2}\s*$/, '').trim();
     const txType = mapActivityToType(act);
     const signedAmount = txType === 'Purchase' ? -Math.abs(amount) : amount;
 
