@@ -108,6 +108,15 @@ const SECURITY_TICKER_MAP: [string, string][] = [
   ['HIGH INTEREST SAVINGS ACCOUNT',              'HISA'],
   ['BNS CORPORATE TIERED INVESTMENT SAVINGS',    'BNSISA'],
   ['REGIMEN EQUITY PARTNERS',                    'REGPREF'],
+  // TD Direct Investing securities
+  ['DIVIDEND 15 SPLIT CORP PF',                 'DFN.PR.A'],  // before generic DFN
+  ['DIVIDEND 15 SPLIT CORP',                    'DFN'],
+  ['E SPLIT CORP CL-A',                         'ENS'],
+  ['E SPLIT CORP',                              'ENS'],
+  ['MINEROS',                                   'MSA'],
+  ['GLOBAL DIV GRW SPLT CRP',                  'GDV'],
+  ['GLOBAL DIV GRW',                            'GDV'],
+  ['TOREX GOLD',                                'TXG'],
 ];
 
 function lookupTicker(security: string): string {
@@ -642,6 +651,137 @@ function parseBmoText(pages: string[], sourceFile: string): ParsedInvTransaction
   return txns;
 }
 
+// ─── TD Direct Investing parser ───────────────────────────────────────────────
+
+export function parseTdDirectText(pages: string[], sourceFile: string): ParsedInvTransaction[] {
+  const txns: ParsedInvTransaction[] = [];
+
+  const MONTHS: Record<string, number> = {
+    jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12
+  };
+  const DATE_LINE_RE = /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+(\d{1,2})\s+(.+)/i;
+  const PERIOD_YEAR_RE = /\d{1,2},?\s+(\d{4})\s+to\s+/i;
+  const ORDER_NUM_RE = /^[A-Z]{1,3}-\d{4,}$/;
+  const BALANCE_LINE_RE = /ending cash balance|beginning cash balance/i;
+  const ACTIVITY_SECTION_RE = /activity in your account this period/i;
+  const SKIP_LINE_RE = /^cash$|^date\s+activity|details of investment income|summary of your|your investment account/i;
+  const KNOWN_ACTIVITIES = [
+    'Reinvested Dividends','Web Banking Deposit','Web Banking Wdl','Web Banking Withdrawal',
+    'Return of Capital','Withholding Tax','Transfer In','Transfer Out',
+    'Dividends','Interest','Buy','Sell','Transfer','Fee','Commission',
+  ];
+  const ACT_SUFFIX_WORDS = new Set(['deposit','wdl','withdrawal']);
+  const CASH_MOVE_RE = /web banking|transfer in|transfer out|^transfer$|^fee$|^commission$/i;
+
+  interface Pending { date: string; s: string }
+  let pending: Pending | null = null;
+  let currentYear = new Date().getFullYear();
+
+  function detectAct(text: string): { act: string; rest: string } {
+    const u = text.toUpperCase();
+    for (const a of KNOWN_ACTIVITIES) {
+      if (u.startsWith(a.toUpperCase())) return { act: a, rest: text.slice(a.length).trim() };
+    }
+    const m = text.match(/^(\S+)\s*(.*)/s);
+    return m ? { act: m[1], rest: m[2].trim() } : { act: text, rest: '' };
+  }
+
+  function flushPending(p: Pending) {
+    const { act, rest } = detectAct(p.s);
+    if (!rest) return;
+    const isCash = CASH_MOVE_RE.test(act);
+    let s = rest;
+    let amount: number | null = null;
+    let price: number | null = null, qty: number | null = null;
+    let m: RegExpMatchArray | null;
+
+    // Balance (rightmost x.xx) — consumed but not stored
+    m = s.match(/\s+([\d,]+\.\d{2})\s*$/);
+    if (m) s = s.slice(0, -m[0].length);
+    // Amount (next x.xx, possibly negative)
+    m = s.match(/\s+(-?[\d,]+\.\d{2})\s*$/);
+    if (m) { amount = parseFloat(m[1].replace(/,/g, '')); s = s.slice(0, -m[0].length); }
+
+    if (!isCash) {
+      // Price (x.xxx — 3 decimals)
+      m = s.match(/\s+([\d,]+\.\d{3})\s*$/);
+      if (m) { price = parseFloat(m[1].replace(/,/g, '')); s = s.slice(0, -m[0].length); }
+      // Qty (integer)
+      m = s.match(/\s+([\d,]+)\s*$/);
+      if (m && /^[\d,]+$/.test(m[1])) { qty = parseFloat(m[1].replace(/,/g, '')); s = s.slice(0, -m[0].length); }
+    }
+
+    if (amount === null) return;
+    const security = isCash ? '' : s.trim();
+    const txType = mapActivityToType(act);
+    const signedAmount = txType === 'Purchase' ? -Math.abs(amount) : amount;
+
+    txns.push({
+      id: `td-${p.date.replace(/-/g, '')}-${txns.length}`,
+      settlementDate: p.date, tradeDate: p.date,
+      activity: act, security, ticker: lookupTicker(security),
+      quantity: qty, price, amount: signedAmount,
+      currency: 'CAD', fxRate: null, account: '',
+      accountType: 'Non-Registered', broker: 'TD Direct Investing', sourceFile,
+    });
+  }
+
+  for (const page of pages) {
+    let inActivity = false;
+    for (const rawLine of page.split('\n')) {
+      const line = rawLine.trim();
+      if (!line) continue;
+
+      // Track current year from period headers ("May 1, 2025 to May 31, 2025")
+      const ym = line.match(PERIOD_YEAR_RE);
+      if (ym) { currentYear = parseInt(ym[1]); continue; }
+
+      if (ACTIVITY_SECTION_RE.test(line)) {
+        inActivity = true;
+        if (pending) { flushPending(pending); pending = null; }
+        continue;
+      }
+      if (SKIP_LINE_RE.test(line)) continue;
+      if (!inActivity) continue;
+
+      const dm = line.match(DATE_LINE_RE);
+      if (dm) {
+        if (pending) flushPending(pending);
+        const [, mon, day, rest] = dm;
+        if (BALANCE_LINE_RE.test(rest)) { pending = null; continue; }
+        const mnth = MONTHS[mon.toLowerCase()];
+        const date = `${currentYear}-${String(mnth).padStart(2, '0')}-${String(+day).padStart(2, '0')}`;
+        pending = { date, s: rest };
+      } else if (pending) {
+        if (ORDER_NUM_RE.test(line)) {
+          // Order number line — skip
+        } else if (ACT_SUFFIX_WORDS.has(line.toLowerCase())) {
+          // "Deposit" / "Wdl" — insert right after "Web Banking" prefix
+          const pfx = pending.s.match(/^web\s+banking\b/i);
+          if (pfx) {
+            const cap = line.charAt(0).toUpperCase() + line.slice(1).toLowerCase();
+            pending.s = pending.s.slice(0, pfx[0].length) + ' ' + cap + pending.s.slice(pfx[0].length);
+          } else {
+            pending.s += ' ' + line;
+          }
+        } else {
+          // Security name continuation — insert before trailing numbers block
+          const nb = pending.s.match(/(\s+(?:-?[\d,]+(?:\.\d+)?\s+)*-?[\d,]+\.\d{2})\s*$/);
+          if (nb) {
+            const insertAt = pending.s.length - nb[0].length;
+            pending.s = pending.s.slice(0, insertAt) + ' ' + line + pending.s.slice(insertAt);
+          } else {
+            pending.s += ' ' + line;
+          }
+        }
+      }
+    }
+    if (pending) { flushPending(pending); pending = null; }
+  }
+
+  return txns;
+}
+
 // ─── Claude AI extraction (text or vision) ────────────────────────────────────
 
 async function extractWithClaude(
@@ -984,6 +1124,27 @@ export async function extractInvTransactions(
         return aiExtract({ type: 'text', pages: normalizedPages }, file.name);
       }
 
+      if (/td\s*direct\s*investing/i.test(fullPdfText) || /td\s*waterhouse/i.test(fullPdfText)) {
+        const acctM = fullPdfText.match(/\b([A-Z0-9]{4,7}X\d)\b/i);
+        const holderM = fullPdfText.match(/(?:account\s+(?:name|holder)|registered\s+to)[:\s]+([A-Za-z][A-Za-z\s,\.]+(?:Inc|Ltd|Corp|LLC)\.?)/i)
+          ?? fullPdfText.match(/^([A-Z][A-Z\s]+(?:LTD|INC|CORP)\.?)\s*$/m);
+        const pmatch = fullPdfText.match(/([A-Za-z]+\s+\d{1,2},?\s+\d{4})\s+to\s+([A-Za-z]+\s+\d{1,2},?\s+\d{4})/i);
+        const periodEnd = pmatch ? parseDate(pmatch[2]) : '';
+        const tdTxns = parseTdDirectText(pdfPages, file.name);
+        console.log('[invPdfParser] TD Direct parse result:', tdTxns.length, 'transactions');
+        if (tdTxns.length > 0) {
+          return {
+            broker: 'TD Direct Investing',
+            accountHolder: holderM?.[1]?.trim() ?? '',
+            account: acctM?.[1]?.trim() ?? '',
+            periodEnd,
+            fxRateUsdCad: null,
+            transactions: tdTxns,
+          };
+        }
+        return aiExtract({ type: 'text', pages: pdfPages }, file.name);
+      }
+
       return aiExtract({ type: 'text', pages: pdfPages }, file.name);
     }
 
@@ -1028,6 +1189,14 @@ export async function extractInvTransactions(
       return {
         broker: 'BMO InvestorLine', accountHolder: '', account: acctM?.[1]?.replace(/\s+/g, '') ?? '',
         periodEnd: '', fxRateUsdCad: null, transactions: parseBmoText(ocrPages, file.name),
+      };
+    }
+
+    if (/td\s*direct\s*investing/i.test(ocrFullText) || /td\s*waterhouse/i.test(ocrFullText)) {
+      const acctM = ocrFullText.match(/\b([A-Z0-9]{4,7}X\d)\b/i);
+      return {
+        broker: 'TD Direct Investing', accountHolder: '', account: acctM?.[1]?.trim() ?? '',
+        periodEnd: '', fxRateUsdCad: null, transactions: parseTdDirectText(ocrPages, file.name),
       };
     }
 
