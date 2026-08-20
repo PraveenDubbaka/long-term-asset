@@ -165,6 +165,22 @@ export function compute(
         openingCost: 0, openingUnits: 0, cumUnits: 0, cumCost: 0, wac: 0,
         notes: `ROC reduces ACB by ${(rocAmt * fx).toFixed(2)} CAD`,
       });
+    } else if (tx.type === "Dividend") {
+      const incomeKey = `${tx.ticker}|${tx.date}`;
+      const amt    = incomeAmounts[incomeKey] ?? (tx.gross || Math.abs(tx.net));
+      const amtCAD = amt * fx;
+      const isForeign =
+        /foreign[_\s-]?income/i.test(tx.notes ?? '') ||
+        tx.ticker === 'MSA';
+      b.rows.push({
+        date: tx.date, type: "Dividend",
+        unitsIn: 0, unitsOut: 0,
+        price: 0, costIn: 0, costOut: 0,
+        openingCost: 0, openingUnits: 0, cumUnits: 0, cumCost: 0, wac: 0,
+        eligibleDividend: isForeign ? undefined : amtCAD,
+        foreignIncome:    isForeign ? amtCAD    : undefined,
+        notes: tx.notes,
+      });
     } else if (tx.type === "Opening") {
       const costCAD = tx.gross * fx;
       // Merge into existing Opening Balance row when multiple accounts hold the same security
