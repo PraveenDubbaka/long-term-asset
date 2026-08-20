@@ -1256,6 +1256,19 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [invTBAnalysisStep, setInvTBAnalysisStep] = useState(0); // 0=none, 1-4=progressive reveal
   interface InvTBAnalysis { years: string; investmentAccounts: string[]; bankAccounts: string[]; recordingMethod: string; }
   const [invTBAnalysis, setInvTBAnalysis] = useState<InvTBAnalysis | null>(null);
+  interface ParsedTBAnalysis {
+    years: string; yearEndDate: string;
+    currentYear: import("@/lib/luka/tbParser").TBYear;
+    priorYear: import("@/lib/luka/tbParser").TBYear | null;
+    investmentAccounts: string[]; bankAccounts: string[];
+    recordingMethod: string;
+    priorInvSecuritiesBalance: number; priorInvCashBalance: number;
+    hasPriorInvestments: boolean;
+    dividendIncomeTarget: number; realizedGainTarget: number;
+    isCurrentYearBalanced: boolean;
+  }
+  const [parsedTBYears, setParsedTBYears] = useState<import("@/lib/luka/tbParser").TBYear[]>([]);
+  const [parsedTBAnalysis, setParsedTBAnalysis] = useState<ParsedTBAnalysis | null>(null);
 
   // Mock: engagements that have a TB already uploaded
   // COM-DEF-Dec312024 → Scenario B (2-year TB, prior year detected)
@@ -1388,6 +1401,28 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
       setInvOpeningBalMode("ROLL_FORWARD");
     }
   }, [invPriorScenario]);
+
+  // Auto-set opening balance mode from parsed TB data (overrides ASK prompt)
+  useEffect(() => {
+    if (!parsedTBAnalysis) return;
+    if (invOpeningBalMode !== null) return;
+    setInvOpeningBalMode(parsedTBAnalysis.hasPriorInvestments ? "UPLOAD_PRIOR" : "FIRST_YEAR");
+    if (!parsedTBAnalysis.hasPriorInvestments) setInvFirstYearAnswer(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parsedTBAnalysis]);
+
+  // Sync real parsed TB data into invTBAnalysis (overrides the mock lookup)
+  useEffect(() => {
+    if (!parsedTBAnalysis) return;
+    setInvTBAnalysis({
+      years: parsedTBAnalysis.years,
+      investmentAccounts: parsedTBAnalysis.investmentAccounts,
+      bankAccounts: parsedTBAnalysis.bankAccounts,
+      recordingMethod: parsedTBAnalysis.recordingMethod,
+    });
+    setInvTBFound(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parsedTBAnalysis]);
 
   // Auto-select bank account when only one exists
   useEffect(() => {
@@ -1751,7 +1786,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
     setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
     setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
-    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvOcrProgress(null); setInvTableSort(null); setInvColumnFilters({}); setInvOpenFilterCol(null); setInvFilterDropdownPos(null); setInvFilterSearch(""); setInvSearchTerm(""); setInvPage(0); setInvSubmittedTxns([]); setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); setInvParsedPriorLots(null); setInvSelectedBankAccount(null); setInvValuationMethod(null); setInvRecordingLevel(null); setInvAssessmentDone(false); setInvActiveStatement(null);
+    setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvOcrProgress(null); setInvTableSort(null); setInvColumnFilters({}); setInvOpenFilterCol(null); setInvFilterDropdownPos(null); setInvFilterSearch(""); setInvSearchTerm(""); setInvPage(0); setInvSubmittedTxns([]); setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); setInvParsedPriorLots(null); setInvSelectedBankAccount(null); setInvValuationMethod(null); setInvRecordingLevel(null); setInvAssessmentDone(false); setInvActiveStatement(null); setParsedTBYears([]); setParsedTBAnalysis(null);
     setFollowUpTurns([]);
     if (streamRef.current) clearTimeout(streamRef.current);
     if (revealRef.current) clearTimeout(revealRef.current);
@@ -3881,7 +3916,18 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               <div className="flex-1">
                                                 <p className="text-[14px] font-medium" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Investment accounts present ({invTBAnalysis.investmentAccounts.length})</p>
                                                 <div className="flex flex-wrap gap-1.5 mt-1.5">
-                                                  {invTBAnalysis.investmentAccounts.map(a => <span key={a} className="inline-flex items-center px-2 py-1 rounded-[5px] text-[12px] font-medium" style={{ background: "hsl(265 75% 96%)", color: "hsl(265 65% 45%)", border: "1px solid hsl(265 60% 88%)" }}>{a}</span>)}
+                                                  {invTBAnalysis.investmentAccounts.map(a => {
+                                                    const accNo = a.split(' · ')[0];
+                                                    const bal = parsedTBAnalysis?.currentYear.accounts.find(ac => ac.accNo === accNo)?.final;
+                                                    return (
+                                                      <span key={a} className="inline-flex items-center gap-1.5 px-2 py-1 rounded-[5px] text-[12px] font-medium" style={{ background: "hsl(265 75% 96%)", color: "hsl(265 65% 45%)", border: "1px solid hsl(265 60% 88%)" }}>
+                                                        {a}
+                                                        {bal !== undefined && bal !== 0 && (
+                                                          <span className="opacity-60 font-mono">${Math.abs(bal).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                        )}
+                                                      </span>
+                                                    );
+                                                  })}
                                                 </div>
                                               </div>
                                               <CheckCircle2 size={15} className="shrink-0 mt-0.5" style={{ color: "hsl(145 63% 42%)" }} />
@@ -4064,6 +4110,24 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             setTimeout(() => checkContinuity(next), 0);
                                             return next;
                                           });
+                                          // Parse any Trial Balance xlsx files and update analysis
+                                          const tbFiles = files.filter(f =>
+                                            /trial.?balance/i.test(f.name) && f.name.toLowerCase().endsWith('.xlsx')
+                                          );
+                                          if (tbFiles.length > 0) {
+                                            Promise.all(
+                                              tbFiles.map(f => f.arrayBuffer().then(buffer => ({ buffer, name: f.name })))
+                                            ).then(bufs =>
+                                              import('@/lib/luka/tbParser').then(({ parseTBFiles, deriveTBAnalysis }) => {
+                                                const years = parseTBFiles(bufs);
+                                                if (years.length > 0) {
+                                                  const analysis = deriveTBAnalysis(years);
+                                                  setParsedTBYears(years);
+                                                  if (analysis) setParsedTBAnalysis(analysis);
+                                                }
+                                              })
+                                            );
+                                          }
                                         };
 
                                         // ── Step 2: User confirms all uploaded → extract data ──
@@ -4190,8 +4254,27 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                 </div>
                                               )}
 
-                                              {/* Scenario C — ASK: no prior year detected, ask user */}
-                                              {invPriorScenario === "ASK" && invFirstYearAnswer === null && (
+                                              {/* Scenario C — ASK + parsed TB: auto-detected first-year or prior-investment result */}
+                                              {invPriorScenario === "ASK" && parsedTBAnalysis && (
+                                                parsedTBAnalysis.hasPriorInvestments ? (
+                                                  <div className="flex items-start gap-2 px-3 py-2 rounded-[8px] bg-amber-50 border border-amber-200">
+                                                    <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                                                    <span className="text-[14px] text-amber-900" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+                                                      Prior year investments detected: <strong>${Math.abs(parsedTBAnalysis.priorInvSecuritiesBalance).toLocaleString('en-CA', { minimumFractionDigits: 2 })}</strong>. Upload last year's investment schedule to carry forward cost basis.
+                                                    </span>
+                                                  </div>
+                                                ) : (
+                                                  <div className="flex items-center gap-2 px-3 py-2 rounded-[8px] bg-green-50 border border-green-200">
+                                                    <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                                                    <span className="text-[14px] text-green-800" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+                                                      First year for investments confirmed from trial balance — opening balances default to zero.
+                                                    </span>
+                                                  </div>
+                                                )
+                                              )}
+
+                                              {/* Scenario C — ASK: no prior year detected, ask user (only shown when no parsed TB) */}
+                                              {invPriorScenario === "ASK" && !parsedTBAnalysis && invFirstYearAnswer === null && (
                                                 <div className="space-y-2">
                                                   <p className="text-[14px]" style={{ color: "hsl(222 35% 16%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Is this the first year of operations for this client?</p>
                                                   <div className="relative w-40">
@@ -5195,7 +5278,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                     <InvestmentScheduleResponse
                                       onEditTransactions={() => { setInvSchedPhase("upload-prompt"); setInvAssessmentDone(false); }}
                                       initialTransactions={invSubmittedTxns.length > 0 ? invSubmittedTxns : undefined}
-                                      engagementYearEnd={ENGAGEMENTS_PANEL.find(e => e.id === invSelectedEngId)?.yearEnd}
+                                      engagementYearEnd={parsedTBAnalysis?.yearEndDate ?? ENGAGEMENTS_PANEL.find(e => e.id === invSelectedEngId)?.yearEnd}
                                       engagementClient={ENGAGEMENTS_PANEL.find(e => e.id === invSelectedEngId)?.client}
                                       valuationMethod={invValuationMethod ?? undefined}
                                       recordingLevel={invRecordingLevel ?? undefined}
@@ -6065,7 +6148,9 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             setInvTBFound(hasTB);
                                             if (!hasTB) return;
                                             setInvTBAnalyzing(true);
-                                            const analysis = MOCK_TB_ANALYSIS[engId] ?? MOCK_TB_ANALYSIS["COM-DEF-May312024"];
+                                            const analysis = parsedTBAnalysis
+                                              ? { years: parsedTBAnalysis.years, investmentAccounts: parsedTBAnalysis.investmentAccounts, bankAccounts: parsedTBAnalysis.bankAccounts, recordingMethod: parsedTBAnalysis.recordingMethod }
+                                              : (MOCK_TB_ANALYSIS[engId] ?? MOCK_TB_ANALYSIS["COM-DEF-May312024"]);
                                             setTimeout(() => {
                                               setInvTBAnalysis(analysis);
                                               setInvTBAnalyzing(false);
