@@ -657,7 +657,7 @@ function parseBmoText(pages: string[], sourceFile: string): ParsedInvTransaction
 
 // ─── TD Direct Investing parser ───────────────────────────────────────────────
 
-export function parseTdDirectText(pages: string[], sourceFile: string): ParsedInvTransaction[] {
+export function parseTdDirectText(pages: string[], sourceFile: string, accountNumber = ''): ParsedInvTransaction[] {
   const txns: ParsedInvTransaction[] = [];
 
   const MONTHS: Record<string, number> = {
@@ -727,7 +727,7 @@ export function parseTdDirectText(pages: string[], sourceFile: string): ParsedIn
       settlementDate: p.date, tradeDate: p.date,
       activity: act, security, ticker: lookupTicker(security),
       quantity: qty, price, amount: signedAmount,
-      currency: 'CAD', fxRate: null, account: '',
+      currency: 'CAD', fxRate: null, account: accountNumber,
       accountType: 'Non-Registered', broker: 'TD Direct Investing', sourceFile,
     });
   }
@@ -1136,7 +1136,7 @@ export async function extractInvTransactions(
           ?? fullPdfText.match(/^([A-Z][A-Z\s]+(?:LTD|INC|CORP)\.?)\s*$/m);
         const pmatch = fullPdfText.match(/([A-Za-z]+\s+\d{1,2},?\s+\d{4})\s+to\s+([A-Za-z]+\s+\d{1,2},?\s+\d{4})/i);
         const periodEnd = pmatch ? parseDate(pmatch[2]) : '';
-        const tdTxns = parseTdDirectText(pdfPages, file.name);
+        const tdTxns = parseTdDirectText(pdfPages, file.name, acctM?.[1]?.trim() ?? '');
         console.log('[invPdfParser] TD Direct parse result:', tdTxns.length, 'transactions');
         if (tdTxns.length > 0) {
           return {
@@ -1202,7 +1202,7 @@ export async function extractInvTransactions(
       const acctM = ocrFullText.match(/\b([A-Z0-9]{4,7}X\d)\b/i);
       return {
         broker: 'TD Direct Investing', accountHolder: '', account: acctM?.[1]?.trim() ?? '',
-        periodEnd: '', fxRateUsdCad: null, transactions: parseTdDirectText(ocrPages, file.name),
+        periodEnd: '', fxRateUsdCad: null, transactions: parseTdDirectText(ocrPages, file.name, acctM?.[1]?.trim() ?? ''),
       };
     }
 
