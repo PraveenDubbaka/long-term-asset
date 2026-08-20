@@ -1060,7 +1060,7 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
             <tbody>
               {sortedSchedules.map((s, si) => {
                 const allRows  = getRows(s);
-                const visibleRows = allRows.filter(r => r.type !== "Opening Balance");
+                const visibleRows = allRows.filter(r => r.type !== "Opening Balance" && !(r.type === "Purchase" && r.costIn === 0));
                 const dataRows = filterType ? visibleRows.filter(r => r.type === filterType) : visibleRows;
                 const grpBg    = "";
                 return (
@@ -2696,7 +2696,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
 
   useEffect(() => { if (invMode !== "add") setAddUploadedFiles([]); }, [invMode]);
 
-  const client  = settings.client || "this engagement";
+  const client  = settings.client || baseSources[0]?.entityName || "this engagement";
   // engagementYearEnd is already a display string ("May 31, 2024"); use it directly.
   // settings.fiscalYearEnd is ISO ("2024-12-31") and needs fmtDate.
   const dateStr = engagementYearEnd
@@ -2887,6 +2887,17 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
   );
   const ajes         = useMemo(() => buildAJEs(schedules, opts, effectiveTxns),   [schedules, opts, effectiveTxns]);
   const incomeMatrix = useMemo(() => buildIncomeMatrix(effectiveTxns),            [effectiveTxns]);
+  const classifiedIncomeMatrix = useMemo(() => {
+    const txById = new Map(effectiveTxns.map(tx => [tx.id, tx]));
+    const incomeTxRows = incomeMatrix.incomeTxRows.map(row => {
+      const tx = txById.get(row.id);
+      if (!tx) return row;
+      if (tx.ticker === "GDV") return { ...row, description: `${row.description} — Eligible Dividend` };
+      if (tx.ticker === "MSA") return { ...row, description: `${row.description} — Foreign Income` };
+      return row;
+    });
+    return { ...incomeMatrix, incomeTxRows };
+  }, [incomeMatrix, effectiveTxns]);
   const fxSchedule   = useMemo(() => buildFxSchedule(effectiveTxns, effectivePY), [effectiveTxns, effectivePY]);
   const invRecon     = useMemo(() => buildInvestmentRecon(schedules, effectiveTxns), [schedules, effectiveTxns]);
 
@@ -3204,7 +3215,7 @@ export function InvestmentScheduleResponse({ onEditTransactions, initialTransact
           <GainLossPanel schedules={schedules} yearEnd={dateStr} editMode={invMode === "edit"} allInvSources={allInvSources} />
         </div>
         <div className={activeTab === "income" ? "" : "hidden"}>
-          <IncomePanel incomeMatrix={incomeMatrix} editMode={invMode === "edit"} />
+          <IncomePanel incomeMatrix={classifiedIncomeMatrix} editMode={invMode === "edit"} />
         </div>
         <div className={activeTab === "brokerrecon" ? "" : "hidden"}>
           <BrokerReconPanel invRecon={invRecon} schedules={schedules} effectiveTxns={effectiveTxns} yearEnd={dateStr} editMode={invMode === "edit"} />

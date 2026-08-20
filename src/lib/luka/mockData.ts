@@ -4,83 +4,37 @@ import { defaultTbAccount } from "./coa";
 export const sources: Source[] = [
   {
     id: "A",
-    label: "Source A",
+    label: "TD Direct Investing #7145X0",
     type: "Broker Statement",
-    institution: "TD Waterhouse",
-    accountLast4: "4821",
-    periodStart: "2024-01-01",
-    periodEnd: "2024-12-31",
+    institution: "TD Direct Investing",
+    accountLast4: "5X0",
+    periodStart: "2025-05-01",
+    periodEnd: "2026-04-30",
     currency: "CAD",
-    entityName: "Maple Holdings Inc.",
-  },
-  {
-    id: "B",
-    label: "Source B",
-    type: "Broker Statement",
-    institution: "RBC Direct Investing",
-    accountLast4: "9117",
-    periodStart: "2024-01-01",
-    periodEnd: "2024-12-31",
-    currency: "USD",
-    entityName: "Maple Holdings Inc.",
-  },
-  {
-    id: "C",
-    label: "Source C",
-    type: "Bank Statement",
-    institution: "BMO Operating Account",
-    accountLast4: "0042",
-    periodStart: "2024-01-01",
-    periodEnd: "2024-12-31",
-    currency: "CAD",
-    entityName: "Maple Holdings Inc.",
-  },
-  {
-    id: "D",
-    label: "Source D",
-    type: "Bank Statement",
-    institution: "RBC USD Account",
-    accountLast4: "7733",
-    periodStart: "2024-01-01",
-    periodEnd: "2024-12-31",
-    currency: "USD",
-    entityName: "Maple Holdings Inc.",
-  },
-  {
-    id: "PY",
-    label: "Prior Year WP",
-    type: "Prior Year WP",
-    institution: "Uploaded prior-year schedule (FY2023)",
-    accountLast4: "—",
-    periodStart: "2023-01-01",
-    periodEnd: "2023-12-31",
-    currency: "CAD",
-    entityName: "Maple Holdings Inc.",
+    entityName: "Pikes Peak Capital Inc.",
   },
 ];
 
-// Prior-year opening positions (used in "continuing entity" scenario)
+// Prior-year opening positions (May 1, 2025 — from Apr 30, 2025 statement)
 export const priorYearLots: PriorYearLot[] = [
-  { security: "Royal Bank of Canada",  ticker: "RY",    sourceId: "A", units: 500,  costCAD: 62_500,  currency: "CAD" },
-  { security: "Enbridge Inc.",          ticker: "ENB",   sourceId: "A", units: 800,  costCAD: 38_400,  currency: "CAD" },
-  { security: "Apple Inc.",             ticker: "AAPL",  sourceId: "B", units: 200,  costCAD: 38_400,  currency: "USD" },
-  { security: "Microsoft Corp.",        ticker: "MSFT",  sourceId: "B", units: 150,  costCAD: 60_750,  currency: "USD" },
-  { security: "Govt of Canada Bond 5%", ticker: "CGOV5", sourceId: "A", units: 1,    costCAD: 62_500,  currency: "CAD" },
+  { security: "Dividend 15 Split Corp-A",   ticker: "DFN",    sourceId: "A", units: 27_965, costCAD: 169_261.10, currency: "CAD" },
+  { security: "Dividend 15 Split Corp Pref", ticker: "DFN.PR.A", sourceId: "A", units:  7_733, costCAD:  79_049.91, currency: "CAD" },
+  { security: "E Split Corp Cl-A",           ticker: "ENS",    sourceId: "A", units:    490, costCAD:   6_891.40, currency: "CAD" },
+  { security: "Mineros S.A.",                ticker: "MSA",    sourceId: "A", units: 29_900, costCAD:  37_982.99, currency: "CAD" },
 ];
 
-// Period-end FMV (closing prices)
+// Period-end FMV (closing prices at April 30, 2026)
 export const fmvQuotes: FmvQuote[] = [
-  { ticker: "RY",    closingPrice: 138.50,    currency: "CAD" },
-  { ticker: "ENB",   closingPrice:  53.20,    currency: "CAD" },
-  { ticker: "AAPL",  closingPrice: 250.42,    currency: "USD" },
-  { ticker: "MSFT",  closingPrice: 421.50,    currency: "USD" },
-  { ticker: "SHOP",  closingPrice: 112.30,    currency: "CAD" },
-  { ticker: "NVDA",  closingPrice: 138.25,    currency: "USD" },
-  { ticker: "CGOV5", closingPrice:  62_375.00, currency: "CAD" },
+  { ticker: "DFN",    closingPrice:  7.92, currency: "CAD" },
+  { ticker: "DFN.PR.A", closingPrice: 10.49, currency: "CAD" },
+  { ticker: "ENS",    closingPrice: 18.05, currency: "CAD" },
+  { ticker: "GDV",    closingPrice: 13.44, currency: "CAD" },
+  { ticker: "TXG",    closingPrice: 55.94, currency: "CAD" },
+  { ticker: "MSA",    closingPrice:  4.99, currency: "CAD" },
 ];
 
-// Period-end FX rate (CAD per USD)
-export const closingFxRate = 1.4389;
+// Period-end FX rate (all CAD — no USD positions)
+export const closingFxRate = 1.0000;
 
 // ── Settlement date helpers ───────────────────────────────────────────────────
 /** Add N business days to an ISO date string (skips Sat/Sun). */
@@ -89,7 +43,7 @@ function addBusinessDays(iso: string, n: number): string {
   let added = 0;
   while (added < n) {
     d.setUTCDate(d.getUTCDate() + 1);
-    const dow = d.getUTCDay();          // 0=Sun, 6=Sat
+    const dow = d.getUTCDay();
     if (dow !== 0 && dow !== 6) added++;
   }
   return d.toISOString().slice(0, 10);
@@ -99,7 +53,7 @@ function addBusinessDays(iso: string, n: number): string {
 function settleDays(type: Transaction["type"]): number {
   if (type === "Purchase" || type === "Sale" || type === "Transfer In" || type === "Transfer Out") return 2;
   if (type === "Reinvested Dividend") return 1;
-  return 0;   // Dividend, Interest, Fee, WHT, ROC settle same day
+  return 0;
 }
 
 // ── Transaction builder helper ────────────────────────────────────────────────
@@ -132,89 +86,179 @@ const t = (
     units, price, gross, fees, net,
     currency, fxRate, notes, status,
     tbAccount:      defaultTbAccount(type),
-    tradeDate:      date,                                         // trade date = booking date
-    settlementDate: sd > 0 ? addBusinessDays(date, sd) : date,   // T+2 for equities, T+0 otherwise
+    tradeDate:      date,
+    settlementDate: sd > 0 ? addBusinessDays(date, sd) : date,
   };
 };
 
-// ── Current year transactions ─────────────────────────────────────────────────
+// ── Current year transactions (May 1, 2025 – April 30, 2026) ─────────────────
 export const currentYearTransactions: Transaction[] = [
 
-  // ════ Source A: TD Waterhouse (CAD) ════
+  // ════ Purchases ════
 
-  // Purchases
-  t("A", "2024-03-15", "Royal Bank of Canada",   "RY",    "Purchase",    100,  132.50,  9.99, "CAD"),
-  t("A", "2024-08-20", "Shopify Inc.",            "SHOP",  "Purchase",    300,   95.20,  9.99, "CAD"),
+  // ENS — May 13, 2025 (order EI-771045)
+  t("A", "2025-05-13", "E Split Corp Cl-A",           "ENS",    "Purchase",    300,  13.680,  9.99, "CAD", undefined, "300 sh @ $13.680 · EI-771045"),
 
-  // Sales
-  t("A", "2024-06-30", "Enbridge Inc.",           "ENB",   "Sale",       -200,   49.80,  9.99, "CAD"),
-  t("A", "2024-11-15", "Shopify Inc.",            "SHOP",  "Sale",        -80,  108.75,  9.99, "CAD"),
+  // DFN.PR.A — May 26, 2025 (order FJ-773700; 3 fills consolidated)
+  t("A", "2025-05-26", "Dividend 15 Split Corp Pref", "DFN.PR.A", "Purchase", 4_700, 10.590,  9.99, "CAD", undefined, "4,700 sh @ $10.590 · FJ-773700 (3 fills)"),
 
-  // Dividends — units = shares held, price = dividend per share
-  t("A", "2024-05-10", "Royal Bank of Canada",   "RY",    "Dividend",    600,    1.38,  0.00, "CAD", undefined, "Q2 div $1.38/sh · 600 shares"),
-  t("A", "2024-08-10", "Royal Bank of Canada",   "RY",    "Dividend",    600,    1.38,  0.00, "CAD", undefined, "Q3 div $1.38/sh · 600 shares"),
-  t("A", "2024-10-12", "Enbridge Inc.",           "ENB",   "Dividend",    600,    0.915, 0.00, "CAD", undefined, "Q3 div $0.915/sh · 600 shares"),
+  // MSA — May 29, 2025 (order DI-774475)
+  t("A", "2025-05-29", "Mineros S.A.",                "MSA",    "Purchase",  9_000,   2.310,  9.99, "CAD", undefined, "9,000 sh @ $2.310 · DI-774475"),
 
-  // Bond interest — units = 1 (one bond position), price = coupon amount
-  t("A", "2024-06-15", "Govt of Canada Bond 5%", "CGOV5", "Interest",      1,  312.50,  0.00, "CAD", undefined, "Semi-annual coupon · $62,500 par @ 1.0%/6mo"),
-  t("A", "2024-12-15", "Govt of Canada Bond 5%", "CGOV5", "Interest",      1,  312.50,  0.00, "CAD", undefined, "Semi-annual coupon · $62,500 par @ 1.0%/6mo"),
+  // DFN.PR.A — Jun 27, 2025 (order CE-781473)
+  t("A", "2025-06-27", "Dividend 15 Split Corp Pref", "DFN.PR.A", "Purchase", 1_200, 10.460,  9.99, "CAD", undefined, "1,200 sh @ $10.460 · CE-781473"),
 
-  // Return of Capital — units = shares, price = ROC per share
-  t("A", "2024-11-25", "Enbridge Inc.",           "ENB",   "Return of Capital", 600, 0.40, 0.00, "CAD", undefined, "ROC $0.40/sh · reduces ACB"),
+  // GDV — Aug 26, 2025 (order KE-798043)
+  t("A", "2025-08-26", "Global Div Growth Split Crp-A", "GDV",  "Purchase",  1_100,  11.310,  9.99, "CAD", undefined, "1,100 sh @ $11.310 · KE-798043"),
 
-  // ════ Source B: RBC Direct (USD) ════
+  // TXG — Feb 19, 2026 (order HH-851869)
+  t("A", "2026-02-19", "Torex Gold Resources Inc.",   "TXG",    "Purchase",  1_000,  57.830,  9.99, "CAD", undefined, "1,000 sh @ $57.830 · HH-851869"),
 
-  // Purchases
-  t("B", "2024-02-05", "Apple Inc.",              "AAPL",  "Purchase",     50,  188.40,  4.95, "USD", 1.3478),
-  t("B", "2024-04-18", "Microsoft Corp.",         "MSFT",  "Purchase",     25,  415.00,  4.95, "USD", 1.3712),
-  t("B", "2024-07-22", "NVIDIA Corp.",            "NVDA",  "Purchase",    100,  121.50,  4.95, "USD", 1.3805),
-  t("B", "2024-09-25", "Apple Inc.",              "AAPL",  "Purchase",     30,  226.50,  4.95, "USD", 1.3601, "⚠ within 30d of AAPL sale", "approved"),
+  // ENS — Apr 14, 2026 (consolidated: 500 settlement artifact + 2,000 new; order VQ-865050)
+  t("A", "2026-04-14", "E Split Corp Cl-A",           "ENS",    "Purchase",  2_500,  17.614,  9.99, "CAD", undefined, "2,500 sh @ $17.614 · VQ-865050 (incl. 500 settlement artifact)"),
 
-  // Sales
-  t("B", "2024-09-15", "Apple Inc.",              "AAPL",  "Sale",         -75, 224.10,  4.95, "USD", 1.3590),
-  t("B", "2024-10-30", "NVIDIA Corp.",            "NVDA",  "Sale",         -40, 139.20,  4.95, "USD", 1.3892),
+  // ENS — Apr 15, 2026 (order WD-866946)
+  t("A", "2026-04-15", "E Split Corp Cl-A",           "ENS",    "Purchase",  2_500,  17.190,  9.99, "CAD", undefined, "2,500 sh @ $17.190 · WD-866946"),
 
-  // Dividends — units = shares held, price = dividend per share
-  t("B", "2024-06-12", "Apple Inc.",              "AAPL",  "Dividend",    250,    0.25,  0.00, "USD", 1.3690, "Cash div USD 0.25/sh · 250 shares"),
-  t("B", "2024-09-12", "Apple Inc.",              "AAPL",  "Dividend",    175,    0.25,  0.00, "USD", 1.3595, "Cash div USD 0.25/sh · 175 shares"),
-  t("B", "2024-11-08", "Microsoft Corp.",         "MSFT",  "Dividend",    175,    0.83,  0.00, "USD", 1.3920, "Cash div USD 0.83/sh · 175 shares"),
-  t("B", "2024-12-15", "NVIDIA Corp.",            "NVDA",  "Dividend",     60,    0.04,  0.00, "USD", 1.4290, "Q4 cash div USD 0.04/sh · 60 shares", "pending"),
+  // ════ Sales ════
 
-  // Withholding Tax — units = shares, price = WHT per share (15%)
-  t("B", "2024-06-12", "Apple Inc.",              "AAPL",  "Withholding Tax", 250, 0.0375, 0.00, "USD", 1.3690, "US NRA WHT 15% on AAPL Q2 div"),
-  t("B", "2024-11-08", "Microsoft Corp.",         "MSFT",  "Withholding Tax", 175, 0.1245, 0.00, "USD", 1.3920, "US NRA WHT 15% on MSFT div"),
+  // DFN — Dec 22, 2025 (order IH-832301)
+  t("A", "2025-12-22", "Dividend 15 Split Corp-A",    "DFN",    "Sale",    -10_000,   7.340,  9.99, "CAD", undefined, "10,000 sh @ $7.340 · IH-832301"),
 
-  // Reinvested Dividend (DRIP)
-  t("B", "2024-11-08", "Microsoft Corp.",         "MSFT",  "Reinvested Dividend", 0.32, 412.10, 0.00, "USD", 1.3920, "DRIP reinvestment", "approved"),
+  // DFN — Dec 22, 2025 (order JP-834481)
+  t("A", "2025-12-22", "Dividend 15 Split Corp-A",    "DFN",    "Sale",    -15_000,   7.340,  9.99, "CAD", undefined, "15,000 sh @ $7.340 · JP-834481"),
 
-  // Fee/Commission
-  t("B", "2024-12-01", "RBC Direct Investing",    "FEE",   "Fee/Commission", 0,    0.00, 125.00, "USD", 1.4310, "Annual platform fee"),
+  // ════ Dividends — units=1, price=exact total (avoids per-share rounding) ════
+
+  // ── MSA (foreign income — Colombian company, TSX-listed) ──
+  t("A", "2025-05-02", "Mineros S.A.",                "MSA",    "Dividend",    1,   816.57, 0, "CAD", undefined, "foreign_income · 29,900 sh"),
+  t("A", "2025-08-01", "Mineros S.A.",                "MSA",    "Dividend",    1, 1_056.14, 0, "CAD", undefined, "foreign_income · 38,900 sh"),
+  t("A", "2025-11-04", "Mineros S.A.",                "MSA",    "Dividend",    1, 1_087.26, 0, "CAD", undefined, "foreign_income · 38,900 sh"),
+  t("A", "2026-02-02", "Mineros S.A.",                "MSA",    "Dividend",    1, 1_052.25, 0, "CAD", undefined, "foreign_income · 38,900 sh"),
+  t("A", "2026-04-27", "Mineros S.A.",                "MSA",    "Dividend",    1, 1_044.47, 0, "CAD", undefined, "foreign_income · 38,900 sh"),
+
+  // ── DFN ──
+  t("A", "2025-05-09", "Dividend 15 Split Corp-A",    "DFN",    "Dividend",    1, 2_796.50, 0, "CAD", undefined, "27,965 sh @ $0.10/sh"),
+  t("A", "2025-06-10", "Dividend 15 Split Corp-A",    "DFN",    "Dividend",    1, 2_796.50, 0, "CAD", undefined, "27,965 sh @ $0.10/sh"),
+  t("A", "2025-07-10", "Dividend 15 Split Corp-A",    "DFN",    "Dividend",    1, 2_796.50, 0, "CAD", undefined, "27,965 sh @ $0.10/sh"),
+  t("A", "2025-08-08", "Dividend 15 Split Corp-A",    "DFN",    "Dividend",    1, 2_796.50, 0, "CAD", undefined, "27,965 sh @ $0.10/sh"),
+  t("A", "2025-09-10", "Dividend 15 Split Corp-A",    "DFN",    "Dividend",    1, 2_796.50, 0, "CAD", undefined, "27,965 sh @ $0.10/sh"),
+  t("A", "2025-10-10", "Dividend 15 Split Corp-A",    "DFN",    "Dividend",    1, 2_796.50, 0, "CAD", undefined, "27,965 sh @ $0.10/sh"),
+  t("A", "2025-11-10", "Dividend 15 Split Corp-A",    "DFN",    "Dividend",    1, 2_796.50, 0, "CAD", undefined, "27,965 sh @ $0.10/sh"),
+  t("A", "2025-12-10", "Dividend 15 Split Corp-A",    "DFN",    "Dividend",    1, 2_796.50, 0, "CAD", undefined, "27,965 sh @ $0.10/sh"),
+  t("A", "2026-01-09", "Dividend 15 Split Corp-A",    "DFN",    "Dividend",    1,   296.50, 0, "CAD", undefined, "2,965 sh @ $0.10/sh (after Dec sales)"),
+  t("A", "2026-02-10", "Dividend 15 Split Corp-A",    "DFN",    "Dividend",    1,   296.50, 0, "CAD", undefined, "2,965 sh @ $0.10/sh"),
+  t("A", "2026-03-10", "Dividend 15 Split Corp-A",    "DFN",    "Dividend",    1,   296.50, 0, "CAD", undefined, "2,965 sh @ $0.10/sh"),
+  t("A", "2026-04-10", "Dividend 15 Split Corp-A",    "DFN",    "Dividend",    1,   296.50, 0, "CAD", undefined, "2,965 sh @ $0.10/sh"),
+
+  // ── DFN.PR.A ──
+  t("A", "2025-05-09", "Dividend 15 Split Corp Pref", "DFN.PR.A", "Dividend", 1,   451.07, 0, "CAD", undefined, "7,733 sh @ $0.0583/sh"),
+  t("A", "2025-06-10", "Dividend 15 Split Corp Pref", "DFN.PR.A", "Dividend", 1,   725.22, 0, "CAD", undefined, "12,433 sh @ $0.0583/sh"),
+  t("A", "2025-07-10", "Dividend 15 Split Corp Pref", "DFN.PR.A", "Dividend", 1,   795.21, 0, "CAD", undefined, "13,633 sh @ $0.0583/sh"),
+  t("A", "2025-08-08", "Dividend 15 Split Corp Pref", "DFN.PR.A", "Dividend", 1,   795.21, 0, "CAD", undefined, "13,633 sh @ $0.0583/sh"),
+  t("A", "2025-09-10", "Dividend 15 Split Corp Pref", "DFN.PR.A", "Dividend", 1,   795.21, 0, "CAD", undefined, "13,633 sh @ $0.0583/sh"),
+  t("A", "2025-10-10", "Dividend 15 Split Corp Pref", "DFN.PR.A", "Dividend", 1,   795.21, 0, "CAD", undefined, "13,633 sh @ $0.0583/sh"),
+  t("A", "2025-11-10", "Dividend 15 Split Corp Pref", "DFN.PR.A", "Dividend", 1,   795.21, 0, "CAD", undefined, "13,633 sh @ $0.0583/sh"),
+  t("A", "2025-12-10", "Dividend 15 Split Corp Pref", "DFN.PR.A", "Dividend", 1,   795.21, 0, "CAD", undefined, "13,633 sh @ $0.0583/sh"),
+  t("A", "2026-01-09", "Dividend 15 Split Corp Pref", "DFN.PR.A", "Dividend", 1,   795.21, 0, "CAD", undefined, "13,633 sh @ $0.0583/sh"),
+  t("A", "2026-02-10", "Dividend 15 Split Corp Pref", "DFN.PR.A", "Dividend", 1,   795.21, 0, "CAD", undefined, "13,633 sh @ $0.0583/sh"),
+  t("A", "2026-03-10", "Dividend 15 Split Corp Pref", "DFN.PR.A", "Dividend", 1,   795.21, 0, "CAD", undefined, "13,633 sh @ $0.0583/sh"),
+  t("A", "2026-04-10", "Dividend 15 Split Corp Pref", "DFN.PR.A", "Dividend", 1,   795.21, 0, "CAD", undefined, "13,633 sh @ $0.0583/sh"),
+
+  // ── ENS ──
+  t("A", "2025-05-15", "E Split Corp Cl-A",           "ENS",    "Dividend",    1,    63.70, 0, "CAD", undefined, "490 sh @ $0.13/sh"),
+  t("A", "2025-06-13", "E Split Corp Cl-A",           "ENS",    "Dividend",    1,   102.70, 0, "CAD", undefined, "790 sh @ $0.13/sh"),
+  t("A", "2025-07-15", "E Split Corp Cl-A",           "ENS",    "Dividend",    1,   102.70, 0, "CAD", undefined, "790 sh @ $0.13/sh"),
+  t("A", "2025-08-15", "E Split Corp Cl-A",           "ENS",    "Dividend",    1,   102.70, 0, "CAD", undefined, "790 sh @ $0.13/sh"),
+  t("A", "2025-09-15", "E Split Corp Cl-A",           "ENS",    "Dividend",    1,   102.70, 0, "CAD", undefined, "790 sh @ $0.13/sh"),
+  t("A", "2025-10-15", "E Split Corp Cl-A",           "ENS",    "Dividend",    1,   102.70, 0, "CAD", undefined, "790 sh @ $0.13/sh"),
+  t("A", "2025-11-14", "E Split Corp Cl-A",           "ENS",    "Dividend",    1,   102.70, 0, "CAD", undefined, "790 sh @ $0.13/sh"),
+  t("A", "2025-12-15", "E Split Corp Cl-A",           "ENS",    "Dividend",    1,   102.70, 0, "CAD", undefined, "790 sh @ $0.13/sh"),
+  t("A", "2026-01-15", "E Split Corp Cl-A",           "ENS",    "Dividend",    1,   102.70, 0, "CAD", undefined, "790 sh @ $0.13/sh"),
+  t("A", "2026-02-13", "E Split Corp Cl-A",           "ENS",    "Dividend",    1,   102.70, 0, "CAD", undefined, "790 sh @ $0.13/sh"),
+  t("A", "2026-03-13", "E Split Corp Cl-A",           "ENS",    "Dividend",    1,   110.60, 0, "CAD", undefined, "790 sh @ $0.14/sh"),
+  t("A", "2026-04-15", "E Split Corp Cl-A",           "ENS",    "Dividend",    1,   110.60, 0, "CAD", undefined, "790 sh @ $0.14/sh (pre-record; Apr buys not eligible)"),
+
+  // ── GDV (eligible dividends — split corp) ──
+  t("A", "2025-09-15", "Global Div Growth Split Crp-A", "GDV",  "Dividend",    1,   110.00, 0, "CAD", undefined, "eligible_dividend · 1,100 sh @ $0.10/sh"),
+  t("A", "2025-10-15", "Global Div Growth Split Crp-A", "GDV",  "Dividend",    1,   110.00, 0, "CAD", undefined, "eligible_dividend · 1,100 sh @ $0.10/sh"),
+  t("A", "2025-11-14", "Global Div Growth Split Crp-A", "GDV",  "Dividend",    1,   110.00, 0, "CAD", undefined, "eligible_dividend · 1,100 sh @ $0.10/sh"),
+  t("A", "2025-12-12", "Global Div Growth Split Crp-A", "GDV",  "Dividend",    1,   110.00, 0, "CAD", undefined, "eligible_dividend · 1,100 sh @ $0.10/sh"),
+  t("A", "2026-01-15", "Global Div Growth Split Crp-A", "GDV",  "Dividend",    1,   110.00, 0, "CAD", undefined, "eligible_dividend · 1,100 sh @ $0.10/sh"),
+  t("A", "2026-02-13", "Global Div Growth Split Crp-A", "GDV",  "Dividend",    1,   110.00, 0, "CAD", undefined, "eligible_dividend · 1,100 sh @ $0.10/sh"),
+  t("A", "2026-03-13", "Global Div Growth Split Crp-A", "GDV",  "Dividend",    1,   110.00, 0, "CAD", undefined, "eligible_dividend · 1,100 sh @ $0.10/sh"),
+  t("A", "2026-04-15", "Global Div Growth Split Crp-A", "GDV",  "Dividend",    1,   110.00, 0, "CAD", undefined, "eligible_dividend · 1,100 sh @ $0.10/sh"),
+
+  // ── TXG ──
+  t("A", "2026-03-19", "Torex Gold Resources Inc.",   "TXG",    "Dividend",    1,   150.00, 0, "CAD", undefined, "1,000 sh · special dividend"),
 ];
 
-// ── Income amounts (overrides for income-matrix; also used by ROC in compute) ─
-// For dividend transactions that already carry correct gross values, entries here
-// are kept in sync. The ROC entry is required by compute.ts to reduce ENB ACB.
+// ── Income amounts (authoritative totals; keyed TICKER|DATE) ─────────────────
+// Matches transaction gross values exactly; included for backward compat with
+// compute.ts incomeAmounts lookup and to ensure audit trail is unambiguous.
 export const incomeAmounts: Record<string, number> = {
-  "RY|2024-05-10":   600 * 1.38,    //  828.00 CAD
-  "RY|2024-08-10":   600 * 1.38,    //  828.00 CAD
-  "ENB|2024-10-12":  600 * 0.915,   //  549.00 CAD
-  "ENB|2024-11-25":  600 * 0.40,    //  240.00 CAD  ← ROC; used by compute.ts
-  "AAPL|2024-06-12": 250 * 0.25,    //   62.50 USD
-  "AAPL|2024-09-12": 175 * 0.25,    //   43.75 USD
-  "MSFT|2024-11-08": 175 * 0.83,    //  145.25 USD
-  "CGOV5|2024-06-15": 312.50,       //  312.50 CAD
-  "CGOV5|2024-12-15": 312.50,       //  312.50 CAD
+  // MSA — foreign income
+  "MSA|2025-05-02":    816.57,
+  "MSA|2025-08-01":  1_056.14,
+  "MSA|2025-11-04":  1_087.26,
+  "MSA|2026-02-02":  1_052.25,
+  "MSA|2026-04-27":  1_044.47,
+  // DFN
+  "DFN|2025-05-09":  2_796.50,
+  "DFN|2025-06-10":  2_796.50,
+  "DFN|2025-07-10":  2_796.50,
+  "DFN|2025-08-08":  2_796.50,
+  "DFN|2025-09-10":  2_796.50,
+  "DFN|2025-10-10":  2_796.50,
+  "DFN|2025-11-10":  2_796.50,
+  "DFN|2025-12-10":  2_796.50,
+  "DFN|2026-01-09":    296.50,
+  "DFN|2026-02-10":    296.50,
+  "DFN|2026-03-10":    296.50,
+  "DFN|2026-04-10":    296.50,
+  // DFN.PR.A
+  "DFN.PR.A|2025-05-09":   451.07,
+  "DFN.PR.A|2025-06-10":   725.22,
+  "DFN.PR.A|2025-07-10":   795.21,
+  "DFN.PR.A|2025-08-08":   795.21,
+  "DFN.PR.A|2025-09-10":   795.21,
+  "DFN.PR.A|2025-10-10":   795.21,
+  "DFN.PR.A|2025-11-10":   795.21,
+  "DFN.PR.A|2025-12-10":   795.21,
+  "DFN.PR.A|2026-01-09":   795.21,
+  "DFN.PR.A|2026-02-10":   795.21,
+  "DFN.PR.A|2026-03-10":   795.21,
+  "DFN.PR.A|2026-04-10":   795.21,
+  // ENS
+  "ENS|2025-05-15":   63.70,
+  "ENS|2025-06-13":  102.70,
+  "ENS|2025-07-15":  102.70,
+  "ENS|2025-08-15":  102.70,
+  "ENS|2025-09-15":  102.70,
+  "ENS|2025-10-15":  102.70,
+  "ENS|2025-11-14":  102.70,
+  "ENS|2025-12-15":  102.70,
+  "ENS|2026-01-15":  102.70,
+  "ENS|2026-02-13":  102.70,
+  "ENS|2026-03-13":  110.60,
+  "ENS|2026-04-15":  110.60,
+  // GDV — eligible dividends
+  "GDV|2025-09-15":  110.00,
+  "GDV|2025-10-15":  110.00,
+  "GDV|2025-11-14":  110.00,
+  "GDV|2025-12-12":  110.00,
+  "GDV|2026-01-15":  110.00,
+  "GDV|2026-02-13":  110.00,
+  "GDV|2026-03-13":  110.00,
+  "GDV|2026-04-15":  110.00,
+  // TXG
+  "TXG|2026-03-19":  150.00,
 };
 
-// ── Cash account balances (for cash reconciliation) ───────────────────────────
+// ── Cash account balances (April 30, 2026 statement) ─────────────────────────
 export const cashAccountBalances: CashAccountBalance[] = [
-  { sourceId: "C", glBalance: 142_350.18, stmtBalance: 142_350.18, currency: "CAD" },
-  { sourceId: "D", glBalance:  18_421.55, stmtBalance:  18_510.00, currency: "USD" },
+  { sourceId: "A", glBalance: 63_311.11, stmtBalance: 63_311.11, currency: "CAD" },
 ];
 
-// ── Period FX rates (CAD per 1 foreign unit) ──────────────────────────────────
-export const fxRates: FxRateInfo[] = [
-  { ccy: "USD", opening: 1.3241, closing: 1.4389, average: 1.3712, rateSource: "Bank of Canada" },
-  { ccy: "EUR", opening: 1.4612, closing: 1.4920, average: 1.4801, rateSource: "Bank of Canada" },
-  { ccy: "GBP", opening: 1.6810, closing: 1.7990, average: 1.7501, rateSource: "Bank of Canada" },
-];
+// ── Period FX rates — all transactions are CAD; no FX rates required ─────────
+export const fxRates: FxRateInfo[] = [];
