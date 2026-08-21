@@ -754,7 +754,7 @@ function TransactionsPanel({
                       ? <FmtNumInput value={bv?.units ?? t.units} onCommit={n => bSet("units", n)} className={`${IC} w-20 text-right`} placeholder="0" decimals={0} />
                       : t.units > 0
                         ? <span className="tabular-nums">{Number.isInteger(t.units) ? t.units.toLocaleString("en-CA") : fmt4(t.units)}</span>
-                        : <span className="text-muted-foreground">—</span>}
+                        : <span className="text-muted-foreground tabular-nums">0</span>}
                   </td>
 
                   {/* Price */}
@@ -779,7 +779,7 @@ function TransactionsPanel({
                         : <span className="text-muted-foreground tabular-nums">—</span>
                       : t.currency !== "CAD"
                         ? <span className="tabular-nums text-foreground">{fmt4(t.fxRate ?? 1)}</span>
-                        : <span className="text-muted-foreground tabular-nums">—</span>}
+                        : <span className="text-muted-foreground tabular-nums">1.0000</span>}
                   </td>
 
                   {/* Amount — signed by direction, colour-coded */}
@@ -1385,7 +1385,7 @@ function GainLossPanel({ schedules, yearEnd, editMode, allInvSources }: {
                       {editMode ? <FmtNumInput value={ov.units ?? d.units} onCommit={n => rSet(i, { units: n })} className={`${EC} w-24 text-right`} formatter={fmtUnits} /> : fmtUnits(d.units)}
                     </td>
                     <td className="px-3 py-1.5 text-right tabular-nums font-mono">
-                      {d.fxRate !== 1 ? d.fxRate.toFixed(4) : "—"}
+                      {d.fxRate.toFixed(4)}
                     </td>
                     <td className="px-3 py-1.5 text-right font-mono">{d.currency}</td>
                     <td className="px-3 py-1.5 text-right tabular-nums">
