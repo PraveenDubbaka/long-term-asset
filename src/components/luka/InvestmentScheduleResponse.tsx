@@ -1149,7 +1149,7 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
                                 <FmtNumInput value={getV(field) ?? 0} onCommit={n => setV({ [field]: n || undefined })} className={`${IIC} w-20 text-right`} placeholder="0.00" />
                               ) : (r[field] != null && r[field] !== 0)
                                 ? <span className={field === "nonResidentTax" ? "text-red-600" : "text-emerald-700"}>{fmtCAD(r[field]!)}</span>
-                                : <span className="text-muted-foreground/25">—</span>}
+                                : <span className="text-muted-foreground/40 tabular-nums">0.00</span>}
                             </td>
                           ))}
                         </tr>
@@ -1201,7 +1201,7 @@ function WACPanel({ schedules, yearEnd, editMode }: { schedules: SecuritySchedul
                           <td key={field} className={`px-2.5 py-2 text-right tabular-nums ${fi < 4 ? "border-r border-border/30" : ""}`} style={fi === 0 ? { borderLeft: "3px solid hsl(var(--foreground) / 0.3)" } : {}}>
                             {total > 0
                               ? <span className={field === "nonResidentTax" ? "text-red-600 font-semibold" : "text-emerald-700 font-semibold"}>{fmtCAD(total)}</span>
-                              : <span className="text-muted-foreground/25">—</span>}
+                              : <span className="text-muted-foreground/40 tabular-nums">0.00</span>}
                           </td>
                         );
                       })}
