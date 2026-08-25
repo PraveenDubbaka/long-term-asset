@@ -495,13 +495,22 @@ function LoansTab({
   // Columns hidden in view mode — require manual entry or are non-schedule fields.
   // In edit mode all columns are visible so the user can fill them in.
   const VIEW_MODE_HIDDEN = new Set([
+    "Current Collateral",
+    "Type",
+    "Rate Type",
+    "Start",
     "Tenure (Mo.)",
+    "Currency",
+    "GL Principal",
     "FX Rate",
     "Converted Amt",
+    "Day Count",
+    "Payment Type",
+    "Compounding",
     "Interest-Only Period (Mo.)",
     "Balloon Amt",
-    "GL Diff",
     "Status",
+    "GL Diff",
   ]);
 
   const effectiveHidCols = useMemo<Set<string>>(() => {
