@@ -3148,7 +3148,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   {ltPriorRows.map((r, ri) => {
                                                     const upd = (field: keyof LtDebtReviewRow, val: string) =>
                                                       setLtPriorRows(prev => prev.map((row, i) => i === ri ? { ...row, [field]: val } : row));
-                                                    const cell = (field: keyof LtDebtReviewRow, right = false, suffix = "") => (
+                                                    const cell = (field: keyof LtDebtReviewRow, right = false) => (
                                                       <td className={`px-1.5 py-1 ${right ? "text-right" : ""}`}>
                                                         <input
                                                           value={(r[field] as string) ?? ""}
@@ -3176,6 +3176,23 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     );
                                                   })}
                                                 </tbody>
+                                                <tfoot>
+                                                  {(() => {
+                                                    const parse = (v: string) => parseFloat(v.replace(/[,$\s]/g, "")) || 0;
+                                                    const fmt = (n: number) => n === 0 ? "—" : n.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                                    const sum = (f: keyof LtDebtReviewRow) => ltPriorRows.reduce((s, r) => s + parse(r[f] as string ?? ""), 0);
+                                                    return (
+                                                      <tr className="border-t-2 border-border bg-muted/20 font-semibold">
+                                                        <td className="px-2.5 py-1.5 text-base text-muted-foreground" colSpan={7}>Total</td>
+                                                        <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("openingBalance"))}</td>
+                                                        <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("originalPrincipal"))}</td>
+                                                        <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("interestPaid"))}</td>
+                                                        <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("principalPaid"))}</td>
+                                                        <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("currentBalance"))}</td>
+                                                      </tr>
+                                                    );
+                                                  })()}
+                                                </tfoot>
                                               </table>
                                             </div>
                                           )}
