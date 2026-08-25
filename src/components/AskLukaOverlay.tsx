@@ -3078,8 +3078,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                         setTimeout(() => {
                                           const uid = () => `ltr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
                                           const rows: LtDebtReviewRow[] = [
-                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 1", lender: "BDC Capital Inc.", type: "Term", currency: "CAD", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "Fixed", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "P&I", dayCount: "ACT/365", compounding: "Monthly", ioPeriod: "", balloonAmt: "", collateral: "General Security Agreement over all assets", status: "Active", glPrincipal: "2100", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
-                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 2", lender: "BDC Capital Inc.", type: "Term", currency: "CAD", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "Fixed", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "P&I", dayCount: "ACT/365", compounding: "Monthly", ioPeriod: "", balloonAmt: "", collateral: "General Security Agreement over all assets", status: "Active", glPrincipal: "2100", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
+                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 1", lender: "BDC Capital Inc.", type: "Term", currency: "CAD", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "Fixed", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "P&I", dayCount: "ACT/365", compounding: "Monthly", ioPeriod: "", balloonAmt: "", collateral: "General Security Agreement (GSA) over all present and after-acquired personal property of the borrower, including accounts receivable, inventory, equipment, machinery, and all other business assets", status: "Active", glPrincipal: "2100", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
+                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 2", lender: "BDC Capital Inc.", type: "Term", currency: "CAD", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "Fixed", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "P&I", dayCount: "ACT/365", compounding: "Monthly", ioPeriod: "", balloonAmt: "", collateral: "General Security Agreement (GSA) over all present and after-acquired personal property of the borrower, including accounts receivable, inventory, equipment, machinery, and all other business assets", status: "Active", glPrincipal: "2100", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
                                           ];
                                           setLtPriorRows(rows);
                                           setLtPriorExtracting(false);
@@ -3158,6 +3158,17 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         />
                                                       </td>
                                                     );
+                                                    const collateralCell = (
+                                                      <td className="px-1.5 py-1 align-top" style={{ minWidth: "220px" }}>
+                                                        <textarea
+                                                          value={r.collateral ?? ""}
+                                                          onChange={e => upd("collateral", e.target.value)}
+                                                          rows={3}
+                                                          className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none rounded px-1.5 py-0.5 text-base transition-colors resize-none leading-snug"
+                                                          placeholder="—"
+                                                        />
+                                                      </td>
+                                                    );
                                                     return (
                                                       <tr key={r.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
                                                         {cell("name")}
@@ -3166,7 +3177,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         {cell("monthlyPayment", true)}
                                                         {cell("startDate")}
                                                         {cell("maturityDate")}
-                                                        {cell("collateral")}
+                                                        {collateralCell}
                                                         {cell("openingBalance", true)}
                                                         {cell("originalPrincipal", true)}
                                                         {cell("interestPaid", true)}
