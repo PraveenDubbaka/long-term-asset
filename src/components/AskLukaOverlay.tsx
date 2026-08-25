@@ -495,6 +495,9 @@ interface LtDebtReviewRow {
   ioPeriod: string; balloonAmt: string;
   collateral: string; status: string;
   glPrincipal: string;
+  openingBalance: string;
+  interestPaid: string;
+  principalPaid: string;
   locked?: boolean;
 }
 
@@ -509,6 +512,7 @@ const EMPTY_LT_ROW = (): LtDebtReviewRow => ({
   ioPeriod: "", balloonAmt: "",
   collateral: "", status: "Active",
   glPrincipal: "2100",
+  openingBalance: "", interestPaid: "", principalPaid: "",
 });
 
 const LT_REVIEW_REQUIRED: (keyof LtDebtReviewRow)[] = ["name", "lender", "currentBalance", "rate", "startDate", "maturityDate", "glPrincipal"];
@@ -521,7 +525,7 @@ function mockLtRowsFromFile(file: LtDebtFile): LtDebtReviewRow[] {
   const kind = file.userKind ?? file.kind;
   const sf = file.name;
   const uid = () => `ltr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-  const X = { firstPaymentDate: "", monthlyPayment: "", fxRate: "", paymentType: "P&I", dayCount: "ACT/365", compounding: "Monthly", ioPeriod: "", balloonAmt: "" };
+  const X = { firstPaymentDate: "", monthlyPayment: "", fxRate: "", paymentType: "P&I", dayCount: "ACT/365", compounding: "Monthly", ioPeriod: "", balloonAmt: "", openingBalance: "", interestPaid: "", principalPaid: "" };
   // ── Real CaseWare extraction — The Fishin' Hole (1982) Ltd., YE Sep 30, 2025 ──
   if (kind === "debt-schedule") return [
     {
@@ -535,6 +539,7 @@ function mockLtRowsFromFile(file: LtDebtFile): LtDebtReviewRow[] {
       ioPeriod: "", balloonAmt: "",
       collateral: "", status: "Active",
       glPrincipal: defaultGLPrincipal("Term", "CAD"),
+      openingBalance: "", interestPaid: "", principalPaid: "",
     },
     {
       id: uid(), sourceFile: sf,
@@ -547,6 +552,7 @@ function mockLtRowsFromFile(file: LtDebtFile): LtDebtReviewRow[] {
       ioPeriod: "", balloonAmt: "",
       collateral: "", status: "Active",
       glPrincipal: defaultGLPrincipal("Term", "CAD"),
+      openingBalance: "", interestPaid: "", principalPaid: "",
     },
   ];
   if (kind === "loan-agreement") return [{
@@ -3072,8 +3078,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                         setTimeout(() => {
                                           const uid = () => `ltr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
                                           const rows: LtDebtReviewRow[] = [
-                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 1", lender: "BDC", type: "Term", currency: "CAD", originalPrincipal: "400,000", currentBalance: "356,687.18", rate: "4.000", interestType: "Fixed", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "P&I", dayCount: "ACT/365", compounding: "Monthly", ioPeriod: "", balloonAmt: "", collateral: "", status: "Active", glPrincipal: "2100" },
-                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 2", lender: "BDC", type: "Term", currency: "CAD", originalPrincipal: "400,000", currentBalance: "356,687.18", rate: "4.000", interestType: "Fixed", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "P&I", dayCount: "ACT/365", compounding: "Monthly", ioPeriod: "", balloonAmt: "", collateral: "", status: "Active", glPrincipal: "2100" },
+                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 1", lender: "BDC Capital Inc.", type: "Term", currency: "CAD", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "Fixed", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "P&I", dayCount: "ACT/365", compounding: "Monthly", ioPeriod: "", balloonAmt: "", collateral: "General Security Agreement over all assets", status: "Active", glPrincipal: "2100", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
+                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 2", lender: "BDC Capital Inc.", type: "Term", currency: "CAD", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "Fixed", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "P&I", dayCount: "ACT/365", compounding: "Monthly", ioPeriod: "", balloonAmt: "", collateral: "General Security Agreement over all assets", status: "Active", glPrincipal: "2100", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
                                           ];
                                           setLtPriorRows(rows);
                                           setLtPriorExtracting(false);
@@ -3116,26 +3122,59 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             )}
                                           </div>
                                           {ltPriorRows.length > 0 && (
-                                            <div className="rounded-[8px] border border-border overflow-hidden">
-                                              <table className="w-full text-base">
+                                            <div className="rounded-[8px] border border-border overflow-x-auto">
+                                              <table className="text-base" style={{ minWidth: "1100px" }}>
                                                 <thead>
                                                   <tr className="bg-muted/30 border-b border-border">
-                                                    {["Loan Name","Lender","Opening Balance","Rate %","Start","Maturity"].map(h => (
-                                                      <th key={h} className={`px-3 py-1.5 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${["Opening Balance","Rate %"].includes(h) ? "text-right" : "text-left"}`}>{h}</th>
+                                                    {[
+                                                      { label: "Loan Name", right: false },
+                                                      { label: "Lender", right: false },
+                                                      { label: "Interest Rate", right: true },
+                                                      { label: "Mo. Payment", right: true },
+                                                      { label: "Start Date", right: false },
+                                                      { label: "Maturity Date", right: false },
+                                                      { label: "Current Collateral", right: false },
+                                                      { label: "Opening Balance", right: true },
+                                                      { label: "Additions During Year", right: true },
+                                                      { label: "Interest Paid", right: true },
+                                                      { label: "Principal Paid", right: true },
+                                                      { label: "Closing Balance", right: true },
+                                                    ].map(h => (
+                                                      <th key={h.label} className={`px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h.right ? "text-right" : "text-left"}`}>{h.label}</th>
                                                     ))}
                                                   </tr>
                                                 </thead>
                                                 <tbody>
-                                                  {ltPriorRows.map((r, ri) => (
-                                                    <tr key={r.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
-                                                      <td className="px-3 py-1.5 font-medium">{r.name}</td>
-                                                      <td className="px-3 py-1.5 text-muted-foreground">{r.lender || <span className="text-amber-500 font-medium">—</span>}</td>
-                                                      <td className="px-3 py-1.5 text-right font-medium">{r.currentBalance ? `$${r.currentBalance}` : <span className="text-amber-500 font-medium">missing</span>}</td>
-                                                      <td className="px-3 py-1.5 text-right">{r.rate ? `${r.rate}%` : <span className="text-amber-500">—</span>}</td>
-                                                      <td className="px-3 py-1.5">{r.startDate || <span className="text-amber-500">—</span>}</td>
-                                                      <td className="px-3 py-1.5">{r.maturityDate || <span className="text-amber-500">—</span>}</td>
-                                                    </tr>
-                                                  ))}
+                                                  {ltPriorRows.map((r, ri) => {
+                                                    const upd = (field: keyof LtDebtReviewRow, val: string) =>
+                                                      setLtPriorRows(prev => prev.map((row, i) => i === ri ? { ...row, [field]: val } : row));
+                                                    const cell = (field: keyof LtDebtReviewRow, right = false, suffix = "") => (
+                                                      <td className={`px-1.5 py-1 ${right ? "text-right" : ""}`}>
+                                                        <input
+                                                          value={(r[field] as string) ?? ""}
+                                                          onChange={e => upd(field, e.target.value)}
+                                                          className={`w-full bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none rounded px-1.5 py-0.5 text-base transition-colors ${right ? "text-right" : ""}`}
+                                                          placeholder="—"
+                                                        />
+                                                      </td>
+                                                    );
+                                                    return (
+                                                      <tr key={r.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
+                                                        {cell("name")}
+                                                        {cell("lender")}
+                                                        {cell("rate", true)}
+                                                        {cell("monthlyPayment", true)}
+                                                        {cell("startDate")}
+                                                        {cell("maturityDate")}
+                                                        {cell("collateral")}
+                                                        {cell("openingBalance", true)}
+                                                        {cell("originalPrincipal", true)}
+                                                        {cell("interestPaid", true)}
+                                                        {cell("principalPaid", true)}
+                                                        {cell("currentBalance", true)}
+                                                      </tr>
+                                                    );
+                                                  })}
                                                 </tbody>
                                               </table>
                                             </div>
