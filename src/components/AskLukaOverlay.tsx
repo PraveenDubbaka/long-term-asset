@@ -3123,7 +3123,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                           </div>
                                           {ltPriorRows.length > 0 && (
                                             <div className="rounded-[8px] border border-border overflow-x-auto">
-                                              <table className="text-base" style={{ minWidth: "1100px" }}>
+                                              <table className="text-base" style={{ minWidth: "1500px" }}>
                                                 <thead>
                                                   <tr className="bg-muted/30 border-b border-border">
                                                     {[
@@ -3148,18 +3148,20 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   {ltPriorRows.map((r, ri) => {
                                                     const upd = (field: keyof LtDebtReviewRow, val: string) =>
                                                       setLtPriorRows(prev => prev.map((row, i) => i === ri ? { ...row, [field]: val } : row));
-                                                    const cell = (field: keyof LtDebtReviewRow, right = false) => (
-                                                      <td className={`px-1.5 py-1 ${right ? "text-right" : ""}`}>
-                                                        <input
+                                                    const cell = (field: keyof LtDebtReviewRow, right = false, minW?: string) => (
+                                                      <td className={`px-1.5 py-1 align-top ${right ? "text-right" : ""}`} style={minW ? { minWidth: minW } : undefined}>
+                                                        <textarea
                                                           value={(r[field] as string) ?? ""}
                                                           onChange={e => upd(field, e.target.value)}
-                                                          className={`w-full bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none rounded px-1.5 py-0.5 text-base transition-colors ${right ? "text-right" : ""}`}
+                                                          rows={1}
+                                                          className={`w-full bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none rounded px-1.5 py-0.5 text-base transition-colors resize-none leading-snug overflow-hidden ${right ? "text-right" : ""}`}
                                                           placeholder="—"
+                                                          onInput={e => { const t = e.currentTarget; t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }}
                                                         />
                                                       </td>
                                                     );
                                                     const collateralCell = (
-                                                      <td className="px-1.5 py-1 align-top" style={{ minWidth: "220px" }}>
+                                                      <td className="px-1.5 py-1 align-top" style={{ minWidth: "240px" }}>
                                                         <textarea
                                                           value={r.collateral ?? ""}
                                                           onChange={e => upd("collateral", e.target.value)}
@@ -3171,18 +3173,18 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     );
                                                     return (
                                                       <tr key={r.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
-                                                        {cell("name")}
-                                                        {cell("lender")}
-                                                        {cell("rate", true)}
-                                                        {cell("monthlyPayment", true)}
-                                                        {cell("startDate")}
-                                                        {cell("maturityDate")}
+                                                        {cell("name", false, "160px")}
+                                                        {cell("lender", false, "140px")}
+                                                        {cell("rate", true, "80px")}
+                                                        {cell("monthlyPayment", true, "100px")}
+                                                        {cell("startDate", false, "90px")}
+                                                        {cell("maturityDate", false, "90px")}
                                                         {collateralCell}
-                                                        {cell("openingBalance", true)}
-                                                        {cell("originalPrincipal", true)}
-                                                        {cell("interestPaid", true)}
-                                                        {cell("principalPaid", true)}
-                                                        {cell("currentBalance", true)}
+                                                        {cell("openingBalance", true, "110px")}
+                                                        {cell("originalPrincipal", true, "120px")}
+                                                        {cell("interestPaid", true, "100px")}
+                                                        {cell("principalPaid", true, "100px")}
+                                                        {cell("currentBalance", true, "110px")}
                                                       </tr>
                                                     );
                                                   })}
