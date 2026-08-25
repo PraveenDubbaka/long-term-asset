@@ -3148,15 +3148,17 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   {ltPriorRows.map((r, ri) => {
                                                     const upd = (field: keyof LtDebtReviewRow, val: string) =>
                                                       setLtPriorRows(prev => prev.map((row, i) => i === ri ? { ...row, [field]: val } : row));
+                                                    const autoH = (el: HTMLTextAreaElement | null) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } };
                                                     const cell = (field: keyof LtDebtReviewRow, right = false, minW?: string) => (
                                                       <td className={`px-1.5 py-1 align-top ${right ? "text-right" : ""}`} style={minW ? { minWidth: minW } : undefined}>
                                                         <textarea
                                                           value={(r[field] as string) ?? ""}
                                                           onChange={e => upd(field, e.target.value)}
                                                           rows={1}
+                                                          ref={autoH}
                                                           className={`w-full bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none rounded px-1.5 py-0.5 text-base transition-colors resize-none leading-snug overflow-hidden ${right ? "text-right" : ""}`}
                                                           placeholder="—"
-                                                          onInput={e => { const t = e.currentTarget; t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }}
+                                                          onInput={e => autoH(e.currentTarget)}
                                                         />
                                                       </td>
                                                     );
