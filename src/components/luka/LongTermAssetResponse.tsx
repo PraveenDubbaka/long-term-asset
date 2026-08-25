@@ -971,7 +971,16 @@ function LoansTab({
                 const newRowCells = (draft: Partial<Loan>, setD: (k: keyof Loan, v: unknown) => void) => <>
                   {!hid.has("Loan Name")          && <td className="px-1.5 py-1" style={{minWidth:"160px"}}><input autoFocus value={draft.name??""} onChange={e=>setD("name",e.target.value)} className={IC} placeholder="Name *" /></td>}
                   {!hid.has("Lender")              && <td className="px-1.5 py-1" style={{minWidth:"140px"}}><input value={draft.lender??""} onChange={e=>setD("lender",e.target.value)} className={IC} placeholder="Lender *" /></td>}
-                  {!hid.has("Current Collateral")  && <td className="px-1.5 py-1" style={{minWidth:"220px"}}><input value={draft.securityDescription??""} onChange={e=>setD("securityDescription",e.target.value)} className={IC} placeholder="Collateral" /></td>}
+                  {!hid.has("Current Collateral")  && <td className="px-1.5 py-1 align-top" style={{minWidth:"260px"}}>
+                    <textarea
+                      value={draft.securityDescription??""}
+                      onChange={e=>{ setD("securityDescription",e.target.value); e.target.style.height="auto"; e.target.style.height=e.target.scrollHeight+"px"; }}
+                      ref={el=>{ if(el){ el.style.height="auto"; el.style.height=el.scrollHeight+"px"; } }}
+                      rows={2}
+                      placeholder="Collateral"
+                      className="w-full text-[11px] px-1.5 py-1 border border-primary/40 rounded-[5px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 resize-none overflow-hidden leading-snug"
+                    />
+                  </td>}
                   {!hid.has("Type")                && <td className="px-1.5 py-1"><select value={draft.type??"Term"} onChange={e=>setD("type",e.target.value)} className={ICS}>{["Term","LOC","Revolver","Mortgage","Bridge"].map(t=><option key={t}>{t}</option>)}</select></td>}
                   {!hid.has("Rate Type")           && <td className="px-1.5 py-1"><select value={draft.interestType??"Fixed"} onChange={e=>setD("interestType",e.target.value)} className={ICS}>{["Fixed","Variable","Floating","Hybrid","Step Rate"].map(t=><option key={t}>{t}</option>)}</select></td>}
                   {!hid.has("Int. Rate (%)")       && <td className="px-1.5 py-1"><input type="number" step="0.01" value={draft.rate||""} onChange={e=>setD("rate",parseFloat(e.target.value)||0)} className={IC} placeholder="0.00" /></td>}
