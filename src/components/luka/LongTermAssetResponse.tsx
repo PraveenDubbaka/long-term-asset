@@ -1026,8 +1026,8 @@ function LoansTab({
                     const convAmt    = l.originalPrincipal * fx;
                     const closingCAD = (l.closingBalance ?? l.currentBalance) * fx;
                     return (
-                      <tr key={l.id} className={`group border-b border-border transition-colors ${l.locked ? "bg-muted/25" : isGlobalEdit ? "bg-primary/[0.02]" : isEditing ? "bg-primary/[0.04]" : "hover:bg-muted/30 cursor-pointer"}`}>
-                        {(isGlobalEdit || isEditing) && !l.locked ? newRowCells(
+                      <tr key={l.id} className={`group border-b border-border transition-colors ${isGlobalEdit ? "bg-primary/[0.02]" : isEditing ? "bg-primary/[0.04]" : l.locked ? "bg-muted/25" : "hover:bg-muted/30 cursor-pointer"}`}>
+                        {(isGlobalEdit || (isEditing && !l.locked)) ? newRowCells(
                           isGlobalEdit ? mergedDraft : editDraft,
                           isGlobalEdit ? batchSetter : (k, v) => setEditDraft(p => ({ ...p, [k]: v }))
                         ) : <>
