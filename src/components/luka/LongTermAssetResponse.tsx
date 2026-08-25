@@ -492,39 +492,25 @@ function LoansTab({
     if (loanMode !== "add") setAddUploadedFiles([]);
   }, [loanMode]);
 
-  // Columns that are auto-hidden in view mode when no loan has data for them
-  const HEADER_POPULATED: Record<string, (l: Loan) => boolean> = {
-    "Current Collateral":         l => !!l.securityDescription,
-    "Tenure (Mo.)":               l => !!l.tenureMonths,
-    "First Payment":              l => !!l.firstPaymentDate,
-    "Mo. Payment":                l => !!l.monthlyPayment,
-    "FX Rate":                    l => !!l.fxRateToCAD,
-    "Converted Amt":              l => !!l.fxRateToCAD,
-    "GL Principal":               l => !!l.glPrincipalAccount,
-    "Compounding":                l => !!l.compoundingFrequency,
-    "Interest-Only Period (Mo.)": l => !!l.interestOnlyPeriodMonths,
-    "Balloon Amt":                l => !!l.balloonAmount,
-  };
-
-  const autoHiddenCols = useMemo<Set<string>>(() => {
-    if (loanMode !== "view") return new Set();
-    // Only check extracted (locked) loans — pre-existing loans would pollute the check
-    const extracted = loans.filter(l => l.locked);
-    if (extracted.length === 0) return new Set();
-    const hidden = new Set<string>();
-    for (const [header, hasData] of Object.entries(HEADER_POPULATED)) {
-      if (!extracted.some(hasData)) hidden.add(header);
-    }
-    return hidden;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loans, loanMode]);
+  // Columns hidden in view mode — require manual entry or are non-schedule fields.
+  // In edit mode all columns are visible so the user can fill them in.
+  const VIEW_MODE_HIDDEN = new Set([
+    "Tenure (Mo.)",
+    "FX Rate",
+    "Converted Amt",
+    "Interest-Only Period (Mo.)",
+    "Balloon Amt",
+    "GL Diff",
+    "Status",
+  ]);
 
   const effectiveHidCols = useMemo<Set<string>>(() => {
-    if (autoHiddenCols.size === 0) return hiddenCols;
+    if (loanMode !== "view") return hiddenCols;
     const merged = new Set(hiddenCols);
-    autoHiddenCols.forEach(h => merged.add(h));
+    VIEW_MODE_HIDDEN.forEach(h => merged.add(h));
     return merged;
-  }, [hiddenCols, autoHiddenCols]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hiddenCols, loanMode]);
 
   const cancelEdit = () => { setEditingId(null); setEditDraft({}); };
   const saveEdit = () => {
