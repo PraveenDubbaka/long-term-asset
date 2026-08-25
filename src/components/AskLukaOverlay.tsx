@@ -532,7 +532,7 @@ function mockLtRowsFromFile(file: LtDebtFile): LtDebtReviewRow[] {
       id: uid(), sourceFile: sf,
       name: "Promissory Note 1", lender: "", type: "", currency: "",
       originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000",
-      interestType: "", startDate: "", maturityDate: "2032-09-30",
+      interestType: "", startDate: "2024-10-31", maturityDate: "2032-09-30",
       firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "",
       paymentFrequency: "Monthly", paymentType: "",
       dayCount: "", compounding: "",
@@ -545,7 +545,7 @@ function mockLtRowsFromFile(file: LtDebtFile): LtDebtReviewRow[] {
       id: uid(), sourceFile: sf,
       name: "Promissory Note 2", lender: "", type: "", currency: "",
       originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000",
-      interestType: "", startDate: "", maturityDate: "2032-09-30",
+      interestType: "", startDate: "2024-10-31", maturityDate: "2032-09-30",
       firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "",
       paymentFrequency: "Monthly", paymentType: "",
       dayCount: "", compounding: "",
@@ -3078,8 +3078,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                         setTimeout(() => {
                                           const uid = () => `ltr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
                                           const rows: LtDebtReviewRow[] = [
-                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 1", lender: "", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "", status: "Active", glPrincipal: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
-                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 2", lender: "", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "", status: "Active", glPrincipal: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
+                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 1", lender: "", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-31", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "", status: "Active", glPrincipal: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
+                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 2", lender: "", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-31", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "", status: "Active", glPrincipal: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
                                           ];
                                           setLtPriorRows(rows);
                                           setLtPriorExtracting(false);
@@ -3178,11 +3178,9 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     const dateCell = (field: "startDate" | "maturityDate") => (
                                                       <td className="px-1.5 py-1 align-top whitespace-nowrap" style={{ minWidth: "130px" }}>
                                                         <input
-                                                          type="text"
-                                                          value={isoToMDY((r[field] as string) ?? "")}
-                                                          onChange={e => upd(field, mdyToISO(e.target.value))}
-                                                          placeholder="MM/DD/YYYY"
-                                                          maxLength={10}
+                                                          type="date"
+                                                          value={(r[field] as string) ?? ""}
+                                                          onChange={e => upd(field, e.target.value)}
                                                           className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none rounded px-1.5 py-0.5 text-base transition-colors"
                                                         />
                                                       </td>
