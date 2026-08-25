@@ -3127,20 +3127,23 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                 <thead>
                                                   <tr className="bg-muted/30 border-b border-border">
                                                     {[
-                                                      { label: "Loan Name", right: false },
-                                                      { label: "Lender", right: false },
-                                                      { label: "Interest Rate", right: true },
-                                                      { label: "Mo. Payment", right: true },
-                                                      { label: "Start Date", right: false },
-                                                      { label: "Maturity Date", right: false },
-                                                      { label: "Current Collateral", right: false },
-                                                      { label: "Opening Balance", right: true },
-                                                      { label: "Additions During Year", right: true },
-                                                      { label: "Interest Paid", right: true },
-                                                      { label: "Principal Paid", right: true },
-                                                      { label: "Closing Balance", right: true },
+                                                      { label: "Loan Name", right: false, hint: "" },
+                                                      { label: "Lender", right: false, hint: "" },
+                                                      { label: "Interest Rate", right: true, hint: "" },
+                                                      { label: "Mo. Payment", right: true, hint: "" },
+                                                      { label: "Start Date", right: false, hint: "mm/dd/yyyy" },
+                                                      { label: "Maturity Date", right: false, hint: "mm/dd/yyyy" },
+                                                      { label: "Current Collateral", right: false, hint: "" },
+                                                      { label: "Opening Balance", right: true, hint: "" },
+                                                      { label: "Additions During Year", right: true, hint: "" },
+                                                      { label: "Interest Paid", right: true, hint: "" },
+                                                      { label: "Principal Paid", right: true, hint: "" },
+                                                      { label: "Closing Balance", right: true, hint: "" },
                                                     ].map(h => (
-                                                      <th key={h.label} className={`px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h.right ? "text-right" : "text-left"}`}>{h.label}</th>
+                                                      <th key={h.label} className={`px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h.right ? "text-right" : "text-left"}`}>
+                                                        <div>{h.label}</div>
+                                                        {h.hint && <div className="text-[9px] font-normal text-muted-foreground/60 mt-0.5 normal-case tracking-normal">{h.hint}</div>}
+                                                      </th>
                                                     ))}
                                                   </tr>
                                                 </thead>
@@ -3162,12 +3165,24 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         />
                                                       </td>
                                                     );
+                                                    const isoToMDY = (iso: string) => {
+                                                      if (!iso) return "";
+                                                      const [y, m, d] = iso.split("-");
+                                                      return m && d && y ? `${m}/${d}/${y}` : iso;
+                                                    };
+                                                    const mdyToISO = (val: string) => {
+                                                      const p = val.split("/");
+                                                      if (p.length === 3 && p[2].length === 4) return `${p[2]}-${p[0].padStart(2,"0")}-${p[1].padStart(2,"0")}`;
+                                                      return val;
+                                                    };
                                                     const dateCell = (field: "startDate" | "maturityDate") => (
-                                                      <td className="px-1.5 py-1 align-top whitespace-nowrap" style={{ minWidth: "140px" }}>
+                                                      <td className="px-1.5 py-1 align-top whitespace-nowrap" style={{ minWidth: "130px" }}>
                                                         <input
-                                                          type="date"
-                                                          value={(r[field] as string) ?? ""}
-                                                          onChange={e => upd(field, e.target.value)}
+                                                          type="text"
+                                                          value={isoToMDY((r[field] as string) ?? "")}
+                                                          onChange={e => upd(field, mdyToISO(e.target.value))}
+                                                          placeholder="MM/DD/YYYY"
+                                                          maxLength={10}
                                                           className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none rounded px-1.5 py-0.5 text-base transition-colors"
                                                         />
                                                       </td>
