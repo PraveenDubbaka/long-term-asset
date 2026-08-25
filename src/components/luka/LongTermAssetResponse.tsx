@@ -505,9 +505,9 @@ function LoansTab({
   ]);
 
   const effectiveHidCols = useMemo<Set<string>>(() => {
-    if (loanMode !== "view") return hiddenCols;
+    if (loanMode === "edit") return new Set<string>(); // edit mode: show all columns
     const merged = new Set(hiddenCols);
-    VIEW_MODE_HIDDEN.forEach(h => merged.add(h));
+    if (loanMode === "view") VIEW_MODE_HIDDEN.forEach(h => merged.add(h));
     return merged;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hiddenCols, loanMode]);
