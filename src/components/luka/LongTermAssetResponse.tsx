@@ -1037,10 +1037,22 @@ function LoansTab({
                     const closingCAD = (l.closingBalance ?? l.currentBalance) * fx;
                     return (
                       <tr key={l.id} className={`group border-b border-border transition-colors ${isGlobalEdit ? "bg-primary/[0.02] align-top" : isEditing ? "bg-primary/[0.04] align-top" : l.locked ? "bg-muted/25" : "hover:bg-muted/30 cursor-pointer"}`}>
-                        {(isGlobalEdit || (isEditing && !l.locked)) ? newRowCells(
-                          isGlobalEdit ? mergedDraft : editDraft,
-                          isGlobalEdit ? batchSetter : (k, v) => setEditDraft(p => ({ ...p, [k]: v }))
-                        ) : <>
+                        {(isGlobalEdit || (isEditing && !l.locked)) ? <>
+                          {newRowCells(
+                            isGlobalEdit ? mergedDraft : editDraft,
+                            isGlobalEdit ? batchSetter : (k, v) => setEditDraft(p => ({ ...p, [k]: v }))
+                          )}
+                          {!hid.has("Current Portion") && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground text-[11px]">{l.currentPortion > 0 ? fmt(toCAD(l.currentPortion, l.currency)) : "—"}</td>}
+                          {!hid.has("Long-Term Portion") && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground text-[11px]">{l.longTermPortion > 0 ? fmt(toCAD(l.longTermPortion, l.currency)) : "—"}</td>}
+                          {!hid.has("GL Diff") && (() => {
+                            if (l.glBalance === undefined || l.glBalance === null) return (
+                              <td className="px-2.5 py-1.5 text-right text-muted-foreground text-[11px]">$—</td>
+                            );
+                            const diff = l.glBalance - closingCAD;
+                            const isZero = Math.abs(diff) < 0.01;
+                            return <td className={`px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap font-medium text-[11px] ${isZero ? "text-muted-foreground" : "text-destructive"}`}>{isZero ? "$—" : fmt(diff)}</td>;
+                          })()}
+                        </> : <>
                           {!hid.has("Loan Name") && (
                             <td className="px-2.5 py-1.5">
                               <div className={`flex items-center gap-1.5 ${fit ? "max-w-[110px]" : "min-w-[140px]"}`} title={l.name}>
