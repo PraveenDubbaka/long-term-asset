@@ -492,6 +492,37 @@ function LoansTab({
     if (loanMode !== "add") setAddUploadedFiles([]);
   }, [loanMode]);
 
+  // Columns that are auto-hidden in view mode when no loan has data for them
+  const HEADER_POPULATED: Record<string, (l: Loan) => boolean> = {
+    "Current Collateral":         l => !!l.securityDescription,
+    "Tenure (Mo.)":               l => !!l.tenureMonths,
+    "First Payment":              l => !!l.firstPaymentDate,
+    "Mo. Payment":                l => !!l.monthlyPayment,
+    "FX Rate":                    l => !!l.fxRateToCAD,
+    "Converted Amt":              l => !!l.fxRateToCAD,
+    "GL Principal":               l => !!l.glPrincipalAccount,
+    "Compounding":                l => !!l.compoundingFrequency,
+    "Interest-Only Period (Mo.)": l => !!l.interestOnlyPeriodMonths,
+    "Balloon Amt":                l => !!l.balloonAmount,
+  };
+
+  const autoHiddenCols = useMemo<Set<string>>(() => {
+    if (loanMode !== "view") return new Set();
+    const hidden = new Set<string>();
+    for (const [header, hasData] of Object.entries(HEADER_POPULATED)) {
+      if (!loans.some(hasData)) hidden.add(header);
+    }
+    return hidden;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loans, loanMode]);
+
+  const effectiveHidCols = useMemo<Set<string>>(() => {
+    if (autoHiddenCols.size === 0) return hiddenCols;
+    const merged = new Set(hiddenCols);
+    autoHiddenCols.forEach(h => merged.add(h));
+    return merged;
+  }, [hiddenCols, autoHiddenCols]);
+
   const cancelEdit = () => { setEditingId(null); setEditDraft({}); };
   const saveEdit = () => {
     if (!editDraft.name?.trim() || !editDraft.lender?.trim()) { toast.error("Loan name and lender are required"); return; }
@@ -921,7 +952,7 @@ function LoansTab({
           >
             <thead>
               <tr className="bg-muted/30 border-b border-border">
-                {HEADERS.filter(({ h }) => !hiddenCols.has(h)).map(({ h, left }) => {
+                {HEADERS.filter(({ h }) => !effectiveHidCols.has(h)).map(({ h, left }) => {
                   const cls = `px-2.5 py-2 font-semibold text-muted-foreground uppercase tracking-wide text-[10px] whitespace-nowrap ${left ? "text-left" : "text-right"}`;
                   if (h === "GL Diff") return (
                     <th key={h} className={cls}>
@@ -944,7 +975,7 @@ function LoansTab({
               {(() => {
                 const IC  = "h-6 w-full min-w-[52px] text-[11px] px-1.5 border border-primary/40 rounded-[5px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30";
                 const ICS = "h-6 w-full min-w-[52px] text-[11px] px-1 border border-primary/40 rounded-[5px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer";
-                const hid = hiddenCols;
+                const hid = effectiveHidCols;
 
                 const ACT_BTN = "inline-flex items-center justify-center w-6 h-6 rounded-[5px] transition-colors";
 
