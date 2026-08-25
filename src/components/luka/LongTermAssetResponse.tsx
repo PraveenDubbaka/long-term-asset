@@ -615,7 +615,8 @@ function LoansTab({
   const glGroups = useMemo(() => {
     const map = new Map<string, { loans: Loan[]; bal: number; glBal: number }>();
     loans.forEach(l => {
-      const acct = l.glPrincipalAccount || "(untagged)";
+      if (!l.glPrincipalAccount) return; // skip unmapped loans
+      const acct = l.glPrincipalAccount;
       if (!map.has(acct)) map.set(acct, { loans: [], bal: 0, glBal: 0 });
       const g = map.get(acct)!;
       g.loans.push(l);
@@ -1224,7 +1225,13 @@ function LoansTab({
             </tr>
           </thead>
           <tbody>
-            {glGroups.map(([acct, g], i) => {
+            {glGroups.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-3 py-4 text-center text-[11px] text-muted-foreground">
+                  No GL accounts mapped — use the GL Principal column above to assign accounts
+                </td>
+              </tr>
+            ) : glGroups.map(([acct, g], i) => {
               const origBal = g.loans.reduce((s,l)=>s+toCAD(l.originalPrincipal,l.currency),0);
               const diff = Math.abs(g.glBal - g.bal);
               return (
@@ -1240,15 +1247,17 @@ function LoansTab({
               );
             })}
           </tbody>
+          {glGroups.length > 0 && (
           <tfoot>
             <tr className="border-t border-border bg-muted/30 font-semibold">
               <td className="px-3 py-1.5 text-[11px] text-foreground">Total</td>
-              <td className="px-3 py-1.5 text-right text-[11px]">{loans.length}</td>
-              <td className="px-3 py-1.5 text-right tabular-nums text-[11px] text-muted-foreground">{fmt(loans.reduce((s,l)=>s+toCAD(l.originalPrincipal,l.currency),0))}</td>
+              <td className="px-3 py-1.5 text-right text-[11px]">{glGroups.reduce((s,[,g])=>s+g.loans.length,0)}</td>
+              <td className="px-3 py-1.5 text-right tabular-nums text-[11px] text-muted-foreground">{fmt(glGroups.reduce((s,[,g])=>s+g.loans.reduce((ss,l)=>ss+toCAD(l.originalPrincipal,l.currency),0),0))}</td>
               <td className="px-3 py-1.5 text-right tabular-nums text-[11px]">{fmt(glGrandBal)}</td>
               <td className={`px-3 py-1.5 text-right tabular-nums text-[11px] ${glBalanced?"text-green-700":"text-red-600"}`}>{fmt(glGrandGL)}</td>
             </tr>
           </tfoot>
+          )}
         </table>
       </div>
 
