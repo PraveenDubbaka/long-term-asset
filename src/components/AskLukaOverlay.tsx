@@ -3162,6 +3162,16 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         />
                                                       </td>
                                                     );
+                                                    const dateCell = (field: "startDate" | "maturityDate") => (
+                                                      <td className="px-1.5 py-1 align-top whitespace-nowrap" style={{ minWidth: "140px" }}>
+                                                        <input
+                                                          type="date"
+                                                          value={(r[field] as string) ?? ""}
+                                                          onChange={e => upd(field, e.target.value)}
+                                                          className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none rounded px-1.5 py-0.5 text-base transition-colors"
+                                                        />
+                                                      </td>
+                                                    );
                                                     const collateralCell = (
                                                       <td className="px-1.5 py-1 align-top" style={{ minWidth: "240px" }}>
                                                         <textarea
@@ -3179,8 +3189,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         {cell("lender", false, "140px")}
                                                         {cell("rate", true, "80px")}
                                                         {cell("monthlyPayment", true, "100px")}
-                                                        {cell("startDate", false, "90px")}
-                                                        {cell("maturityDate", false, "90px")}
+                                                        {dateCell("startDate")}
+                                                        {dateCell("maturityDate")}
                                                         {collateralCell}
                                                         {cell("openingBalance", true, "110px")}
                                                         {cell("originalPrincipal", true, "120px")}
