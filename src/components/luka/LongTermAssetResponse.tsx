@@ -508,9 +508,12 @@ function LoansTab({
 
   const autoHiddenCols = useMemo<Set<string>>(() => {
     if (loanMode !== "view") return new Set();
+    // Only check extracted (locked) loans — pre-existing loans would pollute the check
+    const extracted = loans.filter(l => l.locked);
+    if (extracted.length === 0) return new Set();
     const hidden = new Set<string>();
     for (const [header, hasData] of Object.entries(HEADER_POPULATED)) {
-      if (!loans.some(hasData)) hidden.add(header);
+      if (!extracted.some(hasData)) hidden.add(header);
     }
     return hidden;
   // eslint-disable-next-line react-hooks/exhaustive-deps
