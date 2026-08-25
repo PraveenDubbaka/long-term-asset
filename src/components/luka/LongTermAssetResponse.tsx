@@ -495,22 +495,13 @@ function LoansTab({
   // Columns hidden in view mode — require manual entry or are non-schedule fields.
   // In edit mode all columns are visible so the user can fill them in.
   const VIEW_MODE_HIDDEN = new Set([
-    "Current Collateral",
-    "Type",
-    "Rate Type",
-    "Start",
     "Tenure (Mo.)",
-    "Currency",
-    "GL Principal",
     "FX Rate",
     "Converted Amt",
-    "Day Count",
-    "Payment Type",
-    "Compounding",
     "Interest-Only Period (Mo.)",
     "Balloon Amt",
-    "Status",
     "GL Diff",
+    "Status",
   ]);
 
   const effectiveHidCols = useMemo<Set<string>>(() => {
@@ -1069,18 +1060,20 @@ function LoansTab({
                           )}
                           {!hid.has("Type") && (
                             <td className="px-2.5 py-1.5 text-right">
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">{l.type}</span>
+                              {l.type
+                                ? <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">{l.type}</span>
+                                : <span className="text-muted-foreground">—</span>}
                             </td>
                           )}
                           {!hid.has("Rate Type") && (
                             <td className="px-2.5 py-1.5 text-right">
-                              {l.interestType === "Variable"  && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">Variable</span>}
-                              {l.interestType === "Floating"  && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 whitespace-nowrap">Floating</span>}
-                              {l.interestType === "Hybrid"    && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap">Hybrid</span>}
-                              {l.interestType === "Step Rate" && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-teal-50 text-teal-700 border border-teal-200 whitespace-nowrap">Step Rate</span>}
-                              {(l.interestType === "Fixed" || (l.interestType !== "Variable" && l.interestType !== "Floating" && l.interestType !== "Hybrid" && l.interestType !== "Step Rate")) && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">{l.interestType ?? "Fixed"}</span>
-                              )}
+                              {!l.interestType
+                                ? <span className="text-muted-foreground">—</span>
+                                : l.interestType === "Variable"  ? <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">Variable</span>
+                                : l.interestType === "Floating"  ? <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 whitespace-nowrap">Floating</span>
+                                : l.interestType === "Hybrid"    ? <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap">Hybrid</span>
+                                : l.interestType === "Step Rate" ? <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-teal-50 text-teal-700 border border-teal-200 whitespace-nowrap">Step Rate</span>
+                                : <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">{l.interestType}</span>}
                             </td>
                           )}
                           {!hid.has("Int. Rate (%)") && <td className="px-2.5 py-1.5 text-right tabular-nums font-medium whitespace-nowrap">{l.rate.toFixed(2)}%</td>}
@@ -1090,7 +1083,9 @@ function LoansTab({
                           {!hid.has("First Payment") && <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{l.firstPaymentDate ? fmtDate(l.firstPaymentDate) : "—"}</td>}
                           {!hid.has("Currency") && (
                             <td className="px-2.5 py-1.5 text-right">
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">{l.currency}</span>
+                              {l.currency
+                                ? <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">{l.currency}</span>
+                                : <span className="text-muted-foreground">—</span>}
                             </td>
                           )}
                           {!hid.has("Mo. Payment") && (
@@ -1118,9 +1113,9 @@ function LoansTab({
                               <GLSelect loanId={l.id} value={l.glPrincipalAccount} options={principalAccts} field="glPrincipalAccount" onSave={handleGLSave} />
                             </td>
                           )}
-                          {!hid.has("Day Count")        && <td className="px-2.5 py-1.5 text-right font-mono whitespace-nowrap text-foreground">{l.dayCountBasis}</td>}
-                          {!hid.has("Payment Type")     && <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{l.paymentType}</td>}
-                          {!hid.has("Compounding")      && <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{l.compoundingFrequency ?? "Monthly"}</td>}
+                          {!hid.has("Day Count")        && <td className="px-2.5 py-1.5 text-right font-mono whitespace-nowrap">{l.dayCountBasis ? <span className="text-foreground">{l.dayCountBasis}</span> : <span className="text-muted-foreground">—</span>}</td>}
+                          {!hid.has("Payment Type")     && <td className="px-2.5 py-1.5 text-right whitespace-nowrap">{l.paymentType ? <span className="text-foreground">{l.paymentType}</span> : <span className="text-muted-foreground">—</span>}</td>}
+                          {!hid.has("Compounding")      && <td className="px-2.5 py-1.5 text-right whitespace-nowrap">{l.compoundingFrequency ? <span className="text-foreground">{l.compoundingFrequency}</span> : <span className="text-muted-foreground">—</span>}</td>}
                           {!hid.has("Interest-Only Period (Mo.)")  && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{l.interestOnlyPeriodMonths ?? "00"}</td>}
                           {!hid.has("Balloon Amt")      && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{l.balloonAmount ? fmt(l.balloonAmount) : "00"}</td>}
                           {!hid.has("Status")           && <td className="px-2.5 py-1.5 text-right"><StatusBadge status={l.status} /></td>}
