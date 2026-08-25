@@ -937,7 +937,7 @@ function LoansTab({
         <div className="w-full overflow-x-auto">
           <table
             className="text-[11px]"
-            style={{ minWidth: fit ? "1400px" : "1900px" }}
+            style={{ minWidth: loanMode === "edit" ? "2800px" : fit ? "1400px" : "1900px" }}
           >
             <thead>
               <tr className="bg-muted/30 border-b border-border">
@@ -969,16 +969,16 @@ function LoansTab({
                 const ACT_BTN = "inline-flex items-center justify-center w-6 h-6 rounded-[5px] transition-colors";
 
                 const newRowCells = (draft: Partial<Loan>, setD: (k: keyof Loan, v: unknown) => void) => <>
-                  {!hid.has("Loan Name")          && <td className="px-1.5 py-1"><input autoFocus value={draft.name??""} onChange={e=>setD("name",e.target.value)} className={IC} placeholder="Name *" /></td>}
-                  {!hid.has("Lender")              && <td className="px-1.5 py-1"><input value={draft.lender??""} onChange={e=>setD("lender",e.target.value)} className={IC} placeholder="Lender *" /></td>}
-                  {!hid.has("Current Collateral")  && <td className="px-1.5 py-1"><input value={draft.securityDescription??""} onChange={e=>setD("securityDescription",e.target.value)} className={IC} placeholder="Collateral" /></td>}
+                  {!hid.has("Loan Name")          && <td className="px-1.5 py-1" style={{minWidth:"160px"}}><input autoFocus value={draft.name??""} onChange={e=>setD("name",e.target.value)} className={IC} placeholder="Name *" /></td>}
+                  {!hid.has("Lender")              && <td className="px-1.5 py-1" style={{minWidth:"140px"}}><input value={draft.lender??""} onChange={e=>setD("lender",e.target.value)} className={IC} placeholder="Lender *" /></td>}
+                  {!hid.has("Current Collateral")  && <td className="px-1.5 py-1" style={{minWidth:"220px"}}><input value={draft.securityDescription??""} onChange={e=>setD("securityDescription",e.target.value)} className={IC} placeholder="Collateral" /></td>}
                   {!hid.has("Type")                && <td className="px-1.5 py-1"><select value={draft.type??"Term"} onChange={e=>setD("type",e.target.value)} className={ICS}>{["Term","LOC","Revolver","Mortgage","Bridge"].map(t=><option key={t}>{t}</option>)}</select></td>}
                   {!hid.has("Rate Type")           && <td className="px-1.5 py-1"><select value={draft.interestType??"Fixed"} onChange={e=>setD("interestType",e.target.value)} className={ICS}>{["Fixed","Variable","Floating","Hybrid","Step Rate"].map(t=><option key={t}>{t}</option>)}</select></td>}
                   {!hid.has("Int. Rate (%)")       && <td className="px-1.5 py-1"><input type="number" step="0.01" value={draft.rate||""} onChange={e=>setD("rate",parseFloat(e.target.value)||0)} className={IC} placeholder="0.00" /></td>}
-                  {!hid.has("Start")               && <td className="px-1.5 py-1"><input type="date" value={draft.startDate??""} onChange={e=>setD("startDate",e.target.value)} className={IC} /></td>}
-                  {!hid.has("Maturity")            && <td className="px-1.5 py-1"><input type="date" value={draft.maturityDate??""} onChange={e=>setD("maturityDate",e.target.value)} className={IC} /></td>}
+                  {!hid.has("Start")               && <td className="px-1.5 py-1" style={{minWidth:"140px"}}><input type="date" value={draft.startDate??""} onChange={e=>setD("startDate",e.target.value)} className={IC} /></td>}
+                  {!hid.has("Maturity")            && <td className="px-1.5 py-1" style={{minWidth:"140px"}}><input type="date" value={draft.maturityDate??""} onChange={e=>setD("maturityDate",e.target.value)} className={IC} /></td>}
                   {!hid.has("Tenure (Mo.)")        && <td className="px-1.5 py-1 text-right text-muted-foreground text-[11px]">—</td>}
-                  {!hid.has("First Payment")       && <td className="px-1.5 py-1">
+                  {!hid.has("First Payment")       && <td className="px-1.5 py-1" style={{minWidth:"140px"}}>
                     <input type="date" value={draft.firstPaymentDate??""} onChange={e=>setD("firstPaymentDate",e.target.value)} className={`${IC} ${draft.firstPaymentDate && draft.startDate && draft.firstPaymentDate < draft.startDate ? "border-red-400 bg-red-50/60" : ""}`} />
                     {draft.firstPaymentDate && draft.startDate && draft.firstPaymentDate < draft.startDate && <p className="text-[9px] text-red-500 mt-0.5 whitespace-nowrap">Before start date</p>}
                   </td>}
