@@ -1056,18 +1056,18 @@ function LoansTab({
                           {!hid.has("Loan Name") && (
                             <td className="px-2.5 py-1.5">
                               <div className={`flex items-center gap-1.5 ${fit ? "max-w-[110px]" : "min-w-[140px]"}`} title={l.name}>
-                                <span className="font-medium text-foreground truncate">{l.name}</span>
+                                <span className={`font-medium text-foreground ${fit ? "truncate" : "whitespace-nowrap"}`}>{l.name}</span>
                               </div>
                             </td>
                           )}
                           {!hid.has("Lender") && (
                             <td className="px-2.5 py-1.5 text-foreground">
-                              <div className={fit ? "max-w-[95px] truncate" : "whitespace-nowrap min-w-[130px]"} title={l.lender}>{l.lender}</div>
+                              <div className={fit ? "max-w-[95px] truncate" : "whitespace-nowrap"} title={l.lender}>{l.lender}</div>
                             </td>
                           )}
                           {!hid.has("Current Collateral") && (
                             <td className="px-2.5 py-1.5 text-foreground" title={l.securityDescription ?? "—"}>
-                              <div className={`text-[10px] ${fit ? "max-w-[80px] truncate" : "max-w-[140px] line-clamp-2"}`}>{l.securityDescription ?? "—"}</div>
+                              <div className={`text-[10px] ${fit ? "max-w-[80px] truncate" : "whitespace-normal"}`}>{l.securityDescription ?? "—"}</div>
                             </td>
                           )}
                           {!hid.has("Type") && (
