@@ -44,16 +44,47 @@ export const fxRates: FXRate[] = [
 
 // ─── ACCOUNT MAPPING ─────────────────────────────────────────────────────────
 export const accountMappings: AccountMapping[] = [
-  { id: 'am-01', code: '2100', name: 'Long-Term Debt – CAD', type: 'Principal' },
-  { id: 'am-02', code: '2101', name: 'Current Portion – LTD (CAD)', type: 'CurrentPortionLTD' },
-  { id: 'am-03', code: '2110', name: 'Long-Term Debt – USD', type: 'Principal' },
-  { id: 'am-04', code: '2111', name: 'Current Portion – LTD (USD)', type: 'CurrentPortionLTD' },
-  { id: 'am-05', code: '2200', name: 'Line of Credit', type: 'Principal' },
-  { id: 'am-06', code: '2300', name: 'Accrued Interest Payable – CAD', type: 'AccruedInterestPayable' },
-  { id: 'am-07', code: '2301', name: 'Accrued Interest Payable – USD', type: 'AccruedInterestPayable' },
-  { id: 'am-08', code: '7100', name: 'Interest Expense – CAD', type: 'InterestExpense' },
-  { id: 'am-09', code: '7101', name: 'Interest Expense – USD', type: 'InterestExpense' },
-  { id: 'am-10', code: '7200', name: 'FX Gain / Loss', type: 'FXGainLoss' },
+  // ── Long-Term Debt (Principal) ────────────────────────────────────────────
+  { id: 'am-01',  code: '2100', name: 'Long-Term Debt – CAD',              type: 'Principal' },
+  { id: 'am-03',  code: '2110', name: 'Long-Term Debt – USD',              type: 'Principal' },
+  { id: 'am-11',  code: '2120', name: 'Long-Term Debt – EUR',              type: 'Principal' },
+  { id: 'am-12',  code: '2130', name: 'Long-Term Debt – GBP',              type: 'Principal' },
+  { id: 'am-05',  code: '2200', name: 'Line of Credit',                    type: 'Principal' },
+  { id: 'am-13',  code: '2210', name: 'Equipment Loan Payable',            type: 'Principal' },
+  { id: 'am-14',  code: '2220', name: 'Mortgage Payable',                  type: 'Principal' },
+  { id: 'am-15',  code: '2230', name: 'Bridge Loan Payable',               type: 'Principal' },
+  { id: 'am-16',  code: '2240', name: 'Subordinated Debt',                 type: 'Principal' },
+  { id: 'am-17',  code: '2250', name: 'Shareholder Loan Payable',          type: 'Principal' },
+  { id: 'am-18',  code: '2260', name: 'Debenture Payable',                 type: 'Principal' },
+  { id: 'am-19',  code: '2270', name: 'Finance Lease Obligation',          type: 'Principal' },
+  // ── Current Portion of LTD ───────────────────────────────────────────────
+  { id: 'am-02',  code: '2101', name: 'Current Portion – LTD (CAD)',       type: 'CurrentPortionLTD' },
+  { id: 'am-04',  code: '2111', name: 'Current Portion – LTD (USD)',       type: 'CurrentPortionLTD' },
+  { id: 'am-20',  code: '2150', name: 'Current Portion – LTD (General)',   type: 'CurrentPortionLTD' },
+  { id: 'am-21',  code: '2151', name: 'Current Portion – Equipment Loan',  type: 'CurrentPortionLTD' },
+  { id: 'am-22',  code: '2152', name: 'Current Portion – Mortgage',        type: 'CurrentPortionLTD' },
+  { id: 'am-23',  code: '2153', name: 'Current Portion – Finance Lease',   type: 'CurrentPortionLTD' },
+  // ── Accrued Interest Payable ─────────────────────────────────────────────
+  { id: 'am-06',  code: '2300', name: 'Accrued Interest Payable – CAD',    type: 'AccruedInterestPayable' },
+  { id: 'am-07',  code: '2301', name: 'Accrued Interest Payable – USD',    type: 'AccruedInterestPayable' },
+  { id: 'am-24',  code: '2310', name: 'Accrued Interest Payable – General',type: 'AccruedInterestPayable' },
+  { id: 'am-25',  code: '2311', name: 'Accrued Interest – Line of Credit', type: 'AccruedInterestPayable' },
+  { id: 'am-26',  code: '2312', name: 'Accrued Interest – Equipment Loan', type: 'AccruedInterestPayable' },
+  { id: 'am-27',  code: '2313', name: 'Accrued Interest – Mortgage',       type: 'AccruedInterestPayable' },
+  // ── Interest Expense ─────────────────────────────────────────────────────
+  { id: 'am-08',  code: '7100', name: 'Interest Expense – CAD',            type: 'InterestExpense' },
+  { id: 'am-09',  code: '7101', name: 'Interest Expense – USD',            type: 'InterestExpense' },
+  { id: 'am-28',  code: '7110', name: 'Interest Expense – Variable Rate',  type: 'InterestExpense' },
+  { id: 'am-29',  code: '7120', name: 'Finance Charges',                   type: 'InterestExpense' },
+  { id: 'am-30',  code: '7130', name: 'Bank Charges & Interest',           type: 'InterestExpense' },
+  { id: 'am-31',  code: '7140', name: 'Interest Expense – Line of Credit', type: 'InterestExpense' },
+  { id: 'am-32',  code: '7150', name: 'Interest Expense – Equipment Loan', type: 'InterestExpense' },
+  { id: 'am-33',  code: '7160', name: 'Interest Expense – Mortgage',       type: 'InterestExpense' },
+  { id: 'am-34',  code: '7170', name: 'Interest Expense – Finance Lease',  type: 'InterestExpense' },
+  // ── FX Gain / Loss ───────────────────────────────────────────────────────
+  { id: 'am-10',  code: '7200', name: 'FX Gain / Loss',                    type: 'FXGainLoss' },
+  { id: 'am-35',  code: '7201', name: 'Unrealized FX Gain / Loss',         type: 'FXGainLoss' },
+  { id: 'am-36',  code: '7202', name: 'Realized FX Gain / Loss',           type: 'FXGainLoss' },
 ];
 
 // ─── LOANS ────────────────────────────────────────────────────────────────────
