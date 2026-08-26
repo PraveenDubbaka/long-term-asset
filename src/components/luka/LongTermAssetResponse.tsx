@@ -1,5 +1,6 @@
 import { useMemo, useState, useLayoutEffect, useRef, useEffect, Fragment } from "react";
 import ReactDOM from "react-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   AlertTriangle, Calendar, DollarSign, BarChart2,
   ChevronDown, ChevronUp, FileSpreadsheet, Plus, CheckCircle2,
@@ -2265,68 +2266,76 @@ function NotesTabPanel({ loans, amortization, continuity, reconciliation, settin
     : "Year ending December 31";
 
   return (
-    <div className="space-y-3">
-      {/* Artifact card */}
-      <div className="rounded-[8px] border border-border bg-background overflow-hidden">
-        <div className="flex items-center gap-3 px-3 py-2.5">
-          <div className="w-7 h-7 rounded-[6px] bg-primary/10 flex items-center justify-center shrink-0">
-            <FileCheck className="h-3.5 w-3.5 text-primary" />
+    <div className="relative overflow-hidden" style={{ minHeight: noteOpen ? 480 : undefined }}>
+      {/* Artifact card list */}
+      <div className="space-y-3">
+        <div className="rounded-[8px] border border-border bg-background overflow-hidden">
+          <div className="flex items-center gap-3 px-3 py-2.5">
+            <div className="w-7 h-7 rounded-[6px] bg-primary/10 flex items-center justify-center shrink-0">
+              <FileCheck className="h-3.5 w-3.5 text-primary" />
+            </div>
+            <span className="flex-1 text-[12px] font-medium text-foreground">Long-term Debt</span>
+            <button
+              onClick={() => setNoteOpen(true)}
+              title="Preview note"
+              className="inline-flex items-center justify-center w-7 h-7 rounded-[6px] border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <Eye className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => toast.success("Downloading note…")}
+              title="Download"
+              className="inline-flex items-center justify-center w-7 h-7 rounded-[6px] border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" />
+            </button>
           </div>
-          <span className="flex-1 text-[12px] font-medium text-foreground">Long-term Debt</span>
-          <button
-            onClick={() => setNoteOpen(true)}
-            title="Preview note"
-            className="inline-flex items-center justify-center w-7 h-7 rounded-[6px] border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
-            <Eye className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={() => toast.success("Downloading note…")}
-            title="Download"
-            className="inline-flex items-center justify-center w-7 h-7 rounded-[6px] border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
-            <Download className="h-3.5 w-3.5" />
-          </button>
         </div>
       </div>
 
-      {/* Slide-in note preview panel */}
-      {noteOpen && ReactDOM.createPortal(
-        <>
-          {/* Backdrop */}
-          <div className="fixed inset-0 z-[399] bg-black/20" onClick={() => setNoteOpen(false)} />
-
-          {/* Panel */}
-          <div className="fixed top-0 right-0 h-full w-[480px] max-w-full z-[400] bg-background border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+      {/* Inline slide-in note preview — absolute, within the Luka panel */}
+      <AnimatePresence>
+        {noteOpen && (
+          <motion.div
+            key="note-panel"
+            initial={{ x: "100%", opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: "100%", opacity: 0 }}
+            transition={{
+              x: { type: "spring", stiffness: 280, damping: 30, mass: 0.85 },
+              opacity: { duration: 0.18 },
+            }}
+            className="absolute inset-0 z-10 bg-background border border-border rounded-[8px] shadow-xl flex flex-col overflow-hidden"
+          >
             {/* Panel header */}
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-border shrink-0">
+            <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border shrink-0 bg-muted/30">
               <div className="w-6 h-6 rounded-[5px] bg-primary/10 flex items-center justify-center shrink-0">
                 <FileCheck className="h-3.5 w-3.5 text-primary" />
               </div>
-              <span className="flex-1 text-sm font-semibold text-foreground">Long-term Debt</span>
+              <span className="flex-1 text-[12px] font-semibold text-foreground">Long-term Debt</span>
               <button
                 onClick={() => toast.success("Saved to engagement")}
-                className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[6px] bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors"
+                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[6px] bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors"
               >
                 <Save className="h-3 w-3" /> Save to Engagement
               </button>
               <button
                 onClick={() => setNoteOpen(false)}
-                className="inline-flex items-center justify-center w-7 h-7 rounded-[6px] border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors ml-1"
+                className="inline-flex items-center justify-center w-7 h-7 rounded-[6px] border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
 
             {/* Document body */}
-            <div className="flex-1 overflow-y-auto px-6 py-5 text-[12px] text-foreground space-y-5">
+            <div className="flex-1 overflow-y-auto px-5 py-4 text-[12px] text-foreground space-y-4">
               <p className="text-[11px] text-muted-foreground">Long-term debt consists of the following:</p>
 
               {/* Section A+B table */}
               <table className="w-full border-collapse text-[11px]">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left py-1.5 font-semibold text-foreground w-[60%]">Account</th>
+                    <th className="text-left py-1.5 font-semibold text-foreground w-[55%]">Account</th>
                     <th className="text-right py-1.5 font-semibold text-foreground whitespace-nowrap">{fyLabel}</th>
                     <th className="text-right py-1.5 font-semibold text-foreground whitespace-nowrap">{priorYearEnd ? fmtDate(priorYearEnd) : "Prior Year"}</th>
                   </tr>
@@ -2347,7 +2356,7 @@ function NotesTabPanel({ loans, amortization, continuity, reconciliation, settin
                     <td className="py-1.5 text-right tabular-nums text-muted-foreground">—</td>
                   </tr>
                   <tr>
-                    <td className="py-1 text-muted-foreground">Less: current portion</td>
+                    <td className="py-1 text-muted-foreground italic">Less: current portion</td>
                     <td className="py-1 text-right tabular-nums text-red-600">{fmtParenCents(totalCurr)}</td>
                     <td className="py-1 text-right tabular-nums text-muted-foreground">—</td>
                   </tr>
@@ -2384,25 +2393,24 @@ function NotesTabPanel({ loans, amortization, continuity, reconciliation, settin
               </div>
             </div>
 
-            {/* Panel footer actions */}
-            <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border shrink-0">
+            {/* Panel footer */}
+            <div className="flex items-center justify-end gap-2 px-3 py-2.5 border-t border-border shrink-0 bg-muted/20">
               <button
                 onClick={() => { navigator.clipboard.writeText("Note 8"); toast.success("Note 8 copied"); }}
-                className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[6px] border border-border text-[11px] font-medium text-foreground hover:bg-muted transition-colors"
+                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[6px] border border-border text-[11px] font-medium text-foreground hover:bg-muted transition-colors"
               >
                 <Copy className="h-3 w-3" /> Copy Note 8
               </button>
               <button
                 onClick={() => toast.success("Posted to notes")}
-                className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[6px] bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors"
+                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[6px] bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors"
               >
                 <FileCheck className="h-3 w-3" /> Post to Notes
               </button>
             </div>
-          </div>
-        </>,
-        document.body
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
