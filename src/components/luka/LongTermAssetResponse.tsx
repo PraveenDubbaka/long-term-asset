@@ -344,7 +344,7 @@ function GLSelect({ loanId, value, options, field, onSave }: {
 
 // ─── Maturity ladder helper (mirrors ContinuityTab.tsx) ──────────────────────
 function calcMaturityLadder(
-  loan: Loan, closingBalance: number, period: string,
+  loan: Loan, closingBalance: number, period: string, payment?: number,
 ): [number, number, number, number, number, number, number] {
   if (closingBalance <= 0) return [0, 0, 0, 0, 0, 0, 0];
   if (loan.type === "LOC" || loan.type === "Revolver") return [closingBalance, 0, 0, 0, 0, 0, 0];
@@ -365,7 +365,9 @@ function calcMaturityLadder(
     const mp = bal / n;
     for (let i = 1; i <= n; i++) result[Math.min(Math.floor((i - 1) / 12), 6)] += mp;
   } else {
-    const pmt = bal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+    const pmt = (payment != null && payment > 0)
+      ? payment
+      : bal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
     for (let i = 1; i <= n && bal > 0.01; i++) {
       const interest = bal * r;
       const principal = Math.min(pmt - interest, bal);
@@ -1309,7 +1311,6 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
   };
 
   const period   = settings?.currentPeriod ?? "2024-12";
-  const baseYear = parseInt(period.split("-")[0]);
 
   // Latest continuity row per loan
   const latestRows = useMemo(() => {
@@ -1318,6 +1319,14 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
       return { loan, row: rows[0] ?? null };
     });
   }, [loans, continuity]);
+
+  // Use the most recent continuity row's period for the balance sheet classification
+  const docPeriod = useMemo(() => {
+    const periods = latestRows.map(r => r.row?.period).filter((p): p is string => !!p);
+    return periods.length > 0 ? [...periods].sort().reverse()[0] : period;
+  }, [latestRows, period]);
+
+  const baseYear = parseInt(docPeriod.split("-")[0]);
 
   const rfTotals = useMemo(() => latestRows.reduce((acc, { loan, row }) => {
     if (!row) return acc;
@@ -1336,11 +1345,12 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
   const ladderRowsData = useMemo(() => loans.map(loan => {
     const contRow = latestRows.find(r => r.loan.id === loan.id)?.row;
     const closingNative = contRow?.closingBalance ?? loan.currentBalance;
+    const loanPeriod = contRow?.period ?? docPeriod;
     const fx = toCAD(1, loan.currency);
-    const nativeLadder = calcMaturityLadder(loan, closingNative, period);
+    const nativeLadder = calcMaturityLadder(loan, closingNative, loanPeriod, loan.monthlyPayment);
     const ladder = nativeLadder.map(v => Math.round(v * fx)) as [number,number,number,number,number,number,number];
     return { loan, ladder };
-  }), [loans, latestRows, period]);
+  }), [loans, latestRows, docPeriod]);
 
   const bsColHeaders = [
     String(baseYear + 2), String(baseYear + 3), String(baseYear + 4),
