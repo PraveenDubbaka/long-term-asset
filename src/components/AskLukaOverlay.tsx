@@ -5579,28 +5579,6 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                             </div>
                             <div className="flex-1 pt-1 min-w-0 overflow-x-auto">
                               <LongTermAssetResponse onEditLoans={() => { setLtDebtGenerated(false); setLtDebtPhase("upload-prompt"); }} />
-                              {followUpTurns.length === 0 && !addMoreLoansActive && (
-                                <div className="mt-4 space-y-2">
-                                  <p className="text-base text-muted-foreground font-medium">What would you like to explore next?</p>
-                                  <div className="flex flex-wrap gap-2">
-                                    {[
-                                      "Review covenant compliance",
-                                      "Show maturity schedule",
-                                      "Calculate accrued interest",
-                                      "Generate journal entries",
-                                      "Export workpaper to Excel",
-                                    ].map(chip => (
-                                      <button
-                                        key={chip}
-                                        onClick={() => triggerFollowUp(chip)}
-                                        className="inline-flex items-center gap-2 h-8 px-3 rounded-[8px] border border-primary/25 bg-primary/6 text-base font-medium text-primary hover:bg-primary/15 transition-colors"
-                                      >
-                                        {chip}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
                             </div>
                           </div>
                         </>
