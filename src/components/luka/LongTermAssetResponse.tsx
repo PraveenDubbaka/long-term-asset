@@ -2400,8 +2400,7 @@ export function LukaNoteSidePanel() {
                   </h2>
                   <button
                     onClick={() => toast.success("Saved to engagement")}
-                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[12px] font-semibold transition-colors"
-                    style={{ background: "hsl(265 75% 55%)", color: "#fff" }}
+                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[12px] font-semibold transition-colors bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     <Save className="h-3.5 w-3.5" /> Save to Engagement
                   </button>
@@ -2513,26 +2512,6 @@ export function LukaNoteSidePanel() {
                   </div>
                 </div>
 
-                {/* Footer */}
-                <div
-                  className="shrink-0 flex items-center justify-end gap-2 px-5 py-3"
-                  style={{ borderTop: "1px solid hsl(220 20% 92%)" }}
-                >
-                  <button
-                    onClick={() => { navigator.clipboard.writeText("Note 8"); toast.success("Note 8 copied"); }}
-                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[12px] font-medium transition-colors hover:bg-[hsl(220_20%_96%)]"
-                    style={{ border: "1px solid hsl(220 20% 88%)", color: "hsl(222 25% 30%)", fontFamily: FONT }}
-                  >
-                    <Copy className="h-3.5 w-3.5" /> Copy Note
-                  </button>
-                  <button
-                    onClick={() => toast.success("Posted to notes")}
-                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[12px] font-semibold transition-colors"
-                    style={{ background: "hsl(265 75% 55%)", color: "#fff", fontFamily: FONT }}
-                  >
-                    <FileCheck className="h-3.5 w-3.5" /> Post to Notes
-                  </button>
-                </div>
               </div>
             </motion.aside>
           )}
