@@ -1319,7 +1319,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
     addJE:    s.addJE,
     jes:      s.jes,
   }));
-  const [contView, setContView] = useState<"rollforward" | "repayment" | "comparative">("rollforward");
+  const [contView, setContView] = useState<"rollforward">("rollforward");
 
   const postAJE = (loan: Loan, accruedInterest: number) => {
     if (!accruedInterest || accruedInterest <= 0) {
@@ -1413,18 +1413,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
       {/* View selector dropdown */}
       <div className="flex items-center gap-2">
         <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">View:</span>
-        <div className="relative">
-          <select
-            value={contView}
-            onChange={e => setContView(e.target.value as "rollforward" | "repayment")}
-            className="h-8 text-[11px] pl-2.5 pr-7 border border-border rounded-[8px] bg-background text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 hover:border-primary/40 transition-colors"
-          >
-            <option value="rollforward">Roll-Forward</option>
-            <option value="repayment">Repayment Schedule</option>
-            <option value="comparative">Comparative (2-Year)</option>
-          </select>
-          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
-        </div>
+        <span className="text-[11px] font-medium text-foreground">Roll-Forward</span>
       </div>
 
       {/* ── Roll-Forward view ── */}
@@ -1491,200 +1480,8 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
               </table>
             </div>
           </div>
-
-          {/* Balance Sheet Classification — maturity ladder */}
-          <div className="rounded-[8px] border border-border overflow-hidden">
-            <div className="px-3 py-2 bg-muted/40 border-b border-border">
-              <span className="text-sm font-semibold text-foreground">Balance Sheet Classification</span>
-              <span className="text-[10px] text-muted-foreground ml-2">Current portion + maturity ladder by year (CAD equiv.)</span>
-            </div>
-            <div className="w-full overflow-x-auto">
-              <table className="w-full text-[11px]">
-                <thead>
-                  <tr className="bg-muted/20 border-b border-border">
-                    <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-left whitespace-nowrap">Loan</th>
-                    {bsColHeaders.map(h => (
-                      <th key={h} className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-right whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {ladderRowsData.map(({ loan, ladder }, i) => {
-                    const longTerm = ladder.slice(1).reduce((s, v) => s + v, 0);
-                    const total    = ladder.reduce((s, v) => s + v, 0);
-                    return (
-                      <tr key={loan.id} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
-                        <td className="px-3 py-1.5 whitespace-nowrap">
-                          <p className="font-medium text-foreground">{loan.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{loan.lender} · {loan.currency}</p>
-                        </td>
-                        {/* yr+2 … Thereafter = ladder[1..6] */}
-                        {ladder.slice(1).map((v, j) => (
-                          <td key={j} className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{v > 0 ? fmtCents(v) : "00.00"}</td>
-                        ))}
-                        {/* Current: ladder[0] */}
-                        <td className="px-3 py-1.5 text-right tabular-nums text-primary font-medium">{ladder[0] > 0 ? fmtCents(ladder[0]) : "00.00"}</td>
-                        {/* Long-Term */}
-                        <td className="px-3 py-1.5 text-right tabular-nums font-medium">{longTerm > 0 ? fmtCents(longTerm) : "00.00"}</td>
-                        {/* Total */}
-                        <td className="px-3 py-1.5 text-right tabular-nums font-semibold">{fmtCents(total)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-muted/30 border-t border-border font-semibold">
-                    <td className="px-3 py-2" />
-                    {bsTotals.slice(1).map((v, i) => (
-                      <td key={i} className="px-3 py-2 text-right tabular-nums text-[11px] text-muted-foreground">{v > 0 ? fmtCents(v) : "00.00"}</td>
-                    ))}
-                    <td className="px-3 py-2 text-right tabular-nums text-[11px] text-primary">{bsTotals[0] > 0 ? fmtCents(bsTotals[0]) : "00.00"}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-[11px]">{bsTotals.slice(1).reduce((s,v)=>s+v,0) > 0 ? fmtCents(bsTotals.slice(1).reduce((s,v)=>s+v,0)) : "00.00"}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">{fmtCents(bsTotals.reduce((s,v)=>s+v,0))}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
         </div>
       )}
-
-      {/* ── Repayment Schedule view ── */}
-      {contView === "repayment" && (
-        <div className="rounded-[8px] border border-border overflow-hidden">
-          <div className="px-3 py-2 bg-muted/40 border-b border-border">
-            <span className="text-sm font-semibold text-foreground">Repayment Schedule</span>
-            <span className="text-[10px] text-muted-foreground ml-2">Scheduled principal repayments by year (CAD equiv.)</span>
-          </div>
-          <div className="w-full overflow-x-auto">
-            <table className="w-full text-[11px]">
-              <thead>
-                <tr className="bg-muted/20 border-b border-border">
-                  <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-left whitespace-nowrap">Facility</th>
-                  {repayYearLabels.map(lbl => (
-                    <th key={lbl} className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-right whitespace-nowrap">{lbl}</th>
-                  ))}
-                  <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-right whitespace-nowrap">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ladderRowsData.map(({ loan, ladder }, i) => {
-                  const total = ladder.reduce((s, v) => s + v, 0);
-                  return (
-                    <tr key={loan.id} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
-                      <td className="px-3 py-1.5 whitespace-nowrap">
-                        <p className="font-medium text-foreground">{loan.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{loan.lender} · {loan.currency}</p>
-                      </td>
-                      {ladder.map((v, j) => (
-                        <td key={j} className="px-3 py-1.5 text-right tabular-nums text-foreground">{v > 0 ? fmtCents(v) : "00.00"}</td>
-                      ))}
-                      <td className="px-3 py-1.5 text-right tabular-nums font-semibold text-foreground">{fmtCents(total)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                <tr className="bg-muted/30 border-t border-border font-semibold">
-                  <td className="px-3 py-2" />
-                  {repayColTotals.map((v, i) => (
-                    <td key={i} className="px-3 py-2 text-right tabular-nums text-[11px]">{v > 0 ? fmtCents(v) : "00.00"}</td>
-                  ))}
-                  <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">{fmtCents(repayGrandTotal)}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ── Comparative (2-Year) view ── */}
-      {contView === "comparative" && (() => {
-        const fyEnd   = settings?.fiscalYearEnd ?? `${baseYear}-12-31`;
-        const fyMM    = fyEnd.slice(5, 7);  // "09" or "12"
-        const curPeriod  = `${baseYear}-${fyMM}`;
-        const priorPeriod = `${baseYear - 1}-${fyMM}`;
-        const CY_HDR = `FY${baseYear}`;
-        const PY_HDR = `FY${baseYear - 1}`;
-        const COLS = ["Opening Bal.", "+New Borr.", "−Principal", "−Interest", "±FX", "Closing Bal.", "Current", "LT"];
-
-        const compRows = loans.map(loan => {
-          const fx = toCAD(1, loan.currency);
-          const allRows = continuity.filter(r => r.loanId === loan.id);
-          const cyRow = allRows.find(r => r.period === curPeriod)
-            ?? allRows.sort((a,b) => b.period.localeCompare(a.period))[0]
-            ?? null;
-          const pyRow = allRows.find(r => r.period === priorPeriod)
-            ?? allRows.sort((a,b) => a.period.localeCompare(b.period))[0]
-            ?? null;
-          const toCells = (r: ContinuityRow | null) => r ? [
-            r.openingBalance, r.newBorrowings, r.principalRepayments ?? 0,
-            r.interestRepayments ?? 0, r.fxTranslation,
-            r.closingBalance, r.currentPortion, r.longTermPortion,
-          ].map(v => v * fx) : Array(8).fill(null);
-          return { loan, cy: toCells(cyRow), py: toCells(pyRow) };
-        });
-
-        const colTotals = (arr: (number | null)[]) => arr.reduce<number>((s, v) => s + (v ?? 0), 0);
-        const cyTotals = COLS.map((_, i) => compRows.reduce((s, r) => s + (r.cy[i] ?? 0), 0));
-        const pyTotals = COLS.map((_, i) => compRows.reduce((s, r) => s + (r.py[i] ?? 0), 0));
-
-        return (
-          <div className="rounded-[8px] border border-border overflow-hidden">
-            <div className="px-3 py-2 bg-muted/40 border-b border-border">
-              <span className="text-sm font-semibold text-foreground">Comparative Roll-Forward</span>
-              <span className="text-[10px] text-muted-foreground ml-2">Side-by-side {PY_HDR} vs {CY_HDR} (CAD equiv.)</span>
-            </div>
-            <div className="w-full overflow-x-auto">
-              <table className="w-full text-[11px]">
-                <thead>
-                  <tr className="bg-muted/20 border-b border-border">
-                    <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-left whitespace-nowrap" rowSpan={2}>Facility</th>
-                    <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-center whitespace-nowrap border-l border-border/40" colSpan={8}>{CY_HDR}</th>
-                    <th className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-center whitespace-nowrap border-l border-border/40" colSpan={8}>{PY_HDR}</th>
-                  </tr>
-                  <tr className="bg-muted/10 border-b border-border">
-                    {[...COLS, ...COLS].map((h, i) => (
-                      <th key={`${h}-${i}`} className={`px-2.5 py-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wide text-right whitespace-nowrap ${i === 0 || i === 8 ? "border-l border-border/40" : ""}`}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {compRows.map(({ loan, cy, py }, ri) => (
-                    <tr key={loan.id} className={`border-b border-border/40 ${ri%2===0?"":"bg-muted/10"}`}>
-                      <td className="px-3 py-1.5 whitespace-nowrap">
-                        <p className="font-medium text-foreground">{loan.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{loan.lender} · {loan.currency}</p>
-                      </td>
-                      {cy.map((v, i) => (
-                        <td key={`cy-${i}`} className={`px-2.5 py-1.5 text-right tabular-nums ${v === null ? "text-muted-foreground/40" : "text-foreground"} ${i === 0 ? "border-l border-border/40" : ""}`}>
-                          {v === null ? "—" : v !== 0 ? fmtCents(Math.abs(v)) : "00.00"}
-                        </td>
-                      ))}
-                      {py.map((v, i) => (
-                        <td key={`py-${i}`} className={`px-2.5 py-1.5 text-right tabular-nums ${v === null ? "text-muted-foreground/40" : "text-muted-foreground"} ${i === 0 ? "border-l border-border/40" : ""}`}>
-                          {v === null ? "—" : v !== 0 ? fmtCents(Math.abs(v)) : "00.00"}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-muted/30 border-t border-border font-semibold">
-                    <td className="px-3 py-2 text-[11px] text-muted-foreground">Total</td>
-                    {cyTotals.map((v, i) => (
-                      <td key={`cyt-${i}`} className={`px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground ${i === 0 ? "border-l border-border/40" : ""}`}>{v > 0 ? fmtCents(v) : "00.00"}</td>
-                    ))}
-                    {pyTotals.map((v, i) => (
-                      <td key={`pyt-${i}`} className={`px-2.5 py-2 text-right tabular-nums text-[11px] text-muted-foreground ${i === 0 ? "border-l border-border/40" : ""}`}>{v > 0 ? fmtCents(v) : "00.00"}</td>
-                    ))}
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
-        );
-      })()}
 
     </div>
   );
