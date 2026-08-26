@@ -883,24 +883,28 @@ function LoansTab({
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
                 <Pencil className="h-2.5 w-2.5" /> Editing
               </span>
-              <button
-                onClick={() => { setAddingNew(true); }}
-                disabled={addingNew}
-                className="inline-flex items-center gap-1 h-6 px-2 rounded-[6px] border border-border bg-background hover:bg-muted text-[10px] font-medium text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <Plus className="h-3 w-3" /> Add Row
-              </button>
-              <button
-                onClick={() => { setLoanMode("add"); setPendingLoans([]); }}
-                className="inline-flex items-center gap-1 h-6 px-2 rounded-[6px] border border-border bg-background hover:bg-muted text-[10px] font-medium text-foreground transition-colors"
-              >
-                <Upload className="h-3 w-3" /> Import
-              </button>
             </div>
           ) : (
             <span className="text-sm font-semibold text-foreground">Loan Register</span>
           )}
           <div className="flex items-center gap-3">
+            {loanMode === "edit" && (
+              <>
+                <button
+                  onClick={() => { setAddingNew(true); }}
+                  disabled={addingNew}
+                  className="inline-flex items-center gap-1 h-6 px-2 rounded-[6px] border border-border bg-background hover:bg-muted text-[10px] font-medium text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Plus className="h-3 w-3" /> Add Row
+                </button>
+                <button
+                  onClick={() => { setLoanMode("add"); setPendingLoans([]); }}
+                  className="inline-flex items-center gap-1 h-6 px-2 rounded-[6px] border border-border bg-background hover:bg-muted text-[10px] font-medium text-foreground transition-colors"
+                >
+                  <Upload className="h-3 w-3" /> Import
+                </button>
+              </>
+            )}
             {loanMode === "view" && <span className="text-[10px] text-muted-foreground">Manage facilities, terms, and GL mappings</span>}
             {loanMode === "view" && hasUnmappedGL && principalAccts.length > 0 && (
               <button
