@@ -1994,10 +1994,12 @@ function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
     const ts = Date.now();
 
     if (loan.accruedInterest > 0) {
+      const desc = `YE Accrued Interest – ${loan.name}${loan.lender ? ` (${loan.lender})` : ""}`;
       addJE({
         id: `je-ai-${loan.id}-${ts}`,
         type: "AccruedInterest",
-        description: `YE Accrued Interest – ${loan.name}${loan.lender ? ` (${loan.lender})` : ""}`,
+        description: desc,
+        notes: desc,
         loanId: loan.id,
         lines: [
           { id: `l1-ai-${ts}`, account: loan.glInterestExpenseAccount || "7100", description: `YE accrued interest – ${loan.name}`, debit: loan.accruedInterest, credit: 0, loanId: loan.id },
@@ -2008,10 +2010,12 @@ function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
     }
 
     if (loan.currentPortion > 0) {
+      const desc = `Current Portion Reclassification – ${loan.name}`;
       addJE({
         id: `je-cp-${loan.id}-${ts + 1}`,
         type: "CurrentPortionReclass",
-        description: `Current Portion Reclassification – ${loan.name}`,
+        description: desc,
+        notes: desc,
         loanId: loan.id,
         lines: [
           { id: `l1-cp-${ts + 1}`, account: loan.glPrincipalAccount || "2000", description: `Reclassify to current portion – ${loan.name}`, debit: loan.currentPortion, credit: 0, loanId: loan.id },
@@ -2026,10 +2030,12 @@ function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
       const bal = loan.closingBalance ?? loan.currentBalance;
       const cadBal = bal * fxRate;
       const fxAdj = Math.round((cadBal - bal) * 100) / 100;
+      const desc = `FX Translation Adjustment – ${loan.name} (${loan.currency} @ ${fxRate})`;
       addJE({
         id: `je-fx-${loan.id}-${ts + 2}`,
         type: "FXTranslation",
-        description: `FX Translation Adjustment – ${loan.name} (${loan.currency} @ ${fxRate})`,
+        description: desc,
+        notes: desc,
         loanId: loan.id,
         lines: [
           { id: `l1-fx-${ts + 2}`, account: loan.glPrincipalAccount || "2000", description: `FX retranslation – ${loan.name}`, debit: fxAdj > 0 ? fxAdj : 0, credit: fxAdj < 0 ? Math.abs(fxAdj) : 0, loanId: loan.id },
