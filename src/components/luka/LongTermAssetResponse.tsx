@@ -2914,7 +2914,7 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
         {activeTab === "continuity"   && loanMode === "view" && <ContinuityTabPanel loans={loans} continuity={continuity} />}
         {activeTab === "amortization" && loanMode === "view" && <AmortizationTabPanel loans={loans} amortization={amortization} />}
         {/* Covenants tab hidden — removed from scope 2026-05-26 */}
-        {activeTab === "ajes"         && loanMode === "view" && <AJEsTabPanel jes={jes.filter(j => !j.loanId || loans.some(l => l.id === j.loanId))} loans={loans} />}
+        {activeTab === "ajes"         && loanMode === "view" && <AJEsTabPanel jes={jes.filter(j => j.loanId && loans.some(l => l.id === j.loanId))} loans={loans} />}
         {activeTab === "notes"        && loanMode === "view" && <NotesTabPanel loans={loans} amortization={amortization} continuity={continuity} reconciliation={reconciliation} settings={settings} />}
       </div>
 
