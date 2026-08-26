@@ -1056,7 +1056,6 @@ function LoansTab({
                           {!hid.has("Loan Name") && (
                             <td className="px-2.5 py-1.5">
                               <div className={`flex items-center gap-1.5 ${fit ? "max-w-[110px]" : "min-w-[140px]"}`} title={l.name}>
-                                {l.locked && <LockIcon className="w-3 h-3 text-muted-foreground shrink-0" />}
                                 <span className="font-medium text-foreground truncate">{l.name}</span>
                               </div>
                             </td>
