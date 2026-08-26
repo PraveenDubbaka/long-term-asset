@@ -2257,15 +2257,7 @@ function NotesTabPanel({ loans, amortization, continuity, reconciliation, settin
   const expectedLT = totalCY - totalCurr;
   const ltMismatch = Math.abs(expectedLT - totalLT) >= 1 && totalCurr > 0;
 
-  const [noteOpen, setNoteOpen] = useState(false);
-
-  const fyLabel = yearEnd ? fmtDate(yearEnd.slice(0,10)) : "—";
-  const yearEndDate = yearEnd ? new Date(yearEnd.slice(0,10)+"T00:00:00") : null;
-  const repayYearLabel = yearEndDate
-    ? `Year ending ${yearEndDate.toLocaleString("en-CA",{month:"long"})} ${yearEndDate.getDate()}`
-    : "Year ending December 31";
-
-  const FONT = "'DM Sans', system-ui, sans-serif";
+  const setLukaNotePanelOpen = useStore(s => s.setLukaNotePanelOpen);
 
   return (
     <div className="space-y-3">
@@ -2277,7 +2269,7 @@ function NotesTabPanel({ loans, amortization, continuity, reconciliation, settin
           </div>
           <span className="flex-1 text-[12px] font-medium text-foreground">Long-term Debt</span>
           <button
-            onClick={() => setNoteOpen(true)}
+            onClick={() => setLukaNotePanelOpen(true)}
             title="Preview note"
             className="inline-flex items-center justify-center w-7 h-7 rounded-[6px] border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
@@ -2292,32 +2284,99 @@ function NotesTabPanel({ loans, amortization, continuity, reconciliation, settin
           </button>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Document side panel — same motion.aside pattern as NotesPreviewPanel in workspace */}
-      {ReactDOM.createPortal(
-        <AnimatePresence>
-          {noteOpen && (
-            <motion.aside
-              key="lt-debt-note-panel"
+// ─── Luka Note Side Panel — rendered as flex sibling in AskLukaOverlay ────────
+export function LukaNoteSidePanel() {
+  const loans         = useStore(s => s.loans);
+  const amortization  = useStore(s => s.amortization);
+  const continuity    = useStore(s => s.continuity);
+  const reconciliation = useStore(s => s.reconciliation);
+  const settings      = useStore(s => s.settings);
+  const open          = useStore(s => s.ui.lukaNotePanelOpen);
+  const setOpen       = useStore(s => s.setLukaNotePanelOpen);
+
+  const yearEnd    = settings.fiscalYearEnd;
+  const priorYearEnd = yearEnd
+    ? (() => { const d = new Date(yearEnd.slice(0,10) + "T00:00:00"); d.setFullYear(d.getFullYear() - 1); return d.toISOString().slice(0,10); })()
+    : null;
+
+  const repayBuckets = useMemo(() => {
+    const fyDate = yearEnd ? new Date(yearEnd.slice(0,10) + "T00:00:00") : new Date();
+    const yr = fyDate.getFullYear();
+    const fyPeriod = yearEnd ? yearEnd.slice(0, 7) : `${yr}-12`;
+    const b: Record<string, number> = {};
+    for (let i = 1; i <= 5; i++) b[String(yr + i)] = 0;
+    b["thereafter"] = 0;
+    loans.forEach(l => {
+      if (l.type === "LOC" || l.type === "Revolver") return;
+      const closingNative = l.closingBalance ?? l.currentBalance;
+      if (closingNative <= 0) return;
+      const ladder = calcMaturityLadder(l, closingNative, fyPeriod, l.monthlyPayment);
+      for (let i = 0; i <= 4; i++) {
+        const col = String(yr + i + 1);
+        b[col] = (b[col] ?? 0) + toCAD(ladder[i] ?? 0, l.currency);
+      }
+      b["thereafter"] = (b["thereafter"] ?? 0) + toCAD((ladder[5] ?? 0) + (ladder[6] ?? 0), l.currency);
+    });
+    const cols = [...Array(5).keys()].map(i => String(yr + i + 1));
+    const total = cols.reduce((s, y) => s + (b[y] || 0), 0) + (b["thereafter"] || 0);
+    return { b, cols, total, yr };
+  }, [loans, yearEnd]);
+
+  const rows = useMemo(() => loans.filter(l => l.type !== "LOC" && l.type !== "Revolver").map(loan => {
+    const closing = toCAD(loan.closingBalance ?? loan.currentBalance, loan.currency);
+    const pyRow   = continuity.filter(r => r.loanId === loan.id).sort((a,b) => a.period < b.period ? -1 : 1)[0];
+    const pyBal   = pyRow ? pyRow.openingBalance : null;
+    const rate    = loan.rate != null ? `${loan.rate}%` : "";
+    const matDate = loan.maturityDate ? new Date(loan.maturityDate + "T00:00:00").toLocaleDateString("en-CA", { month:"short", year:"numeric" }) : "";
+    const payment = loan.monthlyPayment ? `payable in monthly payments` : "";
+    const note    = [
+      `${loan.name}${loan.lender ? ` with ${loan.lender}` : ""}`,
+      `at ${rate} per annum`,
+      loan.interestType !== "Fixed" ? `${loan.interestType.toLowerCase()} rate` : "rate",
+      payment,
+      matDate ? `matures ${matDate}` : "",
+    ].filter(Boolean).join(", ") + ".";
+    return { loan, closing, pyBal, note };
+  }), [loans, continuity]);
+
+  const totalCY   = rows.reduce((s, r) => s + r.closing, 0);
+  const totalCurr = loans.reduce((s, l) => s + toCAD(l.currentPortion, l.currency), 0);
+
+  const FONT = "'DM Sans', system-ui, sans-serif";
+  const fyLabel    = yearEnd ? fmtDate(yearEnd.slice(0,10)) : "—";
+  const yearEndDate = yearEnd ? new Date(yearEnd.slice(0,10)+"T00:00:00") : null;
+  const repayYearLabel = yearEndDate
+    ? `Year ending ${yearEndDate.toLocaleString("en-CA",{month:"long"})} ${yearEndDate.getDate()}`
+    : "Year ending December 31";
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.aside
+          key="lt-debt-note-panel"
               initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 640, opacity: 1 }}
+              animate={{ width: 540, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
               transition={{
                 width: { type: "spring", stiffness: 260, damping: 30, mass: 0.9 },
                 opacity: { duration: 0.22, ease: [0.22, 1, 0.36, 1] },
               }}
-              className="fixed top-0 right-0 h-full z-[500] shrink-0 flex flex-col overflow-hidden"
+              className="shrink-0 h-full flex flex-col overflow-hidden"
               style={{
                 background: "hsl(0 0% 100%)",
                 borderLeft: "1px solid hsl(220 20% 90%)",
-                maxWidth: 640,
+                maxWidth: 540,
                 contain: "layout paint size",
                 willChange: "width",
               }}
             >
               <div
                 className="h-full flex flex-col overflow-hidden relative"
-                style={{ width: 640, minWidth: 640, maxWidth: 640, flexShrink: 0 }}
+                style={{ width: 540, minWidth: 540, maxWidth: 540, flexShrink: 0 }}
               >
                 {/* Header — matches NotesPreviewPanel */}
                 <div
@@ -2326,7 +2385,7 @@ function NotesTabPanel({ loans, amortization, continuity, reconciliation, settin
                 >
                   <button
                     type="button"
-                    onClick={() => setNoteOpen(false)}
+                    onClick={() => setOpen(false)}
                     title="Close preview"
                     className="w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors hover:bg-[hsl(220_20%_94%)]"
                     style={{ border: "1px solid hsl(220 20% 88%)", color: "hsl(222 25% 30%)" }}
@@ -2477,10 +2536,7 @@ function NotesTabPanel({ loans, amortization, continuity, reconciliation, settin
               </div>
             </motion.aside>
           )}
-        </AnimatePresence>,
-        document.body
-      )}
-    </div>
+        </AnimatePresence>
   );
 }
 

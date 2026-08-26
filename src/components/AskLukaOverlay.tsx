@@ -28,7 +28,7 @@ import { GrossMarginResponse } from "@/components/luka/GrossMarginResponse";
 import { LoanAmortizationPrompt } from "@/components/luka/LoanAmortizationPrompt";
 import { LoanAmortizationResponse } from "@/components/luka/LoanAmortizationResponse";
 import type { LoanAmortData } from "@/components/luka/LoanAmortizationPrompt";
-import { LongTermAssetResponse } from "@/components/luka/LongTermAssetResponse";
+import { LongTermAssetResponse, LukaNoteSidePanel } from "@/components/luka/LongTermAssetResponse";
 import { InvestmentScheduleResponse } from "@/components/luka/InvestmentScheduleResponse";
 import { priorYearLots as mockPriorYearLots } from "@/lib/luka/mockData";
 import { LukaResponseActions } from "@/components/luka/LukaResponseActions";
@@ -1347,6 +1347,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   // ── Store ──
   const loans = useStore(s => s.loans);
   const settings = useStore(s => s.settings);
+  const lukaNotePanelOpen = useStore(s => s.ui.lukaNotePanelOpen);
   const addLoanToStore = useStore(s => s.addLoan);
   const setLoansInStore = useStore(s => s.setLoans);
   const addAmortRowToStore = useStore(s => s.addAmortRow);
@@ -3024,7 +3025,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                       <><TaxPayableFlow onActivity={handleActivityUpdate} activityMinimized={activityMinimized} />{!activityMinimized && <LukaActivityPanel entries={activityEntries} isProcessing={isActivityProcessing} minimized={false} onToggleMinimize={() => setActivityMinimized(true)} />}</>
                     ) : (
                     /* ── Existing threads content (sentMessage, rich responses, etc.) ── */
-                    <div className="flex-1 flex flex-col min-w-0 min-h-0">
+                    <div className={`flex-1 flex min-w-0 min-h-0 ${lukaNotePanelOpen ? "flex-row" : "flex-col"}`}>
                 <div className="flex-1 min-w-0 overflow-y-auto">
                   {!sentMessage ? (
                     <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-[60vh]">
@@ -6261,7 +6262,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                     </div>
                   )}
                 </div>
-
+                      <LukaNoteSidePanel />
                     </div>
                     )}
                   </div>

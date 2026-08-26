@@ -20,6 +20,7 @@ interface UIState {
   editLoanId: string | null;
   importWizardOpen: boolean;
   importWizardType: 'loans' | 'activity' | 'continuity' | null;
+  lukaNotePanelOpen: boolean;
 }
 
 // Persisted across tab navigation — snapshot of data at the moment the note was posted
@@ -97,6 +98,7 @@ interface Store {
   setAddLoanOpen: (open: boolean) => void;
   setEditLoanId: (id: string | null) => void;
   setImportWizardOpen: (open: boolean, type?: 'loans' | 'activity' | 'continuity') => void;
+  setLukaNotePanelOpen: (open: boolean) => void;
 }
 
 export const useStore = create<Store>((set) => ({
@@ -120,6 +122,7 @@ export const useStore = create<Store>((set) => ({
     editLoanId: null,
     importWizardOpen: false,
     importWizardType: null,
+    lukaNotePanelOpen: false,
   },
 
   setLoans: (loans) => set(() => ({ loans, amortization: [], continuity: [] })),
@@ -204,4 +207,5 @@ export const useStore = create<Store>((set) => ({
   setAddLoanOpen: (open) => set(s => ({ ui: { ...s.ui, addLoanOpen: open } })),
   setEditLoanId: (id) => set(s => ({ ui: { ...s.ui, editLoanId: id } })),
   setImportWizardOpen: (open, type) => set(s => ({ ui: { ...s.ui, importWizardOpen: open, importWizardType: type || null } })),
+  setLukaNotePanelOpen: (open) => set(s => ({ ui: { ...s.ui, lukaNotePanelOpen: open } })),
 }));
