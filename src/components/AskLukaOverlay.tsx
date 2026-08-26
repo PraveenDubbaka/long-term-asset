@@ -3287,19 +3287,26 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       totalInterest += int; totalPrincipal += prin; bal = end;
                                                       d = new Date(d.getFullYear(), d.getMonth() + 2, 0);
                                                     }
-                                                    const closingBal = bal; let curPortion = 0;
+                                                    // Use PDF-extracted values when available (ACT/365 vs our 30/360)
+                                                    const _extClosing  = parseNum(_srcRow?.currentBalance ?? "");
+                                                    const _extInterest = parseNum(_srcRow?.interestPaid  ?? "");
+                                                    const _extPrincipal= parseNum(_srcRow?.principalPaid ?? "");
+                                                    const finalClosingBal  = _extClosing   > 0 ? _extClosing   : bal;
+                                                    const finalInterest    = _extInterest  > 0 ? _extInterest  : totalInterest;
+                                                    const finalPrincipal   = _extPrincipal > 0 ? _extPrincipal : totalPrincipal;
+                                                    let curPortion = 0;
                                                     const fyNext = new Date(fyEnd.getFullYear() + 1, fyEnd.getMonth(), fyEnd.getDate());
-                                                    let bal2 = closingBal, d2 = new Date(d);
+                                                    let bal2 = finalClosingBal, d2 = new Date(d);
                                                     while (d2 <= fyNext && bal2 > 0.01) {
                                                       const int2 = bal2 * monthlyRate; const prin2 = Math.min(payment - int2, bal2);
                                                       curPortion += prin2; bal2 -= prin2;
                                                       d2 = new Date(d2.getFullYear(), d2.getMonth() + 2, 0);
                                                     }
-                                                    const ltPortion = closingBal - curPortion;
+                                                    const ltPortion = finalClosingBal - curPortion;
                                                     const lastRow2 = amortRows[amortRows.length - 1];
                                                     const toLS = (dt: Date) => dt.getFullYear() + "-" + String(dt.getMonth()+1).padStart(2,"0") + "-" + String(dt.getDate()).padStart(2,"0");
-                                                    const accruedInt = toLS(lastRow2?.d ?? new Date(0)) === toLS(fyEnd) ? 0 : closingBal * monthlyRate;
-                                                    return { ...loan, rows: amortRows, totalInterest, totalPrincipal, closingBal, curPortion, ltPortion, accruedInt };
+                                                    const accruedInt = toLS(lastRow2?.d ?? new Date(0)) === toLS(fyEnd) ? 0 : finalClosingBal * monthlyRate;
+                                                    return { ...loan, rows: amortRows, totalInterest: finalInterest, totalPrincipal: finalPrincipal, closingBal: finalClosingBal, curPortion, ltPortion, accruedInt };
                                                   });
                                                   setLoansInStore(computedLoans.map(l => ({ ...l, closingBalance: l.closingBal, currentPortion: Math.round(l.curPortion*100)/100, longTermPortion: Math.round(l.ltPortion*100)/100, accruedInterest: Math.round(l.accruedInt*100)/100 })));
                                                   computedLoans.forEach(loan => { loan.rows.forEach(r => { addAmortRowToStore({ id: `ar-${loan.id}-${r.d.toISOString().slice(0,7)}`, loanId: loan.id, periodDate: r.d.toISOString().slice(0,10), openingBalance: r.end+r.prin, interest: r.int, payment: loan.monthlyPayment??0, principal: r.prin, endingBalance: r.end }); }); });
