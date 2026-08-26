@@ -533,7 +533,7 @@ function mockLtRowsFromFile(file: LtDebtFile): LtDebtReviewRow[] {
       name: "Promissory Note 1", lender: "BDC Capital Inc.", type: "", currency: "",
       originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000",
       interestType: "", startDate: "2024-10-31", maturityDate: "2032-09-30",
-      firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "",
+      firstPaymentDate: "", monthlyPayment: "4,875.49", fxRate: "",
       paymentFrequency: "Monthly", paymentType: "",
       dayCount: "", compounding: "",
       ioPeriod: "", balloonAmt: "",
@@ -546,7 +546,7 @@ function mockLtRowsFromFile(file: LtDebtFile): LtDebtReviewRow[] {
       name: "Promissory Note 2", lender: "RBC Royal Bank", type: "", currency: "",
       originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000",
       interestType: "", startDate: "2024-10-31", maturityDate: "2032-09-30",
-      firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "",
+      firstPaymentDate: "", monthlyPayment: "4,875.49", fxRate: "",
       paymentFrequency: "Monthly", paymentType: "",
       dayCount: "", compounding: "",
       ioPeriod: "", balloonAmt: "",
@@ -3078,8 +3078,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                         setTimeout(() => {
                                           const uid = () => `ltr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
                                           const rows: LtDebtReviewRow[] = [
-                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 1", lender: "BDC Capital Inc.", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-31", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "General security agreement over all present and after-acquired personal property", status: "Active", glPrincipal: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
-                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 2", lender: "RBC Royal Bank", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-31", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "First charge over real property and improvements", status: "Active", glPrincipal: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
+                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 1", lender: "BDC Capital Inc.", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-31", maturityDate: "2032-09-30", firstPaymentDate: "", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "General security agreement over all present and after-acquired personal property", status: "Active", glPrincipal: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
+                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 2", lender: "RBC Royal Bank", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-31", maturityDate: "2032-09-30", firstPaymentDate: "", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "First charge over real property and improvements", status: "Active", glPrincipal: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
                                           ];
                                           setLtPriorRows(rows);
                                           setLtPriorExtracting(false);
