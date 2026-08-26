@@ -515,7 +515,6 @@ function LoansTab({
     "Converted Amt",
     "Interest-Only Period (Mo.)",
     "Balloon Amt",
-    "GL Diff",
     "Status",
   ]);
 
@@ -685,7 +684,6 @@ function LoansTab({
     { h: "Status",             left: false },
     { h: "Current Portion",   left: false },
     { h: "Long-Term Portion",        left: false },
-    { h: "GL Diff",           left: false },
   ];
   // compact = narrower table (text cols constrained), expanded = full width; both scroll
   const fit = !tableExpanded;
@@ -998,18 +996,6 @@ function LoansTab({
               <tr className="bg-muted/30 border-b border-border">
                 {HEADERS.filter(({ h }) => !effectiveHidCols.has(h)).map(({ h, left }) => {
                   const cls = `px-2.5 py-2 font-semibold text-muted-foreground uppercase tracking-wide text-[10px] whitespace-nowrap ${left ? "text-left" : "text-right"}`;
-                  if (h === "GL Diff") return (
-                    <th key={h} className={cls}>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="cursor-default underline underline-offset-2 decoration-dotted">{h}</span>
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom" className="text-[11px]">GL Balance (manual entry) minus Closing Balance from amortization engine</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </th>
-                  );
                   return <th key={h} className={cls}>{h}</th>;
                 })}
                 <th className="sticky right-0 z-10 bg-muted/30 border-l border-border/40 px-2 py-2 w-[52px]" />
@@ -1098,14 +1084,6 @@ function LoansTab({
                           )}
                           {!hid.has("Current Portion") && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground text-[11px]">{l.currentPortion > 0 ? fmtCents(toCAD(l.currentPortion, l.currency)) : "—"}</td>}
                           {!hid.has("Long-Term Portion") && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground text-[11px]">{l.longTermPortion > 0 ? fmtCents(toCAD(l.longTermPortion, l.currency)) : "—"}</td>}
-                          {!hid.has("GL Diff") && (() => {
-                            if (l.glBalance === undefined || l.glBalance === null) return (
-                              <td className="px-2.5 py-1.5 text-right text-muted-foreground text-[11px]">$—</td>
-                            );
-                            const diff = l.glBalance - closingCAD;
-                            const isZero = Math.abs(diff) < 0.01;
-                            return <td className={`px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap font-medium text-[11px] ${isZero ? "text-muted-foreground" : "text-destructive"}`}>{isZero ? "$—" : fmt(diff)}</td>;
-                          })()}
                         </> : <>
                           {!hid.has("Loan Name") && (
                             <td className="px-2.5 py-1.5">
@@ -1203,25 +1181,6 @@ function LoansTab({
                               </td>
                             );
                           })()}
-                          {!hid.has("GL Diff") && (() => {
-                            if (l.glBalance === undefined || l.glBalance === null) return (
-                              <td key="gld" className="px-2.5 py-1.5 text-right">
-                                <input
-                                  type="number" step="0.01" placeholder="Enter GL bal."
-                                  className="h-6 w-[90px] text-[10px] px-1.5 text-right border border-dashed border-border/60 rounded-[4px] bg-background text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40"
-                                  onBlur={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) updateLoan(l.id, { glBalance: v }); }}
-                                  onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                                />
-                              </td>
-                            );
-                            const diff = l.glBalance - closingCAD;
-                            const isZero = Math.abs(diff) < 0.01;
-                            return (
-                              <td key="gld" className={`px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap font-medium ${isZero ? "text-muted-foreground" : "text-destructive"}`}>
-                                {isZero ? <span className="text-muted-foreground">$—</span> : fmt(diff)}
-                              </td>
-                            );
-                          })()}
                         </>}
                         <td className="px-2 py-1 sticky right-0 z-10 bg-background border-l border-border/40">
                           {!l.locked ? (
@@ -1258,12 +1217,6 @@ function LoansTab({
                   if (h === "Closing Balance") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmtCents(loans.reduce((s,l)=>s+toCAD(l.closingBalance??l.currentBalance,l.currency),0))}</td>;
                   if (h === "Current Portion") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmtCents(loans.reduce((s,l)=>s+toCAD(l.currentPortion,l.currency),0))}</td>;
                   if (h === "Long-Term Portion") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmtCents(loans.reduce((s,l)=>s+toCAD(l.longTermPortion,l.currency),0))}</td>;
-                  if (h === "GL Diff") {
-                    const withGL = loans.filter(l => l.glBalance !== undefined);
-                    if (withGL.length === 0) return <td key={h} className="px-2.5 py-2 text-right text-muted-foreground text-[11px]">$—</td>;
-                    const totalDiff = withGL.reduce((s,l)=>s+(l.glBalance!-toCAD(l.closingBalance??l.currentBalance,l.currency)),0);
-                    return <td key={h} className={`px-2.5 py-2 text-right tabular-nums text-[11px] font-bold ${Math.abs(totalDiff)<1?"text-muted-foreground":"text-destructive"}`}>{Math.abs(totalDiff)<1?"$—":fmt(totalDiff)}</td>;
-                  }
                   return <td key={h} className="px-2.5 py-2" />;
                 })}
                 <td className="sticky right-0 z-10 bg-muted/50 border-l border-border/40 px-2 py-2 w-[52px]" />
