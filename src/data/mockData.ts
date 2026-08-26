@@ -44,6 +44,12 @@ export const fxRates: FXRate[] = [
 
 // ─── ACCOUNT MAPPING ─────────────────────────────────────────────────────────
 export const accountMappings: AccountMapping[] = [
+  // ── Short-Term Loans (Principal) ─────────────────────────────────────────
+  { id: 'am-40',  code: '2050', name: 'Short-Term Loan Payable',           type: 'Principal' },
+  { id: 'am-41',  code: '2051', name: 'Short-Term Bank Loan',              type: 'Principal' },
+  { id: 'am-42',  code: '2052', name: 'Revolving Credit Facility',         type: 'Principal' },
+  { id: 'am-43',  code: '2060', name: 'Notes Payable – Current',           type: 'Principal' },
+  { id: 'am-44',  code: '2070', name: 'Short-Term Borrowings',             type: 'Principal' },
   // ── Long-Term Debt (Principal) ────────────────────────────────────────────
   { id: 'am-01',  code: '2100', name: 'Long-Term Debt – CAD',              type: 'Principal' },
   { id: 'am-03',  code: '2110', name: 'Long-Term Debt – USD',              type: 'Principal' },
