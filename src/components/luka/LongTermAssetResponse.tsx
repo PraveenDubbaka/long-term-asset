@@ -2629,28 +2629,32 @@ export function LukaNoteSidePanel() {
                   >
                     Principal Repayment Schedule — Next Five Fiscal Years
                   </h4>
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse" style={{ fontFamily: FONT }}>
-                      <thead>
-                        <tr style={{ borderBottom: "1px solid hsl(220 20% 88%)" }}>
-                          <th className="text-left py-2 text-[12px] font-semibold whitespace-nowrap" style={{ color: "hsl(222 35% 20%)", width: "28%" }}>{repayYearLabel}</th>
-                          {repayBuckets.cols.map(y => (
-                            <th key={y} className="text-right py-2 px-1 text-[12px] font-semibold whitespace-nowrap" style={{ color: "hsl(222 35% 20%)" }}>{y}</th>
-                          ))}
-                          <th className="text-right py-2 px-1 text-[12px] font-semibold whitespace-nowrap" style={{ color: "hsl(222 35% 20%)" }}>Thereafter</th>
+                  <table className="w-full border-collapse" style={{ fontFamily: FONT }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid hsl(220 20% 88%)" }}>
+                        <th className="text-left py-2 text-[12px] font-semibold whitespace-nowrap" style={{ color: "hsl(222 35% 20%)" }}>{repayYearLabel}</th>
+                        <th className="text-right py-2 px-1 text-[12px] font-semibold whitespace-nowrap" style={{ color: "hsl(222 35% 20%)" }}>Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {repayBuckets.cols.map(y => (
+                        <tr key={y} style={{ borderBottom: "1px solid hsl(220 20% 93%)" }}>
+                          <td className="py-2 text-[13px]" style={{ color: "hsl(222 25% 25%)" }}>{y}</td>
+                          <td className="py-2 px-1 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 25% 25%)" }}>{fmtCents(repayBuckets.b[y] || 0)}</td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        <tr style={{ borderBottom: "1px solid hsl(220 20% 93%)" }}>
-                          <td className="py-2 text-[13px]" style={{ color: "hsl(222 25% 25%)" }}>Principal repayments</td>
-                          {repayBuckets.cols.map(y => (
-                            <td key={y} className="py-2 px-1 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 25% 25%)" }}>{fmtCents(repayBuckets.b[y] || 0)}</td>
-                          ))}
-                          <td className="py-2 px-1 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 25% 25%)" }}>{fmtCents(repayBuckets.b["thereafter"] || 0)}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                      <tr style={{ borderBottom: "1px solid hsl(220 20% 88%)" }}>
+                        <td className="py-2 text-[13px]" style={{ color: "hsl(222 25% 25%)" }}>Thereafter</td>
+                        <td className="py-2 px-1 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 25% 25%)" }}>{fmtCents(repayBuckets.b["thereafter"] || 0)}</td>
+                      </tr>
+                    </tbody>
+                    <tfoot>
+                      <tr style={{ borderTop: "2px solid hsl(220 20% 78%)" }}>
+                        <td className="pt-2 pb-1 text-[13px] font-semibold" style={{ color: "hsl(222 35% 20%)" }}>Total</td>
+                        <td className="pt-2 pb-1 px-1 text-right tabular-nums text-[13px] font-semibold" style={{ color: "hsl(222 35% 20%)" }}>{fmtCents(repayBuckets.total)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
                 </div>
 
               </div>
