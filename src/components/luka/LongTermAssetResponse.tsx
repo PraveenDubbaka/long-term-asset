@@ -2265,152 +2265,221 @@ function NotesTabPanel({ loans, amortization, continuity, reconciliation, settin
     ? `Year ending ${yearEndDate.toLocaleString("en-CA",{month:"long"})} ${yearEndDate.getDate()}`
     : "Year ending December 31";
 
+  const FONT = "'DM Sans', system-ui, sans-serif";
+
   return (
-    <div className="relative overflow-hidden" style={{ minHeight: noteOpen ? 480 : undefined }}>
-      {/* Artifact card list */}
-      <div className="space-y-3">
-        <div className="rounded-[8px] border border-border bg-background overflow-hidden">
-          <div className="flex items-center gap-3 px-3 py-2.5">
-            <div className="w-7 h-7 rounded-[6px] bg-primary/10 flex items-center justify-center shrink-0">
-              <FileCheck className="h-3.5 w-3.5 text-primary" />
-            </div>
-            <span className="flex-1 text-[12px] font-medium text-foreground">Long-term Debt</span>
-            <button
-              onClick={() => setNoteOpen(true)}
-              title="Preview note"
-              className="inline-flex items-center justify-center w-7 h-7 rounded-[6px] border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <Eye className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => toast.success("Downloading note…")}
-              title="Download"
-              className="inline-flex items-center justify-center w-7 h-7 rounded-[6px] border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <Download className="h-3.5 w-3.5" />
-            </button>
+    <div className="space-y-3">
+      {/* Artifact card */}
+      <div className="rounded-[8px] border border-border bg-background overflow-hidden">
+        <div className="flex items-center gap-3 px-3 py-2.5">
+          <div className="w-7 h-7 rounded-[6px] bg-primary/10 flex items-center justify-center shrink-0">
+            <FileCheck className="h-3.5 w-3.5 text-primary" />
           </div>
+          <span className="flex-1 text-[12px] font-medium text-foreground">Long-term Debt</span>
+          <button
+            onClick={() => setNoteOpen(true)}
+            title="Preview note"
+            className="inline-flex items-center justify-center w-7 h-7 rounded-[6px] border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <Eye className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => toast.success("Downloading note…")}
+            title="Download"
+            className="inline-flex items-center justify-center w-7 h-7 rounded-[6px] border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <Download className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
 
-      {/* Inline slide-in note preview — absolute, within the Luka panel */}
-      <AnimatePresence>
-        {noteOpen && (
-          <motion.div
-            key="note-panel"
-            initial={{ x: "100%", opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: "100%", opacity: 0 }}
-            transition={{
-              x: { type: "spring", stiffness: 280, damping: 30, mass: 0.85 },
-              opacity: { duration: 0.18 },
-            }}
-            className="absolute inset-0 z-10 bg-background border border-border rounded-[8px] shadow-xl flex flex-col overflow-hidden"
-          >
-            {/* Panel header */}
-            <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border shrink-0 bg-muted/30">
-              <div className="w-6 h-6 rounded-[5px] bg-primary/10 flex items-center justify-center shrink-0">
-                <FileCheck className="h-3.5 w-3.5 text-primary" />
-              </div>
-              <span className="flex-1 text-[12px] font-semibold text-foreground">Long-term Debt</span>
-              <button
-                onClick={() => toast.success("Saved to engagement")}
-                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[6px] bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors"
+      {/* Document side panel — same motion.aside pattern as NotesPreviewPanel in workspace */}
+      {ReactDOM.createPortal(
+        <AnimatePresence>
+          {noteOpen && (
+            <motion.aside
+              key="lt-debt-note-panel"
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 640, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{
+                width: { type: "spring", stiffness: 260, damping: 30, mass: 0.9 },
+                opacity: { duration: 0.22, ease: [0.22, 1, 0.36, 1] },
+              }}
+              className="fixed top-0 right-0 h-full z-[500] shrink-0 flex flex-col overflow-hidden"
+              style={{
+                background: "hsl(0 0% 100%)",
+                borderLeft: "1px solid hsl(220 20% 90%)",
+                maxWidth: 640,
+                contain: "layout paint size",
+                willChange: "width",
+              }}
+            >
+              <div
+                className="h-full flex flex-col overflow-hidden relative"
+                style={{ width: 640, minWidth: 640, maxWidth: 640, flexShrink: 0 }}
               >
-                <Save className="h-3 w-3" /> Save to Engagement
-              </button>
-              <button
-                onClick={() => setNoteOpen(false)}
-                className="inline-flex items-center justify-center w-7 h-7 rounded-[6px] border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
+                {/* Header — matches NotesPreviewPanel */}
+                <div
+                  className="shrink-0 flex items-center gap-3 px-5 py-4"
+                  style={{ borderBottom: "1px solid hsl(220 20% 92%)" }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setNoteOpen(false)}
+                    title="Close preview"
+                    className="w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors hover:bg-[hsl(220_20%_94%)]"
+                    style={{ border: "1px solid hsl(220 20% 88%)", color: "hsl(222 25% 30%)" }}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                  <h2
+                    className="flex-1 min-w-0 truncate text-[16px] font-bold"
+                    style={{ color: "hsl(222 35% 14%)", fontFamily: FONT }}
+                  >
+                    Long-term Debt
+                  </h2>
+                  <button
+                    onClick={() => toast.success("Saved to engagement")}
+                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[12px] font-semibold transition-colors"
+                    style={{ background: "hsl(265 75% 55%)", color: "#fff" }}
+                  >
+                    <Save className="h-3.5 w-3.5" /> Save to Engagement
+                  </button>
+                </div>
 
-            {/* Document body */}
-            <div className="flex-1 overflow-y-auto px-5 py-4 text-[12px] text-foreground space-y-4">
-              <p className="text-[11px] text-muted-foreground">Long-term debt consists of the following:</p>
+                {/* Document body */}
+                <div className="flex-1 overflow-y-auto px-6 py-6">
+                  {/* Document header banner */}
+                  <div
+                    className="w-full rounded-[8px] flex items-center justify-center py-8 mb-6"
+                    style={{ background: "hsl(220 25% 96%)", border: "1px solid hsl(220 20% 90%)" }}
+                  >
+                    <div className="flex flex-col items-center gap-1.5">
+                      <div
+                        className="text-[18px] font-extrabold tracking-wide"
+                        style={{ color: "hsl(215 75% 22%)", fontFamily: FONT }}
+                      >
+                        NOTES TO FINANCIAL INFORMATION
+                      </div>
+                      <div
+                        className="text-[11px] uppercase tracking-[0.18em]"
+                        style={{ color: "hsl(222 15% 50%)", fontFamily: FONT }}
+                      >
+                        {yearEnd ? `Year ended ${fmtDate(yearEnd.slice(0,10))}` : "Year ended"}
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Section A+B table */}
-              <table className="w-full border-collapse text-[11px]">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-1.5 font-semibold text-foreground w-[55%]">Account</th>
-                    <th className="text-right py-1.5 font-semibold text-foreground whitespace-nowrap">{fyLabel}</th>
-                    <th className="text-right py-1.5 font-semibold text-foreground whitespace-nowrap">{priorYearEnd ? fmtDate(priorYearEnd) : "Prior Year"}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map(r => (
-                    <tr key={r.loan.id} className="border-b border-border/30">
-                      <td className="py-1.5 text-foreground leading-snug pr-3">{r.note}</td>
-                      <td className="py-1.5 text-right tabular-nums">{fmtCents(r.closing)}</td>
-                      <td className="py-1.5 text-right tabular-nums text-muted-foreground">{r.pyBal !== null ? fmtCents(toCAD(r.pyBal, r.loan.currency)) : "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t border-border">
-                    <td className="py-1.5 font-semibold">Long-term debt</td>
-                    <td className="py-1.5 text-right tabular-nums font-semibold">{fmtCents(totalCY)}</td>
-                    <td className="py-1.5 text-right tabular-nums text-muted-foreground">—</td>
-                  </tr>
-                  <tr>
-                    <td className="py-1 text-muted-foreground italic">Less: current portion</td>
-                    <td className="py-1 text-right tabular-nums text-red-600">{fmtParenCents(totalCurr)}</td>
-                    <td className="py-1 text-right tabular-nums text-muted-foreground">—</td>
-                  </tr>
-                  <tr className="border-t-2 border-foreground font-semibold">
-                    <td className="py-1.5">Total long-term debt</td>
-                    <td className="py-1.5 text-right tabular-nums">{fmtCents(totalCY - totalCurr)}</td>
-                    <td className="py-1.5 text-right tabular-nums text-muted-foreground">—</td>
-                  </tr>
-                </tfoot>
-              </table>
+                  {/* Note heading */}
+                  <h3
+                    className="text-[15px] font-bold mb-4"
+                    style={{ color: "hsl(215 75% 22%)", fontFamily: FONT }}
+                  >
+                    Long-term Debt
+                  </h3>
 
-              {/* Section C: repayment schedule */}
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-[11px]">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left py-1.5 font-semibold text-foreground whitespace-nowrap w-[28%]">{repayYearLabel}</th>
-                      {repayBuckets.cols.map(y => (
-                        <th key={y} className="text-right py-1.5 font-semibold text-foreground whitespace-nowrap px-1">{y}</th>
+                  <p
+                    className="text-[13.5px] leading-relaxed mb-5"
+                    style={{ color: "hsl(222 25% 25%)", fontFamily: FONT }}
+                  >
+                    Long-term debt consists of the following:
+                  </p>
+
+                  {/* Section A+B table */}
+                  <table className="w-full border-collapse mb-6" style={{ fontFamily: FONT }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid hsl(220 20% 88%)" }}>
+                        <th className="text-left py-2 text-[12px] font-semibold" style={{ color: "hsl(222 35% 20%)", width: "55%" }}>Account</th>
+                        <th className="text-right py-2 text-[12px] font-semibold whitespace-nowrap" style={{ color: "hsl(222 35% 20%)" }}>{fyLabel}</th>
+                        <th className="text-right py-2 text-[12px] font-semibold whitespace-nowrap" style={{ color: "hsl(222 35% 20%)" }}>{priorYearEnd ? fmtDate(priorYearEnd) : "Prior Year"}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map(r => (
+                        <tr key={r.loan.id} style={{ borderBottom: "1px solid hsl(220 20% 93%)" }}>
+                          <td className="py-2 pr-4 text-[13px] leading-snug" style={{ color: "hsl(222 25% 25%)" }}>{r.note}</td>
+                          <td className="py-2 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 25% 25%)" }}>{fmtCents(r.closing)}</td>
+                          <td className="py-2 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 15% 55%)" }}>{r.pyBal !== null ? fmtCents(toCAD(r.pyBal, r.loan.currency)) : "—"}</td>
+                        </tr>
                       ))}
-                      <th className="text-right py-1.5 font-semibold text-foreground whitespace-nowrap px-1">Thereafter</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-b border-border/30">
-                      <td className="py-1.5">Principal repayments</td>
-                      {repayBuckets.cols.map(y => (
-                        <td key={y} className="py-1.5 text-right tabular-nums px-1">{fmtCents(repayBuckets.b[y] || 0)}</td>
-                      ))}
-                      <td className="py-1.5 text-right tabular-nums px-1">{fmtCents(repayBuckets.b["thereafter"] || 0)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                    </tbody>
+                    <tfoot>
+                      <tr style={{ borderTop: "1px solid hsl(220 20% 80%)" }}>
+                        <td className="py-2 text-[13px] font-semibold" style={{ color: "hsl(222 35% 20%)" }}>Long-term debt</td>
+                        <td className="py-2 text-right tabular-nums text-[13px] font-semibold" style={{ color: "hsl(222 35% 20%)" }}>{fmtCents(totalCY)}</td>
+                        <td className="py-2 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 15% 55%)" }}>—</td>
+                      </tr>
+                      <tr>
+                        <td className="py-1.5 text-[13px]" style={{ color: "hsl(222 15% 45%)", fontStyle: "italic" }}>Less: current portion</td>
+                        <td className="py-1.5 text-right tabular-nums text-[13px]" style={{ color: "hsl(0 70% 45%)" }}>{fmtParenCents(totalCurr)}</td>
+                        <td className="py-1.5 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 15% 55%)" }}>—</td>
+                      </tr>
+                      <tr style={{ borderTop: "2px solid hsl(222 35% 20%)" }}>
+                        <td className="py-2 text-[13px] font-bold" style={{ color: "hsl(222 35% 14%)" }}>Total long-term debt</td>
+                        <td className="py-2 text-right tabular-nums text-[13px] font-bold" style={{ color: "hsl(222 35% 14%)" }}>{fmtCents(totalCY - totalCurr)}</td>
+                        <td className="py-2 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 15% 55%)" }}>—</td>
+                      </tr>
+                    </tfoot>
+                  </table>
 
-            {/* Panel footer */}
-            <div className="flex items-center justify-end gap-2 px-3 py-2.5 border-t border-border shrink-0 bg-muted/20">
-              <button
-                onClick={() => { navigator.clipboard.writeText("Note 8"); toast.success("Note 8 copied"); }}
-                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[6px] border border-border text-[11px] font-medium text-foreground hover:bg-muted transition-colors"
-              >
-                <Copy className="h-3 w-3" /> Copy Note 8
-              </button>
-              <button
-                onClick={() => toast.success("Posted to notes")}
-                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[6px] bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors"
-              >
-                <FileCheck className="h-3 w-3" /> Post to Notes
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                  {/* Section C: repayment schedule */}
+                  <h4
+                    className="text-[13px] font-semibold mb-3"
+                    style={{ color: "hsl(215 75% 22%)", fontFamily: FONT }}
+                  >
+                    Principal Repayment Schedule — Next Five Fiscal Years
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse" style={{ fontFamily: FONT }}>
+                      <thead>
+                        <tr style={{ borderBottom: "1px solid hsl(220 20% 88%)" }}>
+                          <th className="text-left py-2 text-[12px] font-semibold whitespace-nowrap" style={{ color: "hsl(222 35% 20%)", width: "28%" }}>{repayYearLabel}</th>
+                          {repayBuckets.cols.map(y => (
+                            <th key={y} className="text-right py-2 px-1 text-[12px] font-semibold whitespace-nowrap" style={{ color: "hsl(222 35% 20%)" }}>{y}</th>
+                          ))}
+                          <th className="text-right py-2 px-1 text-[12px] font-semibold whitespace-nowrap" style={{ color: "hsl(222 35% 20%)" }}>Thereafter</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr style={{ borderBottom: "1px solid hsl(220 20% 93%)" }}>
+                          <td className="py-2 text-[13px]" style={{ color: "hsl(222 25% 25%)" }}>Principal repayments</td>
+                          {repayBuckets.cols.map(y => (
+                            <td key={y} className="py-2 px-1 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 25% 25%)" }}>{fmtCents(repayBuckets.b[y] || 0)}</td>
+                          ))}
+                          <td className="py-2 px-1 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 25% 25%)" }}>{fmtCents(repayBuckets.b["thereafter"] || 0)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div
+                  className="shrink-0 flex items-center justify-end gap-2 px-5 py-3"
+                  style={{ borderTop: "1px solid hsl(220 20% 92%)" }}
+                >
+                  <button
+                    onClick={() => { navigator.clipboard.writeText("Note 8"); toast.success("Note 8 copied"); }}
+                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[12px] font-medium transition-colors hover:bg-[hsl(220_20%_96%)]"
+                    style={{ border: "1px solid hsl(220 20% 88%)", color: "hsl(222 25% 30%)", fontFamily: FONT }}
+                  >
+                    <Copy className="h-3.5 w-3.5" /> Copy Note
+                  </button>
+                  <button
+                    onClick={() => toast.success("Posted to notes")}
+                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[12px] font-semibold transition-colors"
+                    style={{ background: "hsl(265 75% 55%)", color: "#fff", fontFamily: FONT }}
+                  >
+                    <FileCheck className="h-3.5 w-3.5" /> Post to Notes
+                  </button>
+                </div>
+              </div>
+            </motion.aside>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }
