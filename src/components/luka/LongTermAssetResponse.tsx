@@ -371,13 +371,21 @@ function calcMaturityLadder(
     const pmt = (payment != null && payment > 0)
       ? payment
       : bal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
-    for (let i = 1; i <= n && bal > 0.01; i++) {
-      const interest = bal * r;
-      const principal = Math.min(pmt - interest, bal);
+    for (let i = 1; i <= n && bal > 0.005; i++) {
+      const interest  = Math.round(bal * r * 100) / 100;
+      const principal = Math.min(Math.round((pmt - interest) * 100) / 100, Math.round(bal * 100) / 100);
       result[Math.min(Math.floor((i - 1) / 12), 6)] += principal;
-      bal -= principal;
+      bal = Math.round((bal - principal) * 100) / 100;
     }
-    if (bal > 0.01) result[6] += bal; // capture any balloon remainder
+    if (bal > 0.005) result[6] += Math.round(bal * 100) / 100;
+    // Reconcile cent-rounding drift so bucket totals equal the known closing balance
+    const bucketSum = result.reduce((s, v) => s + v, 0);
+    const drift = Math.round((closingBalance - bucketSum) * 100) / 100;
+    if (Math.abs(drift) > 0 && Math.abs(drift) < 0.10) {
+      let lastIdx = -1;
+      for (let k = result.length - 1; k >= 0; k--) { if (result[k] > 0) { lastIdx = k; break; } }
+      if (lastIdx >= 0) result[lastIdx] = Math.round((result[lastIdx] + drift) * 100) / 100;
+    }
   }
   return result as [number, number, number, number, number, number, number];
 }
