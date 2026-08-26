@@ -2702,16 +2702,15 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
             <button ref={saveBtnRef} onClick={openSaveFlow} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
               <Save className="h-3.5 w-3.5" /> Save to Engagement
             </button>
-            <button onClick={() => toast.success("Downloading workpaper…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
-              <Download className="h-3.5 w-3.5" /> Download
+            <button onClick={() => toast.success("Downloading workpaper…")} title="Download" className="group/btn inline-flex items-center gap-0 h-8 w-8 px-0 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted hover:w-auto hover:px-2.5 hover:gap-1.5 transition-all overflow-hidden justify-center">
+              <Download className="h-3.5 w-3.5 shrink-0" /><span className="hidden group-hover/btn:inline whitespace-nowrap">Download</span>
             </button>
-            <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success("Link copied to clipboard"); }} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
-              <Copy className="h-3.5 w-3.5" /> Copy
+            <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success("Link copied to clipboard"); }} title="Copy" className="group/btn inline-flex items-center gap-0 h-8 w-8 px-0 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted hover:w-auto hover:px-2.5 hover:gap-1.5 transition-all overflow-hidden justify-center">
+              <Copy className="h-3.5 w-3.5 shrink-0" /><span className="hidden group-hover/btn:inline whitespace-nowrap">Copy</span>
             </button>
-            <button onClick={() => toast.success("Re-running analysis…")} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors">
-              <RotateCcw className="h-3.5 w-3.5" /> Rerun
+            <button onClick={() => toast.success("Re-running analysis…")} title="Rerun" className="group/btn inline-flex items-center gap-0 h-8 w-8 px-0 rounded-[8px] border border-border bg-background text-xs font-medium text-foreground hover:bg-muted hover:w-auto hover:px-2.5 hover:gap-1.5 transition-all overflow-hidden justify-center">
+              <RotateCcw className="h-3.5 w-3.5 shrink-0" /><span className="hidden group-hover/btn:inline whitespace-nowrap">Rerun</span>
             </button>
-
           </>
         )}
       </div>
