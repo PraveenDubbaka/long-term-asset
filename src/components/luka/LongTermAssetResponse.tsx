@@ -8,7 +8,7 @@ import {
   Building2, FileText, BookOpen, Receipt, Layers, FileCheck, Send, TrendingUp,
   Download, Copy, RotateCcw, X, Trash2, Search, Check, Pencil, Folder,
   Upload, Loader2, Maximize2, Minimize2, SlidersHorizontal, Save, FolderOpen, Eye,
-  Clock, FilePlus, PenLine, GitCommit, Lock as LockIcon, Sparkles,
+  Clock, FilePlus, PenLine, GitCommit, Lock as LockIcon, Sparkles, PanelRightClose,
 } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/wp-ui/tooltip";
 import { COVENANT_TEMPLATES, GL_ACCOUNTS, GL_CATEGORY_ORDER, GL_CATEGORY_LABELS } from "@/lib/covenantTemplates";
@@ -2527,11 +2527,11 @@ export function LukaNoteSidePanel() {
                   <button
                     type="button"
                     onClick={() => setOpen(false)}
-                    title="Close preview"
+                    title="Collapse panel"
                     className="w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors hover:bg-[hsl(220_20%_94%)]"
                     style={{ border: "1px solid hsl(220 20% 88%)", color: "hsl(222 25% 30%)" }}
                   >
-                    <X className="h-4 w-4" />
+                    <PanelRightClose className="h-4 w-4" />
                   </button>
                   <h2
                     className="flex-1 min-w-0 truncate text-[16px] font-bold"
