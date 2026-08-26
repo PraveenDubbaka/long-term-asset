@@ -2025,11 +2025,12 @@ function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
       });
     }
 
-    if (loan.currency !== settings.baseCurrency) {
-      const fxRate = loan.fxRateToCAD ?? 1;
+    if (loan.currency !== settings.baseCurrency && loan.fxRateToCAD && loan.fxRateToCAD !== 1) {
+      const fxRate = loan.fxRateToCAD;
       const bal = loan.closingBalance ?? loan.currentBalance;
       const cadBal = bal * fxRate;
       const fxAdj = Math.round((cadBal - bal) * 100) / 100;
+      if (Math.abs(fxAdj) < 0.01) return;
       const desc = `FX Translation Adjustment – ${loan.name} (${loan.currency} @ ${fxRate})`;
       addJE({
         id: `je-fx-${loan.id}-${ts + 2}`,
@@ -2060,13 +2061,16 @@ function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
   const filtered = (filterStatus === "Deleted" ? deletedJes : activeJes.filter(j => filterStatus === "All" || j.status === filterStatus))
     .filter(j => filterLoanId === "All" || j.loanId === filterLoanId);
 
-  // Auto-generate AJEs when a loan is selected and none exist yet, then expand them
+  // Auto-generate AJEs when a loan is selected, purging any zero-amount ones first
   useEffect(() => {
     if (filterLoanId === "All") return;
     const loan = loans.find(l => l.id === filterLoanId);
     if (!loan) return;
-    const hasExisting = activeJes.some(j => j.loanId === filterLoanId);
-    if (hasExisting) return;
+    // Purge existing JEs for this loan that have all-zero lines (bad earlier generates)
+    const zeroJes = activeJes.filter(j => j.loanId === filterLoanId && j.lines.every(l => l.debit === 0 && l.credit === 0));
+    zeroJes.forEach(j => purgeJE(j.id));
+    const validExisting = activeJes.filter(j => j.loanId === filterLoanId && !zeroJes.some(z => z.id === j.id));
+    if (validExisting.length > 0) return;
     generateJEsForLoan(loan);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterLoanId]);
