@@ -1992,34 +1992,36 @@ function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
     const fyYear = fyDate.slice(0, 4);
     const base = { fiscalYear: fyYear, date: fyDate, createdAt: new Date().toISOString(), status: "Draft" as const };
     const ts = Date.now();
+    // Short base-36 suffix for human-readable IDs (e.g. "JE-AI-2025-N3GZJ5")
+    const sfx = ts.toString(36).slice(-6).toUpperCase();
 
     if (loan.accruedInterest > 0) {
-      const desc = `YE Accrued Interest – ${loan.name}${loan.lender ? ` (${loan.lender})` : ""}`;
+      const desc = `Year-end interest accrual – ${loan.name}`;
       addJE({
-        id: `je-ai-${loan.id}-${ts}`,
+        id: `je-ai-${fyYear}-${sfx}`,
         type: "AccruedInterest",
         description: desc,
         notes: desc,
         loanId: loan.id,
         lines: [
-          { id: `l1-ai-${ts}`, account: loan.glInterestExpenseAccount || "7100", description: `YE accrued interest – ${loan.name}`, debit: loan.accruedInterest, credit: 0, loanId: loan.id },
-          { id: `l2-ai-${ts}`, account: loan.glAccruedInterestAccount || "2300", description: `Accrued interest payable – ${loan.name}`, debit: 0, credit: loan.accruedInterest, loanId: loan.id },
+          { id: `l1-ai-${ts}`, account: loan.glInterestExpenseAccount || "7100", description: "Interest expense – year-end accrual", debit: loan.accruedInterest, credit: 0, loanId: loan.id },
+          { id: `l2-ai-${ts}`, account: loan.glAccruedInterestAccount || "2300", description: "Accrued interest payable – year-end", debit: 0, credit: loan.accruedInterest, loanId: loan.id },
         ],
         ...base,
       });
     }
 
     if (loan.currentPortion > 0) {
-      const desc = `Current Portion Reclassification – ${loan.name}`;
+      const desc = `Reclassify current portion of LTD – ${loan.name}`;
       addJE({
-        id: `je-cp-${loan.id}-${ts + 1}`,
+        id: `je-cp-${fyYear}-${(ts + 1).toString(36).slice(-6).toUpperCase()}`,
         type: "CurrentPortionReclass",
         description: desc,
         notes: desc,
         loanId: loan.id,
         lines: [
-          { id: `l1-cp-${ts + 1}`, account: loan.glPrincipalAccount || "2000", description: `Reclassify to current portion – ${loan.name}`, debit: loan.currentPortion, credit: 0, loanId: loan.id },
-          { id: `l2-cp-${ts + 1}`, account: "2100", description: `Current portion of long-term debt – ${loan.name}`, debit: 0, credit: loan.currentPortion, loanId: loan.id },
+          { id: `l1-cp-${ts + 1}`, account: loan.glPrincipalAccount || "2100", description: "Long-term debt – reclassify to current portion", debit: loan.currentPortion, credit: 0, loanId: loan.id },
+          { id: `l2-cp-${ts + 1}`, account: "2101", description: "Current portion of long-term debt", debit: 0, credit: loan.currentPortion, loanId: loan.id },
         ],
         ...base,
       });
@@ -2031,16 +2033,17 @@ function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
       const cadBal = bal * fxRate;
       const fxAdj = Math.round((cadBal - bal) * 100) / 100;
       if (Math.abs(fxAdj) < 0.01) return;
-      const desc = `FX Translation Adjustment – ${loan.name} (${loan.currency} @ ${fxRate})`;
+      const fxDir = fxAdj > 0 ? "gain" : "loss";
+      const desc = `FX translation adjustment – ${loan.name} (${loan.currency} @ ${fxRate})`;
       addJE({
-        id: `je-fx-${loan.id}-${ts + 2}`,
+        id: `je-fx-${fyYear}-${(ts + 2).toString(36).slice(-6).toUpperCase()}`,
         type: "FXTranslation",
         description: desc,
         notes: desc,
         loanId: loan.id,
         lines: [
-          { id: `l1-fx-${ts + 2}`, account: loan.glPrincipalAccount || "2000", description: `FX retranslation – ${loan.name}`, debit: fxAdj > 0 ? fxAdj : 0, credit: fxAdj < 0 ? Math.abs(fxAdj) : 0, loanId: loan.id },
-          { id: `l2-fx-${ts + 2}`, account: "4900", description: `FX gain/loss – ${loan.name}`, debit: fxAdj < 0 ? Math.abs(fxAdj) : 0, credit: fxAdj > 0 ? fxAdj : 0, loanId: loan.id },
+          { id: `l1-fx-${ts + 2}`, account: loan.glPrincipalAccount || "2100", description: `FX retranslation – ${loan.currency} loan payable`, debit: fxAdj > 0 ? fxAdj : 0, credit: fxAdj < 0 ? Math.abs(fxAdj) : 0, loanId: loan.id },
+          { id: `l2-fx-${ts + 2}`, account: "7200", description: `Foreign exchange ${fxDir} on translation`, debit: fxAdj < 0 ? Math.abs(fxAdj) : 0, credit: fxAdj > 0 ? fxAdj : 0, loanId: loan.id },
         ],
         ...base,
       });
