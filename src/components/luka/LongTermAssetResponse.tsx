@@ -596,6 +596,20 @@ function LoansTab({
   const handleGLSave   = (id: string, field: string, code: string) =>
     updateLoan(id, { [field]: code } as Partial<Loan>);
 
+  const autoMapGL = () => {
+    const locCode  = principalAccts.find(a => a.code === "2200")?.code ?? principalAccts[0]?.code ?? "";
+    const usdCode  = principalAccts.find(a => a.code === "2110")?.code ?? principalAccts[0]?.code ?? "";
+    const cadCode  = principalAccts.find(a => a.code === "2100")?.code ?? principalAccts[0]?.code ?? "";
+    loans.forEach(l => {
+      if (l.glPrincipalAccount) return; // already mapped
+      const code = (l.type === "LOC" || l.type === "Revolver") ? locCode
+        : l.currency === "USD" ? usdCode
+        : cadCode;
+      if (code) updateLoan(l.id, { glPrincipalAccount: code });
+    });
+  };
+  const hasUnmappedGL = loans.some(l => !l.glPrincipalAccount);
+
   // Monthly payment: manual override → PMT formula
   const calcMonthlyPmt = (l: Loan): number | null => {
     if (l.monthlyPayment != null && l.monthlyPayment > 0) return l.monthlyPayment;
@@ -867,6 +881,15 @@ function LoansTab({
           )}
           <div className="flex items-center gap-3">
             {loanMode === "view" && <span className="text-[10px] text-muted-foreground">Manage facilities, terms, and GL mappings</span>}
+            {loanMode === "view" && hasUnmappedGL && principalAccts.length > 0 && (
+              <button
+                onClick={autoMapGL}
+                className="inline-flex items-center gap-1 h-6 px-2 rounded-[6px] border border-primary/40 bg-primary/5 hover:bg-primary/10 text-primary text-[10px] font-medium transition-colors whitespace-nowrap"
+                title="Auto-assign GL accounts based on currency and loan type"
+              >
+                Auto-Map GL
+              </button>
+            )}
             <button
               onClick={() => setTableExpanded(v => !v)}
               title={tableExpanded ? "Fit to screen (compact)" : "Expand all columns"}
