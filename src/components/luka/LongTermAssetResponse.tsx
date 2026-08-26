@@ -1988,6 +1988,7 @@ function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
 
   const [expandedJEs,    setExpandedJEs]    = useState<Set<string>>(() => new Set(jes.filter(j => !j.deleted).map(j => j.id)));
   const [filterStatus,   setFilterStatus]   = useState<string>("All");
+  const [filterLoanId,   setFilterLoanId]   = useState<string>("All");
   const [customDescLines, setCustomDescLines] = useState<Set<string>>(new Set());
 
   const activeJes  = jes.filter(j => !j.deleted);
@@ -1996,9 +1997,10 @@ function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
   const approved = activeJes.filter(j => j.status === "Approved").length;
   const posted   = activeJes.filter(j => j.status === "Posted" || j.status === "Exported").length;
 
-  const filtered = filterStatus === "Deleted"
-    ? deletedJes
-    : activeJes.filter(j => filterStatus === "All" || j.status === filterStatus);
+  const loansWithJEs = loans.filter(l => jes.some(j => j.loanId === l.id));
+
+  const filtered = (filterStatus === "Deleted" ? deletedJes : activeJes.filter(j => filterStatus === "All" || j.status === filterStatus))
+    .filter(j => filterLoanId === "All" || j.loanId === filterLoanId);
 
   const totalD = (je: JEProposal) => je.lines.reduce((s, l) => s + l.debit,  0);
   const totalC = (je: JEProposal) => je.lines.reduce((s, l) => s + l.credit, 0);
@@ -2015,23 +2017,43 @@ function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
   return (
     <div className="space-y-3">
 
-      {/* Filter dropdown */}
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] text-muted-foreground shrink-0">View:</span>
-        <div className="relative">
-          <select
-            value={filterStatus}
-            onChange={e => setFilterStatus(e.target.value)}
-            className="h-7 pl-2.5 pr-7 text-[11px] font-medium border border-border rounded-[7px] bg-background text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 hover:border-primary/40 transition-colors"
-          >
-            <option value="All">All ({activeJes.length})</option>
-            <option value="Draft">Draft ({draft})</option>
-            <option value="Posted">Posted ({posted})</option>
-            <option value="Exported">Exported</option>
-            <option value="Deleted">Deleted ({deletedJes.length})</option>
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+      {/* Filter row */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-muted-foreground shrink-0">View:</span>
+          <div className="relative">
+            <select
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+              className="h-7 pl-2.5 pr-7 text-[11px] font-medium border border-border rounded-[7px] bg-background text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 hover:border-primary/40 transition-colors"
+            >
+              <option value="All">All ({activeJes.length})</option>
+              <option value="Draft">Draft ({draft})</option>
+              <option value="Posted">Posted ({posted})</option>
+              <option value="Exported">Exported</option>
+              <option value="Deleted">Deleted ({deletedJes.length})</option>
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+          </div>
         </div>
+        {loansWithJEs.length > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-muted-foreground shrink-0">Loan:</span>
+            <div className="relative">
+              <select
+                value={filterLoanId}
+                onChange={e => setFilterLoanId(e.target.value)}
+                className="h-7 pl-2.5 pr-7 text-[11px] font-medium border border-border rounded-[7px] bg-background text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40 hover:border-primary/40 transition-colors max-w-[180px]"
+              >
+                <option value="All">All loans</option>
+                {loansWithJEs.map(l => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* JE list */}
