@@ -374,6 +374,7 @@ function calcMaturityLadder(
       result[Math.min(Math.floor((i - 1) / 12), 6)] += principal;
       bal -= principal;
     }
+    if (bal > 0.01) result[6] += bal; // capture any balloon remainder
   }
   return result.map(Math.round) as [number, number, number, number, number, number, number];
 }
