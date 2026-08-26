@@ -2607,17 +2607,17 @@ export function LukaNoteSidePanel() {
                       <tr style={{ borderTop: "1px solid hsl(220 20% 80%)" }}>
                         <td className="py-2 px-2 text-[13px] font-semibold" style={{ color: "hsl(222 35% 20%)" }}></td>
                         <td className="py-2 px-2 text-right tabular-nums text-[13px] font-semibold" style={{ color: "hsl(222 35% 20%)" }}>{fmtCents(totalCY)}</td>
-                        <td className="py-2 px-2 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 15% 55%)" }}>—</td>
+                        <td className="py-2 px-2 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 15% 55%)" }}>{fmtCents(0)}</td>
                       </tr>
                       <tr>
                         <td className="py-1.5 px-2 text-[13px]" style={{ color: "hsl(222 15% 45%)", fontStyle: "italic" }}>Less: current portion</td>
                         <td className="py-1.5 px-2 text-right tabular-nums text-[13px]" style={{ color: "hsl(0 70% 45%)" }}>{fmtParenCents(totalCurr)}</td>
-                        <td className="py-1.5 px-2 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 15% 55%)" }}>—</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 15% 55%)" }}>{fmtCents(0)}</td>
                       </tr>
                       <tr style={{ borderTop: "2px solid hsl(222 35% 20%)" }}>
                         <td className="py-2 px-2 text-[13px] font-bold" style={{ color: "hsl(222 35% 14%)" }}>Total long-term debt</td>
                         <td className="py-2 px-2 text-right tabular-nums text-[13px] font-bold" style={{ color: "hsl(222 35% 14%)" }}>{fmtCents(totalCY - totalCurr)}</td>
-                        <td className="py-2 px-2 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 15% 55%)" }}>—</td>
+                        <td className="py-2 px-2 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 15% 55%)" }}>{fmtCents(0)}</td>
                       </tr>
                     </tfoot>
                   </table>
