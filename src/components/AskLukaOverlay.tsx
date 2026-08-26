@@ -1242,6 +1242,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [ltPriorFile,       setLtPriorFile]      = useState<{id: string; name: string}|null>(null);
   const [ltPriorExtracting, setLtPriorExtracting]= useState(false);
   const [ltPriorRows,       setLtPriorRows]      = useState<LtDebtReviewRow[]>([]);
+  const [ltPriorDocYearEnd, setLtPriorDocYearEnd]= useState<string>("");
   // ── Add-more-loans turn ──
   const [addMoreLoansActive,  setAddMoreLoansActive]  = useState(false);
   const [addMoreLtFiles,      setAddMoreLtFiles]      = useState<LtDebtFile[]>([]);
@@ -3082,6 +3083,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 2", lender: "RBC Royal Bank", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-31", maturityDate: "2032-09-30", firstPaymentDate: "", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "First charge over real property and improvements", status: "Active", glPrincipal: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
                                           ];
                                           setLtPriorRows(rows);
+                                          setLtPriorDocYearEnd("2025-09-30");
                                           setLtPriorExtracting(false);
                                         }, 1400);
                                       };
@@ -3241,7 +3243,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   const rows = ltPriorRows;
                                                   const parseNum = (s: string) => parseFloat((s || "0").replace(/,/g, "")) || 0;
                                                   const rowById = Object.fromEntries(rows.map(r => [`loan-luka-${r.id}`, r]));
-                                                  const [fyY, fyM, fyD] = (settings.fiscalYearEnd || "2025-09-30").split("-").map(Number);
+                                                  const fyDateStr = ltPriorDocYearEnd || settings.fiscalYearEnd || "2025-09-30";
+                                                  const [fyY, fyM, fyD] = fyDateStr.split("-").map(Number);
                                                   const fyEnd = new Date(fyY, fyM - 1, fyD);
                                                   setLtDebtSrcLabel(`${rows.length} loan${rows.length !== 1 ? "s" : ""} from prior-year debt schedule`);
                                                   setLtReviewRows(rows);
