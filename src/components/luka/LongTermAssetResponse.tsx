@@ -2061,24 +2061,22 @@ function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
   const filtered = (filterStatus === "Deleted" ? deletedJes : activeJes.filter(j => filterStatus === "All" || j.status === filterStatus))
     .filter(j => filterLoanId === "All" || j.loanId === filterLoanId);
 
-  // Auto-generate AJEs when a loan is selected, purging any zero-amount ones first
+  // Auto-generate AJEs when a loan is selected (or for all loans when "All" is chosen)
   useEffect(() => {
-    if (filterLoanId === "All") return;
-    const loan = loans.find(l => l.id === filterLoanId);
-    if (!loan) return;
-    // Purge existing JEs for this loan that have all-zero lines (bad earlier generates)
-    const zeroJes = activeJes.filter(j => j.loanId === filterLoanId && j.lines.every(l => l.debit === 0 && l.credit === 0));
-    zeroJes.forEach(j => purgeJE(j.id));
-    const validExisting = activeJes.filter(j => j.loanId === filterLoanId && !zeroJes.some(z => z.id === j.id));
-    if (validExisting.length > 0) return;
-    generateJEsForLoan(loan);
+    const targetLoans = filterLoanId === "All" ? loans : loans.filter(l => l.id === filterLoanId);
+    targetLoans.forEach(loan => {
+      const zeroJes = activeJes.filter(j => j.loanId === loan.id && j.lines.every(l => l.debit === 0 && l.credit === 0));
+      zeroJes.forEach(j => purgeJE(j.id));
+      const validExisting = activeJes.filter(j => j.loanId === loan.id && !zeroJes.some(z => z.id === j.id));
+      if (validExisting.length === 0) generateJEsForLoan(loan);
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterLoanId]);
 
-  // Expand newly generated JEs for the selected loan
+  // Expand newly generated JEs for the selected loan(s)
   useEffect(() => {
-    if (filterLoanId === "All") return;
-    const newIds = activeJes.filter(j => j.loanId === filterLoanId).map(j => j.id);
+    const targetLoanIds = filterLoanId === "All" ? loans.map(l => l.id) : [filterLoanId];
+    const newIds = activeJes.filter(j => j.loanId && targetLoanIds.includes(j.loanId)).map(j => j.id);
     if (newIds.length > 0) setExpandedJEs(prev => { const n = new Set(prev); newIds.forEach(id => n.add(id)); return n; });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jes.length, filterLoanId]);
