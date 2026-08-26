@@ -98,6 +98,8 @@ const fmt = (n: number) =>
 
 const fmtNum = (n: number) =>
   n === 0 ? "00" : n.toLocaleString("en-CA", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+const fmtCents = (n: number) =>
+  n === 0 ? "00.00" : n.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const fmtParen = (n: number) => n === 0 ? "00" : `(${fmtNum(n)})`;
 
@@ -376,7 +378,7 @@ function calcMaturityLadder(
     }
     if (bal > 0.01) result[6] += bal; // capture any balloon remainder
   }
-  return result.map(Math.round) as [number, number, number, number, number, number, number];
+  return result as [number, number, number, number, number, number, number];
 }
 
 // ─── Per-tab components ───────────────────────────────────────────────────────
@@ -1349,7 +1351,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
     const loanPeriod = contRow?.period ?? docPeriod;
     const fx = toCAD(1, loan.currency);
     const nativeLadder = calcMaturityLadder(loan, closingNative, loanPeriod, loan.monthlyPayment);
-    const ladder = nativeLadder.map(v => Math.round(v * fx)) as [number,number,number,number,number,number,number];
+    const ladder = nativeLadder.map(v => v * fx) as [number,number,number,number,number,number,number];
     return { loan, ladder };
   }), [loans, latestRows, docPeriod]);
 
@@ -1486,14 +1488,14 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                         </td>
                         {/* yr+2 … Thereafter = ladder[1..6] */}
                         {ladder.slice(1).map((v, j) => (
-                          <td key={j} className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{v > 0 ? fmtNum(v) : "00"}</td>
+                          <td key={j} className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{v > 0 ? fmtCents(v) : "00.00"}</td>
                         ))}
                         {/* Current: ladder[0] */}
-                        <td className="px-3 py-1.5 text-right tabular-nums text-primary font-medium">{ladder[0] > 0 ? fmtNum(ladder[0]) : "00"}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums text-primary font-medium">{ladder[0] > 0 ? fmtCents(ladder[0]) : "00.00"}</td>
                         {/* Long-Term */}
-                        <td className="px-3 py-1.5 text-right tabular-nums font-medium">{longTerm > 0 ? fmtNum(longTerm) : "00"}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums font-medium">{longTerm > 0 ? fmtCents(longTerm) : "00.00"}</td>
                         {/* Total */}
-                        <td className="px-3 py-1.5 text-right tabular-nums font-semibold">{fmtNum(total)}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums font-semibold">{fmtCents(total)}</td>
                       </tr>
                     );
                   })}
@@ -1502,11 +1504,11 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                   <tr className="bg-muted/30 border-t border-border font-semibold">
                     <td className="px-3 py-2" />
                     {bsTotals.slice(1).map((v, i) => (
-                      <td key={i} className="px-3 py-2 text-right tabular-nums text-[11px] text-muted-foreground">{v > 0 ? fmtNum(v) : "00"}</td>
+                      <td key={i} className="px-3 py-2 text-right tabular-nums text-[11px] text-muted-foreground">{v > 0 ? fmtCents(v) : "00.00"}</td>
                     ))}
-                    <td className="px-3 py-2 text-right tabular-nums text-[11px] text-primary">{bsTotals[0] > 0 ? fmtNum(bsTotals[0]) : "00"}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-[11px]">{bsTotals.slice(1).reduce((s,v)=>s+v,0) > 0 ? fmtNum(bsTotals.slice(1).reduce((s,v)=>s+v,0)) : "00"}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">{fmtNum(bsTotals.reduce((s,v)=>s+v,0))}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-[11px] text-primary">{bsTotals[0] > 0 ? fmtCents(bsTotals[0]) : "00.00"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-[11px]">{bsTotals.slice(1).reduce((s,v)=>s+v,0) > 0 ? fmtCents(bsTotals.slice(1).reduce((s,v)=>s+v,0)) : "00.00"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">{fmtCents(bsTotals.reduce((s,v)=>s+v,0))}</td>
                   </tr>
                 </tfoot>
               </table>
