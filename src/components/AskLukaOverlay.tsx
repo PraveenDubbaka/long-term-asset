@@ -1352,6 +1352,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const addAmortRowToStore = useStore(s => s.addAmortRow);
   const addContinuityRowToStore = useStore(s => s.addContinuityRow);
   const addJEToStore = useStore(s => s.addJE);
+  const updateSettingsInStore = useStore(s => s.updateSettings);
 
   // ── Autopilot state ──
   const [autopilotLoanId, setAutopilotLoanId] = useState<string | null>(null);
@@ -3309,6 +3310,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     return { ...loan, rows: amortRows, totalInterest: finalInterest, totalPrincipal: finalPrincipal, closingBal: finalClosingBal, curPortion, ltPortion, accruedInt };
                                                   });
                                                   setLoansInStore(computedLoans.map(l => ({ ...l, closingBalance: l.closingBal, currentPortion: Math.round(l.curPortion*100)/100, longTermPortion: Math.round(l.ltPortion*100)/100, accruedInterest: Math.round(l.accruedInt*100)/100 })));
+                                                  updateSettingsInStore({ fiscalYearEnd: fyDateStr });
                                                   computedLoans.forEach(loan => { loan.rows.forEach(r => { addAmortRowToStore({ id: `ar-${loan.id}-${r.d.toISOString().slice(0,7)}`, loanId: loan.id, periodDate: r.d.toISOString().slice(0,10), openingBalance: r.end+r.prin, interest: r.int, payment: loan.monthlyPayment??0, principal: r.prin, endingBalance: r.end }); }); });
                                                   const fyLabel = `FY${fyEnd.getFullYear()}`; const fyPeriod = `${fyEnd.getFullYear()}-${String(fyEnd.getMonth()+1).padStart(2,"0")}`;
                                                   computedLoans.forEach(loan => { addContinuityRowToStore({ id: `cr-${loan.id}-${fyLabel}`, loanId: loan.id, period: fyPeriod, openingBalance: parseNum(rowById[loan.id]?.openingBalance ?? "0"), newBorrowings: loan.originalPrincipal, repayments: Math.round((loan.totalPrincipal+loan.totalInterest)*100)/100, principalRepayments: Math.round(loan.totalPrincipal*100)/100, interestRepayments: Math.round(loan.totalInterest*100)/100, fxTranslation: 0, closingBalance: Math.round(loan.closingBal*100)/100, currentPortion: Math.round(loan.curPortion*100)/100, longTermPortion: Math.round(loan.ltPortion*100)/100, accruedInterest: Math.round(loan.accruedInt*100)/100 }); });
@@ -3777,6 +3779,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       longTermPortion: Math.round(l.ltPortion * 100) / 100,
                                                       accruedInterest: Math.round(l.accruedInt * 100) / 100,
                                                     })));
+                                                    updateSettingsInStore({ fiscalYearEnd: fyEnd.toISOString().slice(0, 10) });
 
                                                     // Populate amortization rows
                                                     computedLoans.forEach(loan => {
