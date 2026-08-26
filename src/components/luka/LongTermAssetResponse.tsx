@@ -2422,46 +2422,31 @@ function NotesTabPanel({ loans, amortization, continuity, reconciliation, settin
   const repayBuckets = useMemo(() => {
     const fyDate = yearEnd ? new Date(yearEnd.slice(0,10) + "T00:00:00") : new Date();
     const yr = fyDate.getFullYear();
-    const fyMonth = fyDate.getMonth(); // 0-based
-    const fyDay   = fyDate.getDate();
+    const fyPeriod = yearEnd ? yearEnd.slice(0, 7) : `${yr}-12`;
     const b: Record<string, number> = {};
     for (let i = 1; i <= 5; i++) b[String(yr + i)] = 0;
     b["thereafter"] = 0;
 
-    // For each amortization row after FY end, sum principal into fiscal-year buckets
+    // Use calcMaturityLadder so the schedule always projects from closing balance,
+    // regardless of how many historical amortization rows are in the store.
     loans.forEach(l => {
-      const loanAmort = amortization.filter(r => r.loanId === l.id);
-      loanAmort.forEach(r => {
-        const d = new Date(r.periodDate.slice(0,10) + "T00:00:00");
-        if (d <= fyDate) return; // only rows after fiscal year end
-        // Determine which fiscal year this payment falls into
-        // A fiscal year ending mm/dd has payments from (prev_yr+1 mm/dd+1) to (yr mm/dd)
-        // Find the fiscal year end that this date falls before
-        let bucketFYEnd = yr + 1;
-        for (let i = 1; i <= 5; i++) {
-          const fe = new Date(yr + i, fyMonth, fyDay);
-          if (d <= fe) { bucketFYEnd = yr + i; break; }
-          if (i === 5) bucketFYEnd = yr + 6; // thereafter
-        }
-        const key = bucketFYEnd > yr + 5 ? "thereafter" : String(bucketFYEnd);
-        b[key] = (b[key] ?? 0) + toCAD(r.principal, l.currency);
-      });
+      if (l.type === "LOC" || l.type === "Revolver") return;
+      const closingNative = l.closingBalance ?? l.currentBalance;
+      if (closingNative <= 0) return;
+      const ladder = calcMaturityLadder(l, closingNative, fyPeriod, l.monthlyPayment);
+      // ladder[0] = next 12 months → yr+1, ladder[1] → yr+2, ..., ladder[4] → yr+5
+      // ladder[5] + ladder[6] = thereafter
+      for (let i = 0; i <= 4; i++) {
+        const col = String(yr + i + 1);
+        b[col] = (b[col] ?? 0) + toCAD(ladder[i] ?? 0, l.currency);
+      }
+      b["thereafter"] = (b["thereafter"] ?? 0) + toCAD((ladder[5] ?? 0) + (ladder[6] ?? 0), l.currency);
     });
-
-    // Fallback to maturity-date bucketing if no amortization rows present
-    if (amortization.length === 0) {
-      loans.filter(l => l.type !== "LOC" && l.type !== "Revolver").forEach(l => {
-        const matYear = l.maturityDate ? new Date(l.maturityDate + "T00:00:00").getFullYear() : null;
-        if (!matYear) return;
-        const key = matYear > yr + 5 ? "thereafter" : String(matYear);
-        b[key] = (b[key] ?? 0) + toCAD(l.closingBalance ?? l.currentBalance, l.currency);
-      });
-    }
 
     const cols = [...Array(5).keys()].map(i => String(yr + i + 1));
     const total = cols.reduce((s, y) => s + (b[y] || 0), 0) + (b["thereafter"] || 0);
     return { b, cols, total, yr };
-  }, [loans, amortization, yearEnd]);
+  }, [loans, yearEnd]);
 
   const rows = useMemo(() => loans.map(loan => {
     const closing = toCAD(loan.closingBalance ?? loan.currentBalance, loan.currency);
@@ -2568,7 +2553,7 @@ function NotesTabPanel({ loans, amortization, continuity, reconciliation, settin
       <div className="rounded-[8px] border border-border overflow-hidden">
         <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
           <span className="text-sm font-semibold text-foreground">Principal Repayment Schedule — Next Five Fiscal Years</span>
-          <span className="text-[10px] text-muted-foreground">{amortization.length > 0 ? "Derived from amortization engine" : "Derived from maturity dates in loan register"}</span>
+          <span className="text-[10px] text-muted-foreground">Derived from amortization engine</span>
         </div>
         <div className="w-full overflow-x-auto">
           <table className="w-full text-[11px]">
