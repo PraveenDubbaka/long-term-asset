@@ -8,7 +8,7 @@ import {
   Building2, FileText, BookOpen, Receipt, Layers, FileCheck, Send, TrendingUp,
   Download, Copy, RotateCcw, X, Trash2, Search, Check, Pencil, Folder,
   Upload, Loader2, Maximize2, Minimize2, SlidersHorizontal, Save, FolderOpen, Eye,
-  Clock, FilePlus, PenLine, GitCommit, Lock as LockIcon,
+  Clock, FilePlus, PenLine, GitCommit, Lock as LockIcon, Sparkles,
 } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/wp-ui/tooltip";
 import { COVENANT_TEMPLATES, GL_ACCOUNTS, GL_CATEGORY_ORDER, GL_CATEGORY_LABELS } from "@/lib/covenantTemplates";
@@ -1981,10 +1981,64 @@ const AJE_TYPE_LABEL: Record<string, string> = {
 };
 
 function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
-  const { advanceJEStatus, deleteJE, restoreJE, purgeJE, updateJE } = useStore(s => ({
+  const { advanceJEStatus, deleteJE, restoreJE, purgeJE, updateJE, addJE, settings } = useStore(s => ({
     advanceJEStatus: s.advanceJEStatus, deleteJE: s.deleteJE,
     restoreJE: s.restoreJE, purgeJE: s.purgeJE, updateJE: s.updateJE,
+    addJE: s.addJE, settings: s.settings,
   }));
+
+  const generateJEsForLoan = (loan: Loan) => {
+    const fyDate = settings.fiscalYearEnd;
+    const fyYear = fyDate.slice(0, 4);
+    const base = { fiscalYear: fyYear, date: fyDate, createdAt: new Date().toISOString(), status: "Draft" as const };
+    const ts = Date.now();
+
+    if (loan.accruedInterest > 0) {
+      addJE({
+        id: `je-ai-${loan.id}-${ts}`,
+        type: "AccruedInterest",
+        description: `YE Accrued Interest – ${loan.name}${loan.lender ? ` (${loan.lender})` : ""}`,
+        loanId: loan.id,
+        lines: [
+          { id: `l1-ai-${ts}`, account: loan.glInterestExpenseAccount || "7100", description: `YE accrued interest – ${loan.name}`, debit: loan.accruedInterest, credit: 0, loanId: loan.id },
+          { id: `l2-ai-${ts}`, account: loan.glAccruedInterestAccount || "2300", description: `Accrued interest payable – ${loan.name}`, debit: 0, credit: loan.accruedInterest, loanId: loan.id },
+        ],
+        ...base,
+      });
+    }
+
+    if (loan.currentPortion > 0) {
+      addJE({
+        id: `je-cp-${loan.id}-${ts + 1}`,
+        type: "CurrentPortionReclass",
+        description: `Current Portion Reclassification – ${loan.name}`,
+        loanId: loan.id,
+        lines: [
+          { id: `l1-cp-${ts + 1}`, account: loan.glPrincipalAccount || "2000", description: `Reclassify to current portion – ${loan.name}`, debit: loan.currentPortion, credit: 0, loanId: loan.id },
+          { id: `l2-cp-${ts + 1}`, account: "2100", description: `Current portion of long-term debt – ${loan.name}`, debit: 0, credit: loan.currentPortion, loanId: loan.id },
+        ],
+        ...base,
+      });
+    }
+
+    if (loan.currency !== settings.baseCurrency) {
+      const fxRate = loan.fxRateToCAD ?? 1;
+      const bal = loan.closingBalance ?? loan.currentBalance;
+      const cadBal = bal * fxRate;
+      const fxAdj = Math.round((cadBal - bal) * 100) / 100;
+      addJE({
+        id: `je-fx-${loan.id}-${ts + 2}`,
+        type: "FXTranslation",
+        description: `FX Translation Adjustment – ${loan.name} (${loan.currency} @ ${fxRate})`,
+        loanId: loan.id,
+        lines: [
+          { id: `l1-fx-${ts + 2}`, account: loan.glPrincipalAccount || "2000", description: `FX retranslation – ${loan.name}`, debit: fxAdj > 0 ? fxAdj : 0, credit: fxAdj < 0 ? Math.abs(fxAdj) : 0, loanId: loan.id },
+          { id: `l2-fx-${ts + 2}`, account: "4900", description: `FX gain/loss – ${loan.name}`, debit: fxAdj < 0 ? Math.abs(fxAdj) : 0, credit: fxAdj > 0 ? fxAdj : 0, loanId: loan.id },
+        ],
+        ...base,
+      });
+    }
+  };
 
   const [expandedJEs,    setExpandedJEs]    = useState<Set<string>>(() => new Set(jes.filter(j => !j.deleted).map(j => j.id)));
   const [filterStatus,   setFilterStatus]   = useState<string>("All");
@@ -2212,7 +2266,22 @@ function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
           );
         })}
         {filtered.length === 0 && (
-          <p className="text-center py-8 text-[11px] text-muted-foreground">No journal entries match the filter</p>
+          (() => {
+            const selectedLoan = filterLoanId !== "All" ? loans.find(l => l.id === filterLoanId) : null;
+            return selectedLoan ? (
+              <div className="flex flex-col items-center gap-3 py-8">
+                <p className="text-[11px] text-muted-foreground">No AJEs found for <span className="font-medium text-foreground">{selectedLoan.name}</span></p>
+                <button
+                  onClick={() => { generateJEsForLoan(selectedLoan); setExpandedJEs(new Set()); }}
+                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[12px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                >
+                  <Sparkles className="h-3.5 w-3.5" /> Generate AJEs for {selectedLoan.name}
+                </button>
+              </div>
+            ) : (
+              <p className="text-center py-8 text-[11px] text-muted-foreground">No journal entries match the filter</p>
+            );
+          })()
         )}
       </div>
     </div>
