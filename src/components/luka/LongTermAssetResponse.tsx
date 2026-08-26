@@ -2604,7 +2604,7 @@ function NotesTabPanel({ loans, amortization, continuity, reconciliation, settin
 
 // ─── Main component ───────────────────────────────────────────────────────────
 const TABS = [
-  { id: "loans",        label: "Loans",        Icon: Building2  },
+  { id: "loans",        label: "Transactions",  Icon: Building2  },
   { id: "continuity",   label: "Continuity",   Icon: Layers     },
   { id: "amortization", label: "Amortization", Icon: BarChart2  },
   // { id: "covenants", label: "Covenants", Icon: ShieldCheck }, // hidden — removed from scope (2026-05-26)
