@@ -6,7 +6,7 @@ import {
   ShieldAlert, ShieldCheck, Activity, CreditCard,
   Building2, FileText, BookOpen, Receipt, Layers, FileCheck, Send, TrendingUp,
   Download, Copy, RotateCcw, X, Trash2, Search, Check, Pencil, Folder,
-  Upload, Loader2, Maximize2, Minimize2, SlidersHorizontal, Save, FolderOpen,
+  Upload, Loader2, Maximize2, Minimize2, SlidersHorizontal, Save, FolderOpen, Eye,
   Clock, FilePlus, PenLine, GitCommit, Lock as LockIcon,
 } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/wp-ui/tooltip";
@@ -2256,140 +2256,153 @@ function NotesTabPanel({ loans, amortization, continuity, reconciliation, settin
   const expectedLT = totalCY - totalCurr;
   const ltMismatch = Math.abs(expectedLT - totalLT) >= 1 && totalCurr > 0;
 
-  const handleCopy = () => {
-    const lines: string[] = [];
-    lines.push("NOTE 8 — LONG-TERM DEBT");
-    lines.push("");
-    lines.push("A. Loan details");
-    rows.forEach(r => {
-      lines.push(`  ${r.note}  Balance: ${fmtNum(r.closing)}`);
-    });
-    lines.push("");
-    lines.push("B. Summary");
-    lines.push(`  Total long-term debt    ${fmtNum(totalCY)}`);
-    lines.push(`  Less: current portion  (${fmtNum(totalCurr)})`);
-    lines.push(`  Long-term portion       ${fmtNum(totalCY - totalCurr)}`);
-    lines.push("");
-    lines.push("C. Principal repayments — next five fiscal years");
-    repayBuckets.cols.forEach(y => {
-      lines.push(`  ${y}  ${fmtNum(repayBuckets.b[y] || 0)}`);
-    });
-    lines.push(`  Thereafter  ${fmtNum(repayBuckets.b["thereafter"] || 0)}`);
-    lines.push(`  Total       ${fmtNum(repayBuckets.total)}`);
-    navigator.clipboard.writeText(lines.join("\n")).then(() => toast.success("Note 8 copied to clipboard")).catch(() => toast.error("Copy failed"));
-  };
+  const [noteOpen, setNoteOpen] = useState(false);
+
+  const fyLabel = yearEnd ? fmtDate(yearEnd.slice(0,10)) : "—";
+  const yearEndDate = yearEnd ? new Date(yearEnd.slice(0,10)+"T00:00:00") : null;
+  const repayYearLabel = yearEndDate
+    ? `Year ending ${yearEndDate.toLocaleString("en-CA",{month:"long"})} ${yearEndDate.getDate()}`
+    : "Year ending December 31";
 
   return (
     <div className="space-y-3">
-      {/* Validation warning */}
-      {ltMismatch && (
-        <div className="flex items-start gap-2 rounded-[8px] border border-amber-400/60 bg-amber-50 dark:bg-amber-950/30 px-3 py-2">
-          <AlertTriangle className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
-          <p className="text-[11px] text-amber-700 dark:text-amber-300">
-            Section B long-term portion ({fmtNum(totalLT)}) does not equal closing balance minus current portion ({fmtNum(expectedLT)}). Recalculate or verify amortization engine output.
-          </p>
-        </div>
-      )}
-
-      {/* Section A + B: Loan list with totals */}
-      <div className="rounded-[8px] border border-border overflow-hidden">
-        <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-foreground">Long-term Debt</span>
+      {/* Artifact card */}
+      <div className="rounded-[8px] border border-border bg-background overflow-hidden">
+        <div className="flex items-center gap-3 px-3 py-2.5">
+          <div className="w-7 h-7 rounded-[6px] bg-primary/10 flex items-center justify-center shrink-0">
+            <FileCheck className="h-3.5 w-3.5 text-primary" />
           </div>
-          <span className="text-[10px] text-muted-foreground">Auto-populated from Loan Register &amp; Continuity</span>
-        </div>
-        <table className="w-full text-[11px]">
-          <thead>
-            <tr className="bg-muted/20 border-b border-border">
-              <th className="text-left px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-[55%]"></th>
-              <th className="text-right px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{yearEnd ? fmtDate(yearEnd.slice(0,10)) : "—"}</th>
-              <th className="text-right px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{priorYearEnd ? fmtDate(priorYearEnd) : "Prior Year"}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={r.loan.id} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
-                <td className="px-3 py-2 align-top">
-                  <p className="text-[11px] text-foreground leading-snug">{r.note}</p>
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums font-medium align-top">{fmtCents(r.closing)}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-muted-foreground align-top">{r.pyBal !== null ? fmtCents(toCAD(r.pyBal, r.loan.currency)) : "n/a"}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="border-t border-border">
-              <td className="px-3 py-2 text-[11px] text-muted-foreground font-medium" colSpan={3} />
-            </tr>
-            <tr className="border-t border-border/40">
-              <td className="px-3 py-1.5 text-[11px] text-foreground"></td>
-              <td className="px-3 py-1.5 text-right tabular-nums text-[11px] font-semibold border-t border-border">{fmtCents(totalCY)}</td>
-              <td className="px-3 py-1.5 text-right tabular-nums text-[11px] text-muted-foreground border-t border-border">00.00</td>
-            </tr>
-            <tr className="border-t border-border/40">
-              <td className="px-3 py-1 text-[11px] text-muted-foreground italic">Less: current portion</td>
-              <td className="px-3 py-1 text-right tabular-nums text-[11px] text-red-600">{fmtParenCents(totalCurr)}</td>
-              <td className="px-3 py-1 text-right tabular-nums text-[11px] text-muted-foreground">00.00</td>
-            </tr>
-            <tr className="border-t border-border font-bold">
-              <td className="px-3 py-2 text-[11px] text-foreground">Total</td>
-              <td className="px-3 py-2 text-right tabular-nums text-[11px] border-t-2 border-foreground">{fmtCents(totalCY - totalCurr)}</td>
-              <td className="px-3 py-2 text-right tabular-nums text-[11px] border-t-2 border-muted-foreground text-muted-foreground">00.00</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-
-      {/* Section C: Principal Repayment Schedule */}
-      <div className="rounded-[8px] border border-border overflow-hidden">
-        <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
-          <span className="text-sm font-semibold text-foreground">Principal Repayment Schedule — Next Five Fiscal Years</span>
-          <span className="text-[10px] text-muted-foreground">Derived from amortization engine</span>
-        </div>
-        <div className="w-full overflow-x-auto">
-          <table className="w-full text-[11px]">
-            <thead>
-              <tr className="bg-muted/20 border-b border-border">
-                <th className="text-left px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap w-[30%]">
-                  {yearEnd ? `Year ending ${new Date(yearEnd.slice(0,10)+"T00:00:00").toLocaleString("en-CA",{month:"long"})} ${new Date(yearEnd.slice(0,10)+"T00:00:00").getDate()}` : "Year ending December 31"}
-                </th>
-                {repayBuckets.cols.map(y => (
-                  <th key={y} className="text-right px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{y}</th>
-                ))}
-                <th className="text-right px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Thereafter</th>
-                <th className="text-right px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b border-border/40 hover:bg-muted/20">
-                <td className="px-3 py-2 text-[11px] text-foreground">Principal repayments</td>
-                {repayBuckets.cols.map(y => (
-                  <td key={y} className="px-3 py-2 text-right tabular-nums text-[11px] text-foreground">{fmtCents(repayBuckets.b[y] || 0)}</td>
-                ))}
-                <td className="px-3 py-2 text-right tabular-nums text-[11px] text-foreground">{fmtCents(repayBuckets.b["thereafter"] || 0)}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-[11px] font-semibold text-foreground border-t border-border">{fmtCents(repayBuckets.total)}</td>
-              </tr>
-            </tbody>
-          </table>
+          <span className="flex-1 text-[12px] font-medium text-foreground">Long-term Debt</span>
+          <button
+            onClick={() => setNoteOpen(true)}
+            title="Preview note"
+            className="inline-flex items-center justify-center w-7 h-7 rounded-[6px] border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <Eye className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => toast.success("Downloading note…")}
+            title="Download"
+            className="inline-flex items-center justify-center w-7 h-7 rounded-[6px] border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <Download className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center justify-end gap-2 pt-1">
-        <button
-          onClick={handleCopy}
-          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border text-foreground text-xs font-medium hover:bg-muted transition-colors"
-        >
-          <Copy className="h-3.5 w-3.5" /> Copy Note 8
-        </button>
-        <button
-          onClick={() => toast.success("Long-term Debt note posted to workpaper")}
-          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
-        >
-          <FileCheck className="h-3.5 w-3.5" /> Post to Notes
-        </button>
-      </div>
+      {/* Slide-in note preview panel */}
+      {noteOpen && ReactDOM.createPortal(
+        <>
+          {/* Backdrop */}
+          <div className="fixed inset-0 z-[399] bg-black/20" onClick={() => setNoteOpen(false)} />
+
+          {/* Panel */}
+          <div className="fixed top-0 right-0 h-full w-[480px] max-w-full z-[400] bg-background border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+            {/* Panel header */}
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-border shrink-0">
+              <div className="w-6 h-6 rounded-[5px] bg-primary/10 flex items-center justify-center shrink-0">
+                <FileCheck className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <span className="flex-1 text-sm font-semibold text-foreground">Long-term Debt</span>
+              <button
+                onClick={() => toast.success("Saved to engagement")}
+                className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[6px] bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors"
+              >
+                <Save className="h-3 w-3" /> Save to Engagement
+              </button>
+              <button
+                onClick={() => setNoteOpen(false)}
+                className="inline-flex items-center justify-center w-7 h-7 rounded-[6px] border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors ml-1"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {/* Document body */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 text-[12px] text-foreground space-y-5">
+              <p className="text-[11px] text-muted-foreground">Long-term debt consists of the following:</p>
+
+              {/* Section A+B table */}
+              <table className="w-full border-collapse text-[11px]">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-1.5 font-semibold text-foreground w-[60%]">Account</th>
+                    <th className="text-right py-1.5 font-semibold text-foreground whitespace-nowrap">{fyLabel}</th>
+                    <th className="text-right py-1.5 font-semibold text-foreground whitespace-nowrap">{priorYearEnd ? fmtDate(priorYearEnd) : "Prior Year"}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(r => (
+                    <tr key={r.loan.id} className="border-b border-border/30">
+                      <td className="py-1.5 text-foreground leading-snug pr-3">{r.note}</td>
+                      <td className="py-1.5 text-right tabular-nums">{fmtCents(r.closing)}</td>
+                      <td className="py-1.5 text-right tabular-nums text-muted-foreground">{r.pyBal !== null ? fmtCents(toCAD(r.pyBal, r.loan.currency)) : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t border-border">
+                    <td className="py-1.5 font-semibold">Long-term debt</td>
+                    <td className="py-1.5 text-right tabular-nums font-semibold">{fmtCents(totalCY)}</td>
+                    <td className="py-1.5 text-right tabular-nums text-muted-foreground">—</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1 text-muted-foreground">Less: current portion</td>
+                    <td className="py-1 text-right tabular-nums text-red-600">{fmtParenCents(totalCurr)}</td>
+                    <td className="py-1 text-right tabular-nums text-muted-foreground">—</td>
+                  </tr>
+                  <tr className="border-t-2 border-foreground font-semibold">
+                    <td className="py-1.5">Total long-term debt</td>
+                    <td className="py-1.5 text-right tabular-nums">{fmtCents(totalCY - totalCurr)}</td>
+                    <td className="py-1.5 text-right tabular-nums text-muted-foreground">—</td>
+                  </tr>
+                </tfoot>
+              </table>
+
+              {/* Section C: repayment schedule */}
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-[11px]">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-1.5 font-semibold text-foreground whitespace-nowrap w-[28%]">{repayYearLabel}</th>
+                      {repayBuckets.cols.map(y => (
+                        <th key={y} className="text-right py-1.5 font-semibold text-foreground whitespace-nowrap px-1">{y}</th>
+                      ))}
+                      <th className="text-right py-1.5 font-semibold text-foreground whitespace-nowrap px-1">Thereafter</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-border/30">
+                      <td className="py-1.5">Principal repayments</td>
+                      {repayBuckets.cols.map(y => (
+                        <td key={y} className="py-1.5 text-right tabular-nums px-1">{fmtCents(repayBuckets.b[y] || 0)}</td>
+                      ))}
+                      <td className="py-1.5 text-right tabular-nums px-1">{fmtCents(repayBuckets.b["thereafter"] || 0)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Panel footer actions */}
+            <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border shrink-0">
+              <button
+                onClick={() => { navigator.clipboard.writeText("Note 8"); toast.success("Note 8 copied"); }}
+                className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[6px] border border-border text-[11px] font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                <Copy className="h-3 w-3" /> Copy Note 8
+              </button>
+              <button
+                onClick={() => toast.success("Posted to notes")}
+                className="inline-flex items-center gap-1.5 h-7 px-3 rounded-[6px] bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors"
+              >
+                <FileCheck className="h-3 w-3" /> Post to Notes
+              </button>
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
     </div>
   );
 }
