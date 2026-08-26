@@ -1714,7 +1714,7 @@ function AmortizationTabPanel({ loans, amortization }: { loans: Loan[]; amortiza
         <select
           value={selectedLoanId}
           onChange={e => { setSelectedLoanId(e.target.value); setShowAll(false); }}
-          className="flex-1 h-8 text-[11px] px-2 border border-border rounded-[8px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+          className="w-auto h-8 text-[11px] px-2 border border-border rounded-[8px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
         >
           {loans.map(l => <option key={l.id} value={l.id}>{l.name} ({l.currency})</option>)}
         </select>
