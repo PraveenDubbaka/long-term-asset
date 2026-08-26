@@ -2162,7 +2162,6 @@ function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
               {/* Expanded body */}
               {isExpanded && (
                 <div className="border-t border-border">
-                  <p className="px-3 pt-2 pb-1 text-[11px] font-medium text-foreground">{je.description}</p>
 
                   {/* Lines table */}
                   <table className="w-full text-[11px] border-collapse">
