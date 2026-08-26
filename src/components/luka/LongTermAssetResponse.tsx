@@ -1410,11 +1410,6 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
   return (
     <div className="space-y-3">
 
-      {/* View selector dropdown */}
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">View:</span>
-        <span className="text-[11px] font-medium text-foreground">Roll-Forward</span>
-      </div>
 
       {/* ── Roll-Forward view ── */}
       {contView === "rollforward" && (
