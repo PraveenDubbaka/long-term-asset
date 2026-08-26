@@ -2054,6 +2054,25 @@ function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
   const filtered = (filterStatus === "Deleted" ? deletedJes : activeJes.filter(j => filterStatus === "All" || j.status === filterStatus))
     .filter(j => filterLoanId === "All" || j.loanId === filterLoanId);
 
+  // Auto-generate AJEs when a loan is selected and none exist yet, then expand them
+  useEffect(() => {
+    if (filterLoanId === "All") return;
+    const loan = loans.find(l => l.id === filterLoanId);
+    if (!loan) return;
+    const hasExisting = activeJes.some(j => j.loanId === filterLoanId);
+    if (hasExisting) return;
+    generateJEsForLoan(loan);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterLoanId]);
+
+  // Expand newly generated JEs for the selected loan
+  useEffect(() => {
+    if (filterLoanId === "All") return;
+    const newIds = activeJes.filter(j => j.loanId === filterLoanId).map(j => j.id);
+    if (newIds.length > 0) setExpandedJEs(prev => { const n = new Set(prev); newIds.forEach(id => n.add(id)); return n; });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jes.length, filterLoanId]);
+
   const totalD = (je: JEProposal) => je.lines.reduce((s, l) => s + l.debit,  0);
   const totalC = (je: JEProposal) => je.lines.reduce((s, l) => s + l.credit, 0);
 
@@ -2266,22 +2285,7 @@ function AJEsTabPanel({ jes, loans }: { jes: JEProposal[]; loans: Loan[] }) {
           );
         })}
         {filtered.length === 0 && (
-          (() => {
-            const selectedLoan = filterLoanId !== "All" ? loans.find(l => l.id === filterLoanId) : null;
-            return selectedLoan ? (
-              <div className="flex flex-col items-center gap-3 py-8">
-                <p className="text-[11px] text-muted-foreground">No AJEs found for <span className="font-medium text-foreground">{selectedLoan.name}</span></p>
-                <button
-                  onClick={() => { generateJEsForLoan(selectedLoan); setExpandedJEs(new Set()); }}
-                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[12px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                >
-                  <Sparkles className="h-3.5 w-3.5" /> Generate AJEs for {selectedLoan.name}
-                </button>
-              </div>
-            ) : (
-              <p className="text-center py-8 text-[11px] text-muted-foreground">No journal entries match the filter</p>
-            );
-          })()
+          <p className="text-center py-8 text-[11px] text-muted-foreground">No journal entries match the filter</p>
         )}
       </div>
     </div>
