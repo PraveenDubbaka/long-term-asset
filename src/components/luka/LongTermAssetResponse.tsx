@@ -2464,7 +2464,7 @@ export function LukaNoteSidePanel() {
                     </tbody>
                     <tfoot>
                       <tr style={{ borderTop: "1px solid hsl(220 20% 80%)" }}>
-                        <td className="py-2 text-[13px] font-semibold" style={{ color: "hsl(222 35% 20%)" }}>Long-term debt</td>
+                        <td className="py-2 text-[13px] font-semibold" style={{ color: "hsl(222 35% 20%)" }}></td>
                         <td className="py-2 text-right tabular-nums text-[13px] font-semibold" style={{ color: "hsl(222 35% 20%)" }}>{fmtCents(totalCY)}</td>
                         <td className="py-2 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 15% 55%)" }}>—</td>
                       </tr>
