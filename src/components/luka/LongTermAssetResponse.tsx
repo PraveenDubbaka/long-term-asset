@@ -102,6 +102,7 @@ const fmtCents = (n: number) =>
   n === 0 ? "00.00" : n.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const fmtParen = (n: number) => n === 0 ? "00" : `(${fmtNum(n)})`;
+const fmtParenCents = (n: number) => n === 0 ? "00.00" : `(${fmtCents(n)})`;
 
 const fmtDate = (d: string) => {
   if (!d) return "—";
@@ -1047,8 +1048,8 @@ function LoansTab({
                             isGlobalEdit ? mergedDraft : editDraft,
                             isGlobalEdit ? batchSetter : (k, v) => setEditDraft(p => ({ ...p, [k]: v }))
                           )}
-                          {!hid.has("Current Portion") && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground text-[11px]">{l.currentPortion > 0 ? fmt(toCAD(l.currentPortion, l.currency)) : "—"}</td>}
-                          {!hid.has("Long-Term Portion") && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground text-[11px]">{l.longTermPortion > 0 ? fmt(toCAD(l.longTermPortion, l.currency)) : "—"}</td>}
+                          {!hid.has("Current Portion") && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground text-[11px]">{l.currentPortion > 0 ? fmtCents(toCAD(l.currentPortion, l.currency)) : "—"}</td>}
+                          {!hid.has("Long-Term Portion") && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground text-[11px]">{l.longTermPortion > 0 ? fmtCents(toCAD(l.longTermPortion, l.currency)) : "—"}</td>}
                           {!hid.has("GL Diff") && (() => {
                             if (l.glBalance === undefined || l.glBalance === null) return (
                               <td className="px-2.5 py-1.5 text-right text-muted-foreground text-[11px]">$—</td>
@@ -1108,7 +1109,7 @@ function LoansTab({
                           {!hid.has("Mo. Payment") && (
                             <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap">
                               {pmtCAD !== null
-                                ? <span className="font-mono text-foreground">{fmt(pmtCAD)}{!l.monthlyPayment && <span className="text-muted-foreground text-[9px] ml-0.5" title="Auto-calculated">~</span>}</span>
+                                ? <span className="font-mono text-foreground">{fmtCents(pmtCAD)}{!l.monthlyPayment && <span className="text-muted-foreground text-[9px] ml-0.5" title="Auto-calculated">~</span>}</span>
                                 : <span className="text-muted-foreground">00</span>}
                             </td>
                           )}
@@ -1136,13 +1137,13 @@ function LoansTab({
                           {!hid.has("Interest-Only Period (Mo.)")  && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{l.interestOnlyPeriodMonths ?? "00"}</td>}
                           {!hid.has("Balloon Amt")      && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{l.balloonAmount ? fmt(l.balloonAmount) : "00"}</td>}
                           {!hid.has("Status")           && <td className="px-2.5 py-1.5 text-right"><StatusBadge status={l.status} /></td>}
-                          {!hid.has("Current Portion") && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{l.currentPortion > 0 ? fmt(toCAD(l.currentPortion, l.currency)) : "00"}</td>}
+                          {!hid.has("Current Portion") && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{l.currentPortion > 0 ? fmtCents(toCAD(l.currentPortion, l.currency)) : "00.00"}</td>}
                           {!hid.has("Long-Term Portion") && (() => {
                             const closing = l.closingBalance ?? l.currentBalance;
                             const sanityOk = Math.abs(closing - l.currentPortion - l.longTermPortion) < 1;
                             return (
                               <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap">
-                                <span className="text-foreground">{l.longTermPortion > 0 ? fmt(toCAD(l.longTermPortion, l.currency)) : "00"}</span>
+                                <span className="text-foreground">{l.longTermPortion > 0 ? fmtCents(toCAD(l.longTermPortion, l.currency)) : "00.00"}</span>
                                 {!sanityOk && l.currentPortion > 0 && (
                                   <Tooltip>
                                     <TooltipTrigger asChild>
@@ -1207,8 +1208,8 @@ function LoansTab({
                   if (h === "Orig. Loan Amt") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+l.originalPrincipal,0))}</td>;
                   if (h === "Converted Amt")  return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+l.originalPrincipal*getFxRate(l),0))}</td>;
                   if (h === "Closing Balance") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmtCents(loans.reduce((s,l)=>s+toCAD(l.closingBalance??l.currentBalance,l.currency),0))}</td>;
-                  if (h === "Current Portion") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+toCAD(l.currentPortion,l.currency),0))}</td>;
-                  if (h === "Long-Term Portion") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+toCAD(l.longTermPortion,l.currency),0))}</td>;
+                  if (h === "Current Portion") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmtCents(loans.reduce((s,l)=>s+toCAD(l.currentPortion,l.currency),0))}</td>;
+                  if (h === "Long-Term Portion") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmtCents(loans.reduce((s,l)=>s+toCAD(l.longTermPortion,l.currency),0))}</td>;
                   if (h === "GL Diff") {
                     const withGL = loans.filter(l => l.glBalance !== undefined);
                     if (withGL.length === 0) return <td key={h} className="px-2.5 py-2 text-right text-muted-foreground text-[11px]">$—</td>;
@@ -1435,12 +1436,12 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                           <p className="font-medium text-foreground">{loan.name}</p>
                           <p className="text-[10px] text-muted-foreground">{loan.lender} · {loan.currency}</p>
                         </td>
-                        <td className="px-2.5 py-1.5 text-right tabular-nums">{fmtNum(row.openingBalance * fx)}</td>
-                        <td className="px-2.5 py-1.5 text-right tabular-nums text-green-700">{row.newBorrowings > 0 ? fmtNum(row.newBorrowings * fx) : "00"}</td>
-                        <td className="px-2.5 py-1.5 text-right tabular-nums text-red-600">{prin > 0 ? fmtParen(prin * fx) : "00"}</td>
-                        <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{int > 0 ? fmtParen(int * fx) : "00"}</td>
-                        <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{row.fxTranslation !== 0 ? fmtParen(Math.abs(row.fxTranslation * fx)) : "00"}</td>
-                        <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold">{fmtNum(row.closingBalance * fx)}</td>
+                        <td className="px-2.5 py-1.5 text-right tabular-nums">{fmtCents(row.openingBalance * fx)}</td>
+                        <td className="px-2.5 py-1.5 text-right tabular-nums text-green-700">{row.newBorrowings > 0 ? fmtCents(row.newBorrowings * fx) : "00.00"}</td>
+                        <td className="px-2.5 py-1.5 text-right tabular-nums text-red-600">{prin > 0 ? fmtParenCents(prin * fx) : "00.00"}</td>
+                        <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{int > 0 ? fmtParenCents(int * fx) : "00.00"}</td>
+                        <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{row.fxTranslation !== 0 ? fmtParenCents(Math.abs(row.fxTranslation * fx)) : "00.00"}</td>
+                        <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold">{fmtCents(row.closingBalance * fx)}</td>
                       </tr>
                     );
                   })}
@@ -1448,12 +1449,12 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                 <tfoot>
                   <tr className="bg-muted/30 border-t border-border font-semibold">
                     <td className="px-2.5 py-2" />
-                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmtNum(rfTotals.opening)}</td>
-                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-green-700">{rfTotals.borrows > 0 ? fmtNum(rfTotals.borrows) : "00"}</td>
-                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-red-600">{rfTotals.principal > 0 ? fmtParen(rfTotals.principal) : "00"}</td>
-                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-muted-foreground">{rfTotals.interest > 0 ? fmtParen(rfTotals.interest) : "00"}</td>
-                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-muted-foreground">00</td>
-                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmtNum(rfTotals.closing)}</td>
+                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmtCents(rfTotals.opening)}</td>
+                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-green-700">{rfTotals.borrows > 0 ? fmtCents(rfTotals.borrows) : "00.00"}</td>
+                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-red-600">{rfTotals.principal > 0 ? fmtParenCents(rfTotals.principal) : "00.00"}</td>
+                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-muted-foreground">{rfTotals.interest > 0 ? fmtParenCents(rfTotals.interest) : "00.00"}</td>
+                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-muted-foreground">00.00</td>
+                    <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmtCents(rfTotals.closing)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -1545,9 +1546,9 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                         <p className="text-[10px] text-muted-foreground">{loan.lender} · {loan.currency}</p>
                       </td>
                       {ladder.map((v, j) => (
-                        <td key={j} className="px-3 py-1.5 text-right tabular-nums text-foreground">{v > 0 ? fmtNum(v) : "00"}</td>
+                        <td key={j} className="px-3 py-1.5 text-right tabular-nums text-foreground">{v > 0 ? fmtCents(v) : "00.00"}</td>
                       ))}
-                      <td className="px-3 py-1.5 text-right tabular-nums font-semibold text-foreground">{fmtNum(total)}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums font-semibold text-foreground">{fmtCents(total)}</td>
                     </tr>
                   );
                 })}
@@ -1556,9 +1557,9 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                 <tr className="bg-muted/30 border-t border-border font-semibold">
                   <td className="px-3 py-2" />
                   {repayColTotals.map((v, i) => (
-                    <td key={i} className="px-3 py-2 text-right tabular-nums text-[11px]">{v > 0 ? fmtNum(v) : "00"}</td>
+                    <td key={i} className="px-3 py-2 text-right tabular-nums text-[11px]">{v > 0 ? fmtCents(v) : "00.00"}</td>
                   ))}
-                  <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">{fmtNum(repayGrandTotal)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-[11px] font-bold">{fmtCents(repayGrandTotal)}</td>
                 </tr>
               </tfoot>
             </table>
@@ -1626,12 +1627,12 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                       </td>
                       {cy.map((v, i) => (
                         <td key={`cy-${i}`} className={`px-2.5 py-1.5 text-right tabular-nums ${v === null ? "text-muted-foreground/40" : "text-foreground"} ${i === 0 ? "border-l border-border/40" : ""}`}>
-                          {v === null ? "—" : v !== 0 ? fmtNum(Math.abs(v)) : "00"}
+                          {v === null ? "—" : v !== 0 ? fmtCents(Math.abs(v)) : "00.00"}
                         </td>
                       ))}
                       {py.map((v, i) => (
                         <td key={`py-${i}`} className={`px-2.5 py-1.5 text-right tabular-nums ${v === null ? "text-muted-foreground/40" : "text-muted-foreground"} ${i === 0 ? "border-l border-border/40" : ""}`}>
-                          {v === null ? "—" : v !== 0 ? fmtNum(Math.abs(v)) : "00"}
+                          {v === null ? "—" : v !== 0 ? fmtCents(Math.abs(v)) : "00.00"}
                         </td>
                       ))}
                     </tr>
@@ -1641,10 +1642,10 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                   <tr className="bg-muted/30 border-t border-border font-semibold">
                     <td className="px-3 py-2 text-[11px] text-muted-foreground">Total</td>
                     {cyTotals.map((v, i) => (
-                      <td key={`cyt-${i}`} className={`px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground ${i === 0 ? "border-l border-border/40" : ""}`}>{v > 0 ? fmtNum(v) : "00"}</td>
+                      <td key={`cyt-${i}`} className={`px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground ${i === 0 ? "border-l border-border/40" : ""}`}>{v > 0 ? fmtCents(v) : "00.00"}</td>
                     ))}
                     {pyTotals.map((v, i) => (
-                      <td key={`pyt-${i}`} className={`px-2.5 py-2 text-right tabular-nums text-[11px] text-muted-foreground ${i === 0 ? "border-l border-border/40" : ""}`}>{v > 0 ? fmtNum(v) : "00"}</td>
+                      <td key={`pyt-${i}`} className={`px-2.5 py-2 text-right tabular-nums text-[11px] text-muted-foreground ${i === 0 ? "border-l border-border/40" : ""}`}>{v > 0 ? fmtCents(v) : "00.00"}</td>
                     ))}
                   </tr>
                 </tfoot>
@@ -1724,11 +1725,11 @@ function AmortizationTabPanel({ loans, amortization }: { loans: Loan[]; amortiza
             {displayRows.map((r,i) => (
               <tr key={r.id} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
                 <td className="px-2.5 py-1.5 text-muted-foreground">{r.periodDate}</td>
-                <td className="px-2.5 py-1.5 text-right tabular-nums">{fmtNum(r.openingBalance)}</td>
-                <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{fmtNum(r.interest)}</td>
-                <td className="px-2.5 py-1.5 text-right tabular-nums text-primary">{fmtNum(r.principal)}</td>
-                <td className="px-2.5 py-1.5 text-right tabular-nums font-medium">{fmtNum(r.payment)}</td>
-                <td className="px-2.5 py-1.5 text-right tabular-nums">{fmtNum(r.endingBalance)}</td>
+                <td className="px-2.5 py-1.5 text-right tabular-nums">{fmtCents(r.openingBalance)}</td>
+                <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{fmtCents(r.interest)}</td>
+                <td className="px-2.5 py-1.5 text-right tabular-nums text-primary">{fmtCents(r.principal)}</td>
+                <td className="px-2.5 py-1.5 text-right tabular-nums font-medium">{fmtCents(r.payment)}</td>
+                <td className="px-2.5 py-1.5 text-right tabular-nums">{fmtCents(r.endingBalance)}</td>
               </tr>
             ))}
           </tbody>
@@ -1736,9 +1737,9 @@ function AmortizationTabPanel({ loans, amortization }: { loans: Loan[]; amortiza
             <tr className="bg-muted/20 border-t border-border font-semibold">
               <td className="px-2.5 py-2 text-[11px] text-foreground">Schedule Total</td>
               <td />
-              <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-muted-foreground">{fmtNum(totalInterest)}</td>
-              <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-primary">{fmtNum(totalPrincipal)}</td>
-              <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmtNum(totalPayment)}</td>
+              <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-muted-foreground">{fmtCents(totalInterest)}</td>
+              <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-primary">{fmtCents(totalPrincipal)}</td>
+              <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmtCents(totalPayment)}</td>
               <td />
             </tr>
           </tfoot>
@@ -2504,8 +2505,8 @@ function NotesTabPanel({ loans, amortization, continuity, reconciliation, settin
                 <td className="px-3 py-2 align-top">
                   <p className="text-[11px] text-foreground leading-snug">{r.note}</p>
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums font-medium align-top">{fmtNum(r.closing)}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-muted-foreground align-top">{r.pyBal !== null ? fmtNum(toCAD(r.pyBal, r.loan.currency)) : "n/a"}</td>
+                <td className="px-3 py-2 text-right tabular-nums font-medium align-top">{fmtCents(r.closing)}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-muted-foreground align-top">{r.pyBal !== null ? fmtCents(toCAD(r.pyBal, r.loan.currency)) : "n/a"}</td>
               </tr>
             ))}
           </tbody>
@@ -2515,18 +2516,18 @@ function NotesTabPanel({ loans, amortization, continuity, reconciliation, settin
             </tr>
             <tr className="border-t border-border/40">
               <td className="px-3 py-1.5 text-[11px] text-foreground"></td>
-              <td className="px-3 py-1.5 text-right tabular-nums text-[11px] font-semibold border-t border-border">{fmtNum(totalCY)}</td>
-              <td className="px-3 py-1.5 text-right tabular-nums text-[11px] text-muted-foreground border-t border-border">00</td>
+              <td className="px-3 py-1.5 text-right tabular-nums text-[11px] font-semibold border-t border-border">{fmtCents(totalCY)}</td>
+              <td className="px-3 py-1.5 text-right tabular-nums text-[11px] text-muted-foreground border-t border-border">00.00</td>
             </tr>
             <tr className="border-t border-border/40">
               <td className="px-3 py-1 text-[11px] text-muted-foreground italic">Less: current portion</td>
-              <td className="px-3 py-1 text-right tabular-nums text-[11px] text-red-600">{fmtParen(totalCurr)}</td>
-              <td className="px-3 py-1 text-right tabular-nums text-[11px] text-muted-foreground">00</td>
+              <td className="px-3 py-1 text-right tabular-nums text-[11px] text-red-600">{fmtParenCents(totalCurr)}</td>
+              <td className="px-3 py-1 text-right tabular-nums text-[11px] text-muted-foreground">00.00</td>
             </tr>
             <tr className="border-t border-border font-bold">
               <td className="px-3 py-2 text-[11px] text-foreground">Total</td>
-              <td className="px-3 py-2 text-right tabular-nums text-[11px] border-t-2 border-foreground">{fmtNum(totalCY - totalCurr)}</td>
-              <td className="px-3 py-2 text-right tabular-nums text-[11px] border-t-2 border-muted-foreground text-muted-foreground">00</td>
+              <td className="px-3 py-2 text-right tabular-nums text-[11px] border-t-2 border-foreground">{fmtCents(totalCY - totalCurr)}</td>
+              <td className="px-3 py-2 text-right tabular-nums text-[11px] border-t-2 border-muted-foreground text-muted-foreground">00.00</td>
             </tr>
           </tfoot>
         </table>
@@ -2556,10 +2557,10 @@ function NotesTabPanel({ loans, amortization, continuity, reconciliation, settin
               <tr className="border-b border-border/40 hover:bg-muted/20">
                 <td className="px-3 py-2 text-[11px] text-foreground">Principal repayments</td>
                 {repayBuckets.cols.map(y => (
-                  <td key={y} className="px-3 py-2 text-right tabular-nums text-[11px] text-foreground">{fmtNum(repayBuckets.b[y] || 0)}</td>
+                  <td key={y} className="px-3 py-2 text-right tabular-nums text-[11px] text-foreground">{fmtCents(repayBuckets.b[y] || 0)}</td>
                 ))}
-                <td className="px-3 py-2 text-right tabular-nums text-[11px] text-foreground">{fmtNum(repayBuckets.b["thereafter"] || 0)}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-[11px] font-semibold text-foreground border-t border-border">{fmtNum(repayBuckets.total)}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-[11px] text-foreground">{fmtCents(repayBuckets.b["thereafter"] || 0)}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-[11px] font-semibold text-foreground border-t border-border">{fmtCents(repayBuckets.total)}</td>
               </tr>
             </tbody>
           </table>
