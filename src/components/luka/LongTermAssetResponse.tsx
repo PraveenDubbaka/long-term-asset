@@ -2298,6 +2298,27 @@ export function LukaNoteSidePanel() {
   const open          = useStore(s => s.ui.lukaNotePanelOpen);
   const setOpen       = useStore(s => s.setLukaNotePanelOpen);
 
+  const [panelWidth, setPanelWidth] = useState(() => Math.max(400, Math.floor(window.innerWidth * 0.5)));
+  const [isDragging, setIsDragging] = useState(false);
+
+  const onDragStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = panelWidth;
+    setIsDragging(true);
+    const onMove = (ev: MouseEvent) => {
+      const delta = startX - ev.clientX;
+      setPanelWidth(Math.max(320, Math.min(1000, startW + delta)));
+    };
+    const onUp = () => {
+      setIsDragging(false);
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  };
+
   const yearEnd    = settings.fiscalYearEnd;
   const priorYearEnd = yearEnd
     ? (() => { const d = new Date(yearEnd.slice(0,10) + "T00:00:00"); d.setFullYear(d.getFullYear() - 1); return d.toISOString().slice(0,10); })()
@@ -2358,26 +2379,43 @@ export function LukaNoteSidePanel() {
       {open && (
         <motion.aside
           key="lt-debt-note-panel"
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 540, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={{
+          initial={{ width: 0, opacity: 0 }}
+          animate={{ width: panelWidth, opacity: 1 }}
+          exit={{ width: 0, opacity: 0 }}
+          transition={isDragging
+            ? { duration: 0 }
+            : {
                 width: { type: "spring", stiffness: 260, damping: 30, mass: 0.9 },
                 opacity: { duration: 0.22, ease: [0.22, 1, 0.36, 1] },
-              }}
-              className="shrink-0 h-full flex flex-col overflow-hidden"
-              style={{
-                background: "hsl(0 0% 100%)",
-                borderLeft: "1px solid hsl(220 20% 90%)",
-                maxWidth: 540,
-                contain: "layout paint size",
-                willChange: "width",
-              }}
+              }
+          }
+          className="shrink-0 h-full flex flex-col overflow-hidden relative"
+          style={{
+            background: "hsl(0 0% 100%)",
+            borderLeft: "1px solid hsl(220 20% 90%)",
+            willChange: "width",
+          }}
+        >
+          {/* Drag handle */}
+          <div
+            onMouseDown={onDragStart}
+            className="absolute left-0 top-0 h-full z-20 flex items-center justify-center"
+            style={{ width: 8, cursor: "col-resize" }}
+          >
+            <div
+              className="h-12 rounded-full flex flex-col items-center justify-center gap-[3px]"
+              style={{ width: 4, background: "hsl(220 20% 85%)" }}
             >
-              <div
-                className="h-full flex flex-col overflow-hidden relative"
-                style={{ width: 540, minWidth: 540, maxWidth: 540, flexShrink: 0 }}
-              >
+              {[0,1,2].map(i => (
+                <div key={i} style={{ width: 2, height: 2, borderRadius: "50%", background: "hsl(220 20% 60%)" }} />
+              ))}
+            </div>
+          </div>
+
+          <div
+            className="h-full flex flex-col overflow-hidden relative"
+            style={{ width: "100%", flexShrink: 0, paddingLeft: 8 }}
+          >
                 {/* Header — matches NotesPreviewPanel */}
                 <div
                   className="shrink-0 flex items-center gap-3 px-5 py-4"
