@@ -883,7 +883,19 @@ function LoansTab({
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
                 <Pencil className="h-2.5 w-2.5" /> Editing
               </span>
-              <span className="text-[10px] text-muted-foreground">All rows editable — submit changes with Submit &amp; Rerun</span>
+              <button
+                onClick={() => { setAddingNew(true); }}
+                disabled={addingNew}
+                className="inline-flex items-center gap-1 h-6 px-2 rounded-[6px] border border-border bg-background hover:bg-muted text-[10px] font-medium text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Plus className="h-3 w-3" /> Add Row
+              </button>
+              <button
+                onClick={() => { setLoanMode("add"); setPendingLoans([]); }}
+                className="inline-flex items-center gap-1 h-6 px-2 rounded-[6px] border border-border bg-background hover:bg-muted text-[10px] font-medium text-foreground transition-colors"
+              >
+                <Upload className="h-3 w-3" /> Import
+              </button>
             </div>
           ) : (
             <span className="text-sm font-semibold text-foreground">Loan Register</span>
@@ -1046,8 +1058,8 @@ function LoansTab({
                 </>;
 
                 return <>
-                  {/* ── New inline row (view mode only) ── */}
-                  {loanMode === "view" && addingNew && (
+                  {/* ── New inline row ── */}
+                  {addingNew && (
                     <tr className="border-b border-primary/30 bg-primary/[0.04]">
                       {newRowCells(newRowDraft, (k, v) => setNewRowDraft(p => ({ ...p, [k]: v })))}
                       <td className="px-2 py-1 sticky right-0 z-10 bg-background border-l border-border">
@@ -2853,39 +2865,20 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
             );
           })}
         </div>
-        {/* Schedule / Edit / Add button group */}
-        <div className="shrink-0 ml-3 mb-px flex items-center gap-0 rounded-[8px] border border-border bg-muted/40 p-0.5">
-          <button
-            disabled={loanMode !== "view"}
-            className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] transition-all ${
-              loanMode === "view"
-                ? "font-semibold bg-background text-foreground shadow-sm border border-border/60"
-                : "font-medium text-muted-foreground/40 cursor-not-allowed"
-            }`}
-          >
-            <BarChart2 className="w-3 h-3" /> Schedule
-          </button>
-          <button
-            onClick={() => { setLoanMode("edit"); setActiveTab("loans"); setBatchEdits({}); }}
-            className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] transition-all ${
-              loanMode === "edit"
-                ? "font-semibold bg-background text-primary shadow-sm border border-primary/30"
-                : "font-medium text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Pencil className="w-3 h-3" /> Edit
-          </button>
-          <button
-            onClick={() => { setLoanMode("add"); setActiveTab("loans"); setPendingLoans([]); }}
-            className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] text-[11px] transition-all ${
-              loanMode === "add"
-                ? "font-semibold bg-background text-primary shadow-sm border border-primary/30"
-                : "font-medium text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Plus className="w-3 h-3" /> Add
-          </button>
-        </div>
+        {/* Edit toggle button */}
+        <button
+          onClick={() => {
+            if (loanMode === "edit") { discardMode(); }
+            else { setLoanMode("edit"); setActiveTab("loans"); setBatchEdits({}); }
+          }}
+          className={`shrink-0 ml-3 mb-px inline-flex items-center gap-1.5 h-6 px-2.5 rounded-[6px] border text-[11px] transition-all ${
+            loanMode === "edit"
+              ? "font-semibold bg-primary/10 text-primary border-primary/30"
+              : "font-medium text-muted-foreground border-border bg-muted/40 hover:text-foreground hover:bg-muted"
+          }`}
+        >
+          <Pencil className="w-3 h-3" /> Edit
+        </button>
       </div>
 
       {/* Tab content — shimmer overlay while re-running */}
