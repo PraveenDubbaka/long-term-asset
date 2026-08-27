@@ -3352,9 +3352,24 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               </table>
                                             </div>
                                           )}
-                                          {ltPriorRows.length > 0 && (
-                                            <div className="flex items-center justify-end pt-1">
+                                          {ltPriorRows.length > 0 && (() => {
+                                            const ltPriorAllValid = ltPriorRows.every(r =>
+                                              r.name?.trim() && r.lender?.trim() && r.interestType &&
+                                              r.rate?.trim() && r.startDate && r.maturityDate &&
+                                              r.originalPrincipal?.trim() &&
+                                              (r.glPrincipal?.trim() || defaultGLPrincipal(r.type || "Term", r.currency || "CAD")) &&
+                                              r.tbLoanAccount && r.tbInterestAccount
+                                            );
+                                            return (
+                                            <div className="flex items-center justify-end gap-3 pt-1">
+                                              {!ltPriorAllValid && (
+                                                <span className="text-sm text-red-500 flex items-center gap-1">
+                                                  <AlertCircle className="w-3.5 h-3.5" />
+                                                  Fill in all required fields <span className="text-red-500 font-semibold">*</span> to continue
+                                                </span>
+                                              )}
                                               <button
+                                                disabled={!ltPriorAllValid}
                                                 onClick={() => {
                                                   const rows = ltPriorRows;
                                                   const parseNum = (s: string) => parseFloat((s || "0").replace(/,/g, "")) || 0;
@@ -3434,12 +3449,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   if (totalAccrued > 0.01) addJEToStore({ id: `je-luka-accrual-${Date.now()}`, type: "AccruedInterest", description: "Accrue interest on long-term debt", lines: [{ id: `jel-a1-${Date.now()}`, account: "Interest Expense", description: "Dr — accrued interest", debit: Math.round(totalAccrued*100)/100, credit: 0 }, { id: `jel-a2-${Date.now()}`, account: "Accrued Interest Payable", description: "Cr — accrued interest", debit: 0, credit: Math.round(totalAccrued*100)/100 }], status: "Draft", fiscalYear: fyLabel, preparedBy: "Luka", createdAt: now });
                                                   setLtDebtGenerated(true); setLtDebtPhase("done");
                                                 }}
-                                                className="inline-flex items-center gap-2 h-9 px-5 text-base font-medium rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer transition-colors"
+                                                className={cn("inline-flex items-center gap-2 h-9 px-5 text-base font-medium rounded-[8px] transition-colors", ltPriorAllValid ? "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer" : "bg-muted text-muted-foreground cursor-not-allowed opacity-60")}
                                               >
                                                 Generate Schedule
                                               </button>
                                             </div>
-                                          )}
+                                            );
+                                          })()}
                                         </div>
                                       );
                                     })()}
