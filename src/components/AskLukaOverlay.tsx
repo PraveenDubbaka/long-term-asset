@@ -3127,24 +3127,35 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                           </div>
                                           {ltPriorRows.length > 0 && (
                                             <div className="rounded-[8px] border border-border overflow-x-auto">
-                                              <table className="text-base" style={{ minWidth: "1500px" }}>
+                                              <table className="text-base" style={{ minWidth: "2600px" }}>
                                                 <thead>
                                                   <tr className="bg-muted/30 border-b border-border">
                                                     {[
-                                                      { label: "Loan Name", right: false, hint: "" },
-                                                      { label: "Lender", right: false, hint: "" },
-                                                      { label: "Interest Rate", right: true, hint: "" },
-                                                      { label: "Mo. Payment", right: true, hint: "" },
-                                                      { label: "Start Date", right: false, hint: "mm/dd/yyyy" },
-                                                      { label: "Maturity Date", right: false, hint: "mm/dd/yyyy" },
-                                                      { label: "Current Collateral", right: false, hint: "" },
-                                                      { label: "Opening Balance", right: true, hint: "" },
-                                                      { label: "Additions During Year", right: true, hint: "" },
-                                                      { label: "Closing Balance", right: true, hint: "" },
+                                                      { label: "Loan Name", right: false },
+                                                      { label: "Lender", right: false },
+                                                      { label: "Current Collateral", right: false },
+                                                      { label: "Type", right: false },
+                                                      { label: "Rate Type", right: false },
+                                                      { label: "Int. Rate %", right: true },
+                                                      { label: "Start Date", right: false },
+                                                      { label: "Maturity Date", right: false },
+                                                      { label: "First Payment", right: false },
+                                                      { label: "Currency", right: false },
+                                                      { label: "Mo. Payment", right: true },
+                                                      { label: "Orig. Loan Amt", right: true },
+                                                      { label: "FX Rate", right: true },
+                                                      { label: "Opening Balance", right: true },
+                                                      { label: "GL Principal", right: false },
+                                                      { label: "Day Count", right: false },
+                                                      { label: "Payment Type", right: false },
+                                                      { label: "Freq.", right: false },
+                                                      { label: "Compounding", right: false },
+                                                      { label: "IO Period (Mo.)", right: true },
+                                                      { label: "Balloon Amt", right: true },
+                                                      { label: "Closing Balance", right: true },
                                                     ].map(h => (
                                                       <th key={h.label} className={`px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h.right ? "text-right" : "text-left"}`}>
-                                                        <div>{h.label}</div>
-                                                        {h.hint && <div className="text-[9px] font-normal text-muted-foreground/60 mt-0.5 normal-case tracking-normal">{h.hint}</div>}
+                                                        {h.label}
                                                       </th>
                                                     ))}
                                                   </tr>
@@ -3167,49 +3178,49 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         />
                                                       </td>
                                                     );
-                                                    const isoToMDY = (iso: string) => {
-                                                      if (!iso) return "";
-                                                      const [y, m, d] = iso.split("-");
-                                                      return m && d && y ? `${m}/${d}/${y}` : iso;
-                                                    };
-                                                    const mdyToISO = (val: string) => {
-                                                      const p = val.split("/");
-                                                      if (p.length === 3 && p[2].length === 4) return `${p[2]}-${p[0].padStart(2,"0")}-${p[1].padStart(2,"0")}`;
-                                                      return val;
-                                                    };
-                                                    const dateCell = (field: "startDate" | "maturityDate") => (
-                                                      <td className="px-1.5 py-1 align-top whitespace-nowrap" style={{ minWidth: "130px" }}>
-                                                        <input
-                                                          type="date"
-                                                          value={(r[field] as string) ?? ""}
-                                                          onChange={e => upd(field, e.target.value)}
-                                                          className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none rounded px-1.5 py-0.5 text-base transition-colors"
-                                                        />
+                                                    const inp = (field: keyof LtDebtReviewRow, right = false, w = "w-24", ph = "—") => (
+                                                      <td className={`px-1.5 py-1 ${right ? "text-right" : ""}`}>
+                                                        <input value={(r[field] as string) ?? ""} onChange={e => upd(field, e.target.value)} className={`h-6 text-base px-1.5 border border-border rounded bg-background focus:outline-none ${w} ${right ? "text-right" : ""}`} placeholder={ph} />
                                                       </td>
                                                     );
-                                                    const collateralCell = (
-                                                      <td className="px-1.5 py-1 align-top" style={{ minWidth: "240px" }}>
-                                                        <textarea
-                                                          value={r.collateral ?? ""}
-                                                          onChange={e => upd("collateral", e.target.value)}
-                                                          rows={3}
-                                                          className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none rounded px-1.5 py-0.5 text-base transition-colors resize-none leading-snug"
-                                                          placeholder="—"
-                                                        />
+                                                    const sel = (field: keyof LtDebtReviewRow, opts: string[], w = "w-24") => (
+                                                      <td className="px-1.5 py-1">
+                                                        <select value={(r[field] as string) ?? ""} onChange={e => upd(field, e.target.value)} className={cn(SCR, w)}>
+                                                          {opts.map(o => <option key={o}>{o}</option>)}
+                                                        </select>
+                                                      </td>
+                                                    );
+                                                    const dateCell = (field: keyof LtDebtReviewRow) => (
+                                                      <td className="px-1.5 py-1 whitespace-nowrap" style={{ minWidth: "130px" }}>
+                                                        <input type="date" value={(r[field] as string) ?? ""} onChange={e => upd(field, e.target.value)} className="h-6 text-base px-1.5 border border-border rounded bg-background focus:outline-none w-28" />
                                                       </td>
                                                     );
                                                     return (
                                                       <tr key={r.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
                                                         {cell("name", false, "160px")}
                                                         {cell("lender", false, "140px")}
-                                                        {cell("rate", true, "80px")}
-                                                        {cell("monthlyPayment", true, "100px")}
+                                                        <td className="px-1.5 py-1 align-top" style={{ minWidth: "200px" }}>
+                                                          <textarea value={r.collateral ?? ""} onChange={e => upd("collateral", e.target.value)} rows={2} className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none rounded px-1.5 py-0.5 text-base transition-colors resize-none leading-snug" placeholder="—" />
+                                                        </td>
+                                                        {sel("type", ["Term","LOC","Revolver","Mortgage","Bridge"], "w-20")}
+                                                        {sel("interestType", ["Fixed","Variable","Floating","Hybrid","Step Rate"], "w-24")}
+                                                        {inp("rate", true, "w-16", "%")}
                                                         {dateCell("startDate")}
                                                         {dateCell("maturityDate")}
-                                                        {collateralCell}
-                                                        {cell("openingBalance", true, "110px")}
-                                                        {cell("originalPrincipal", true, "120px")}
-                                                        {cell("currentBalance", true, "110px")}
+                                                        {dateCell("firstPaymentDate")}
+                                                        {sel("currency", ["CAD","USD","EUR","GBP"], "w-14")}
+                                                        {inp("monthlyPayment", true, "w-24")}
+                                                        {inp("originalPrincipal", true, "w-24", "0")}
+                                                        {inp("fxRate", true, "w-16", "1.000")}
+                                                        {inp("openingBalance", true, "w-24", "0")}
+                                                        {inp("glPrincipal", false, "w-20", "2100")}
+                                                        {sel("dayCount", ["ACT/365","ACT/360","30/360"], "w-20")}
+                                                        {sel("paymentType", ["P&I","Interest-only","Balloon"], "w-24")}
+                                                        {sel("paymentFrequency", ["Monthly","Quarterly","Semi-annual","Annual"], "w-24")}
+                                                        {sel("compounding", ["Monthly","Quarterly","Semi-annual","Annual"], "w-24")}
+                                                        {inp("ioPeriod", true, "w-14", "0")}
+                                                        {inp("balloonAmt", true, "w-24", "0")}
+                                                        {inp("currentBalance", true, "w-24", "0")}
                                                       </tr>
                                                     );
                                                   })}
@@ -3221,9 +3232,11 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     const sum = (f: keyof LtDebtReviewRow) => ltPriorRows.reduce((s, r) => s + parse(r[f] as string ?? ""), 0);
                                                     return (
                                                       <tr className="border-t-2 border-border bg-muted/20 font-semibold">
-                                                        <td className="px-2.5 py-1.5 text-base text-muted-foreground" colSpan={7}>Total</td>
-                                                        <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("openingBalance"))}</td>
+                                                        <td className="px-2.5 py-1.5 text-base text-muted-foreground" colSpan={11}>Total</td>
                                                         <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("originalPrincipal"))}</td>
+                                                        <td />
+                                                        <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("openingBalance"))}</td>
+                                                        <td colSpan={7} />
                                                         <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("currentBalance"))}</td>
                                                       </tr>
                                                     );
