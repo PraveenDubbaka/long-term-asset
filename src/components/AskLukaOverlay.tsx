@@ -3217,7 +3217,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       { label: "Orig. Loan Amt *", right: true },
                                                       { label: "FX Rate", right: true },
                                                       { label: "Opening Balance", right: true },
-                                                      { label: "GL Principal", right: false },
+                                                      { label: "GL Principal *", right: false },
                                                       { label: "Trial Balance Acct *", right: false },
                                                       { label: "Interest Account *", right: false },
                                                       { label: "Day Count", right: false },
@@ -3313,7 +3313,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         {inp("fxRate", true, "w-16", "1.000")}
                                                         {inp("openingBalance", true, "w-24", "0")}
                                                         <td className="px-1.5 py-1 align-top">
-                                                          <input value={autoGl} onChange={e => upd("glPrincipal", e.target.value)} className="h-6 text-base px-1.5 border border-border rounded bg-background focus:outline-none w-20" placeholder="2100" />
+                                                          <input value={autoGl} onChange={e => upd("glPrincipal", e.target.value)} className={cn("h-6 text-base px-1.5 border rounded bg-background focus:outline-none w-20", !autoGl.trim() ? "border-red-400 bg-red-50/60" : "border-border")} placeholder="2100" />
                                                         </td>
                                                         <td className="px-1.5 py-1 align-top">
                                                           <TBAccountSelect value={r.tbLoanAccount ?? ""} onChange={v => upd("tbLoanAccount", v)} required />
