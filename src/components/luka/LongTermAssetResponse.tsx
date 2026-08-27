@@ -712,6 +712,13 @@ function LoansTab({
   const glGrandGL  = glGroups.reduce((s,[,g])=>s+g.glBal,0);
   const glBalanced = Math.abs(glGrandGL - glGrandBal) < 1;
 
+  const LOAN_TYPE_LABELS: Record<string, string> = {
+    Term: "Term Loan", LOC: "Line of Credit", Revolver: "Revolver",
+    Mortgage: "Mortgage", Bridge: "Bridge Loan", Demand: "Demand Loan",
+    Construction: "Construction Loan", Mezzanine: "Mezzanine Loan",
+    Subordinated: "Subordinated Debt", Equipment: "Equipment Loan", Custom: "Custom",
+  };
+
   const HEADERS = [
     { h: "Loan Name",          left: true  },
     { h: "Lender",             left: true  },
@@ -1165,7 +1172,7 @@ function LoansTab({
                           {!hid.has("Type") && (
                             <td className="px-2.5 py-1.5 text-right">
                               {l.type
-                                ? <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">{l.type}</span>
+                                ? <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">{LOAN_TYPE_LABELS[l.type] ?? l.type}</span>
                                 : <span className="text-muted-foreground">—</span>}
                             </td>
                           )}
