@@ -448,6 +448,76 @@ function generateMockDetectedLoans(fileNames: string[]): DetectedLoan[] {
   return result;
 }
 
+// ─── Shared TB account data (mirrors AskLukaOverlay) ──────────────────────────
+interface TBAccount { code: string; description: string; final: number; py1: number; py2: number; }
+const MOCK_TB_ACCOUNTS: TBAccount[] = [
+  { code: "2100", description: "Long-Term Debt – CAD",        final: 356_687.18, py1: 400_000.00, py2: 0 },
+  { code: "2101", description: "Current Portion of LTD",      final:  43_312.82, py1:  43_312.82, py2: 0 },
+  { code: "2110", description: "Long-Term Debt – USD",        final:       0,    py1:       0,    py2: 0 },
+  { code: "2200", description: "Line of Credit",              final:       0,    py1:       0,    py2: 0 },
+  { code: "7100", description: "Interest Expense",            final:  30_386.12, py1:  15_193.06, py2: 0 },
+  { code: "7110", description: "Interest Expense – LOC",      final:       0,    py1:       0,    py2: 0 },
+  { code: "7120", description: "Interest Expense – Mortgage", final:       0,    py1:       0,    py2: 0 },
+  { code: "2300", description: "Accrued Interest Payable",    final:       0,    py1:       0,    py2: 0 },
+];
+
+function TBAccountSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => {
+      if (!btnRef.current?.contains(e.target as Node) && !dropRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open]);
+  const selected = MOCK_TB_ACCOUNTS.find(a => a.code === value);
+  const fmt = (n: number) => n === 0 ? "—" : n.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const toggle = () => {
+    if (!open && btnRef.current) setRect(btnRef.current.getBoundingClientRect());
+    setOpen(p => !p);
+  };
+  const dropdown = open && rect ? ReactDOM.createPortal(
+    <div ref={dropRef} className="rounded-[8px] border border-border bg-background shadow-lg overflow-hidden" style={{ position: "fixed", top: rect.bottom + 4, left: rect.left, minWidth: "420px", zIndex: 9999 }}>
+      <table className="w-full text-base">
+        <thead>
+          <tr className="bg-muted/30 border-b border-border">
+            <th className="px-2.5 py-1.5 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Account No.</th>
+            <th className="px-2.5 py-1.5 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Description</th>
+            <th className="px-2.5 py-1.5 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Final</th>
+            <th className="px-2.5 py-1.5 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">PY1</th>
+            <th className="px-2.5 py-1.5 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">PY2</th>
+          </tr>
+        </thead>
+        <tbody>
+          {MOCK_TB_ACCOUNTS.map(a => (
+            <tr key={a.code} onClick={() => { onChange(a.code); setOpen(false); }} className={`border-b border-border/40 cursor-pointer hover:bg-muted/40 transition-colors${a.code === value ? " bg-primary/8" : ""}`}>
+              <td className="px-2.5 py-1.5 text-base font-mono">{a.code}</td>
+              <td className="px-2.5 py-1.5 text-base">{a.description}</td>
+              <td className="px-2.5 py-1.5 text-right tabular-nums text-base">{fmt(a.final)}</td>
+              <td className="px-2.5 py-1.5 text-right tabular-nums text-base">{fmt(a.py1)}</td>
+              <td className="px-2.5 py-1.5 text-right tabular-nums text-base">{fmt(a.py2)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>,
+    document.body
+  ) : null;
+  return (
+    <div className="relative" style={{ minWidth: "180px" }}>
+      <button ref={btnRef} type="button" onClick={toggle} className="h-6 w-full text-left text-base px-1.5 border border-border rounded bg-background hover:border-primary/40 focus:outline-none flex items-center justify-between gap-1">
+        <span className={`truncate${!selected ? " text-muted-foreground" : ""}`}>{selected ? `${selected.code} — ${selected.description}` : "Select account"}</span>
+        <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" />
+      </button>
+      {dropdown}
+    </div>
+  );
+}
+
 function LoansTab({
   loans,
   loanMode,
@@ -1027,9 +1097,9 @@ function LoansTab({
                   {!hid.has("Converted Amt")       && <td className="px-1.5 py-1 text-right text-muted-foreground text-[11px]">—</td>}
                   {!hid.has("Opening Balance")     && <td className="px-1.5 py-1"><input type="number" step="1000" value={draft.currentBalance||""} onChange={e=>setD("currentBalance",parseFloat(e.target.value)||0)} className={IC} placeholder="0" /></td>}
                   {!hid.has("GL Principal")        && <td className="px-1.5 py-1"><GLSelect loanId="new-row" value={draft.glPrincipalAccount??""} options={principalAccts} field="glPrincipalAccount" onSave={(_,__,code)=>setD("glPrincipalAccount",code)} /></td>}
-                  {!hid.has("TB Loan Account")     && <td className="px-1.5 py-1 font-mono text-xs text-foreground">{draft.glPrincipalAccount ?? ""}</td>}
+                  {!hid.has("TB Loan Account")     && <td className="px-1.5 py-1"><TBAccountSelect value={draft.glPrincipalAccount ?? ""} onChange={v => setD("glPrincipalAccount", v)} /></td>}
                   {!hid.has("Interest Account")    && <td className="px-1.5 py-1"><input value={draft.glInterestExpenseAccount??""} onChange={e=>setD("glInterestExpenseAccount",e.target.value)} className={IC} placeholder="e.g. 7100" /></td>}
-                  {!hid.has("TB Interest Account") && <td className="px-1.5 py-1 font-mono text-xs text-foreground">{draft.glInterestExpenseAccount ?? ""}</td>}
+                  {!hid.has("TB Interest Account") && <td className="px-1.5 py-1"><TBAccountSelect value={draft.glInterestExpenseAccount ?? ""} onChange={v => setD("glInterestExpenseAccount", v)} /></td>}
                   {!hid.has("Day Count")           && <td className="px-1.5 py-1"><select value={draft.dayCountBasis??"ACT/365"} onChange={e=>setD("dayCountBasis",e.target.value)} className={ICS}>{["ACT/365","ACT/360","30/360"].map(d=><option key={d}>{d}</option>)}</select></td>}
                   {!hid.has("Payment Type")        && <td className="px-1.5 py-1"><select value={draft.paymentType??"P&I"} onChange={e=>setD("paymentType",e.target.value)} className={ICS}>{["P&I","Interest-only","Balloon"].map(t=><option key={t}>{t}</option>)}</select></td>}
                   {!hid.has("Freq.")               && <td className="px-1.5 py-1"><select value={draft.paymentFrequency??"Monthly"} onChange={e=>setD("paymentFrequency",e.target.value)} className={ICS}>{["Monthly","Quarterly","Semi-annual","Annual"].map(f=><option key={f}>{f}</option>)}</select></td>}
@@ -1149,9 +1219,9 @@ function LoansTab({
                               <GLSelect loanId={l.id} value={l.glPrincipalAccount} options={principalAccts} field="glPrincipalAccount" onSave={handleGLSave} />
                             </td>
                           )}
-                          {!hid.has("TB Loan Account")     && <td className="px-2.5 py-1.5 text-right font-mono whitespace-nowrap">{l.glPrincipalAccount ? <span className="text-foreground">{l.glPrincipalAccount}</span> : <span className="text-muted-foreground">—</span>}</td>}
+                          {!hid.has("TB Loan Account")     && <td className="px-2.5 py-1.5"><TBAccountSelect value={l.glPrincipalAccount ?? ""} onChange={v => updateLoan(l.id, { glPrincipalAccount: v })} /></td>}
                           {!hid.has("Interest Account")    && <td className="px-2.5 py-1.5 text-right font-mono whitespace-nowrap">{l.glInterestExpenseAccount ? <span className="text-foreground">{l.glInterestExpenseAccount}</span> : <span className="text-muted-foreground">—</span>}</td>}
-                          {!hid.has("TB Interest Account") && <td className="px-2.5 py-1.5 text-right font-mono whitespace-nowrap">{l.glInterestExpenseAccount ? <span className="text-foreground">{l.glInterestExpenseAccount}</span> : <span className="text-muted-foreground">—</span>}</td>}
+                          {!hid.has("TB Interest Account") && <td className="px-2.5 py-1.5"><TBAccountSelect value={l.glInterestExpenseAccount ?? ""} onChange={v => updateLoan(l.id, { glInterestExpenseAccount: v })} /></td>}
                           {!hid.has("Day Count")        && <td className="px-2.5 py-1.5 text-right font-mono whitespace-nowrap">{l.dayCountBasis ? <span className="text-foreground">{l.dayCountBasis}</span> : <span className="text-muted-foreground">—</span>}</td>}
                           {!hid.has("Payment Type")     && <td className="px-2.5 py-1.5 text-right whitespace-nowrap">{l.paymentType ? <span className="text-foreground">{l.paymentType}</span> : <span className="text-muted-foreground">—</span>}</td>}
                           {!hid.has("Freq.")             && <td className="px-2.5 py-1.5 text-right whitespace-nowrap">{l.paymentFrequency ? <span className="text-foreground">{l.paymentFrequency}</span> : <span className="text-muted-foreground">—</span>}</td>}
