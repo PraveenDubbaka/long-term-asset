@@ -563,7 +563,7 @@ function TBAccountSelect({ value, onChange, required }: { value: string; onChang
   ) : null;
   return (
     <div className="relative" style={{ minWidth: "180px" }}>
-      <button ref={btnRef} type="button" onClick={toggle} className={cn("h-6 w-full text-left text-base px-1.5 border rounded bg-background focus:outline-none flex items-center justify-between gap-1", required && !value ? "border-red-400 bg-red-50/60" : "border-border hover:border-primary/40")}>
+      <button ref={btnRef} type="button" onClick={toggle} className={cn("h-6 w-full text-left text-base px-1.5 border rounded bg-background focus:outline-none flex items-center justify-between gap-1", required && !value ? "border-red-500 ring-1 ring-red-400 bg-red-50" : "border-border hover:border-primary/40")}>
         <span className={cn("truncate", !selected && "text-muted-foreground")}>{selected ? `${selected.code} — ${selected.description}` : "Select account"}</span>
         <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" />
       </button>
@@ -3252,7 +3252,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                             onChange={e => upd(field, e.target.value)}
                                                             rows={1}
                                                             ref={autoH}
-                                                            className={cn(`w-full bg-transparent border rounded px-1.5 py-0.5 text-base transition-colors resize-none leading-snug overflow-hidden focus:outline-none ${right ? "text-right" : ""}`, empty ? "border-red-400 bg-red-50/60 hover:border-red-400 focus:border-red-500" : "border-transparent hover:border-border focus:border-primary")}
+                                                            className={cn(`w-full bg-transparent border rounded px-1.5 py-0.5 text-base transition-colors resize-none leading-snug overflow-hidden focus:outline-none ${right ? "text-right" : ""}`, empty ? "border-red-500 ring-1 ring-red-400 bg-red-50 hover:border-red-500" : "border-transparent hover:border-border focus:border-primary")}
                                                             placeholder="—"
                                                             onInput={e => autoH(e.currentTarget)}
                                                           />
@@ -3264,7 +3264,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       const empty = req && !val.trim();
                                                       return (
                                                         <td className={`px-1.5 py-1 align-top ${right ? "text-right" : ""}`}>
-                                                          <input value={val} onChange={e => upd(field, e.target.value)} className={cn(`h-6 text-base px-1.5 border rounded bg-background focus:outline-none ${w} ${right ? "text-right" : ""}`, empty ? "border-red-400 bg-red-50/60" : "border-border")} placeholder={ph} />
+                                                          <input value={val} onChange={e => upd(field, e.target.value)} className={cn(`h-6 text-base px-1.5 border rounded bg-background focus:outline-none ${w} ${right ? "text-right" : ""}`, empty ? "border-red-500 ring-1 ring-red-400 bg-red-50" : "border-border")} placeholder={ph} />
                                                         </td>
                                                       );
                                                     };
@@ -3273,7 +3273,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       const empty = req && !val;
                                                       return (
                                                         <td className="px-1.5 py-1 align-top">
-                                                          <select value={val} onChange={e => { upd(field, e.target.value); onChg?.(e.target.value); }} className={cn(SCR, w, empty && "border-red-400 bg-red-50/60")}>
+                                                          <select value={val} onChange={e => { upd(field, e.target.value); onChg?.(e.target.value); }} className={cn(SCR, w, empty && "border-red-500 ring-1 ring-red-400 bg-red-50")}>
                                                             <option value="">—</option>
                                                             {opts.map(o => <option key={o}>{o}</option>)}
                                                           </select>
@@ -3285,7 +3285,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       const empty = req && !val;
                                                       return (
                                                         <td className="px-1.5 py-1 align-top whitespace-nowrap" style={{ minWidth: "130px" }}>
-                                                          <input type="date" value={val} onChange={e => upd(field, e.target.value)} className={cn("h-6 text-base px-1.5 border rounded bg-background focus:outline-none w-28", empty ? "border-red-400 bg-red-50/60" : "border-border")} />
+                                                          <input type="date" value={val} onChange={e => upd(field, e.target.value)} className={cn("h-6 text-base px-1.5 border rounded bg-background focus:outline-none w-28", empty ? "border-red-500 ring-1 ring-red-400 bg-red-50" : "border-border")} />
                                                         </td>
                                                       );
                                                     };
@@ -3313,7 +3313,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         {inp("fxRate", true, "w-16", "1.000")}
                                                         {inp("openingBalance", true, "w-24", "0")}
                                                         <td className="px-1.5 py-1 align-top">
-                                                          <input value={autoGl} onChange={e => upd("glPrincipal", e.target.value)} className={cn("h-6 text-base px-1.5 border rounded bg-background focus:outline-none w-20", !autoGl.trim() ? "border-red-400 bg-red-50/60" : "border-border")} placeholder="2100" />
+                                                          <input value={autoGl} onChange={e => upd("glPrincipal", e.target.value)} className={cn("h-6 text-base px-1.5 border rounded bg-background focus:outline-none w-20", !autoGl.trim() ? "border-red-500 ring-1 ring-red-400 bg-red-50" : "border-border")} placeholder="2100" />
                                                         </td>
                                                         <td className="px-1.5 py-1 align-top">
                                                           <TBAccountSelect value={r.tbLoanAccount ?? ""} onChange={v => upd("tbLoanAccount", v)} required />
