@@ -721,6 +721,19 @@ function LoansTab({
     Construction: "Construction Loan", Mezzanine: "Mezzanine Loan",
     Subordinated: "Subordinated Debt", Equipment: "Equipment Loan", Custom: "Custom",
   };
+  const LOAN_TYPE_DEFAULTS: Record<string, { dayCountBasis: string; paymentType: string; compoundingFrequency: string; paymentFrequency: string }> = {
+    Term:         { dayCountBasis: "ACT/365", paymentType: "P&I",           compoundingFrequency: "Monthly",     paymentFrequency: "Monthly"    },
+    LOC:          { dayCountBasis: "ACT/365", paymentType: "Interest-only",  compoundingFrequency: "Monthly",     paymentFrequency: "Monthly"    },
+    Revolver:     { dayCountBasis: "ACT/365", paymentType: "Interest-only",  compoundingFrequency: "Monthly",     paymentFrequency: "Monthly"    },
+    Mortgage:     { dayCountBasis: "ACT/365", paymentType: "P&I",           compoundingFrequency: "Semi-annual", paymentFrequency: "Monthly"    },
+    Bridge:       { dayCountBasis: "ACT/360", paymentType: "Interest-only",  compoundingFrequency: "Monthly",     paymentFrequency: "Monthly"    },
+    Demand:       { dayCountBasis: "ACT/365", paymentType: "Interest-only",  compoundingFrequency: "Monthly",     paymentFrequency: "Monthly"    },
+    Construction: { dayCountBasis: "ACT/365", paymentType: "Interest-only",  compoundingFrequency: "Monthly",     paymentFrequency: "Monthly"    },
+    Mezzanine:    { dayCountBasis: "ACT/365", paymentType: "P&I",           compoundingFrequency: "Monthly",     paymentFrequency: "Monthly"    },
+    Subordinated: { dayCountBasis: "ACT/365", paymentType: "P&I",           compoundingFrequency: "Monthly",     paymentFrequency: "Monthly"    },
+    Equipment:    { dayCountBasis: "ACT/365", paymentType: "P&I",           compoundingFrequency: "Monthly",     paymentFrequency: "Monthly"    },
+    Custom:       { dayCountBasis: "ACT/365", paymentType: "P&I",           compoundingFrequency: "Monthly",     paymentFrequency: "Monthly"    },
+  };
 
   const HEADERS = [
     { h: "Loan Name",          left: true  },
@@ -1089,7 +1102,7 @@ function LoansTab({
                       className="w-full text-[11px] px-1.5 py-1 border border-primary/40 rounded-[5px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 resize-none overflow-hidden leading-snug"
                     />
                   </td>}
-                  {!hid.has("Loan Type")                && <td className="px-1.5 py-1"><select value={draft.type??"Term"} onChange={e=>setD("type",e.target.value)} className={ICS}>{["Term","LOC","Revolver","Mortgage","Bridge"].map(t=><option key={t}>{t}</option>)}</select></td>}
+                  {!hid.has("Loan Type")                && <td className="px-1.5 py-1"><select value={draft.type??"Term"} onChange={e=>{const t=e.target.value;setD("type",t);const d=LOAN_TYPE_DEFAULTS[t];if(d){setD("dayCountBasis",d.dayCountBasis);setD("paymentType",d.paymentType);setD("compoundingFrequency",d.compoundingFrequency);setD("paymentFrequency",d.paymentFrequency);}}} className={ICS}>{["Term","LOC","Revolver","Mortgage","Bridge","Demand","Construction","Mezzanine","Subordinated","Equipment","Custom"].map(t=><option key={t}>{t}</option>)}</select></td>}
                   {!hid.has("Rate Type")           && <td className="px-1.5 py-1"><select value={draft.interestType??"Fixed"} onChange={e=>setD("interestType",e.target.value)} className={ICS}>{["Fixed","Variable","Floating","Hybrid","Step Rate"].map(t=><option key={t}>{t}</option>)}</select></td>}
                   {!hid.has("Int. Rate (%)")       && <td className="px-1.5 py-1"><input type="number" step="0.01" value={draft.rate||""} onChange={e=>setD("rate",parseFloat(e.target.value)||0)} className={IC} placeholder="0.00" /></td>}
                   {!hid.has("Day Count")           && <td className="px-1.5 py-1"><select value={draft.dayCountBasis??"ACT/365"} onChange={e=>setD("dayCountBasis",e.target.value)} className={ICS}>{["ACT/365","ACT/360","30/360"].map(d=><option key={d}>{d}</option>)}</select></td>}
