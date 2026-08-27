@@ -3210,7 +3210,11 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         {dateCell("startDate")}
                                                         {dateCell("maturityDate")}
                                                         {dateCell("firstPaymentDate")}
-                                                        {sel("currency", ["CAD","USD","EUR","GBP"], "w-14", v => upd("glPrincipal", defaultGLPrincipal(r.type || "Term", v)))}
+                                                        <td className="px-1.5 py-1 align-top">
+                                                          <select value={r.currency || "CAD"} onChange={e => { upd("currency", e.target.value); upd("glPrincipal", defaultGLPrincipal(r.type || "Term", e.target.value)); }} className={cn(SCR, "w-14")}>
+                                                            {["CAD","USD","EUR","GBP"].map(o => <option key={o}>{o}</option>)}
+                                                          </select>
+                                                        </td>
                                                         {inp("monthlyPayment", true, "w-24")}
                                                         {inp("originalPrincipal", true, "w-24", "0")}
                                                         {inp("fxRate", true, "w-16", "1.000")}
