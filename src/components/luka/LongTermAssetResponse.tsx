@@ -567,7 +567,6 @@ function LoansTab({
   // Columns hidden in view mode — require manual entry or are non-schedule fields.
   // In edit mode all columns are visible so the user can fill them in.
   const VIEW_MODE_HIDDEN = new Set([
-    "Tenure (Mo.)",
     "FX Rate",
     "Converted Amt",
     "Interest-Only Period (Mo.)",
