@@ -812,15 +812,15 @@ export const initialReviewQueue: ReviewQueueItem[] = [
 
 // ─── SETTINGS ─────────────────────────────────────────────────────────────────
 export const initialSettings: EngagementSettings = {
-  client: 'Shipping Line Inc.',
-  engagement: 'FY2024 Year-End Audit',
-  fiscalYearEnd: '2024-12-31',
+  client: "The Fishin' Hole (1982) Ltd.",
+  engagement: 'FY2026 Year-End Workpaper',
+  fiscalYearEnd: '2025-09-30',
   baseCurrency: 'CAD',
-  currentPeriod: '2024-12',
+  currentPeriod: '2025-09',
   reconciliationThreshold: 100,
   ocrConfidenceThreshold: 85,
   interestDayCountDefault: 'ACT/365',
-  status: 'Blocked',
+  status: 'Ready',
   fxRates,
 };
 

@@ -12,7 +12,7 @@ import { Modal, Input, Select } from '../components/ui';
 import type { Loan, ContinuityRow } from '../types';
 import toast from 'react-hot-toast';
 
-const MONTHS = ['2024-01','2024-02','2024-03','2024-04','2024-05','2024-06','2024-07','2024-08','2024-09','2024-10','2024-11','2024-12'];
+const MONTHS = ['2025-10','2025-11','2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06','2026-07','2026-08','2026-09'];
 
 interface DisclosureNote { id: number; title: string; content: string; }
 const DISCLOSURE_NOTES: DisclosureNote[] = [
