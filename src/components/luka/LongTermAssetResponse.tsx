@@ -524,6 +524,7 @@ function TBAccountSelect({ value, onChange }: { value: string; onChange: (v: str
 function LoansTab({
   loans,
   loanMode,
+  setLoanMode,
   batchEdits,
   setBatchEdits,
   pendingLoans,
@@ -531,6 +532,7 @@ function LoansTab({
 }: {
   loans: Loan[];
   loanMode: "view" | "edit" | "add";
+  setLoanMode: React.Dispatch<React.SetStateAction<"view" | "edit" | "add">>;
   batchEdits: Record<string, Partial<Loan>>;
   setBatchEdits: React.Dispatch<React.SetStateAction<Record<string, Partial<Loan>>>>;
   pendingLoans: LtAddRow[];
@@ -2956,7 +2958,7 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
             </div>
           </div>
         )}
-        {activeTab === "loans"        && <LoansTab loans={loans} loanMode={loanMode} batchEdits={batchEdits} setBatchEdits={setBatchEdits} pendingLoans={pendingLoans} setPendingLoans={setPendingLoans} />}
+        {activeTab === "loans"        && <LoansTab loans={loans} loanMode={loanMode} setLoanMode={setLoanMode} batchEdits={batchEdits} setBatchEdits={setBatchEdits} pendingLoans={pendingLoans} setPendingLoans={setPendingLoans} />}
         {activeTab === "continuity"   && loanMode === "view" && <ContinuityTabPanel loans={loans} continuity={continuity} />}
         {activeTab === "amortization" && loanMode === "view" && <AmortizationTabPanel loans={loans} amortization={amortization} />}
         {/* Covenants tab hidden — removed from scope 2026-05-26 */}
