@@ -3202,7 +3202,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         {cell("name", false, "160px")}
                                                         {cell("lender", false, "140px")}
                                                         <td className="px-1.5 py-1 align-top" style={{ minWidth: "200px" }}>
-                                                          <textarea value={r.collateral ?? ""} onChange={e => upd("collateral", e.target.value)} rows={2} className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none rounded px-1.5 py-0.5 text-base transition-colors resize-none leading-snug" placeholder="—" />
+                                                          <textarea value={r.collateral ?? ""} onChange={e => upd("collateral", e.target.value)} rows={1} ref={autoH} onInput={e => autoH(e.currentTarget)} className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none rounded px-1.5 py-0.5 text-base transition-colors resize-none leading-snug overflow-hidden" placeholder="—" />
                                                         </td>
                                                         {sel("type", ["Term","LOC","Revolver","Mortgage","Bridge"], "w-20", v => upd("glPrincipal", defaultGLPrincipal(v, r.currency || "CAD")))}
                                                         {sel("interestType", ["Fixed","Variable","Floating","Hybrid","Step Rate"], "w-24")}
