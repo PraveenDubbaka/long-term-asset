@@ -505,6 +505,9 @@ interface LtDebtReviewRow {
 
 interface TBAccount { code: string; description: string; final: number; py1: number; py2: number; }
 const MOCK_TB_ACCOUNTS: TBAccount[] = [
+  { code: "2050", description: "Short-Term Loan Payable",       final:       0,      py1:       0,   py2: 0 },
+  { code: "2051", description: "Short-Term Bank Loan",          final:       0,      py1:       0,   py2: 0 },
+  { code: "2070", description: "Short-Term Borrowings",         final:       0,      py1:       0,   py2: 0 },
   { code: "2100", description: "Long-Term Debt – CAD",          final: 356_687.18,  py1: 400_000.00, py2: 0 },
   { code: "2101", description: "Current Portion of LTD",        final:  43_312.82,  py1:  43_312.82, py2: 0 },
   { code: "2110", description: "Long-Term Debt – USD",          final:       0,      py1:       0,   py2: 0 },
