@@ -206,6 +206,71 @@ export function calcCurrentPortion(schedule: AmortizationRow[], yearEndDate: str
     .reduce((sum, r) => sum + r.principal, 0);
 }
 
+// ─── AMORTIZATION SCHEDULE BUILDER ───────────────────────────────────────────
+export interface AmortScheduleRow {
+  date: string;     // YYYY-MM-DD (last day of payment month)
+  payment: number;
+  interest: number;
+  principal: number;
+  balance: number;
+}
+
+/**
+ * Builds a monthly P&I amortization schedule from fromDate to loan maturity.
+ * Uses loan.monthlyPayment if set; otherwise computes PMT from fromBalance.
+ * Returns empty array for LOC/Revolver, Interest-only, Balloon, or zero balance.
+ */
+export function buildAmortSchedule(
+  loan: Loan,
+  fromBalance: number,
+  fromDate: string,  // YYYY-MM-DD fiscal year-end
+): AmortScheduleRow[] {
+  if (fromBalance <= 0.01) return [];
+  if (loan.type === 'LOC' || loan.type === 'Revolver') return [];
+  if (loan.paymentType === 'Interest-only' || loan.paymentType === 'Balloon') return [];
+
+  const [fy, fm] = fromDate.split('-').map(Number);
+  const maturity = new Date(loan.maturityDate);
+  const matYear = maturity.getFullYear();
+  const matMonth = maturity.getMonth() + 1;
+
+  const monthsToMaturity = (matYear - fy) * 12 + (matMonth - fm);
+  if (monthsToMaturity <= 0) return [];
+
+  const r = loan.rate / 100 / 12;
+  let pmt: number;
+  if (loan.monthlyPayment && loan.monthlyPayment > 0) {
+    pmt = loan.monthlyPayment;
+  } else if (r === 0) {
+    pmt = fromBalance / monthsToMaturity;
+  } else {
+    const n = monthsToMaturity;
+    pmt = fromBalance * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+  }
+
+  const rows: AmortScheduleRow[] = [];
+  let bal = Math.round(fromBalance * 100) / 100;
+  let year = fm === 12 ? fy + 1 : fy;
+  let month = fm === 12 ? 1 : fm + 1;
+
+  for (let i = 0; i < monthsToMaturity + 2 && bal > 0.01; i++) {
+    const lastDay = new Date(year, month, 0).getDate();
+    const date = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    const interest = Math.round(bal * r * 100) / 100;
+    const isLast = year === matYear && month === matMonth;
+    const principal = isLast
+      ? Math.round(bal * 100) / 100
+      : Math.round((pmt - interest) * 100) / 100;
+    const newBal = Math.round((bal - principal) * 100) / 100;
+    rows.push({ date, payment: Math.round((interest + principal) * 100) / 100, interest, principal, balance: Math.max(0, newBal) });
+    bal = newBal;
+    if (isLast || bal <= 0.01) break;
+    if (month === 12) { month = 1; year++; } else { month++; }
+  }
+
+  return rows;
+}
+
 // ─── MATURITY LADDER ──────────────────────────────────────────────────────────
 export interface MaturityBucket {
   label: string;

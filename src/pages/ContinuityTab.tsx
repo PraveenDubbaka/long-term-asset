@@ -4,7 +4,7 @@ import { useTableColumns, useColumnResize, ThResizable, type ColDef } from '@/co
 import { exportToExcel } from '../lib/utils';
 import { useStore } from '../store/useStore';
 import { useWorkpaperLoans } from '../contexts/WorkpaperContext';
-import { fmtCurrency, formatPeriod, fmtNumber } from '../lib/utils';
+import { fmtCurrency, formatPeriod, fmtNumber, buildAmortSchedule } from '../lib/utils';
 import { Button } from '@/components/wp-ui/button';
 import { Badge } from '@/components/wp-ui/badge';
 import { StyledCard } from '@/components/wp-ui/card';
@@ -35,65 +35,41 @@ const FS_ITEMS = [
   'Principal repayments',
 ];
 
-/** Principal due in next 12 months from the end of `period` (YYYY-MM). */
-function calcCurrentPortion(loan: Loan, closingBalance: number, period: string): number {
+/** Principal due in next 12 months (fiscal year offset 0). fromDate is YYYY-MM-DD. */
+function calcCurrentPortion(loan: Loan, closingBalance: number, fromDate: string): number {
   if (closingBalance <= 0) return 0;
   if (loan.type === 'LOC' || loan.type === 'Revolver') return closingBalance;
-  const [y, m] = period.split('-').map(Number);
-  const maturity = new Date(loan.maturityDate);
-  const monthsToMaturity = Math.max(0,
-    (maturity.getFullYear() - y) * 12 + (maturity.getMonth() + 1 - m));
-  if (monthsToMaturity <= 12) return closingBalance;
   if (loan.paymentType === 'Interest-only' || loan.paymentType === 'Balloon') return 0;
-  const r = loan.rate / 100 / 12;
-  const n = monthsToMaturity;
-  if (r === 0) return Math.round((closingBalance / n) * 12);
-  const pmt = closingBalance * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
-  let bal = closingBalance;
-  let sum = 0;
-  for (let i = 0; i < 12; i++) {
-    const interest = bal * r;
-    const principal = Math.min(pmt - interest, bal);
-    sum += principal;
-    bal -= principal;
-    if (bal <= 0.01) break;
-  }
-  return Math.round(sum);
+  const rows = buildAmortSchedule(loan, closingBalance, fromDate);
+  return Math.round(rows.slice(0, 12).reduce((s, r) => s + r.principal, 0) * 100) / 100;
 }
 
-
-/** Returns [current(yr0), yr1, yr2, yr3, yr4, yr5, thereafter] principal repayments */
+/** Returns [current(yr0), yr1, yr2, yr3, yr4, yr5, thereafter] principal repayments. fromDate is YYYY-MM-DD. */
 function calcMaturityLadder(
-  loan: Loan, closingBalance: number, period: string,
+  loan: Loan, closingBalance: number, fromDate: string,
 ): [number, number, number, number, number, number, number] {
   if (closingBalance <= 0) return [0, 0, 0, 0, 0, 0, 0];
   if (loan.type === 'LOC' || loan.type === 'Revolver') return [closingBalance, 0, 0, 0, 0, 0, 0];
-  const [y, m] = period.split('-').map(Number);
-  const maturity = new Date(loan.maturityDate);
-  const monthsToMaturity = Math.max(0,
-    (maturity.getFullYear() - y) * 12 + (maturity.getMonth() + 1 - m));
-  if (monthsToMaturity <= 0) return [closingBalance, 0, 0, 0, 0, 0, 0];
   const result: [number, number, number, number, number, number, number] = [0, 0, 0, 0, 0, 0, 0];
   if (loan.paymentType === 'Interest-only' || loan.paymentType === 'Balloon') {
-    result[Math.min(Math.floor((monthsToMaturity - 1) / 12), 6)] = closingBalance;
+    const [fy, fm] = fromDate.split('-').map(Number);
+    const mat = new Date(loan.maturityDate);
+    const months = Math.max(0, (mat.getFullYear() - fy) * 12 + (mat.getMonth() + 1 - fm));
+    result[months <= 0 ? 0 : Math.min(Math.floor((months - 1) / 12), 6)] = closingBalance;
     return result;
   }
-  const r = loan.rate / 100 / 12;
-  const n = monthsToMaturity;
-  let bal = closingBalance;
-  if (r === 0) {
-    const mp = bal / n;
-    for (let i = 1; i <= n; i++) result[Math.min(Math.floor((i - 1) / 12), 6)] += mp;
-  } else {
-    const pmt = bal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
-    for (let i = 1; i <= n && bal > 0.01; i++) {
-      const interest = bal * r;
-      const principal = Math.min(pmt - interest, bal);
-      result[Math.min(Math.floor((i - 1) / 12), 6)] += principal;
-      bal -= principal;
+  const rows = buildAmortSchedule(loan, closingBalance, fromDate);
+  rows.forEach((row, i) => {
+    const bucket = Math.min(Math.floor(i / 12), 6);
+    result[bucket] = Math.round((result[bucket] + row.principal) * 100) / 100;
+  });
+  const drift = Math.round((closingBalance - result.reduce((s, v) => s + v, 0)) * 100) / 100;
+  if (drift !== 0 && Math.abs(drift) < 0.10) {
+    for (let k = result.length - 1; k >= 0; k--) {
+      if (result[k] > 0) { result[k] = Math.round((result[k] + drift) * 100) / 100; break; }
     }
   }
-  return result.map(Math.round) as [number, number, number, number, number, number, number];
+  return result;
 }
 
 
@@ -338,10 +314,12 @@ export function ContinuityTab() {
 
       {contView === 'repayment' && (() => {
         const period = settings?.currentPeriod ?? '2024-12';
+        const [pfY, pfM] = period.split('-').map(Number);
+        const fromDate = settings?.fiscalYearEnd?.slice(0, 10) ?? `${period}-${String(new Date(pfY, pfM, 0).getDate()).padStart(2, '0')}`;
         const baseYear = parseInt(period.split('-')[0]);
         const yearLabels = Array.from({ length: 6 }, (_, i) => String(baseYear + i + 1)).concat(['Thereafter']);
         const repayRows = loans.filter(l => l.status !== 'Inactive').map(l => {
-          const ladder = calcMaturityLadder(l, l.closingBalance ?? l.currentBalance ?? 0, period);
+          const ladder = calcMaturityLadder(l, l.closingBalance ?? l.currentBalance ?? 0, fromDate);
           return { loan: l, ladder, total: ladder.reduce((s, v) => s + v, 0) };
         });
         const colTotals = yearLabels.map((_, i) => repayRows.reduce((s, r) => s + (r.ladder[i] ?? 0), 0));
@@ -846,6 +824,8 @@ export function ContinuityTab() {
           {/* ── Maturity Ladder / Balance Sheet Classification ───────── */}
           {(() => {
             const period = settings?.currentPeriod ?? '2024-12';
+            const [pfY2, pfM2] = period.split('-').map(Number);
+            const fromDate2 = settings?.fiscalYearEnd?.slice(0, 10) ?? `${period}-${String(new Date(pfY2, pfM2, 0).getDate()).padStart(2, '0')}`;
             const baseYear = parseInt(period.split('-')[0]);
             const colHeaders = [
               String(baseYear + 2), String(baseYear + 3),
@@ -858,7 +838,7 @@ export function ContinuityTab() {
             const source = selectedLoanId === ALL_LOANS_ID ? consolidatedByLoan : consolidatedByLoan.filter(r => r.loanId === selectedLoanId);
             const ladderRows = source.map(row => {
               const loan = loans.find(l => l.id === row.loanId);
-              const ladder = loan ? calcMaturityLadder(loan, row.closingBalance, period) : ([0,0,0,0,0,0,0] as [number,number,number,number,number,number,number]);
+              const ladder = loan ? calcMaturityLadder(loan, row.closingBalance, fromDate2) : ([0,0,0,0,0,0,0] as [number,number,number,number,number,number,number]);
               return { ...row, ladder };
             });
             const totals = ladderRows.reduce(

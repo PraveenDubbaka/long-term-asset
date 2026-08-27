@@ -17,6 +17,7 @@ import { accountMappings as allGLAccountsForAdd } from "@/data/mockData";
 import { useStore } from "@/store/useStore";
 import toast from "react-hot-toast";
 import type { Loan, ContinuityRow, AmortizationRow, Covenant, CovenantFormulaLine, JEProposal, ReconciliationItem, EngagementSettings, AccountMapping } from "@/types";
+import { buildAmortSchedule } from "@/lib/utils";
 
 // ─── Add-mode review row (mirrors LtDebtReviewRow in AskLukaOverlay) ─────────
 interface LtAddRow {
@@ -346,49 +347,32 @@ function GLSelect({ loanId, value, options, field, onSave }: {
   );
 }
 
-// ─── Maturity ladder helper (mirrors ContinuityTab.tsx) ──────────────────────
+// ─── Maturity ladder helper ───────────────────────────────────────────────────
 function calcMaturityLadder(
-  loan: Loan, closingBalance: number, period: string, payment?: number,
+  loan: Loan, closingBalance: number, fromDate: string,
 ): [number, number, number, number, number, number, number] {
   if (closingBalance <= 0) return [0, 0, 0, 0, 0, 0, 0];
   if (loan.type === "LOC" || loan.type === "Revolver") return [closingBalance, 0, 0, 0, 0, 0, 0];
-  const [y, m] = period.split("-").map(Number);
-  const maturity = new Date(loan.maturityDate);
-  const monthsToMaturity = Math.max(0,
-    (maturity.getFullYear() - y) * 12 + (maturity.getMonth() + 1 - m));
-  if (monthsToMaturity <= 0) return [closingBalance, 0, 0, 0, 0, 0, 0];
   const result: [number, number, number, number, number, number, number] = [0, 0, 0, 0, 0, 0, 0];
   if (loan.paymentType === "Interest-only" || loan.paymentType === "Balloon") {
-    result[Math.min(Math.floor((monthsToMaturity - 1) / 12), 6)] = closingBalance;
+    const [fy, fm] = fromDate.split("-").map(Number);
+    const mat = new Date(loan.maturityDate);
+    const months = Math.max(0, (mat.getFullYear() - fy) * 12 + (mat.getMonth() + 1 - fm));
+    result[months <= 0 ? 0 : Math.min(Math.floor((months - 1) / 12), 6)] = closingBalance;
     return result;
   }
-  const r = loan.rate / 100 / 12;
-  const n = monthsToMaturity;
-  let bal = closingBalance;
-  if (r === 0) {
-    const mp = bal / n;
-    for (let i = 1; i <= n; i++) result[Math.min(Math.floor((i - 1) / 12), 6)] += mp;
-  } else {
-    const pmt = (payment != null && payment > 0)
-      ? payment
-      : bal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
-    for (let i = 1; i <= n && bal > 0.005; i++) {
-      const interest  = Math.round(bal * r * 100) / 100;
-      const principal = Math.min(Math.round((pmt - interest) * 100) / 100, Math.round(bal * 100) / 100);
-      result[Math.min(Math.floor((i - 1) / 12), 6)] += principal;
-      bal = Math.round((bal - principal) * 100) / 100;
-    }
-    if (bal > 0.005) result[6] += Math.round(bal * 100) / 100;
-    // Reconcile cent-rounding drift so bucket totals equal the known closing balance
-    const bucketSum = result.reduce((s, v) => s + v, 0);
-    const drift = Math.round((closingBalance - bucketSum) * 100) / 100;
-    if (Math.abs(drift) > 0 && Math.abs(drift) < 0.10) {
-      let lastIdx = -1;
-      for (let k = result.length - 1; k >= 0; k--) { if (result[k] > 0) { lastIdx = k; break; } }
-      if (lastIdx >= 0) result[lastIdx] = Math.round((result[lastIdx] + drift) * 100) / 100;
+  const rows = buildAmortSchedule(loan, closingBalance, fromDate);
+  rows.forEach((row, i) => {
+    const bucket = Math.min(Math.floor(i / 12), 6);
+    result[bucket] = Math.round((result[bucket] + row.principal) * 100) / 100;
+  });
+  const drift = Math.round((closingBalance - result.reduce((s, v) => s + v, 0)) * 100) / 100;
+  if (drift !== 0 && Math.abs(drift) < 0.10) {
+    for (let k = result.length - 1; k >= 0; k--) {
+      if (result[k] > 0) { result[k] = Math.round((result[k] + drift) * 100) / 100; break; }
     }
   }
-  return result as [number, number, number, number, number, number, number];
+  return result;
 }
 
 // ─── Per-tab components ───────────────────────────────────────────────────────
@@ -1356,9 +1340,11 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
   const ladderRowsData = useMemo(() => loans.map(loan => {
     const contRow = latestRows.find(r => r.loan.id === loan.id)?.row;
     const closingNative = contRow?.closingBalance ?? loan.currentBalance;
-    const loanPeriod = contRow?.period ?? docPeriod;
+    const loanPeriodStr = contRow?.period ?? docPeriod;
+    const [lpY, lpM] = loanPeriodStr.split('-').map(Number);
+    const loanFromDate = `${loanPeriodStr}-${String(new Date(lpY, lpM, 0).getDate()).padStart(2, '0')}`;
     const fx = toCAD(1, loan.currency);
-    const nativeLadder = calcMaturityLadder(loan, closingNative, loanPeriod, loan.monthlyPayment);
+    const nativeLadder = calcMaturityLadder(loan, closingNative, loanFromDate);
     const ladder = nativeLadder.map(v => v * fx) as [number,number,number,number,number,number,number];
     return { loan, ladder };
   }), [loans, latestRows, docPeriod]);
@@ -2293,7 +2279,7 @@ function NotesTabPanel({ loans, amortization, continuity, reconciliation, settin
   const repayBuckets = useMemo(() => {
     const fyDate = yearEnd ? new Date(yearEnd.slice(0,10) + "T00:00:00") : new Date();
     const yr = fyDate.getFullYear();
-    const fyPeriod = yearEnd ? yearEnd.slice(0, 7) : `${yr}-12`;
+    const fromDate = yearEnd ? yearEnd.slice(0, 10) : `${yr}-12-31`;
     const b: Record<string, number> = {};
     for (let i = 1; i <= 5; i++) b[String(yr + i)] = 0;
     b["thereafter"] = 0;
@@ -2304,7 +2290,7 @@ function NotesTabPanel({ loans, amortization, continuity, reconciliation, settin
       if (l.type === "LOC" || l.type === "Revolver") return;
       const closingNative = l.closingBalance ?? l.currentBalance;
       if (closingNative <= 0) return;
-      const ladder = calcMaturityLadder(l, closingNative, fyPeriod, l.monthlyPayment);
+      const ladder = calcMaturityLadder(l, closingNative, fromDate);
       // ladder[0] = next 12 months → yr+1, ladder[1] → yr+2, ..., ladder[4] → yr+5
       // ladder[5] + ladder[6] = thereafter
       for (let i = 0; i <= 4; i++) {
@@ -2405,7 +2391,7 @@ export function LukaNoteSidePanel() {
   const repayBuckets = useMemo(() => {
     const fyDate = yearEnd ? new Date(yearEnd.slice(0,10) + "T00:00:00") : new Date();
     const yr = fyDate.getFullYear();
-    const fyPeriod = yearEnd ? yearEnd.slice(0, 7) : `${yr}-12`;
+    const fromDate = yearEnd ? yearEnd.slice(0, 10) : `${yr}-12-31`;
     const b: Record<string, number> = {};
     for (let i = 1; i <= 5; i++) b[String(yr + i)] = 0;
     b["thereafter"] = 0;
@@ -2413,7 +2399,7 @@ export function LukaNoteSidePanel() {
       if (l.type === "LOC" || l.type === "Revolver") return;
       const closingNative = l.closingBalance ?? l.currentBalance;
       if (closingNative <= 0) return;
-      const ladder = calcMaturityLadder(l, closingNative, fyPeriod, l.monthlyPayment);
+      const ladder = calcMaturityLadder(l, closingNative, fromDate);
       for (let i = 0; i <= 4; i++) {
         const col = String(yr + i + 1);
         b[col] = (b[col] ?? 0) + toCAD(ladder[i] ?? 0, l.currency);
