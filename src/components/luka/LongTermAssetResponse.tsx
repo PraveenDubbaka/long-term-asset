@@ -762,8 +762,6 @@ function LoansTab({
     { h: "Interest-Only Period (Mo.)",    left: false },
     { h: "Balloon Amt",        left: false },
     { h: "Status",             left: false },
-    { h: "Current Portion",   left: false },
-    { h: "Long-Term Portion",        left: false },
   ];
   // compact = narrower table (text cols constrained), expanded = full width; both scroll
   const fit = !tableExpanded;
@@ -1165,8 +1163,6 @@ function LoansTab({
                             isGlobalEdit ? mergedDraft : editDraft,
                             isGlobalEdit ? batchSetter : (k, v) => setEditDraft(p => ({ ...p, [k]: v }))
                           )}
-                          {!hid.has("Current Portion") && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground text-[11px]">{l.currentPortion > 0 ? fmtCents(toCAD(l.currentPortion, l.currency)) : "—"}</td>}
-                          {!hid.has("Long-Term Portion") && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground text-[11px]">{l.longTermPortion > 0 ? fmtCents(toCAD(l.longTermPortion, l.currency)) : "—"}</td>}
                         </> : <>
                           {!hid.has("Loan Name") && (
                             <td className="px-2.5 py-1.5">
@@ -1249,24 +1245,6 @@ function LoansTab({
                           {!hid.has("Interest-Only Period (Mo.)")  && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{l.interestOnlyPeriodMonths ?? "00"}</td>}
                           {!hid.has("Balloon Amt")      && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{l.balloonAmount ? fmt(l.balloonAmount) : "00"}</td>}
                           {!hid.has("Status")           && <td className="px-2.5 py-1.5 text-right"><StatusBadge status={l.status} /></td>}
-                          {!hid.has("Current Portion") && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{l.currentPortion > 0 ? fmtCents(toCAD(l.currentPortion, l.currency)) : "00.00"}</td>}
-                          {!hid.has("Long-Term Portion") && (() => {
-                            const closing = l.closingBalance ?? l.currentBalance;
-                            const sanityOk = Math.abs(closing - l.currentPortion - l.longTermPortion) < 1;
-                            return (
-                              <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap">
-                                <span className="text-foreground">{l.longTermPortion > 0 ? fmtCents(toCAD(l.longTermPortion, l.currency)) : "00.00"}</span>
-                                {!sanityOk && l.currentPortion > 0 && (
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <AlertTriangle className="inline ml-1 w-3 h-3 text-amber-500 cursor-default" />
-                                    </TooltipTrigger>
-                                    <TooltipContent side="left" className="text-[11px]">Current + Long-term does not equal closing balance</TooltipContent>
-                                  </Tooltip>
-                                )}
-                              </td>
-                            );
-                          })()}
                         </>}
                         <td className="px-2 py-1 sticky right-0 z-10 bg-background border-l border-border/40">
                           {!l.locked ? (
