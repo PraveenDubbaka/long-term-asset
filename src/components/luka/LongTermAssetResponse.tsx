@@ -658,7 +658,7 @@ function LoansTab({
     { h: "Orig. Loan Amt",     left: false },
     { h: "FX Rate",            left: false },
     { h: "Converted Amt",      left: false },
-    { h: "Closing Balance",    left: false },
+    { h: "Opening Balance",    left: false },
     { h: "GL Principal",       left: false },
     { h: "Interest Account",   left: false },
     { h: "Day Count",          left: false },
@@ -1023,7 +1023,7 @@ function LoansTab({
                   {!hid.has("Orig. Loan Amt")      && <td className="px-1.5 py-1"><input type="number" step="1000" value={draft.originalPrincipal||""} onChange={e=>setD("originalPrincipal",parseFloat(e.target.value)||0)} className={IC} placeholder="0" /></td>}
                   {!hid.has("FX Rate")             && <td className="px-1.5 py-1"><input type="number" step="0.0001" value={draft.fxRateToCAD||""} onChange={e=>setD("fxRateToCAD",parseFloat(e.target.value)||undefined)} className={IC} placeholder="1.000" /></td>}
                   {!hid.has("Converted Amt")       && <td className="px-1.5 py-1 text-right text-muted-foreground text-[11px]">—</td>}
-                  {!hid.has("Closing Balance")     && <td className="px-1.5 py-1"><input type="number" step="1000" value={draft.currentBalance||""} onChange={e=>setD("currentBalance",parseFloat(e.target.value)||0)} className={IC} placeholder="0" /></td>}
+                  {!hid.has("Opening Balance")     && <td className="px-1.5 py-1"><input type="number" step="1000" value={draft.currentBalance||""} onChange={e=>setD("currentBalance",parseFloat(e.target.value)||0)} className={IC} placeholder="0" /></td>}
                   {!hid.has("GL Principal")        && <td className="px-1.5 py-1"><GLSelect loanId="new-row" value={draft.glPrincipalAccount??""} options={principalAccts} field="glPrincipalAccount" onSave={(_,__,code)=>setD("glPrincipalAccount",code)} /></td>}
                   {!hid.has("Interest Account")    && <td className="px-1.5 py-1"><input value={draft.glInterestExpenseAccount??""} onChange={e=>setD("glInterestExpenseAccount",e.target.value)} className={IC} placeholder="e.g. 7100" /></td>}
                   {!hid.has("Day Count")           && <td className="px-1.5 py-1"><select value={draft.dayCountBasis??"ACT/365"} onChange={e=>setD("dayCountBasis",e.target.value)} className={ICS}>{["ACT/365","ACT/360","30/360"].map(d=><option key={d}>{d}</option>)}</select></td>}
@@ -1139,7 +1139,7 @@ function LoansTab({
                             </td>
                           )}
                           {!hid.has("Converted Amt")    && <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold whitespace-nowrap text-foreground">{fmt(convAmt)}</td>}
-                          {!hid.has("Closing Balance")  && <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold whitespace-nowrap text-foreground">{fmtCents(closingCAD)}</td>}
+                          {!hid.has("Opening Balance")  && <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold whitespace-nowrap text-foreground">{fmtCents(closingCAD)}</td>}
                           {!hid.has("GL Principal") && (
                             <td className="px-2.5 py-1.5 text-right">
                               <GLSelect loanId={l.id} value={l.glPrincipalAccount} options={principalAccts} field="glPrincipalAccount" onSave={handleGLSave} />
@@ -1204,7 +1204,7 @@ function LoansTab({
                   if (effectiveHidCols.has(h)) return null;
                   if (h === "Orig. Loan Amt") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+l.originalPrincipal,0))}</td>;
                   if (h === "Converted Amt")  return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmt(loans.reduce((s,l)=>s+l.originalPrincipal*getFxRate(l),0))}</td>;
-                  if (h === "Closing Balance") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmtCents(loans.reduce((s,l)=>s+toCAD(l.closingBalance??l.currentBalance,l.currency),0))}</td>;
+                  if (h === "Opening Balance") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmtCents(loans.reduce((s,l)=>s+toCAD(l.closingBalance??l.currentBalance,l.currency),0))}</td>;
                   if (h === "Current Portion") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmtCents(loans.reduce((s,l)=>s+toCAD(l.currentPortion,l.currency),0))}</td>;
                   if (h === "Long-Term Portion") return <td key={h} className="px-2.5 py-2 text-right tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">{fmtCents(loans.reduce((s,l)=>s+toCAD(l.longTermPortion,l.currency),0))}</td>;
                   return <td key={h} className="px-2.5 py-2" />;
