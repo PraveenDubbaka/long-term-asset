@@ -1447,18 +1447,44 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
 function AmortizationTabPanel({ loans, amortization }: { loans: Loan[]; amortization: AmortizationRow[] }) {
   const [selectedLoanId, setSelectedLoanId] = useState(loans[0]?.id ?? "");
   const loan = loans.find(l => l.id === selectedLoanId);
-  const rows = useMemo(() =>
-    amortization.filter(r => r.loanId === selectedLoanId).sort((a,b) => a.periodDate.localeCompare(b.periodDate)),
-    [amortization, selectedLoanId]
-  );
   const [showAll, setShowAll] = useState(false);
-  const displayRows = showAll ? rows : rows.slice(0, 8);
 
-  const totalInterest   = rows.reduce((s,r)=>s+r.interest,0);
-  const totalPrincipal  = rows.reduce((s,r)=>s+r.principal,0);
-  const totalPayment    = rows.reduce((s,r)=>s+r.payment,0);
-  const remaining       = loan ? toCAD(loan.currentBalance, loan.currency) : 0;
-  const monthly         = rows[0]?.payment ?? 0;
+  // Build the full schedule from original principal to zero using the shared engine.
+  // fromDate = last day of the month before the first payment.
+  const fullSchedule = useMemo(() => {
+    if (!loan) return [];
+    const firstPayDate = loan.firstPaymentDate || loan.startDate;
+    if (firstPayDate && loan.originalPrincipal > 0) {
+      const [fpy, fpm] = firstPayDate.split('-').map(Number);
+      const prevM = fpm === 1 ? 12 : fpm - 1;
+      const prevY = fpm === 1 ? fpy - 1 : fpy;
+      const fromDate = `${prevY}-${String(prevM).padStart(2, '0')}-${String(new Date(prevY, prevM, 0).getDate()).padStart(2, '0')}`;
+      const sched = buildAmortSchedule(loan, loan.originalPrincipal, fromDate);
+      if (sched.length > 0) {
+        return sched.map((r, i) => ({
+          date: r.date,
+          openingBalance: i === 0 ? loan.originalPrincipal : sched[i - 1].balance,
+          interest: r.interest,
+          principal: r.principal,
+          payment: r.payment,
+          endingBalance: r.balance,
+        }));
+      }
+    }
+    // Fallback: use stored rows (LOC, Revolver, IO, Balloon)
+    return amortization
+      .filter(r => r.loanId === selectedLoanId)
+      .sort((a, b) => a.periodDate.localeCompare(b.periodDate))
+      .map(r => ({ date: r.periodDate, openingBalance: r.openingBalance, interest: r.interest, principal: r.principal, payment: r.payment, endingBalance: r.endingBalance }));
+  }, [loan, selectedLoanId, amortization]);
+
+  const displayRows = showAll ? fullSchedule : fullSchedule.slice(0, 8);
+
+  const totalInterest  = fullSchedule.reduce((s, r) => s + r.interest, 0);
+  const totalPrincipal = fullSchedule.reduce((s, r) => s + r.principal, 0);
+  const totalPayment   = fullSchedule.reduce((s, r) => s + r.payment, 0);
+  const opening        = loan ? toCAD(loan.originalPrincipal, loan.currency) : 0;
+  const monthly        = fullSchedule[0]?.payment ?? 0;
 
   return (
     <div className="space-y-3">
@@ -1478,10 +1504,10 @@ function AmortizationTabPanel({ loans, amortization }: { loans: Loan[]; amortiza
       {loan && (
         <div className="flex gap-2">
           {[
-            { label: "Remaining Balance",  value: fmt(remaining),         sub: "Opening balance" },
-            { label: "Total Interest",      value: fmt(totalInterest),     sub: "Full schedule" },
-            { label: "Monthly Payment",     value: fmt(monthly),           sub: `${loan.paymentType}` },
-            { label: "Maturity",            value: fmtDate(loan.maturityDate), sub: `${loan.rate}% ${loan.dayCountBasis}` },
+            { label: "Original Principal",  value: fmt(opening),               sub: "Full schedule" },
+            { label: "Total Interest",       value: fmt(totalInterest),         sub: `${fullSchedule.length} periods` },
+            { label: "Monthly Payment",      value: fmt(monthly),               sub: `${loan.paymentType}` },
+            { label: "Maturity",             value: fmtDate(loan.maturityDate), sub: `${loan.rate}% ${loan.dayCountBasis}` },
           ].map(({ label, value, sub }) => (
             <div key={label} className="flex-1 rounded-[8px] border border-border bg-background px-3 py-2 min-w-0">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium mb-0.5">{label}</p>
@@ -1496,7 +1522,7 @@ function AmortizationTabPanel({ loans, amortization }: { loans: Loan[]; amortiza
       <div className="rounded-[8px] border border-border overflow-hidden">
         <div className="px-3 py-2 bg-muted/40 border-b border-border flex items-center justify-between">
           <span className="text-sm font-semibold text-foreground">{loan?.name} — Amortization Schedule</span>
-          <span className="text-[10px] text-muted-foreground">{rows.length} periods</span>
+          <span className="text-[10px] text-muted-foreground">{fullSchedule.length} periods</span>
         </div>
         <table className="w-full text-[11px]">
           <thead>
@@ -1507,9 +1533,9 @@ function AmortizationTabPanel({ loans, amortization }: { loans: Loan[]; amortiza
             </tr>
           </thead>
           <tbody>
-            {displayRows.map((r,i) => (
-              <tr key={r.id} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
-                <td className="px-2.5 py-1.5 text-muted-foreground">{r.periodDate}</td>
+            {displayRows.map((r, i) => (
+              <tr key={i} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
+                <td className="px-2.5 py-1.5 text-muted-foreground">{r.date}</td>
                 <td className="px-2.5 py-1.5 text-right tabular-nums">{fmtCents(r.openingBalance)}</td>
                 <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{fmtCents(r.interest)}</td>
                 <td className="px-2.5 py-1.5 text-right tabular-nums text-primary">{fmtCents(r.principal)}</td>
@@ -1529,12 +1555,12 @@ function AmortizationTabPanel({ loans, amortization }: { loans: Loan[]; amortiza
             </tr>
           </tfoot>
         </table>
-        {rows.length > 8 && (
+        {fullSchedule.length > 8 && (
           <button
             onClick={() => setShowAll(v => !v)}
             className="w-full py-2 text-[11px] text-primary hover:bg-muted/30 transition-colors border-t border-border flex items-center justify-center gap-1"
           >
-            {showAll ? <><ChevronUp className="h-3 w-3" /> Show less</> : <><ChevronDown className="h-3 w-3" /> Show all {rows.length} periods</>}
+            {showAll ? <><ChevronUp className="h-3 w-3" /> Show less</> : <><ChevronDown className="h-3 w-3" /> Show all {fullSchedule.length} periods</>}
           </button>
         )}
       </div>
