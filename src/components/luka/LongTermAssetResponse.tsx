@@ -723,7 +723,7 @@ function LoansTab({
     { h: "Loan Name",          left: true  },
     { h: "Lender",             left: true  },
     { h: "Current Collateral", left: true  },
-    { h: "Type",               left: false },
+    { h: "Loan Type",          left: false },
     { h: "Rate Type",          left: false },
     { h: "Int. Rate (%)",      left: false },
     { h: "Start",              left: false },
@@ -1086,7 +1086,7 @@ function LoansTab({
                       className="w-full text-[11px] px-1.5 py-1 border border-primary/40 rounded-[5px] bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 resize-none overflow-hidden leading-snug"
                     />
                   </td>}
-                  {!hid.has("Type")                && <td className="px-1.5 py-1"><select value={draft.type??"Term"} onChange={e=>setD("type",e.target.value)} className={ICS}>{["Term","LOC","Revolver","Mortgage","Bridge"].map(t=><option key={t}>{t}</option>)}</select></td>}
+                  {!hid.has("Loan Type")                && <td className="px-1.5 py-1"><select value={draft.type??"Term"} onChange={e=>setD("type",e.target.value)} className={ICS}>{["Term","LOC","Revolver","Mortgage","Bridge"].map(t=><option key={t}>{t}</option>)}</select></td>}
                   {!hid.has("Rate Type")           && <td className="px-1.5 py-1"><select value={draft.interestType??"Fixed"} onChange={e=>setD("interestType",e.target.value)} className={ICS}>{["Fixed","Variable","Floating","Hybrid","Step Rate"].map(t=><option key={t}>{t}</option>)}</select></td>}
                   {!hid.has("Int. Rate (%)")       && <td className="px-1.5 py-1"><input type="number" step="0.01" value={draft.rate||""} onChange={e=>setD("rate",parseFloat(e.target.value)||0)} className={IC} placeholder="0.00" /></td>}
                   {!hid.has("Start")               && <td className="px-1.5 py-1" style={{minWidth:"140px"}}><input type="date" value={draft.startDate??""} onChange={e=>setD("startDate",e.target.value)} className={IC} /></td>}
@@ -1169,7 +1169,7 @@ function LoansTab({
                               <div className={`text-[10px] ${fit ? "max-w-[80px] truncate" : "whitespace-normal"}`}>{l.securityDescription ?? "—"}</div>
                             </td>
                           )}
-                          {!hid.has("Type") && (
+                          {!hid.has("Loan Type") && (
                             <td className="px-2.5 py-1.5 text-right">
                               {l.type
                                 ? <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border whitespace-nowrap">{LOAN_TYPE_LABELS[l.type] ?? l.type}</span>
