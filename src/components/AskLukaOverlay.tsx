@@ -3203,18 +3203,18 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                 <thead>
                                                   <tr className="bg-muted/30 border-b border-border">
                                                     {[
-                                                      { label: "Loan Name", right: false },
-                                                      { label: "Lender", right: false },
+                                                      { label: "Loan Name *", right: false },
+                                                      { label: "Lender *", right: false },
                                                       { label: "Current Collateral", right: false },
                                                       { label: "Type", right: false },
-                                                      { label: "Rate Type", right: false },
-                                                      { label: "Int. Rate %", right: true },
-                                                      { label: "Start Date", right: false },
-                                                      { label: "Maturity Date", right: false },
+                                                      { label: "Rate Type *", right: false },
+                                                      { label: "Int. Rate % *", right: true },
+                                                      { label: "Start Date *", right: false },
+                                                      { label: "Maturity Date *", right: false },
                                                       { label: "First Payment", right: false },
                                                       { label: "Currency", right: false },
                                                       { label: "Mo. Payment", right: true },
-                                                      { label: "Orig. Loan Amt", right: true },
+                                                      { label: "Orig. Loan Amt *", right: true },
                                                       { label: "FX Rate", right: true },
                                                       { label: "Opening Balance", right: true },
                                                       { label: "GL Principal", right: false },
@@ -3239,50 +3239,66 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     const upd = (field: keyof LtDebtReviewRow, val: string) =>
                                                       setLtPriorRows(prev => prev.map((row, i) => i === ri ? { ...row, [field]: val } : row));
                                                     const autoH = (el: HTMLTextAreaElement | null) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } };
-                                                    const cell = (field: keyof LtDebtReviewRow, right = false, minW?: string) => (
-                                                      <td className={`px-1.5 py-1 align-top ${right ? "text-right" : ""}`} style={minW ? { minWidth: minW } : undefined}>
-                                                        <textarea
-                                                          value={(r[field] as string) ?? ""}
-                                                          onChange={e => upd(field, e.target.value)}
-                                                          rows={1}
-                                                          ref={autoH}
-                                                          className={`w-full bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none rounded px-1.5 py-0.5 text-base transition-colors resize-none leading-snug overflow-hidden ${right ? "text-right" : ""}`}
-                                                          placeholder="—"
-                                                          onInput={e => autoH(e.currentTarget)}
-                                                        />
-                                                      </td>
-                                                    );
-                                                    const inp = (field: keyof LtDebtReviewRow, right = false, w = "w-24", ph = "—") => (
-                                                      <td className={`px-1.5 py-1 align-top ${right ? "text-right" : ""}`}>
-                                                        <input value={(r[field] as string) ?? ""} onChange={e => upd(field, e.target.value)} className={`h-6 text-base px-1.5 border border-border rounded bg-background focus:outline-none ${w} ${right ? "text-right" : ""}`} placeholder={ph} />
-                                                      </td>
-                                                    );
-                                                    const sel = (field: keyof LtDebtReviewRow, opts: string[], w = "w-24", onChg?: (v: string) => void) => (
-                                                      <td className="px-1.5 py-1 align-top">
-                                                        <select value={(r[field] as string) ?? ""} onChange={e => { upd(field, e.target.value); onChg?.(e.target.value); }} className={cn(SCR, w)}>
-                                                          <option value="">—</option>
-                                                          {opts.map(o => <option key={o}>{o}</option>)}
-                                                        </select>
-                                                      </td>
-                                                    );
-                                                    const dateCell = (field: keyof LtDebtReviewRow) => (
-                                                      <td className="px-1.5 py-1 align-top whitespace-nowrap" style={{ minWidth: "130px" }}>
-                                                        <input type="date" value={(r[field] as string) ?? ""} onChange={e => upd(field, e.target.value)} className="h-6 text-base px-1.5 border border-border rounded bg-background focus:outline-none w-28" />
-                                                      </td>
-                                                    );
+                                                    const cell = (field: keyof LtDebtReviewRow, right = false, minW?: string, req = false) => {
+                                                      const val = (r[field] as string) ?? "";
+                                                      const empty = req && !val.trim();
+                                                      return (
+                                                        <td className={`px-1.5 py-1 align-top ${right ? "text-right" : ""}`} style={minW ? { minWidth: minW } : undefined}>
+                                                          <textarea
+                                                            value={val}
+                                                            onChange={e => upd(field, e.target.value)}
+                                                            rows={1}
+                                                            ref={autoH}
+                                                            className={cn(`w-full bg-transparent border rounded px-1.5 py-0.5 text-base transition-colors resize-none leading-snug overflow-hidden focus:outline-none ${right ? "text-right" : ""}`, empty ? "border-red-400 bg-red-50/60 hover:border-red-400 focus:border-red-500" : "border-transparent hover:border-border focus:border-primary")}
+                                                            placeholder="—"
+                                                            onInput={e => autoH(e.currentTarget)}
+                                                          />
+                                                        </td>
+                                                      );
+                                                    };
+                                                    const inp = (field: keyof LtDebtReviewRow, right = false, w = "w-24", ph = "—", req = false) => {
+                                                      const val = (r[field] as string) ?? "";
+                                                      const empty = req && !val.trim();
+                                                      return (
+                                                        <td className={`px-1.5 py-1 align-top ${right ? "text-right" : ""}`}>
+                                                          <input value={val} onChange={e => upd(field, e.target.value)} className={cn(`h-6 text-base px-1.5 border rounded bg-background focus:outline-none ${w} ${right ? "text-right" : ""}`, empty ? "border-red-400 bg-red-50/60" : "border-border")} placeholder={ph} />
+                                                        </td>
+                                                      );
+                                                    };
+                                                    const sel = (field: keyof LtDebtReviewRow, opts: string[], w = "w-24", onChg?: (v: string) => void, req = false) => {
+                                                      const val = (r[field] as string) ?? "";
+                                                      const empty = req && !val;
+                                                      return (
+                                                        <td className="px-1.5 py-1 align-top">
+                                                          <select value={val} onChange={e => { upd(field, e.target.value); onChg?.(e.target.value); }} className={cn(SCR, w, empty && "border-red-400 bg-red-50/60")}>
+                                                            <option value="">—</option>
+                                                            {opts.map(o => <option key={o}>{o}</option>)}
+                                                          </select>
+                                                        </td>
+                                                      );
+                                                    };
+                                                    const dateCell = (field: keyof LtDebtReviewRow, req = false) => {
+                                                      const val = (r[field] as string) ?? "";
+                                                      const empty = req && !val;
+                                                      return (
+                                                        <td className="px-1.5 py-1 align-top whitespace-nowrap" style={{ minWidth: "130px" }}>
+                                                          <input type="date" value={val} onChange={e => upd(field, e.target.value)} className={cn("h-6 text-base px-1.5 border rounded bg-background focus:outline-none w-28", empty ? "border-red-400 bg-red-50/60" : "border-border")} />
+                                                        </td>
+                                                      );
+                                                    };
                                                     const autoGl = r.glPrincipal || defaultGLPrincipal(r.type || "Term", r.currency || "CAD");
                                                     return (
                                                       <tr key={r.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
-                                                        {cell("name", false, "160px")}
-                                                        {cell("lender", false, "140px")}
+                                                        {cell("name", false, "160px", true)}
+                                                        {cell("lender", false, "140px", true)}
                                                         <td className="px-1.5 py-1 align-top" style={{ minWidth: "200px" }}>
                                                           <textarea value={r.collateral ?? ""} onChange={e => upd("collateral", e.target.value)} rows={1} ref={autoH} onInput={e => autoH(e.currentTarget)} className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none rounded px-1.5 py-0.5 text-base transition-colors resize-none leading-snug overflow-hidden" placeholder="—" />
                                                         </td>
                                                         {sel("type", ["Term","LOC","Revolver","Mortgage","Bridge"], "w-20", v => upd("glPrincipal", defaultGLPrincipal(v, r.currency || "CAD")))}
-                                                        {sel("interestType", ["Fixed","Variable","Floating","Hybrid","Step Rate"], "w-24")}
-                                                        {inp("rate", true, "w-16", "%")}
-                                                        {dateCell("startDate")}
-                                                        {dateCell("maturityDate")}
+                                                        {sel("interestType", ["Fixed","Variable","Floating","Hybrid","Step Rate"], "w-24", undefined, true)}
+                                                        {inp("rate", true, "w-16", "%", true)}
+                                                        {dateCell("startDate", true)}
+                                                        {dateCell("maturityDate", true)}
                                                         {dateCell("firstPaymentDate")}
                                                         <td className="px-1.5 py-1 align-top">
                                                           <select value={r.currency || "CAD"} onChange={e => { upd("currency", e.target.value); upd("glPrincipal", defaultGLPrincipal(r.type || "Term", e.target.value)); }} className={cn(SCR, "w-14")}>
@@ -3290,7 +3306,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                           </select>
                                                         </td>
                                                         {inp("monthlyPayment", true, "w-24")}
-                                                        {inp("originalPrincipal", true, "w-24", "0")}
+                                                        {inp("originalPrincipal", true, "w-24", "0", true)}
                                                         {inp("fxRate", true, "w-16", "1.000")}
                                                         {inp("openingBalance", true, "w-24", "0")}
                                                         <td className="px-1.5 py-1 align-top">
