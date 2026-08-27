@@ -495,10 +495,71 @@ interface LtDebtReviewRow {
   ioPeriod: string; balloonAmt: string;
   collateral: string; status: string;
   glPrincipal: string;
+  tbLoanAccount: string;
+  tbInterestAccount: string;
   openingBalance: string;
   interestPaid: string;
   principalPaid: string;
   locked?: boolean;
+}
+
+interface TBAccount { code: string; description: string; final: number; py1: number; py2: number; }
+const MOCK_TB_ACCOUNTS: TBAccount[] = [
+  { code: "2100", description: "Long-Term Debt – CAD",          final: 356_687.18,  py1: 400_000.00, py2: 0 },
+  { code: "2101", description: "Current Portion of LTD",        final:  43_312.82,  py1:  43_312.82, py2: 0 },
+  { code: "2110", description: "Long-Term Debt – USD",          final:       0,      py1:       0,   py2: 0 },
+  { code: "2200", description: "Line of Credit",                final:       0,      py1:       0,   py2: 0 },
+  { code: "7100", description: "Interest Expense",              final:  30_386.12,  py1:  15_193.06, py2: 0 },
+  { code: "7110", description: "Interest Expense – LOC",        final:       0,      py1:       0,   py2: 0 },
+  { code: "7120", description: "Interest Expense – Mortgage",   final:       0,      py1:       0,   py2: 0 },
+  { code: "2300", description: "Accrued Interest Payable",      final:       0,      py1:       0,   py2: 0 },
+];
+
+function TBAccountSelect({ value, onChange, required }: { value: string; onChange: (v: string) => void; required?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open]);
+  const selected = MOCK_TB_ACCOUNTS.find(a => a.code === value);
+  const fmt = (n: number) => n === 0 ? "—" : n.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (
+    <div ref={ref} className="relative" style={{ minWidth: "180px" }}>
+      <button type="button" onClick={() => setOpen(p => !p)} className={cn("h-6 w-full text-left text-base px-1.5 border rounded bg-background focus:outline-none flex items-center justify-between gap-1", required && !value ? "border-red-400 bg-red-50/60" : "border-border hover:border-primary/40")}>
+        <span className={cn("truncate", !selected && "text-muted-foreground")}>{selected ? `${selected.code} — ${selected.description}` : "Select account"}</span>
+        <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 rounded-[8px] border border-border bg-background shadow-lg overflow-hidden" style={{ minWidth: "420px" }}>
+          <table className="w-full text-base">
+            <thead>
+              <tr className="bg-muted/30 border-b border-border">
+                <th className="px-2.5 py-1.5 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Account No.</th>
+                <th className="px-2.5 py-1.5 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Description</th>
+                <th className="px-2.5 py-1.5 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Final</th>
+                <th className="px-2.5 py-1.5 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">PY1</th>
+                <th className="px-2.5 py-1.5 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">PY2</th>
+              </tr>
+            </thead>
+            <tbody>
+              {MOCK_TB_ACCOUNTS.map(a => (
+                <tr key={a.code} onClick={() => { onChange(a.code); setOpen(false); }} className={cn("border-b border-border/40 cursor-pointer hover:bg-muted/40 transition-colors", a.code === value && "bg-primary/8")}>
+                  <td className="px-2.5 py-1.5 text-base font-mono">{a.code}</td>
+                  <td className="px-2.5 py-1.5 text-base">{a.description}</td>
+                  <td className="px-2.5 py-1.5 text-right tabular-nums text-base">{fmt(a.final)}</td>
+                  <td className="px-2.5 py-1.5 text-right tabular-nums text-base">{fmt(a.py1)}</td>
+                  <td className="px-2.5 py-1.5 text-right tabular-nums text-base">{fmt(a.py2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
 }
 
 const EMPTY_LT_ROW = (): LtDebtReviewRow => ({
@@ -512,6 +573,7 @@ const EMPTY_LT_ROW = (): LtDebtReviewRow => ({
   ioPeriod: "", balloonAmt: "",
   collateral: "", status: "Active",
   glPrincipal: "2100",
+  tbLoanAccount: "", tbInterestAccount: "",
   openingBalance: "", interestPaid: "", principalPaid: "",
 });
 
@@ -525,7 +587,7 @@ function mockLtRowsFromFile(file: LtDebtFile): LtDebtReviewRow[] {
   const kind = file.userKind ?? file.kind;
   const sf = file.name;
   const uid = () => `ltr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-  const X = { firstPaymentDate: "", monthlyPayment: "", fxRate: "", paymentType: "P&I", dayCount: "ACT/365", compounding: "Monthly", ioPeriod: "", balloonAmt: "", openingBalance: "", interestPaid: "", principalPaid: "" };
+  const X = { firstPaymentDate: "", monthlyPayment: "", fxRate: "", paymentType: "P&I", dayCount: "ACT/365", compounding: "Monthly", ioPeriod: "", balloonAmt: "", openingBalance: "", interestPaid: "", principalPaid: "", tbLoanAccount: "", tbInterestAccount: "" };
   // ── Real CaseWare extraction — The Fishin' Hole (1982) Ltd., YE Sep 30, 2025 ──
   if (kind === "debt-schedule") return [
     {
@@ -538,7 +600,7 @@ function mockLtRowsFromFile(file: LtDebtFile): LtDebtReviewRow[] {
       dayCount: "", compounding: "",
       ioPeriod: "", balloonAmt: "",
       collateral: "General security agreement over all present and after-acquired personal property", status: "Active",
-      glPrincipal: "",
+      glPrincipal: "", tbLoanAccount: "", tbInterestAccount: "",
       openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82",
     },
     {
@@ -551,7 +613,7 @@ function mockLtRowsFromFile(file: LtDebtFile): LtDebtReviewRow[] {
       dayCount: "", compounding: "",
       ioPeriod: "", balloonAmt: "",
       collateral: "First charge over real property and improvements", status: "Active",
-      glPrincipal: "",
+      glPrincipal: "", tbLoanAccount: "", tbInterestAccount: "",
       openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82",
     },
   ];
@@ -3081,8 +3143,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                         setTimeout(() => {
                                           const uid = () => `ltr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
                                           const rows: LtDebtReviewRow[] = [
-                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 1", lender: "BDC Capital Inc.", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-31", maturityDate: "2032-09-30", firstPaymentDate: "", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "General security agreement over all present and after-acquired personal property", status: "Active", glPrincipal: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
-                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 2", lender: "RBC Royal Bank", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-31", maturityDate: "2032-09-30", firstPaymentDate: "", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "First charge over real property and improvements", status: "Active", glPrincipal: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
+                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 1", lender: "BDC Capital Inc.", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-31", maturityDate: "2032-09-30", firstPaymentDate: "", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "General security agreement over all present and after-acquired personal property", status: "Active", glPrincipal: "", tbLoanAccount: "", tbInterestAccount: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
+                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 2", lender: "RBC Royal Bank", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-31", maturityDate: "2032-09-30", firstPaymentDate: "", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "First charge over real property and improvements", status: "Active", glPrincipal: "", tbLoanAccount: "", tbInterestAccount: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
                                           ];
                                           setLtPriorRows(rows);
                                           setLtPriorDocYearEnd("2025-09-30");
@@ -3146,6 +3208,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       { label: "FX Rate", right: true },
                                                       { label: "Opening Balance", right: true },
                                                       { label: "GL Principal", right: false },
+                                                      { label: "Trial Balance Acct *", right: false },
+                                                      { label: "Interest Account *", right: false },
                                                       { label: "Day Count", right: false },
                                                       { label: "Payment Type", right: false },
                                                       { label: "Freq.", right: false },
@@ -3222,6 +3286,12 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         <td className="px-1.5 py-1 align-top">
                                                           <input value={autoGl} onChange={e => upd("glPrincipal", e.target.value)} className="h-6 text-base px-1.5 border border-border rounded bg-background focus:outline-none w-20" placeholder="2100" />
                                                         </td>
+                                                        <td className="px-1.5 py-1 align-top">
+                                                          <TBAccountSelect value={r.tbLoanAccount ?? ""} onChange={v => upd("tbLoanAccount", v)} required />
+                                                        </td>
+                                                        <td className="px-1.5 py-1 align-top">
+                                                          <TBAccountSelect value={r.tbInterestAccount ?? ""} onChange={v => upd("tbInterestAccount", v)} required />
+                                                        </td>
                                                         {sel("dayCount", ["ACT/365","ACT/360","30/360"], "w-20")}
                                                         {sel("paymentType", ["P&I","Interest-only","Balloon"], "w-24")}
                                                         {sel("paymentFrequency", ["Monthly","Quarterly","Semi-annual","Annual"], "w-24")}
@@ -3244,7 +3314,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("originalPrincipal"))}</td>
                                                         <td />
                                                         <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("openingBalance"))}</td>
-                                                        <td colSpan={7} />
+                                                        <td colSpan={9} />
                                                         <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("currentBalance"))}</td>
                                                       </tr>
                                                     );
