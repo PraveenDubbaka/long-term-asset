@@ -517,47 +517,57 @@ const MOCK_TB_ACCOUNTS: TBAccount[] = [
 
 function TBAccountSelect({ value, onChange, required }: { value: string; onChange: (v: string) => void; required?: boolean }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    const h = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    const h = (e: MouseEvent) => {
+      if (!btnRef.current?.contains(e.target as Node) && !dropRef.current?.contains(e.target as Node)) setOpen(false);
+    };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, [open]);
   const selected = MOCK_TB_ACCOUNTS.find(a => a.code === value);
   const fmt = (n: number) => n === 0 ? "—" : n.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const toggle = () => {
+    if (!open && btnRef.current) setRect(btnRef.current.getBoundingClientRect());
+    setOpen(p => !p);
+  };
+  const dropdown = open && rect ? ReactDOM.createPortal(
+    <div ref={dropRef} className="rounded-[8px] border border-border bg-background shadow-lg overflow-hidden" style={{ position: "fixed", top: rect.bottom + 4, left: rect.left, minWidth: "420px", zIndex: 9999 }}>
+      <table className="w-full text-base">
+        <thead>
+          <tr className="bg-muted/30 border-b border-border">
+            <th className="px-2.5 py-1.5 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Account No.</th>
+            <th className="px-2.5 py-1.5 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Description</th>
+            <th className="px-2.5 py-1.5 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Final</th>
+            <th className="px-2.5 py-1.5 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">PY1</th>
+            <th className="px-2.5 py-1.5 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">PY2</th>
+          </tr>
+        </thead>
+        <tbody>
+          {MOCK_TB_ACCOUNTS.map(a => (
+            <tr key={a.code} onClick={() => { onChange(a.code); setOpen(false); }} className={cn("border-b border-border/40 cursor-pointer hover:bg-muted/40 transition-colors", a.code === value && "bg-primary/8")}>
+              <td className="px-2.5 py-1.5 text-base font-mono">{a.code}</td>
+              <td className="px-2.5 py-1.5 text-base">{a.description}</td>
+              <td className="px-2.5 py-1.5 text-right tabular-nums text-base">{fmt(a.final)}</td>
+              <td className="px-2.5 py-1.5 text-right tabular-nums text-base">{fmt(a.py1)}</td>
+              <td className="px-2.5 py-1.5 text-right tabular-nums text-base">{fmt(a.py2)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>,
+    document.body
+  ) : null;
   return (
-    <div ref={ref} className="relative" style={{ minWidth: "180px" }}>
-      <button type="button" onClick={() => setOpen(p => !p)} className={cn("h-6 w-full text-left text-base px-1.5 border rounded bg-background focus:outline-none flex items-center justify-between gap-1", required && !value ? "border-red-400 bg-red-50/60" : "border-border hover:border-primary/40")}>
+    <div className="relative" style={{ minWidth: "180px" }}>
+      <button ref={btnRef} type="button" onClick={toggle} className={cn("h-6 w-full text-left text-base px-1.5 border rounded bg-background focus:outline-none flex items-center justify-between gap-1", required && !value ? "border-red-400 bg-red-50/60" : "border-border hover:border-primary/40")}>
         <span className={cn("truncate", !selected && "text-muted-foreground")}>{selected ? `${selected.code} — ${selected.description}` : "Select account"}</span>
         <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" />
       </button>
-      {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 rounded-[8px] border border-border bg-background shadow-lg overflow-hidden" style={{ minWidth: "420px" }}>
-          <table className="w-full text-base">
-            <thead>
-              <tr className="bg-muted/30 border-b border-border">
-                <th className="px-2.5 py-1.5 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Account No.</th>
-                <th className="px-2.5 py-1.5 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Description</th>
-                <th className="px-2.5 py-1.5 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Final</th>
-                <th className="px-2.5 py-1.5 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">PY1</th>
-                <th className="px-2.5 py-1.5 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">PY2</th>
-              </tr>
-            </thead>
-            <tbody>
-              {MOCK_TB_ACCOUNTS.map(a => (
-                <tr key={a.code} onClick={() => { onChange(a.code); setOpen(false); }} className={cn("border-b border-border/40 cursor-pointer hover:bg-muted/40 transition-colors", a.code === value && "bg-primary/8")}>
-                  <td className="px-2.5 py-1.5 text-base font-mono">{a.code}</td>
-                  <td className="px-2.5 py-1.5 text-base">{a.description}</td>
-                  <td className="px-2.5 py-1.5 text-right tabular-nums text-base">{fmt(a.final)}</td>
-                  <td className="px-2.5 py-1.5 text-right tabular-nums text-base">{fmt(a.py1)}</td>
-                  <td className="px-2.5 py-1.5 text-right tabular-nums text-base">{fmt(a.py2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {dropdown}
     </div>
   );
 }
