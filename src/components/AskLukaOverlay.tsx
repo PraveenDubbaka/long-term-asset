@@ -3140,8 +3140,6 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       { label: "Current Collateral", right: false, hint: "" },
                                                       { label: "Opening Balance", right: true, hint: "" },
                                                       { label: "Additions During Year", right: true, hint: "" },
-                                                      { label: "Interest Paid", right: true, hint: "" },
-                                                      { label: "Principal Paid", right: true, hint: "" },
                                                       { label: "Closing Balance", right: true, hint: "" },
                                                     ].map(h => (
                                                       <th key={h.label} className={`px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h.right ? "text-right" : "text-left"}`}>
@@ -3211,8 +3209,6 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         {collateralCell}
                                                         {cell("openingBalance", true, "110px")}
                                                         {cell("originalPrincipal", true, "120px")}
-                                                        {cell("interestPaid", true, "100px")}
-                                                        {cell("principalPaid", true, "100px")}
                                                         {cell("currentBalance", true, "110px")}
                                                       </tr>
                                                     );
@@ -3228,8 +3224,6 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         <td className="px-2.5 py-1.5 text-base text-muted-foreground" colSpan={7}>Total</td>
                                                         <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("openingBalance"))}</td>
                                                         <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("originalPrincipal"))}</td>
-                                                        <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("interestPaid"))}</td>
-                                                        <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("principalPaid"))}</td>
                                                         <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("currentBalance"))}</td>
                                                       </tr>
                                                     );
