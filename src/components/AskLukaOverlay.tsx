@@ -3398,7 +3398,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     compoundingFrequency: row.compounding ? row.compounding as CompoundingFrequency : undefined,
                                                     fxRateToCAD: parseNum(row.fxRate) || undefined,
                                                     securityDescription: row.collateral || undefined,
-                                                    glPrincipalAccount: row.tbLoanAccount || row.glPrincipal,
+                                                    glPrincipalAccount: row.tbLoanAccount || row.glPrincipal || defaultGLPrincipal(row.type || "Term", row.currency || "CAD"),
                                                     glAccruedInterestAccount: "", glInterestExpenseAccount: row.tbInterestAccount || "",
                                                     covenantIds: [], currentPortion: 0,
                                                     longTermPortion: parseNum(row.currentBalance),
