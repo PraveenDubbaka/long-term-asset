@@ -3227,11 +3227,14 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       { label: "IO Period (Mo.)", right: true },
                                                       { label: "Balloon Amt", right: true },
                                                       { label: "Closing Balance", right: true },
-                                                    ].map(h => (
-                                                      <th key={h.label} className={`px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h.right ? "text-right" : "text-left"}`}>
-                                                        {h.label}
-                                                      </th>
-                                                    ))}
+                                                    ].map(h => {
+                                                      const parts = h.label.split("*");
+                                                      return (
+                                                        <th key={h.label} className={`px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h.right ? "text-right" : "text-left"}`}>
+                                                          {parts.map((p, i) => <React.Fragment key={i}>{p}{i < parts.length - 1 && <span className="text-red-500">*</span>}</React.Fragment>)}
+                                                        </th>
+                                                      );
+                                                    })}
                                                   </tr>
                                                 </thead>
                                                 <tbody>
