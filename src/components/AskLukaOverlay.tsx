@@ -3179,22 +3179,24 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       </td>
                                                     );
                                                     const inp = (field: keyof LtDebtReviewRow, right = false, w = "w-24", ph = "—") => (
-                                                      <td className={`px-1.5 py-1 ${right ? "text-right" : ""}`}>
+                                                      <td className={`px-1.5 py-1 align-top ${right ? "text-right" : ""}`}>
                                                         <input value={(r[field] as string) ?? ""} onChange={e => upd(field, e.target.value)} className={`h-6 text-base px-1.5 border border-border rounded bg-background focus:outline-none ${w} ${right ? "text-right" : ""}`} placeholder={ph} />
                                                       </td>
                                                     );
-                                                    const sel = (field: keyof LtDebtReviewRow, opts: string[], w = "w-24") => (
-                                                      <td className="px-1.5 py-1">
-                                                        <select value={(r[field] as string) ?? ""} onChange={e => upd(field, e.target.value)} className={cn(SCR, w)}>
+                                                    const sel = (field: keyof LtDebtReviewRow, opts: string[], w = "w-24", onChg?: (v: string) => void) => (
+                                                      <td className="px-1.5 py-1 align-top">
+                                                        <select value={(r[field] as string) ?? ""} onChange={e => { upd(field, e.target.value); onChg?.(e.target.value); }} className={cn(SCR, w)}>
+                                                          <option value="">—</option>
                                                           {opts.map(o => <option key={o}>{o}</option>)}
                                                         </select>
                                                       </td>
                                                     );
                                                     const dateCell = (field: keyof LtDebtReviewRow) => (
-                                                      <td className="px-1.5 py-1 whitespace-nowrap" style={{ minWidth: "130px" }}>
+                                                      <td className="px-1.5 py-1 align-top whitespace-nowrap" style={{ minWidth: "130px" }}>
                                                         <input type="date" value={(r[field] as string) ?? ""} onChange={e => upd(field, e.target.value)} className="h-6 text-base px-1.5 border border-border rounded bg-background focus:outline-none w-28" />
                                                       </td>
                                                     );
+                                                    const autoGl = r.glPrincipal || defaultGLPrincipal(r.type || "Term", r.currency || "CAD");
                                                     return (
                                                       <tr key={r.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
                                                         {cell("name", false, "160px")}
@@ -3202,18 +3204,20 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         <td className="px-1.5 py-1 align-top" style={{ minWidth: "200px" }}>
                                                           <textarea value={r.collateral ?? ""} onChange={e => upd("collateral", e.target.value)} rows={2} className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none rounded px-1.5 py-0.5 text-base transition-colors resize-none leading-snug" placeholder="—" />
                                                         </td>
-                                                        {sel("type", ["Term","LOC","Revolver","Mortgage","Bridge"], "w-20")}
+                                                        {sel("type", ["Term","LOC","Revolver","Mortgage","Bridge"], "w-20", v => upd("glPrincipal", defaultGLPrincipal(v, r.currency || "CAD")))}
                                                         {sel("interestType", ["Fixed","Variable","Floating","Hybrid","Step Rate"], "w-24")}
                                                         {inp("rate", true, "w-16", "%")}
                                                         {dateCell("startDate")}
                                                         {dateCell("maturityDate")}
                                                         {dateCell("firstPaymentDate")}
-                                                        {sel("currency", ["CAD","USD","EUR","GBP"], "w-14")}
+                                                        {sel("currency", ["CAD","USD","EUR","GBP"], "w-14", v => upd("glPrincipal", defaultGLPrincipal(r.type || "Term", v)))}
                                                         {inp("monthlyPayment", true, "w-24")}
                                                         {inp("originalPrincipal", true, "w-24", "0")}
                                                         {inp("fxRate", true, "w-16", "1.000")}
                                                         {inp("openingBalance", true, "w-24", "0")}
-                                                        {inp("glPrincipal", false, "w-20", "2100")}
+                                                        <td className="px-1.5 py-1 align-top">
+                                                          <input value={autoGl} onChange={e => upd("glPrincipal", e.target.value)} className="h-6 text-base px-1.5 border border-border rounded bg-background focus:outline-none w-20" placeholder="2100" />
+                                                        </td>
                                                         {sel("dayCount", ["ACT/365","ACT/360","30/360"], "w-20")}
                                                         {sel("paymentType", ["P&I","Interest-only","Balloon"], "w-24")}
                                                         {sel("paymentFrequency", ["Monthly","Quarterly","Semi-annual","Annual"], "w-24")}
