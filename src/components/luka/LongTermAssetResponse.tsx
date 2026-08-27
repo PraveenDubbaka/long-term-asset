@@ -659,7 +659,9 @@ function LoansTab({
     { h: "FX Rate",            left: false },
     { h: "Converted Amt",      left: false },
     { h: "Opening Balance",    left: false },
+    { h: "GL Principal",       left: false },
     { h: "TB Loan Account",    left: false },
+    { h: "Interest Account",   left: false },
     { h: "TB Interest Account", left: false },
     { h: "Day Count",          left: false },
     { h: "Payment Type",       left: false },
@@ -1024,8 +1026,10 @@ function LoansTab({
                   {!hid.has("FX Rate")             && <td className="px-1.5 py-1"><input type="number" step="0.0001" value={draft.fxRateToCAD||""} onChange={e=>setD("fxRateToCAD",parseFloat(e.target.value)||undefined)} className={IC} placeholder="1.000" /></td>}
                   {!hid.has("Converted Amt")       && <td className="px-1.5 py-1 text-right text-muted-foreground text-[11px]">—</td>}
                   {!hid.has("Opening Balance")     && <td className="px-1.5 py-1"><input type="number" step="1000" value={draft.currentBalance||""} onChange={e=>setD("currentBalance",parseFloat(e.target.value)||0)} className={IC} placeholder="0" /></td>}
-                  {!hid.has("TB Loan Account")     && <td className="px-1.5 py-1"><GLSelect loanId="new-row" value={draft.glPrincipalAccount??""} options={principalAccts} field="glPrincipalAccount" onSave={(_,__,code)=>setD("glPrincipalAccount",code)} /></td>}
-                  {!hid.has("TB Interest Account") && <td className="px-1.5 py-1"><input value={draft.glInterestExpenseAccount??""} onChange={e=>setD("glInterestExpenseAccount",e.target.value)} className={IC} placeholder="e.g. 7100" /></td>}
+                  {!hid.has("GL Principal")        && <td className="px-1.5 py-1"><GLSelect loanId="new-row" value={draft.glPrincipalAccount??""} options={principalAccts} field="glPrincipalAccount" onSave={(_,__,code)=>setD("glPrincipalAccount",code)} /></td>}
+                  {!hid.has("TB Loan Account")     && <td className="px-1.5 py-1 font-mono text-xs text-foreground">{draft.glPrincipalAccount ?? ""}</td>}
+                  {!hid.has("Interest Account")    && <td className="px-1.5 py-1"><input value={draft.glInterestExpenseAccount??""} onChange={e=>setD("glInterestExpenseAccount",e.target.value)} className={IC} placeholder="e.g. 7100" /></td>}
+                  {!hid.has("TB Interest Account") && <td className="px-1.5 py-1 font-mono text-xs text-foreground">{draft.glInterestExpenseAccount ?? ""}</td>}
                   {!hid.has("Day Count")           && <td className="px-1.5 py-1"><select value={draft.dayCountBasis??"ACT/365"} onChange={e=>setD("dayCountBasis",e.target.value)} className={ICS}>{["ACT/365","ACT/360","30/360"].map(d=><option key={d}>{d}</option>)}</select></td>}
                   {!hid.has("Payment Type")        && <td className="px-1.5 py-1"><select value={draft.paymentType??"P&I"} onChange={e=>setD("paymentType",e.target.value)} className={ICS}>{["P&I","Interest-only","Balloon"].map(t=><option key={t}>{t}</option>)}</select></td>}
                   {!hid.has("Freq.")               && <td className="px-1.5 py-1"><select value={draft.paymentFrequency??"Monthly"} onChange={e=>setD("paymentFrequency",e.target.value)} className={ICS}>{["Monthly","Quarterly","Semi-annual","Annual"].map(f=><option key={f}>{f}</option>)}</select></td>}
@@ -1140,11 +1144,13 @@ function LoansTab({
                           )}
                           {!hid.has("Converted Amt")    && <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold whitespace-nowrap text-foreground">{fmt(convAmt)}</td>}
                           {!hid.has("Opening Balance")  && <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold whitespace-nowrap text-foreground">{fmtCents(closingCAD)}</td>}
-                          {!hid.has("TB Loan Account") && (
+                          {!hid.has("GL Principal") && (
                             <td className="px-2.5 py-1.5 text-right">
                               <GLSelect loanId={l.id} value={l.glPrincipalAccount} options={principalAccts} field="glPrincipalAccount" onSave={handleGLSave} />
                             </td>
                           )}
+                          {!hid.has("TB Loan Account")     && <td className="px-2.5 py-1.5 text-right font-mono whitespace-nowrap">{l.glPrincipalAccount ? <span className="text-foreground">{l.glPrincipalAccount}</span> : <span className="text-muted-foreground">—</span>}</td>}
+                          {!hid.has("Interest Account")    && <td className="px-2.5 py-1.5 text-right font-mono whitespace-nowrap">{l.glInterestExpenseAccount ? <span className="text-foreground">{l.glInterestExpenseAccount}</span> : <span className="text-muted-foreground">—</span>}</td>}
                           {!hid.has("TB Interest Account") && <td className="px-2.5 py-1.5 text-right font-mono whitespace-nowrap">{l.glInterestExpenseAccount ? <span className="text-foreground">{l.glInterestExpenseAccount}</span> : <span className="text-muted-foreground">—</span>}</td>}
                           {!hid.has("Day Count")        && <td className="px-2.5 py-1.5 text-right font-mono whitespace-nowrap">{l.dayCountBasis ? <span className="text-foreground">{l.dayCountBasis}</span> : <span className="text-muted-foreground">—</span>}</td>}
                           {!hid.has("Payment Type")     && <td className="px-2.5 py-1.5 text-right whitespace-nowrap">{l.paymentType ? <span className="text-foreground">{l.paymentType}</span> : <span className="text-muted-foreground">—</span>}</td>}
