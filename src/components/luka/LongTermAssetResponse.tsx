@@ -726,6 +726,7 @@ function LoansTab({
     { h: "Loan Type",          left: false },
     { h: "Rate Type",          left: false },
     { h: "Int. Rate (%)",      left: false },
+    { h: "Day Count",          left: false },
     { h: "Start",              left: false },
     { h: "Maturity",           left: false },
     { h: "Tenure (Mo.)",       left: false },
@@ -739,7 +740,6 @@ function LoansTab({
     { h: "GL Principal",        left: false },
     { h: "TB Loan Account",     left: false },
     { h: "TB Interest Account", left: false },
-    { h: "Day Count",          left: false },
     { h: "Payment Type",       left: false },
     { h: "Freq.",              left: false },
     { h: "Compounding",        left: false },
@@ -1089,6 +1089,7 @@ function LoansTab({
                   {!hid.has("Loan Type")                && <td className="px-1.5 py-1"><select value={draft.type??"Term"} onChange={e=>setD("type",e.target.value)} className={ICS}>{["Term","LOC","Revolver","Mortgage","Bridge"].map(t=><option key={t}>{t}</option>)}</select></td>}
                   {!hid.has("Rate Type")           && <td className="px-1.5 py-1"><select value={draft.interestType??"Fixed"} onChange={e=>setD("interestType",e.target.value)} className={ICS}>{["Fixed","Variable","Floating","Hybrid","Step Rate"].map(t=><option key={t}>{t}</option>)}</select></td>}
                   {!hid.has("Int. Rate (%)")       && <td className="px-1.5 py-1"><input type="number" step="0.01" value={draft.rate||""} onChange={e=>setD("rate",parseFloat(e.target.value)||0)} className={IC} placeholder="0.00" /></td>}
+                  {!hid.has("Day Count")           && <td className="px-1.5 py-1"><select value={draft.dayCountBasis??"ACT/365"} onChange={e=>setD("dayCountBasis",e.target.value)} className={ICS}>{["ACT/365","ACT/360","30/360"].map(d=><option key={d}>{d}</option>)}</select></td>}
                   {!hid.has("Start")               && <td className="px-1.5 py-1" style={{minWidth:"140px"}}><input type="date" value={draft.startDate??""} onChange={e=>setD("startDate",e.target.value)} className={IC} /></td>}
                   {!hid.has("Maturity")            && <td className="px-1.5 py-1" style={{minWidth:"140px"}}><input type="date" value={draft.maturityDate??""} onChange={e=>setD("maturityDate",e.target.value)} className={IC} /></td>}
                   {!hid.has("Tenure (Mo.)")        && <td className="px-1.5 py-1 text-right text-muted-foreground text-[11px]">—</td>}
@@ -1105,7 +1106,6 @@ function LoansTab({
                   {!hid.has("GL Principal")        && <td className="px-1.5 py-1"><GLSelect loanId="new-row" value={draft.glPrincipalAccount??""} options={principalAccts} field="glPrincipalAccount" onSave={(_,__,code)=>setD("glPrincipalAccount",code)} /></td>}
                   {!hid.has("TB Loan Account")     && <td className="px-1.5 py-1"><TBAccountSelect value={draft.glPrincipalAccount ?? ""} onChange={v => setD("glPrincipalAccount", v)} /></td>}
                   {!hid.has("TB Interest Account") && <td className="px-1.5 py-1"><TBAccountSelect value={draft.glInterestExpenseAccount ?? ""} onChange={v => setD("glInterestExpenseAccount", v)} /></td>}
-                  {!hid.has("Day Count")           && <td className="px-1.5 py-1"><select value={draft.dayCountBasis??"ACT/365"} onChange={e=>setD("dayCountBasis",e.target.value)} className={ICS}>{["ACT/365","ACT/360","30/360"].map(d=><option key={d}>{d}</option>)}</select></td>}
                   {!hid.has("Payment Type")        && <td className="px-1.5 py-1"><select value={draft.paymentType??"P&I"} onChange={e=>setD("paymentType",e.target.value)} className={ICS}>{["P&I","Interest-only","Balloon"].map(t=><option key={t}>{t}</option>)}</select></td>}
                   {!hid.has("Freq.")               && <td className="px-1.5 py-1"><select value={draft.paymentFrequency??"Monthly"} onChange={e=>setD("paymentFrequency",e.target.value)} className={ICS}>{["Monthly","Quarterly","Semi-annual","Annual"].map(f=><option key={f}>{f}</option>)}</select></td>}
                   {!hid.has("Compounding")         && <td className="px-1.5 py-1"><select value={draft.compoundingFrequency??"Monthly"} onChange={e=>setD("compoundingFrequency",e.target.value)} className={ICS}>{["Monthly","Quarterly","Semi-annual","Annual"].map(f=><option key={f}>{f}</option>)}</select></td>}
@@ -1188,6 +1188,7 @@ function LoansTab({
                             </td>
                           )}
                           {!hid.has("Int. Rate (%)") && <td className="px-2.5 py-1.5 text-right tabular-nums font-medium whitespace-nowrap">{l.rate.toFixed(2)}%</td>}
+                          {!hid.has("Day Count")        && <td className="px-2.5 py-1.5 text-right font-mono whitespace-nowrap">{l.dayCountBasis ? <span className="text-foreground">{l.dayCountBasis}</span> : <span className="text-muted-foreground">—</span>}</td>}
                           {!hid.has("Start")         && <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{fmtDate(l.startDate)}</td>}
                           {!hid.has("Maturity")      && <td className="px-2.5 py-1.5 text-right whitespace-nowrap text-foreground">{fmtDate(l.maturityDate)}</td>}
                           {!hid.has("Tenure (Mo.)")  && <td className="px-2.5 py-1.5 text-right tabular-nums whitespace-nowrap text-foreground">{getTenure(l)}</td>}
@@ -1226,7 +1227,6 @@ function LoansTab({
                           )}
                           {!hid.has("TB Loan Account")     && <td className="px-2.5 py-1.5"><TBAccountSelect value={l.glPrincipalAccount ?? ""} onChange={v => updateLoan(l.id, { glPrincipalAccount: v })} /></td>}
                           {!hid.has("TB Interest Account") && <td className="px-2.5 py-1.5"><TBAccountSelect value={l.glInterestExpenseAccount ?? ""} onChange={v => updateLoan(l.id, { glInterestExpenseAccount: v })} /></td>}
-                          {!hid.has("Day Count")        && <td className="px-2.5 py-1.5 text-right font-mono whitespace-nowrap">{l.dayCountBasis ? <span className="text-foreground">{l.dayCountBasis}</span> : <span className="text-muted-foreground">—</span>}</td>}
                           {!hid.has("Payment Type")     && <td className="px-2.5 py-1.5 text-right whitespace-nowrap">{l.paymentType ? <span className="text-foreground">{l.paymentType}</span> : <span className="text-muted-foreground">—</span>}</td>}
                           {!hid.has("Freq.")             && <td className="px-2.5 py-1.5 text-right whitespace-nowrap">{l.paymentFrequency ? <span className="text-foreground">{l.paymentFrequency}</span> : <span className="text-muted-foreground">—</span>}</td>}
                           {!hid.has("Compounding")      && <td className="px-2.5 py-1.5 text-right whitespace-nowrap">{l.compoundingFrequency ? <span className="text-foreground">{l.compoundingFrequency}</span> : <span className="text-muted-foreground">—</span>}</td>}
