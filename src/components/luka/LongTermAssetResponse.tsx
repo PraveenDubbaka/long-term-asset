@@ -1341,7 +1341,7 @@ function LoansTab({
   );
 }
 
-function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: ContinuityRow[] }) {
+function ContinuityTabPanel({ loans, continuity, amortization }: { loans: Loan[]; continuity: ContinuityRow[]; amortization: AmortizationRow[] }) {
   const { settings, addJE, jes } = useStore(s => ({
     settings: s.settings,
     addJE:    s.addJE,
@@ -1391,18 +1391,39 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
 
   const baseYear = parseInt(docPeriod.split("-")[0]);
 
-  const rfTotals = useMemo(() => latestRows.reduce((acc, { loan, row }) => {
-    if (!row) return acc;
+  // FY date window derived from settings
+  const fyEnd = settings?.fiscalYearEnd ?? "2025-09-30";
+  const fyEndDate = new Date(fyEnd);
+  const fyStartDate = new Date(fyEndDate.getFullYear() - 1, fyEndDate.getMonth(), fyEndDate.getDate() + 1);
+  const fyStart = fyStartDate.toISOString().slice(0, 10);
+
+  // Roll-forward rows sourced entirely from Loan Register + Amortization schedule + TB
+  const rfRows = useMemo(() => loans.map(loan => {
     const fx = toCAD(1, loan.currency);
-    acc.opening   += row.openingBalance              * fx;
-    acc.borrows   += row.newBorrowings               * fx;
-    acc.principal += (row.principalRepayments ?? 0)  * fx;
-    acc.interest  += (row.interestRepayments  ?? 0)  * fx;
-    acc.fxTrans   += row.fxTranslation               * fx;
-    acc.closing   += row.closingBalance              * fx;
-    acc.accrued   += row.accruedInterest             * fx;
+    const fyAmort = amortization
+      .filter(r => r.loanId === loan.id && r.periodDate >= fyStart && r.periodDate <= fyEnd)
+      .sort((a, b) => a.periodDate.localeCompare(b.periodDate));
+    const amortPrincipal = fyAmort.reduce((s, r) => s + r.principal, 0);
+    const amortInterest  = fyAmort.reduce((s, r) => s + r.interest,  0);
+    // Opening: locked opening balance from Loan Register
+    const opening = loan.currentBalance;
+    // New borrowings: GL/TB credit activity for the mapped account during the FY
+    const tbAcct = MOCK_TB_ACCOUNTS.find(a => a.code === loan.glPrincipalAccount);
+    const newBorr = tbAcct ? Math.max(0, tbAcct.final + amortPrincipal - tbAcct.py1) : 0;
+    // Closing: formula (no separate engine)
+    const closing = opening + newBorr - amortPrincipal;
+    const contRow = latestRows.find(r => r.loan.id === loan.id)?.row ?? null;
+    return { loan, fx, opening, newBorr, amortPrincipal, amortInterest, closing, contRow };
+  }), [loans, amortization, continuity, latestRows, fyStart, fyEnd]);
+
+  const rfTotals = useMemo(() => rfRows.reduce((acc, { fx, opening, newBorr, amortPrincipal, amortInterest, closing }) => {
+    acc.opening   += opening         * fx;
+    acc.borrows   += newBorr         * fx;
+    acc.principal += amortPrincipal  * fx;
+    acc.interest  += amortInterest   * fx;
+    acc.closing   += closing         * fx;
     return acc;
-  }, { opening:0, borrows:0, principal:0, interest:0, fxTrans:0, closing:0, accrued:0 }), [latestRows]);
+  }, { opening:0, borrows:0, principal:0, interest:0, fxTrans:0, closing:0, accrued:0 }), [rfRows]);
 
   // Ladder: compute in native currency → scale to CAD
   const ladderRowsData = useMemo(() => loans.map(loan => {
@@ -1461,46 +1482,30 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                   </tr>
                 </thead>
                 <tbody>
-                  {latestRows.map(({ loan, row }, i) => {
-                    const fx = toCAD(1, loan.currency);
-                    if (!row) return (
-                      <tr key={loan.id} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
-                        <td className="px-2.5 py-1.5">
-                          <p className="font-medium text-foreground">{loan.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{loan.lender} · {loan.currency}</p>
-                        </td>
-                        <td className="px-2.5 py-1.5 text-muted-foreground text-[10px] italic">—</td>
-                        {Array(7).fill(0).map((_,j)=><td key={j} className="px-2.5 py-1.5 text-right text-muted-foreground">00</td>)}
-                        <td />
-                      </tr>
-                    );
-                    const prin = row.principalRepayments ?? 0;
-                    const int  = row.interestRepayments  ?? 0;
-                    return (
-                      <tr key={loan.id} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
-                        <td className="px-2.5 py-1.5">
-                          <p className="font-medium text-foreground">{loan.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{loan.lender} · {loan.currency}</p>
-                        </td>
-                        <td className="px-2.5 py-1.5">
-                          {loan.glPrincipalAccount ? (
-                            <>
-                              <p className="font-medium text-foreground tabular-nums">{loan.glPrincipalAccount}</p>
-                              <p className="text-[10px] text-muted-foreground">{MOCK_TB_ACCOUNTS.find(a => a.code === loan.glPrincipalAccount)?.description ?? ""}</p>
-                            </>
-                          ) : (
-                            <p className="text-[10px] text-muted-foreground italic">—</p>
-                          )}
-                        </td>
-                        <td className="px-2.5 py-1.5 text-right tabular-nums">{fmtCents(row.openingBalance * fx)}</td>
-                        <td className="px-2.5 py-1.5 text-right tabular-nums text-green-700">{row.newBorrowings > 0 ? fmtCents(row.newBorrowings * fx) : "00.00"}</td>
-                        <td className="px-2.5 py-1.5 text-right tabular-nums text-red-600">{prin > 0 ? fmtParenCents(prin * fx) : "00.00"}</td>
-                        <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{int > 0 ? fmtParenCents(int * fx) : "00.00"}</td>
-                        <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{row.fxTranslation !== 0 ? fmtParenCents(Math.abs(row.fxTranslation * fx)) : "00.00"}</td>
-                        <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold">{fmtCents(row.closingBalance * fx)}</td>
-                      </tr>
-                    );
-                  })}
+                  {rfRows.map(({ loan, fx, opening, newBorr, amortPrincipal, amortInterest, closing }, i) => (
+                    <tr key={loan.id} className={`border-b border-border/40 ${i%2===0?"":"bg-muted/10"}`}>
+                      <td className="px-2.5 py-1.5">
+                        <p className="font-medium text-foreground">{loan.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{loan.lender} · {loan.currency}</p>
+                      </td>
+                      <td className="px-2.5 py-1.5">
+                        {loan.glPrincipalAccount ? (
+                          <>
+                            <p className="font-medium text-foreground tabular-nums">{loan.glPrincipalAccount}</p>
+                            <p className="text-[10px] text-muted-foreground">{MOCK_TB_ACCOUNTS.find(a => a.code === loan.glPrincipalAccount)?.description ?? ""}</p>
+                          </>
+                        ) : (
+                          <p className="text-[10px] text-muted-foreground italic">—</p>
+                        )}
+                      </td>
+                      <td className="px-2.5 py-1.5 text-right tabular-nums">{fmtCents(opening * fx)}</td>
+                      <td className="px-2.5 py-1.5 text-right tabular-nums text-green-700">{newBorr > 0.005 ? fmtCents(newBorr * fx) : "00.00"}</td>
+                      <td className="px-2.5 py-1.5 text-right tabular-nums text-red-600">{amortPrincipal > 0.005 ? fmtParenCents(amortPrincipal * fx) : "00.00"}</td>
+                      <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{amortInterest > 0.005 ? fmtParenCents(amortInterest * fx) : "00.00"}</td>
+                      <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">00.00</td>
+                      <td className="px-2.5 py-1.5 text-right tabular-nums font-semibold">{fmtCents(closing * fx)}</td>
+                    </tr>
+                  ))}
                 </tbody>
                 <tfoot>
                   <tr className="bg-muted/30 border-t border-border font-semibold">
@@ -2964,7 +2969,7 @@ export function LongTermAssetResponse({ onEditLoans: _onEditLoans }: { onEditLoa
           </div>
         )}
         {activeTab === "loans"        && <LoansTab loans={loans} loanMode={loanMode} setLoanMode={setLoanMode} batchEdits={batchEdits} setBatchEdits={setBatchEdits} pendingLoans={pendingLoans} setPendingLoans={setPendingLoans} />}
-        {activeTab === "continuity"   && loanMode === "view" && <ContinuityTabPanel loans={loans} continuity={continuity} />}
+        {activeTab === "continuity"   && loanMode === "view" && <ContinuityTabPanel loans={loans} continuity={continuity} amortization={amortization} />}
         {activeTab === "amortization" && loanMode === "view" && <AmortizationTabPanel loans={loans} amortization={amortization} />}
         {/* Covenants tab hidden — removed from scope 2026-05-26 */}
         {activeTab === "ajes"         && loanMode === "view" && <AJEsTabPanel jes={jes.filter(j => j.loanId && loans.some(l => l.id === j.loanId))} loans={loans} />}
