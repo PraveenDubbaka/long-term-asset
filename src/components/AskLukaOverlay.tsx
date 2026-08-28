@@ -3408,9 +3408,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     const payment = loan.monthlyPayment ?? 0;
                                                     const firstPmt = loan.firstPaymentDate ? new Date(loan.firstPaymentDate) : new Date(loan.startDate);
                                                     const _srcRow = rowById[loan.id];
-                                                    // Prior-year closing balance = current-year opening balance
-                                                    const priorClosing = parseNum(_srcRow?.currentBalance ?? "0");
-                                                    let bal = priorClosing > 0 ? priorClosing : parseNum(_srcRow?.openingBalance ?? "0") + loan.originalPrincipal;
+                                                    const _openBal = parseNum(_srcRow?.openingBalance ?? "0");
+                                                    let bal = _openBal + loan.originalPrincipal;
                                                     let totalInterest = 0, totalPrincipal = 0;
                                                     let d = new Date(firstPmt); const amortRows: {d: Date; int: number; prin: number; end: number}[] = [];
                                                     while (d <= fyEnd && bal > 0.01) {
