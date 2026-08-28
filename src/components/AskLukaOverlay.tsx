@@ -3209,7 +3209,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       { label: "Loan Name *", right: false },
                                                       { label: "Lender *", right: false },
                                                       { label: "Current Collateral", right: false },
-                                                      { label: "Type", right: false },
+                                                      { label: "Loan Type", right: false },
                                                       { label: "Rate Type *", right: false },
                                                       { label: "Int. Rate % *", right: true },
                                                       { label: "Start Date *", right: false },
@@ -3637,7 +3637,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   <table className="w-full text-base" style={{ minWidth: 2400 }}>
                                                     <thead>
                                                       <tr className="bg-muted/30 border-b border-border">
-                                                        {["Loan Name *","Lender *","Current Collateral","Type","Rate Type","Int. Rate % *","Start *","Maturity *","First Payment","Currency","Mo. Payment","Orig. Loan Amt","FX Rate","Opening Bal. *","GL Principal *","Day Count","Payment Type","Freq.","Compounding","Interest-Only Period (Mo.)","Balloon Amt",""].map((h, i) => (
+                                                        {["Loan Name *","Lender *","Current Collateral","Loan Type","Rate Type","Int. Rate % *","Start *","Maturity *","First Payment","Currency","Mo. Payment","Orig. Loan Amt","FX Rate","Opening Bal. *","GL Principal *","Day Count","Payment Type","Freq.","Compounding","Interest-Only Period (Mo.)","Balloon Amt",""].map((h, i) => (
                                                           <th key={i} className={`px-2 py-1.5 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${LT_RIGHT_COLS.has(h) ? "text-right" : "text-left"} ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10" : ""}`}>
                                                             {h.endsWith(" *")
                                                               ? <>{h.slice(0, -2)} <span className="text-red-500">*</span></>
@@ -5786,7 +5786,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                           <table className="w-full text-base" style={{ minWidth: 2400 }}>
                                             <thead>
                                               <tr className="bg-muted/30 border-b border-border">
-                                                {["Loan Name *","Lender *","Current Collateral","Type","Rate Type","Int. Rate % *","Start *","Maturity *","First Payment","Currency","Mo. Payment","Orig. Loan Amt","FX Rate","Opening Bal. *","GL Principal *","Day Count","Payment Type","Freq.","Compounding","Interest-Only Period (Mo.)","Balloon Amt","Status",""].map((h, i) => (
+                                                {["Loan Name *","Lender *","Current Collateral","Loan Type","Rate Type","Int. Rate % *","Start *","Maturity *","First Payment","Currency","Mo. Payment","Orig. Loan Amt","FX Rate","Opening Bal. *","GL Principal *","Day Count","Payment Type","Freq.","Compounding","Interest-Only Period (Mo.)","Balloon Amt","Status",""].map((h, i) => (
                                                   <th key={i} className={`px-2 py-1.5 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${LT_RIGHT_COLS.has(h) ? "text-right" : "text-left"} ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10" : ""}`}>
                                                     {h.endsWith(" *") ? <>{h.slice(0,-2)} <span className="text-red-500">*</span></> : h}
                                                   </th>
