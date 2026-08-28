@@ -3356,8 +3356,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               r.name?.trim() && r.lender?.trim() && r.interestType &&
                                               r.rate?.trim() && r.startDate && r.maturityDate &&
                                               r.originalPrincipal?.trim() &&
-                                              (r.glPrincipal?.trim() || defaultGLPrincipal(r.type || "Term", r.currency || "CAD")) &&
-                                              r.tbLoanAccount && r.tbInterestAccount
+                                              (r.tbLoanAccount || defaultGLPrincipal(r.type || "Term", r.currency || "CAD")) &&
+                                              r.tbInterestAccount
                                             );
                                             return (
                                             <div className="flex items-center justify-end gap-3 pt-1">
