@@ -3202,7 +3202,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                           </div>
                                           {ltPriorRows.length > 0 && (
                                             <div className="rounded-[8px] border border-border overflow-x-auto">
-                                              <table className="text-base" style={{ minWidth: "2600px" }}>
+                                              <table className="text-base" style={{ minWidth: "2400px" }}>
                                                 <thead>
                                                   <tr className="bg-muted/30 border-b border-border">
                                                     {[
