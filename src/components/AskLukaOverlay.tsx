@@ -3408,8 +3408,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     const payment = loan.monthlyPayment ?? 0;
                                                     const firstPmt = loan.firstPaymentDate ? new Date(loan.firstPaymentDate) : new Date(loan.startDate);
                                                     const _srcRow = rowById[loan.id];
-                                                    const _openBal = parseNum(_srcRow?.openingBalance ?? "0");
-                                                    let bal = _openBal + loan.originalPrincipal; let totalInterest = 0, totalPrincipal = 0;
+                                                    // Prior-year closing balance = current-year opening balance
+                                                    const priorClosing = parseNum(_srcRow?.currentBalance ?? "0");
+                                                    let bal = priorClosing > 0 ? priorClosing : parseNum(_srcRow?.openingBalance ?? "0") + loan.originalPrincipal;
+                                                    let totalInterest = 0, totalPrincipal = 0;
                                                     let d = new Date(firstPmt); const amortRows: {d: Date; int: number; prin: number; end: number}[] = [];
                                                     while (d <= fyEnd && bal > 0.01) {
                                                       const int = bal * monthlyRate; const prin = Math.min(payment - int, bal); const end = bal - prin;
@@ -3417,13 +3419,9 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       totalInterest += int; totalPrincipal += prin; bal = end;
                                                       d = new Date(d.getFullYear(), d.getMonth() + 2, 0);
                                                     }
-                                                    // Use PDF-extracted values when available (ACT/365 vs our 30/360)
-                                                    const _extClosing  = parseNum(_srcRow?.currentBalance ?? "");
-                                                    const _extInterest = parseNum(_srcRow?.interestPaid  ?? "");
-                                                    const _extPrincipal= parseNum(_srcRow?.principalPaid ?? "");
-                                                    const finalClosingBal  = _extClosing   > 0 ? _extClosing   : bal;
-                                                    const finalInterest    = _extInterest  > 0 ? _extInterest  : totalInterest;
-                                                    const finalPrincipal   = _extPrincipal > 0 ? _extPrincipal : totalPrincipal;
+                                                    const finalClosingBal  = bal;
+                                                    const finalInterest    = totalInterest;
+                                                    const finalPrincipal   = totalPrincipal;
                                                     let curPortion = 0;
                                                     const fyNext = new Date(fyEnd.getFullYear() + 1, fyEnd.getMonth(), fyEnd.getDate());
                                                     let bal2 = finalClosingBal, d2 = new Date(d);
@@ -3442,7 +3440,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   updateSettingsInStore({ fiscalYearEnd: fyDateStr });
                                                   computedLoans.forEach(loan => { loan.rows.forEach(r => { addAmortRowToStore({ id: `ar-${loan.id}-${r.d.toISOString().slice(0,7)}`, loanId: loan.id, periodDate: r.d.toISOString().slice(0,10), openingBalance: r.end+r.prin, interest: r.int, payment: loan.monthlyPayment??0, principal: r.prin, endingBalance: r.end }); }); });
                                                   const fyLabel = `FY${fyEnd.getFullYear()}`; const fyPeriod = `${fyEnd.getFullYear()}-${String(fyEnd.getMonth()+1).padStart(2,"0")}`;
-                                                  computedLoans.forEach(loan => { addContinuityRowToStore({ id: `cr-${loan.id}-${fyLabel}`, loanId: loan.id, period: fyPeriod, openingBalance: parseNum(rowById[loan.id]?.openingBalance ?? "0"), newBorrowings: loan.originalPrincipal, repayments: Math.round((loan.totalPrincipal+loan.totalInterest)*100)/100, principalRepayments: Math.round(loan.totalPrincipal*100)/100, interestRepayments: Math.round(loan.totalInterest*100)/100, fxTranslation: 0, closingBalance: Math.round(loan.closingBal*100)/100, currentPortion: Math.round(loan.curPortion*100)/100, longTermPortion: Math.round(loan.ltPortion*100)/100, accruedInterest: Math.round(loan.accruedInt*100)/100 }); });
+                                                  computedLoans.forEach(loan => { addContinuityRowToStore({ id: `cr-${loan.id}-${fyLabel}`, loanId: loan.id, period: fyPeriod, openingBalance: parseNum(rowById[loan.id]?.currentBalance ?? "0"), newBorrowings: 0, repayments: Math.round((loan.totalPrincipal+loan.totalInterest)*100)/100, principalRepayments: Math.round(loan.totalPrincipal*100)/100, interestRepayments: Math.round(loan.totalInterest*100)/100, fxTranslation: 0, closingBalance: Math.round(loan.closingBal*100)/100, currentPortion: Math.round(loan.curPortion*100)/100, longTermPortion: Math.round(loan.ltPortion*100)/100, accruedInterest: Math.round(loan.accruedInt*100)/100 }); });
                                                   const totalCurPortion = computedLoans.reduce((s,l)=>s+l.curPortion,0); const totalAccrued = computedLoans.reduce((s,l)=>s+l.accruedInt,0); const now = new Date().toISOString();
                                                   if (totalCurPortion > 0) addJEToStore({ id: `je-luka-reclass-${Date.now()}`, type: "CurrentPortionReclass", description: "Reclassify current portion of long-term debt", lines: [{ id: `jel-r1-${Date.now()}`, account: "Long-term Debt", description: "Dr — current portion", debit: Math.round(totalCurPortion*100)/100, credit: 0 }, { id: `jel-r2-${Date.now()}`, account: "Current Portion of LTD", description: "Cr — current portion", debit: 0, credit: Math.round(totalCurPortion*100)/100 }], status: "Draft", fiscalYear: fyLabel, preparedBy: "Luka", createdAt: now });
                                                   if (totalAccrued > 0.01) addJEToStore({ id: `je-luka-accrual-${Date.now()}`, type: "AccruedInterest", description: "Accrue interest on long-term debt", lines: [{ id: `jel-a1-${Date.now()}`, account: "Interest Expense", description: "Dr — accrued interest", debit: Math.round(totalAccrued*100)/100, credit: 0 }, { id: `jel-a2-${Date.now()}`, account: "Accrued Interest Payable", description: "Cr — accrued interest", debit: 0, credit: Math.round(totalAccrued*100)/100 }], status: "Draft", fiscalYear: fyLabel, preparedBy: "Luka", createdAt: now });
