@@ -3342,7 +3342,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("originalPrincipal"))}</td>
                                                         <td />
                                                         <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("openingBalance"))}</td>
-                                                        <td colSpan={9} />
+                                                        <td colSpan={8} />
                                                         <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("currentBalance"))}</td>
                                                       </tr>
                                                     );
