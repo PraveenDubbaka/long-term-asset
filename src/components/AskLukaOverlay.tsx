@@ -3220,7 +3220,6 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       { label: "Orig. Loan Amt *", right: true },
                                                       { label: "FX Rate", right: true },
                                                       { label: "Opening Balance", right: true },
-                                                      { label: "GL Principal *", right: false },
                                                       { label: "Trial Balance Acct *", right: false },
                                                       { label: "Interest Account *", right: false },
                                                       { label: "Day Count", right: false },
@@ -3300,14 +3299,14 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         <td className="px-1.5 py-1 align-top" style={{ minWidth: "200px" }}>
                                                           <textarea value={r.collateral ?? ""} onChange={e => upd("collateral", e.target.value)} rows={1} ref={autoH} onInput={e => autoH(e.currentTarget)} className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none rounded px-1.5 py-0.5 text-base transition-colors resize-none leading-snug overflow-hidden" placeholder="—" />
                                                         </td>
-                                                        {sel("type", ["Term","LOC","Revolver","Mortgage","Bridge"], "w-20", v => upd("glPrincipal", defaultGLPrincipal(v, r.currency || "CAD")))}
+                                                        {sel("type", ["Term","LOC","Revolver","Mortgage","Bridge"], "w-20", v => { const gl = defaultGLPrincipal(v, r.currency || "CAD"); upd("glPrincipal", gl); if (!r.tbLoanAccount) upd("tbLoanAccount", gl); })}
                                                         {sel("interestType", ["Fixed","Variable","Floating","Hybrid","Step Rate"], "w-24", undefined, true)}
                                                         {inp("rate", true, "w-16", "%", true)}
                                                         {dateCell("startDate", true)}
                                                         {dateCell("maturityDate", true)}
                                                         {dateCell("firstPaymentDate")}
                                                         <td className="px-1.5 py-1 align-top">
-                                                          <select value={r.currency || "CAD"} onChange={e => { upd("currency", e.target.value); upd("glPrincipal", defaultGLPrincipal(r.type || "Term", e.target.value)); }} className={cn(SCR, "w-14")}>
+                                                          <select value={r.currency || "CAD"} onChange={e => { const gl = defaultGLPrincipal(r.type || "Term", e.target.value); upd("currency", e.target.value); upd("glPrincipal", gl); if (!r.tbLoanAccount) upd("tbLoanAccount", gl); }} className={cn(SCR, "w-14")}>
                                                             {["CAD","USD","EUR","GBP"].map(o => <option key={o}>{o}</option>)}
                                                           </select>
                                                         </td>
@@ -3316,10 +3315,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         {inp("fxRate", true, "w-16", "1.000")}
                                                         {inp("openingBalance", true, "w-24", "0")}
                                                         <td className="px-1.5 py-1 align-top">
-                                                          <input value={autoGl} onChange={e => upd("glPrincipal", e.target.value)} className={cn("h-6 text-base px-1.5 border rounded bg-background focus:outline-none w-20", !autoGl.trim() ? "border-red-500 ring-1 ring-red-400 bg-red-50" : "border-border")} placeholder="2100" />
-                                                        </td>
-                                                        <td className="px-1.5 py-1 align-top">
-                                                          <TBAccountSelect value={r.tbLoanAccount ?? ""} onChange={v => upd("tbLoanAccount", v)} required />
+                                                          <TBAccountSelect value={r.tbLoanAccount || autoGl} onChange={v => upd("tbLoanAccount", v)} required />
                                                         </td>
                                                         <td className="px-1.5 py-1 align-top">
                                                           <TBAccountSelect value={r.tbInterestAccount ?? ""} onChange={v => upd("tbInterestAccount", v)} required />
