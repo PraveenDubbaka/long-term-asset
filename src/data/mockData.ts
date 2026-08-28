@@ -814,7 +814,7 @@ export const initialReviewQueue: ReviewQueueItem[] = [
 export const initialSettings: EngagementSettings = {
   client: "The Fishin' Hole (1982) Ltd.",
   engagement: 'FY2026 Year-End Workpaper',
-  fiscalYearEnd: '2025-09-30',
+  fiscalYearEnd: '2026-09-30',
   baseCurrency: 'CAD',
   currentPeriod: '2025-09',
   reconciliationThreshold: 100,

@@ -3373,7 +3373,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   const rows = ltPriorRows;
                                                   const parseNum = (s: string) => parseFloat((s || "0").replace(/,/g, "")) || 0;
                                                   const rowById = Object.fromEntries(rows.map(r => [`loan-luka-${r.id}`, r]));
-                                                  const fyDateStr = ltPriorDocYearEnd || settings.fiscalYearEnd || "2025-09-30";
+                                                  const fyDateStr = settings.fiscalYearEnd || "2026-09-30";
                                                   const [fyY, fyM, fyD] = fyDateStr.split("-").map(Number);
                                                   const fyEnd = new Date(fyY, fyM - 1, fyD);
                                                   setLtDebtSrcLabel(`${rows.length} loan${rows.length !== 1 ? "s" : ""} from prior-year debt schedule`);
@@ -3823,7 +3823,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
                                                     // Convert review rows to Loan objects and save to store
                                                     const parseNum = (s: string) => parseFloat((s || "0").replace(/,/g, "")) || 0;
-                                                    const [fyY, fyM, fyD] = (settings.fiscalYearEnd || "2025-09-30").split("-").map(Number);
+                                                    const [fyY, fyM, fyD] = (settings.fiscalYearEnd || "2026-09-30").split("-").map(Number);
                                                     const fyEnd = new Date(fyY, fyM - 1, fyD);
 
                                                     const newLoans: Loan[] = ltReviewRows.map(row => ({

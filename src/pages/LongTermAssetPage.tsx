@@ -20,7 +20,7 @@ import NotesTab             from "./NotesTab";
 import { WorkpaperProvider } from "../contexts/WorkpaperContext";
 
 const engagementsData: Record<string, { client: string; yearEnd: string; status: string }> = {
-  "FHL-Sep302025": { client: "The Fishin' Hole (1982) Ltd.", yearEnd: "Sep 30, 2025", status: "In Progress" },
+  "FHL-Sep302025": { client: "The Fishin' Hole (1982) Ltd.", yearEnd: "Sep 30, 2026", status: "In Progress" },
 };
 
 const headerActions = [
@@ -61,7 +61,7 @@ function LongTermAssetContent({ engagementId, wpLabel, isEmpty }: ContentProps) 
 
   const eng = engagementsData[engagementId] ?? {
     client: "The Fishin' Hole (1982) Ltd.",
-    yearEnd: "Sep 30, 2025",
+    yearEnd: "Sep 30, 2026",
     status: "In Progress",
   };
   const statusVariant = eng.status === "Completed" ? "completed" : "inProgress";

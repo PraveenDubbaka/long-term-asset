@@ -1392,7 +1392,7 @@ function ContinuityTabPanel({ loans, continuity, amortization }: { loans: Loan[]
   const baseYear = parseInt(docPeriod.split("-")[0]);
 
   // FY date window derived from settings
-  const fyEnd = settings?.fiscalYearEnd ?? "2025-09-30";
+  const fyEnd = settings?.fiscalYearEnd ?? "2026-09-30";
   const fyEndDate = new Date(fyEnd);
   const fyStartDate = new Date(fyEndDate.getFullYear() - 1, fyEndDate.getMonth(), fyEndDate.getDate() + 1);
   const fyStart = fyStartDate.toISOString().slice(0, 10);

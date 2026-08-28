@@ -11,7 +11,7 @@ import toast from 'react-hot-toast';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const YEAR_END_DATE = '2025-09-30';
+const YEAR_END_DATE = '2026-09-30';
 
 const PRESET_GL_ACCOUNTS: { value: string; label: string }[] = [
   { value: '7100 – Interest Expense (CAD)',            label: '7100 – Interest Expense (CAD)'            },
