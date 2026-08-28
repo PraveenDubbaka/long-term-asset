@@ -1455,8 +1455,8 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
               <table className="w-full text-[11px]">
                 <thead>
                   <tr className="bg-muted/20 border-b border-border">
-                    {["Loan","Opening Bal.","+New Borr.","-Principal","-Interest","±FX","Closing Bal."].map(h=>(
-                      <th key={h} className={`px-2.5 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h==="Loan"?"text-left":"text-right"}`}>{h}</th>
+                    {["Loan","GL Acct","Opening Bal.","+New Borr.","-Principal","-Interest","±FX","Closing Bal."].map(h=>(
+                      <th key={h} className={`px-2.5 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h==="Loan"||h==="GL Acct"?"text-left":"text-right"}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1469,6 +1469,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                           <p className="font-medium text-foreground">{loan.name}</p>
                           <p className="text-[10px] text-muted-foreground">{loan.lender} · {loan.currency}</p>
                         </td>
+                        <td className="px-2.5 py-1.5 text-muted-foreground text-[10px] italic">—</td>
                         {Array(7).fill(0).map((_,j)=><td key={j} className="px-2.5 py-1.5 text-right text-muted-foreground">00</td>)}
                         <td />
                       </tr>
@@ -1480,6 +1481,16 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                         <td className="px-2.5 py-1.5">
                           <p className="font-medium text-foreground">{loan.name}</p>
                           <p className="text-[10px] text-muted-foreground">{loan.lender} · {loan.currency}</p>
+                        </td>
+                        <td className="px-2.5 py-1.5">
+                          {loan.glPrincipalAccount ? (
+                            <>
+                              <p className="font-medium text-foreground tabular-nums">{loan.glPrincipalAccount}</p>
+                              <p className="text-[10px] text-muted-foreground">{MOCK_TB_ACCOUNTS.find(a => a.code === loan.glPrincipalAccount)?.description ?? ""}</p>
+                            </>
+                          ) : (
+                            <p className="text-[10px] text-muted-foreground italic">—</p>
+                          )}
                         </td>
                         <td className="px-2.5 py-1.5 text-right tabular-nums">{fmtCents(row.openingBalance * fx)}</td>
                         <td className="px-2.5 py-1.5 text-right tabular-nums text-green-700">{row.newBorrowings > 0 ? fmtCents(row.newBorrowings * fx) : "00.00"}</td>
@@ -1493,6 +1504,7 @@ function ContinuityTabPanel({ loans, continuity }: { loans: Loan[]; continuity: 
                 </tbody>
                 <tfoot>
                   <tr className="bg-muted/30 border-t border-border font-semibold">
+                    <td className="px-2.5 py-2" />
                     <td className="px-2.5 py-2" />
                     <td className="px-2.5 py-2 text-right tabular-nums text-[11px]">{fmtCents(rfTotals.opening)}</td>
                     <td className="px-2.5 py-2 text-right tabular-nums text-[11px] text-green-700">{rfTotals.borrows > 0 ? fmtCents(rfTotals.borrows) : "00.00"}</td>
