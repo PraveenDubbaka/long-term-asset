@@ -3868,8 +3868,12 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       let totalInterest = 0, totalPrincipal = 0;
                                                       let d = new Date(firstPmt);
                                                       const rows = [];
+                                                      const _startMs2 = loan.startDate ? new Date(loan.startDate).getTime() : firstPmt.getTime();
+                                                      const _actualDays2 = Math.round((firstPmt.getTime() - _startMs2) / 86400000);
+                                                      let _isFirst2 = true;
                                                       while (d <= fyEnd && bal > 0.01) {
-                                                        const int = bal * monthlyRate;
+                                                        const int = (_isFirst2 && _actualDays2 > 0) ? bal * (loan.rate / 100) * _actualDays2 / 365 : bal * monthlyRate;
+                                                        _isFirst2 = false;
                                                         const prin = Math.min(payment - int, bal);
                                                         const end = bal - prin;
                                                         rows.push({ d: new Date(d), int, prin, end });

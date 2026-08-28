@@ -256,7 +256,15 @@ export function buildAmortSchedule(
   for (let i = 0; i < monthsToMaturity + 2 && bal > 0.01; i++) {
     const lastDay = new Date(year, month, 0).getDate();
     const date = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-    const interest = Math.round(bal * r * 100) / 100;
+    let interest: number;
+    if (i === 0 && loan.startDate && loan.firstPaymentDate) {
+      const actualDays = Math.round((new Date(loan.firstPaymentDate).getTime() - new Date(loan.startDate).getTime()) / 86400000);
+      interest = actualDays > 0
+        ? Math.round(bal * (loan.rate / 100) * actualDays / 365 * 100) / 100
+        : Math.round(bal * r * 100) / 100;
+    } else {
+      interest = Math.round(bal * r * 100) / 100;
+    }
     const isLast = year === matYear && month === matMonth;
     const principal = isLast
       ? Math.round(bal * 100) / 100
