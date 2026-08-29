@@ -454,11 +454,11 @@ const MOCK_TB_ACCOUNTS: TBAccount[] = [
   { code: "2050", description: "Short-Term Loan Payable",     final:       0,    py1:       0,    py2: 0 },
   { code: "2051", description: "Short-Term Bank Loan",        final:       0,    py1:       0,    py2: 0 },
   { code: "2070", description: "Short-Term Borrowings",       final:       0,    py1:       0,    py2: 0 },
-  { code: "2100", description: "Long-Term Debt – CAD",        final: 356_687.18, py1: 400_000.00, py2: 0 },
-  { code: "2101", description: "Current Portion of LTD",      final:  43_312.82, py1:  43_312.82, py2: 0 },
+  { code: "2100", description: "Long-Term Debt – CAD",        final: 623_257.36, py1: 713_374.36, py2: 0 },  // FY2026: 311,628.68 × 2 closing; py1 = 356,687.18 × 2 opening
+  { code: "2101", description: "Current Portion of LTD",      final:  90_117.00, py1:  86_625.64, py2: 0 },  // FY2026 current portion; py1 = 43,312.82 × 2
   { code: "2110", description: "Long-Term Debt – USD",        final:       0,    py1:       0,    py2: 0 },
   { code: "2200", description: "Line of Credit",              final:       0,    py1:       0,    py2: 0 },
-  { code: "7100", description: "Interest Expense",            final:  30_386.12, py1:  15_193.06, py2: 0 },
+  { code: "7100", description: "Interest Expense",            final:  26_894.76, py1:  30_386.12, py2: 0 },  // FY2026: 13,447.38 × 2; py1 = 15,193.06 × 2
   { code: "7110", description: "Interest Expense – LOC",      final:       0,    py1:       0,    py2: 0 },
   { code: "7120", description: "Interest Expense – Mortgage", final:       0,    py1:       0,    py2: 0 },
   { code: "2300", description: "Accrued Interest Payable",    final:       0,    py1:       0,    py2: 0 },
