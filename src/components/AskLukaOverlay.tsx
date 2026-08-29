@@ -1428,6 +1428,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const addAmortRowToStore = useStore(s => s.addAmortRow);
   const addContinuityRowToStore = useStore(s => s.addContinuityRow);
   const addJEToStore = useStore(s => s.addJE);
+  const jesInStore = useStore(s => s.jes);
   const updateSettingsInStore = useStore(s => s.updateSettings);
 
   // ── Autopilot state ──
@@ -3447,16 +3448,17 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   computedLoans.forEach(loan => { addContinuityRowToStore({ id: `cr-${loan.id}-${fyLabel}`, loanId: loan.id, period: fyPeriod, openingBalance: parseNum(rowById[loan.id]?.currentBalance ?? "0"), newBorrowings: 0, repayments: Math.round((loan.totalPrincipal+loan.totalInterest)*100)/100, principalRepayments: Math.round(loan.totalPrincipal*100)/100, interestRepayments: Math.round(loan.totalInterest*100)/100, fxTranslation: 0, closingBalance: Math.round(loan.closingBal*100)/100, currentPortion: Math.round(loan.curPortion*100)/100, longTermPortion: Math.round(loan.ltPortion*100)/100, accruedInterest: Math.round(loan.accruedInt*100)/100 }); });
                                                   const now = new Date().toISOString();
                                                   const CUR_PORTION_ACCT_G1 = "2110 – Current Portion LT Debt";
-                                                  computedLoans.forEach((loan, li) => {
+                                                  let jeSeq1 = jesInStore.filter(j => !j.deleted).length + 1;
+                                                  computedLoans.forEach(loan => {
                                                     const cpAmt = Math.round(loan.curPortion * 100) / 100;
                                                     if (cpAmt > 0) {
-                                                      const ts = Date.now() + li;
-                                                      addJEToStore({ id: `je-luka-reclass-${ts}`, type: "CurrentPortionReclass", loanId: loan.id, description: `Reclassify current portion – ${loan.name}`, lines: [{ id: `jel-r1-${ts}`, account: loan.glPrincipalAccount || "2100 – Long-Term Debt", description: "Long-term debt – reclassify to current portion", debit: cpAmt, credit: 0 }, { id: `jel-r2-${ts}`, account: CUR_PORTION_ACCT_G1, description: "Current portion reclass", debit: 0, credit: cpAmt }], status: "Draft", fiscalYear: fyLabel, preparedBy: "Luka", createdAt: now });
+                                                      const n = jeSeq1++;
+                                                      addJEToStore({ id: `je-${n}`, type: "CurrentPortionReclass", loanId: loan.id, description: `Reclassify current portion – ${loan.name}`, lines: [{ id: `jel-r1-${n}`, account: loan.glPrincipalAccount || "2100 – Long-Term Debt", description: "Long-term debt – reclassify to current portion", debit: cpAmt, credit: 0 }, { id: `jel-r2-${n}`, account: CUR_PORTION_ACCT_G1, description: "Current portion reclass", debit: 0, credit: cpAmt }], status: "Draft", fiscalYear: fyLabel, preparedBy: "Luka", createdAt: now });
                                                     }
                                                     const accrAmt = Math.round(loan.accruedInt * 100) / 100;
                                                     if (accrAmt > 0.01) {
-                                                      const ts = Date.now() + li + 1000;
-                                                      addJEToStore({ id: `je-luka-accrual-${ts}`, type: "AccruedInterest", loanId: loan.id, description: `Accrue interest – ${loan.name}`, lines: [{ id: `jel-a1-${ts}`, account: loan.glInterestExpenseAccount || "7100 – Interest Expense (CAD)", description: "Accrued interest – year end", debit: accrAmt, credit: 0 }, { id: `jel-a2-${ts}`, account: loan.glAccruedInterestAccount || "2300 – Accrued Interest Payable", description: "Accrued interest payable – year end", debit: 0, credit: accrAmt }], status: "Draft", fiscalYear: fyLabel, preparedBy: "Luka", createdAt: now });
+                                                      const n = jeSeq1++;
+                                                      addJEToStore({ id: `je-${n}`, type: "AccruedInterest", loanId: loan.id, description: `Accrue interest – ${loan.name}`, lines: [{ id: `jel-a1-${n}`, account: loan.glInterestExpenseAccount || "7100 – Interest Expense (CAD)", description: "Accrued interest – year end", debit: accrAmt, credit: 0 }, { id: `jel-a2-${n}`, account: loan.glAccruedInterestAccount || "2300 – Accrued Interest Payable", description: "Accrued interest payable – year end", debit: 0, credit: accrAmt }], status: "Draft", fiscalYear: fyLabel, preparedBy: "Luka", createdAt: now });
                                                     }
                                                   });
                                                   setLtDebtGenerated(true); setLtDebtPhase("done");
@@ -3968,18 +3970,19 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     // Generate AJEs — one reclass + one accrual per loan
                                                     const now = new Date().toISOString();
                                                     const CUR_PORTION_ACCT_G2 = "2110 – Current Portion LT Debt";
-                                                    computedLoans.forEach((loan, li) => {
+                                                    let jeSeq2 = jesInStore.filter(j => !j.deleted).length + 1;
+                                                    computedLoans.forEach(loan => {
                                                       const cpAmt = Math.round(loan.curPortion * 100) / 100;
                                                       if (cpAmt > 0) {
-                                                        const ts = Date.now() + li;
+                                                        const n = jeSeq2++;
                                                         addJEToStore({
-                                                          id: `je-luka-reclass-${ts}`,
+                                                          id: `je-${n}`,
                                                           type: "CurrentPortionReclass",
                                                           loanId: loan.id,
                                                           description: `Reclassify current portion – ${loan.name}`,
                                                           lines: [
-                                                            { id: `jel-r1-${ts}`, account: loan.glPrincipalAccount || "2100 – Long-Term Debt", description: "Long-term debt – reclassify to current portion", debit: cpAmt, credit: 0 },
-                                                            { id: `jel-r2-${ts}`, account: CUR_PORTION_ACCT_G2, description: "Current portion reclass", debit: 0, credit: cpAmt },
+                                                            { id: `jel-r1-${n}`, account: loan.glPrincipalAccount || "2100 – Long-Term Debt", description: "Long-term debt – reclassify to current portion", debit: cpAmt, credit: 0 },
+                                                            { id: `jel-r2-${n}`, account: CUR_PORTION_ACCT_G2, description: "Current portion reclass", debit: 0, credit: cpAmt },
                                                           ],
                                                           status: "Draft",
                                                           fiscalYear: fyLabel,
@@ -3989,15 +3992,15 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       }
                                                       const accrAmt = Math.round(loan.accruedInt * 100) / 100;
                                                       if (accrAmt > 0.01) {
-                                                        const ts = Date.now() + li + 1000;
+                                                        const n2 = jeSeq2++;
                                                         addJEToStore({
-                                                          id: `je-luka-accrual-${ts}`,
+                                                          id: `je-${n2}`,
                                                           type: "AccruedInterest",
                                                           loanId: loan.id,
                                                           description: `Accrue interest – ${loan.name}`,
                                                           lines: [
-                                                            { id: `jel-a1-${ts}`, account: loan.glInterestExpenseAccount || "7100 – Interest Expense (CAD)", description: "Accrued interest – year end", debit: accrAmt, credit: 0 },
-                                                            { id: `jel-a2-${ts}`, account: loan.glAccruedInterestAccount || "2300 – Accrued Interest Payable", description: "Accrued interest payable – year end", debit: 0, credit: accrAmt },
+                                                            { id: `jel-a1-${n2}`, account: loan.glInterestExpenseAccount || "7100 – Interest Expense (CAD)", description: "Accrued interest – year end", debit: accrAmt, credit: 0 },
+                                                            { id: `jel-a2-${n2}`, account: loan.glAccruedInterestAccount || "2300 – Accrued Interest Payable", description: "Accrued interest payable – year end", debit: 0, credit: accrAmt },
                                                           ],
                                                           status: "Draft",
                                                           fiscalYear: fyLabel,
