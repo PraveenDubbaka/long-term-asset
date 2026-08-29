@@ -11,8 +11,6 @@ import toast from 'react-hot-toast';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const YEAR_END_DATE = '2026-09-30';
-
 const PRESET_GL_ACCOUNTS: { value: string; label: string }[] = [
   { value: '7100 – Interest Expense (CAD)',            label: '7100 – Interest Expense (CAD)'            },
   { value: '7110 – Interest Expense (Variable)',        label: '7110 – Interest Expense (Variable)'       },
@@ -106,6 +104,9 @@ export function AJEsTab() {
     advanceJEStatus: s.advanceJEStatus, deleteJE: s.deleteJE, restoreJE: s.restoreJE, purgeJE: s.purgeJE,
     addJE: s.addJE, updateJE: s.updateJE,
   }));
+  const settings = useStore(s => s.settings);
+  const fyYear = settings?.fiscalYearEnd ? settings.fiscalYearEnd.slice(0, 4) : '2026';
+  const yearEndDate = settings?.fiscalYearEnd ?? '2026-09-30';
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set(jes.map(j => j.id)));
   const toggleExpand = (id: string) => setExpandedIds(prev => {
@@ -149,7 +150,7 @@ export function AJEsTab() {
 
   const handleExportAll = async () => {
     const { exportToExcel, buildJEExport } = await import('../lib/utils');
-    exportToExcel({ 'AJEs': buildJEExport(jes) }, 'FY2024_AJEs.xlsx');
+    exportToExcel({ 'AJEs': buildJEExport(jes) }, `FY${fyYear}_AJEs.xlsx`);
     toast.success('AJEs exported to Excel');
   };
 
@@ -495,6 +496,7 @@ export function AJEsTab() {
         onClose={() => setAddOpen(false)}
         loans={loans}
         allAccounts={allAccounts}
+        defaultDate={yearEndDate}
         onSave={je => { addJE(je); toast.success('JE added'); setAddOpen(false); }}
       />
 
@@ -545,15 +547,16 @@ const SFS = `${SF} pl-3 pr-8 appearance-none cursor-pointer`;   // select
 const SFI = `${SF} px-3 placeholder:text-foreground`;  // text / date
 const SFN = `w-full ${SF} px-3 text-right tabular-nums`;        // number
 
-function AddJEModal({ open, onClose, loans, allAccounts, onSave }: {
+function AddJEModal({ open, onClose, loans, allAccounts, defaultDate, onSave }: {
   open: boolean;
   onClose: () => void;
   loans: { id: string; name: string }[];
   allAccounts: { value: string; label: string }[];
+  defaultDate: string;
   onSave: (je: JEProposal) => void;
 }) {
   const [loanId,     setLoanId]     = useState('');
-  const [date,       setDate]       = useState(YEAR_END_DATE);
+  const [date,       setDate]       = useState(defaultDate);
   const [entryType,  setEntryType]  = useState('Journal');
   const [entryNum,   setEntryNum]   = useState('JE-1');
   const [showRef,    setShowRef]    = useState(false);
@@ -565,7 +568,7 @@ function AddJEModal({ open, onClose, loans, allAccounts, onSave }: {
   const selectedLoanName = loans.find(l => l.id === loanId)?.name || '';
 
   const reset = () => {
-    setLoanId(''); setDate(YEAR_END_DATE); setEntryType('Journal');
+    setLoanId(''); setDate(defaultDate); setEntryType('Journal');
     setEntryNum('JE-1'); setShowRef(false); setReference('');
     setRecurring(false); setLines([emptyLine(1), emptyLine(2)]); setModalNotes('');
   };
