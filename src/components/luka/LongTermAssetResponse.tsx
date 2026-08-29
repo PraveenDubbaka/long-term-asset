@@ -1391,17 +1391,16 @@ function ContinuityTabPanel({ loans, continuity, amortization }: { loans: Loan[]
 
   const baseYear = parseInt(docPeriod.split("-")[0]);
 
-  // FY date window derived from settings
+  // FY date window derived from settings — use string arithmetic to avoid UTC/local timezone mismatch
   const fyEnd = settings?.fiscalYearEnd ?? "2026-09-30";
-  const fyEndDate = new Date(fyEnd);
-  const fyStartDate = new Date(fyEndDate.getFullYear() - 1, fyEndDate.getMonth(), fyEndDate.getDate() + 1);
-  const fyStart = fyStartDate.toISOString().slice(0, 10);
+  const [fyY, fyM, fyD] = fyEnd.split('-').map(Number);
+  const fyPriorEnd = `${fyY - 1}-${String(fyM).padStart(2, '0')}-${String(fyD).padStart(2, '0')}`;
 
   // Roll-forward rows sourced entirely from Loan Register + Amortization schedule + TB
   const rfRows = useMemo(() => loans.map(loan => {
     const fx = toCAD(1, loan.currency);
     const fyAmort = amortization
-      .filter(r => r.loanId === loan.id && r.periodDate >= fyStart && r.periodDate <= fyEnd)
+      .filter(r => r.loanId === loan.id && r.periodDate > fyPriorEnd && r.periodDate <= fyEnd)
       .sort((a, b) => a.periodDate.localeCompare(b.periodDate));
     const amortPrincipal = fyAmort.reduce((s, r) => s + r.principal, 0);
     const amortInterest  = fyAmort.reduce((s, r) => s + r.interest,  0);
@@ -1414,7 +1413,7 @@ function ContinuityTabPanel({ loans, continuity, amortization }: { loans: Loan[]
     const closing = opening + newBorr - amortPrincipal;
     const contRow = latestRows.find(r => r.loan.id === loan.id)?.row ?? null;
     return { loan, fx, opening, newBorr, amortPrincipal, amortInterest, closing, contRow };
-  }), [loans, amortization, continuity, latestRows, fyStart, fyEnd]);
+  }), [loans, amortization, continuity, latestRows, fyPriorEnd, fyEnd]);
 
   const rfTotals = useMemo(() => rfRows.reduce((acc, { fx, opening, newBorr, amortPrincipal, amortInterest, closing }) => {
     acc.opening   += opening         * fx;
