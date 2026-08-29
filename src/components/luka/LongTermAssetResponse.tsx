@@ -2025,26 +2025,96 @@ function CovenantsTabPanel({ loans, covenants }: { loans: Loan[]; covenants: Cov
 
 // ── AJEs helpers (mirrors AJEsTab.tsx) ────────────────────────────────────────
 const AJE_GL_ACCOUNTS = [
-  { value: "7100 – Interest Expense (CAD)",           label: "7100 – Interest Expense (CAD)"           },
-  { value: "7110 – Interest Expense (Variable)",       label: "7110 – Interest Expense (Variable)"      },
-  { value: "7120 – Finance Charges",                  label: "7120 – Finance Charges"                  },
-  { value: "7200 – Bank Charges & Interest",          label: "7200 – Bank Charges & Interest"          },
-  { value: "2100 – Long-Term Debt",                   label: "2100 – Long-Term Debt"                   },
-  { value: "2110 – Current Portion LT Debt",          label: "2110 – Current Portion LT Debt"          },
-  { value: "2115 – Current Portion (Mortgage)",       label: "2115 – Current Portion (Mortgage)"       },
-  { value: "2200 – Line of Credit",                   label: "2200 – Line of Credit"                   },
-  { value: "2300 – Accrued Interest Payable",         label: "2300 – Accrued Interest Payable"         },
-  { value: "2310 – Accrued Finance Charges",          label: "2310 – Accrued Finance Charges"          },
+  // ── Expense ───────────────────────────────────────────────────────────────
+  { value: "7100 – Interest Expense (CAD)",            label: "7100 – Interest Expense (CAD)"            },
+  { value: "7105 – Interest Expense – Mortgage",        label: "7105 – Interest Expense – Mortgage"        },
+  { value: "7110 – Interest Expense (Variable)",        label: "7110 – Interest Expense (Variable)"        },
+  { value: "7115 – Interest Expense – LOC",             label: "7115 – Interest Expense – LOC"             },
+  { value: "7120 – Finance Charges",                    label: "7120 – Finance Charges"                    },
+  { value: "7125 – Financing Costs Amortization",       label: "7125 – Financing Costs Amortization"       },
+  { value: "7130 – Interest Expense (USD)",             label: "7130 – Interest Expense (USD)"             },
+  { value: "7135 – Interest Expense (Foreign)",         label: "7135 – Interest Expense (Foreign)"         },
+  { value: "7140 – Amortization of Debt Issue Costs",   label: "7140 – Amortization of Debt Issue Costs"   },
+  { value: "7150 – Foreign Exchange Gain/Loss",         label: "7150 – Foreign Exchange Gain/Loss"         },
+  { value: "7200 – Bank Charges & Interest",            label: "7200 – Bank Charges & Interest"            },
+  { value: "7210 – Bank Service Charges",               label: "7210 – Bank Service Charges"               },
+  // ── Long-Term Debt ────────────────────────────────────────────────────────
+  { value: "2100 – Long-Term Debt",                     label: "2100 – Long-Term Debt"                     },
+  { value: "2105 – Long-Term Debt (USD)",                label: "2105 – Long-Term Debt (USD)"               },
+  { value: "2108 – Long-Term Debt (Foreign)",            label: "2108 – Long-Term Debt (Foreign)"           },
+  { value: "2110 – Current Portion LT Debt",             label: "2110 – Current Portion LT Debt"            },
+  { value: "2115 – Current Portion (Mortgage)",          label: "2115 – Current Portion (Mortgage)"         },
+  { value: "2120 – Short-Term Debt",                     label: "2120 – Short-Term Debt"                    },
+  { value: "2125 – Short-Term Notes Payable",            label: "2125 – Short-Term Notes Payable"           },
+  { value: "2130 – Current Maturities – LT Debt",        label: "2130 – Current Maturities – LT Debt"       },
+  { value: "2135 – Demand Loans",                        label: "2135 – Demand Loans"                       },
+  { value: "2140 – Term Loan – Current Portion",         label: "2140 – Term Loan – Current Portion"        },
+  { value: "2150 – Mortgage Payable",                    label: "2150 – Mortgage Payable"                   },
+  { value: "2155 – Mortgage – Current Portion",          label: "2155 – Mortgage – Current Portion"         },
+  { value: "2160 – Equipment Loan Payable",              label: "2160 – Equipment Loan Payable"             },
+  { value: "2165 – Vehicle Loan Payable",                label: "2165 – Vehicle Loan Payable"               },
+  { value: "2170 – Government Guaranteed Loan",          label: "2170 – Government Guaranteed Loan"         },
+  { value: "2175 – Subordinated Debt",                   label: "2175 – Subordinated Debt"                  },
+  { value: "2180 – Related Party Loans Payable",         label: "2180 – Related Party Loans Payable"        },
+  // ── Lines of Credit ───────────────────────────────────────────────────────
+  { value: "2200 – Line of Credit",                      label: "2200 – Line of Credit"                     },
+  { value: "2210 – Revolving Credit Facility",           label: "2210 – Revolving Credit Facility"          },
+  { value: "2220 – Operating Line of Credit",            label: "2220 – Operating Line of Credit"           },
+  { value: "2230 – LOC – Short Term",                    label: "2230 – LOC – Short Term"                   },
+  // ── Accrued Liabilities ───────────────────────────────────────────────────
+  { value: "2300 – Accrued Interest Payable",            label: "2300 – Accrued Interest Payable"           },
+  { value: "2305 – Accrued Interest – Mortgage",         label: "2305 – Accrued Interest – Mortgage"        },
+  { value: "2310 – Accrued Finance Charges",             label: "2310 – Accrued Finance Charges"            },
+  { value: "2315 – Accrued Interest – LOC",              label: "2315 – Accrued Interest – LOC"             },
+  { value: "2320 – Accrued Interest (USD)",              label: "2320 – Accrued Interest (USD)"             },
+  { value: "2325 – Interest Payable – Related Party",    label: "2325 – Interest Payable – Related Party"   },
+  { value: "2330 – Accrued Financing Costs",             label: "2330 – Accrued Financing Costs"            },
 ];
 function ajeAccCode(account: string) { return account.split(/[\s–-]/)[0].trim(); }
 function ajeDescOptions(account: string, loanName: string): string[] {
   const a = account.toLowerCase();
   const s = loanName ? ` – ${loanName}` : "";
-  if (a.startsWith("71") || a.startsWith("72")) return [`YE accrued interest${s}`, `Interest expense accrual${s}`];
-  if (a.includes("2300") || a.includes("2310"))  return [`YE accrued interest payable${s}`, `Interest accrual – year end`];
-  if (a.includes("2110") || a.includes("2115"))  return [`Current portion reclass${s}`, `Reclassification – current portion LT debt`];
-  if (a.startsWith("21"))                        return [`LT portion after reclass${s}`, `Long-term debt – reclassification`];
-  return [];
+  const code = parseInt(ajeAccCode(account), 10);
+  // Expense – interest
+  if (code >= 7100 && code <= 7135)
+    return [`YE accrued interest${s}`, `Interest expense accrual${s}`, `Accrued interest – year end${s}`, `Interest charge for period${s}`];
+  // Expense – financing costs / amortization
+  if (code === 7125 || code === 7140)
+    return [`Amortization of financing costs${s}`, `Financing costs amortization – year end${s}`, `Loan origination costs amortization`];
+  // Expense – FX
+  if (code === 7150)
+    return [`Foreign exchange loss on debt translation${s}`, `FX retranslation – USD loan payable${s}`, `Currency adjustment – foreign-denominated debt${s}`];
+  // Expense – bank charges
+  if (code >= 7200 && code <= 7299)
+    return [`Bank charges – year end${s}`, `Bank fees and interest${s}`, `Service charges – financial institutions`];
+  // Current portion / short-term current maturities
+  if (code === 2110 || code === 2115 || code === 2130 || code === 2140 || code === 2155)
+    return [`Current portion reclass${s}`, `Reclassification – current portion LT debt${s}`, `Current maturities reclassified${s}`, `Principal repayments due within one year${s}`];
+  // Short-term debt / demand
+  if (code === 2120 || code === 2125 || code === 2135)
+    return [`Short-term debt – year end${s}`, `Short-term note payable – closing balance${s}`, `Demand loan balance – year end${s}`];
+  // Mortgage payable (LT)
+  if (code === 2150)
+    return [`Mortgage payable – LT portion${s}`, `Long-term portion of mortgage${s}`, `Mortgage balance after current portion reclass${s}`];
+  // Equipment / vehicle / government / subordinated / related party LT
+  if (code >= 2155 && code <= 2180)
+    return [`Long-term debt balance${s}`, `LT debt – closing balance${s}`, `Loan payable – LT portion${s}`];
+  // Related party LT
+  if (code === 2180)
+    return [`Related party loan – LT portion${s}`, `Shareholder loan payable${s}`, `Loan payable – related party – year end${s}`];
+  // LT Debt – main (2100-2108)
+  if (code >= 2100 && code <= 2109)
+    return [`Long-term debt – reclassification${s}`, `LT portion after reclass${s}`, `Long-term debt – closing balance${s}`, `Long-term debt – reclassify to current portion${s}`];
+  // Lines of credit
+  if (code >= 2200 && code <= 2299)
+    return [`Line of credit – closing balance${s}`, `Operating line – year end draw${s}`, `Revolving facility balance${s}`, `LOC balance – year end${s}`];
+  // Accrued interest
+  if (code === 2300 || code === 2305 || code === 2315 || code === 2320 || code === 2325)
+    return [`Accrued interest payable – year end${s}`, `YE accrued interest payable${s}`, `Accrued interest – closing balance${s}`];
+  // Accrued finance charges / costs
+  if (code === 2310 || code === 2330)
+    return [`Accrued finance charges – year end${s}`, `Accrued banking fees${s}`, `Financing costs payable – year end${s}`];
+  return [`Year-end accrual${s}`, `Adjustment – ${ajeAccCode(account)}${s}`];
 }
 const AJE_TYPE_LABEL: Record<string, string> = {
   AccruedInterest: "Accrued Interest", CurrentPortionReclass: "Current Portion Reclass",
