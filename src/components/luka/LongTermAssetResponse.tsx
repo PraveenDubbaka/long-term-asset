@@ -2524,7 +2524,7 @@ export function LukaNoteSidePanel() {
   const rows = useMemo(() => loans.filter(l => l.type !== "LOC" && l.type !== "Revolver").map(loan => {
     const closing = toCAD(loan.closingBalance ?? loan.currentBalance, loan.currency);
     const pyRow   = continuity.filter(r => r.loanId === loan.id).sort((a,b) => a.period < b.period ? -1 : 1)[0];
-    const pyBal   = pyRow ? pyRow.openingBalance : null;
+    const pyBal   = pyRow ? pyRow.openingBalance : loan.currentBalance;
     const rate    = loan.rate != null ? `${loan.rate}%` : "";
     const matDate = loan.maturityDate ? new Date(loan.maturityDate + "T00:00:00").toLocaleDateString("en-CA", { month:"short", year:"numeric" }) : "";
     const payment = loan.monthlyPayment ? `payable in monthly payments` : "";
@@ -2540,6 +2540,17 @@ export function LukaNoteSidePanel() {
 
   const totalCY   = rows.reduce((s, r) => s + r.closing, 0);
   const totalCurr = loans.reduce((s, l) => s + toCAD(l.currentPortion, l.currency), 0);
+  const totalPY   = rows.reduce((s, r) => s + toCAD(r.pyBal, r.loan.currency), 0);
+
+  const [fyY, fyM, fyD] = (yearEnd ?? "2026-09-30").split('-').map(Number);
+  const fyPriorEndNote = `${fyY - 1}-${String(fyM).padStart(2, '0')}-${String(fyD).padStart(2, '0')}`;
+  const totalPYCurr = useMemo(() =>
+    loans.filter(l => l.type !== "LOC" && l.type !== "Revolver").reduce((s, l) => {
+      const fy = amortization.filter(r => r.loanId === l.id && r.periodDate > fyPriorEndNote && r.periodDate <= (yearEnd ?? ""));
+      return s + toCAD(fy.reduce((sum, r) => sum + r.principal, 0), l.currency);
+    }, 0),
+    [loans, amortization, fyPriorEndNote, yearEnd]
+  );
 
   const FONT = "'DM Sans', system-ui, sans-serif";
   const fyLabel    = yearEnd ? fmtDate(yearEnd.slice(0,10)) : "—";
@@ -2670,7 +2681,7 @@ export function LukaNoteSidePanel() {
                         <tr key={r.loan.id} style={{ borderBottom: "1px solid hsl(220 20% 93%)" }}>
                           <td className="py-2 px-2 text-[13px] leading-snug" style={{ color: "hsl(222 25% 25%)" }}>{r.note}</td>
                           <td className="py-2 px-2 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 25% 25%)" }}>{fmtCents(r.closing)}</td>
-                          <td className="py-2 px-2 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 15% 55%)" }}>{r.pyBal !== null ? fmtCents(toCAD(r.pyBal, r.loan.currency)) : "—"}</td>
+                          <td className="py-2 px-2 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 15% 55%)" }}>{fmtCents(toCAD(r.pyBal, r.loan.currency))}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -2678,17 +2689,17 @@ export function LukaNoteSidePanel() {
                       <tr style={{ borderTop: "1px solid hsl(220 20% 80%)" }}>
                         <td className="py-2 px-2 text-[13px] font-semibold" style={{ color: "hsl(222 35% 20%)" }}></td>
                         <td className="py-2 px-2 text-right tabular-nums text-[13px] font-semibold" style={{ color: "hsl(222 35% 20%)" }}>{fmtCents(totalCY)}</td>
-                        <td className="py-2 px-2 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 15% 55%)" }}>{fmtCents(0)}</td>
+                        <td className="py-2 px-2 text-right tabular-nums text-[13px] font-semibold" style={{ color: "hsl(222 15% 55%)" }}>{fmtCents(totalPY)}</td>
                       </tr>
                       <tr>
                         <td className="py-1.5 px-2 text-[13px]" style={{ color: "hsl(222 15% 45%)", fontStyle: "italic" }}>Less: current portion</td>
                         <td className="py-1.5 px-2 text-right tabular-nums text-[13px]" style={{ color: "hsl(0 70% 45%)" }}>{fmtParenCents(totalCurr)}</td>
-                        <td className="py-1.5 px-2 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 15% 55%)" }}>{fmtCents(0)}</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 15% 55%)" }}>{fmtParenCents(totalPYCurr)}</td>
                       </tr>
                       <tr style={{ borderTop: "2px solid hsl(222 35% 20%)" }}>
                         <td className="py-2 px-2 text-[13px] font-bold" style={{ color: "hsl(222 35% 14%)" }}>Total long-term debt</td>
                         <td className="py-2 px-2 text-right tabular-nums text-[13px] font-bold" style={{ color: "hsl(222 35% 14%)" }}>{fmtCents(totalCY - totalCurr)}</td>
-                        <td className="py-2 px-2 text-right tabular-nums text-[13px]" style={{ color: "hsl(222 15% 55%)" }}>{fmtCents(0)}</td>
+                        <td className="py-2 px-2 text-right tabular-nums text-[13px] font-semibold" style={{ color: "hsl(222 15% 55%)" }}>{fmtCents(totalPY - totalPYCurr)}</td>
                       </tr>
                     </tfoot>
                   </table>
