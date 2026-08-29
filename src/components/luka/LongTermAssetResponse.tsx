@@ -2464,6 +2464,10 @@ function NotesTabPanel({ loans, amortization, continuity, reconciliation, settin
 
 // ─── Luka Note Side Panel — rendered as flex sibling in AskLukaOverlay ────────
 export function LukaNoteSidePanel() {
+  // Notes display formats whole dollars (no cents)
+  const fmtCents      = (n: number) => n === 0 ? "—" : n.toLocaleString("en-CA", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  const fmtParenCents = (n: number) => n === 0 ? "—" : `(${fmtCents(n)})`;
+
   const loans         = useStore(s => s.loans);
   const amortization  = useStore(s => s.amortization);
   const continuity    = useStore(s => s.continuity);
