@@ -2499,27 +2499,69 @@ export function LukaNoteSidePanel() {
     : null;
 
   const repayBuckets = useMemo(() => {
-    const fyDate = yearEnd ? new Date(yearEnd.slice(0,10) + "T00:00:00") : new Date();
-    const yr = fyDate.getFullYear();
-    const fromDate = yearEnd ? yearEnd.slice(0, 10) : `${yr}-12-31`;
+    const [fyY, fyM, fyD] = (yearEnd ?? "2026-09-30").split('-').map(Number);
     const b: Record<string, number> = {};
-    for (let i = 1; i <= 5; i++) b[String(yr + i)] = 0;
+    for (let i = 1; i <= 5; i++) b[String(fyY + i)] = 0;
     b["thereafter"] = 0;
-    loans.forEach(l => {
-      if (l.type === "LOC" || l.type === "Revolver") return;
-      const closingNative = l.closingBalance ?? l.currentBalance;
-      if (closingNative <= 0) return;
-      const ladder = calcMaturityLadder(l, closingNative, fromDate);
-      for (let i = 0; i <= 4; i++) {
-        const col = String(yr + i + 1);
-        b[col] = (b[col] ?? 0) + toCAD(ladder[i] ?? 0, l.currency);
+
+    loans.filter(l => l.type !== "LOC" && l.type !== "Revolver").forEach(l => {
+      const fx = toCAD(1, l.currency);
+      const r = l.rate / 100 / 12;
+
+      // Stored rows for this loan sorted ascending — have ACT/365 stub baked into period 1
+      const stored = amortization
+        .filter(row => row.loanId === l.id)
+        .sort((a, b2) => a.periodDate.localeCompare(b2.periodDate));
+
+      // Derive the fixed monthly payment from a mid-schedule stored row (avoids stub distortion)
+      const refRow = stored.length > 1 ? stored[1] : stored[0];
+      const monthlyPmt = refRow
+        ? Math.round((refRow.interest + refRow.principal) * 100) / 100
+        : (l.monthlyPayment ?? 0);
+
+      if (monthlyPmt <= 0 || r <= 0) return;
+
+      // Collect all principal entries: stored rows first, then extend forward
+      const allPrincipal: Array<{ periodDate: string; principal: number }> =
+        stored.map(row => ({ periodDate: row.periodDate, principal: row.principal }));
+
+      if (stored.length > 0) {
+        const last = stored[stored.length - 1];
+        let bal = last.endingBalance;
+        const lastD = new Date(last.periodDate + "T00:00:00");
+        // Next end-of-month after the last stored period
+        let d = new Date(lastD.getFullYear(), lastD.getMonth() + 2, 0);
+        const safetyYear = fyY + 12;
+        while (bal > 0.01 && d.getFullYear() <= safetyYear) {
+          const interest  = Math.round(bal * r * 100) / 100;
+          const principal = Math.min(Math.round((monthlyPmt - interest) * 100) / 100, bal);
+          const pd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          allPrincipal.push({ periodDate: pd, principal });
+          bal = Math.round((bal - principal) * 100) / 100;
+          d = new Date(d.getFullYear(), d.getMonth() + 2, 0);
+        }
       }
-      b["thereafter"] = (b["thereafter"] ?? 0) + toCAD((ladder[5] ?? 0) + (ladder[6] ?? 0), l.currency);
+
+      // Group by FY band using exclusive start / inclusive end (same as continuity filter)
+      for (let i = 1; i <= 5; i++) {
+        const fyEndStr   = `${fyY + i}-${String(fyM).padStart(2, '0')}-${String(fyD).padStart(2, '0')}`;
+        const fyStartStr = `${fyY + i - 1}-${String(fyM).padStart(2, '0')}-${String(fyD).padStart(2, '0')}`;
+        const sum = allPrincipal
+          .filter(row => row.periodDate > fyStartStr && row.periodDate <= fyEndStr)
+          .reduce((s, row) => s + row.principal, 0);
+        b[String(fyY + i)] = (b[String(fyY + i)] ?? 0) + sum * fx;
+      }
+      const lastFyEnd   = `${fyY + 5}-${String(fyM).padStart(2, '0')}-${String(fyD).padStart(2, '0')}`;
+      const thereafter  = allPrincipal
+        .filter(row => row.periodDate > lastFyEnd)
+        .reduce((s, row) => s + row.principal, 0);
+      b["thereafter"] = (b["thereafter"] ?? 0) + thereafter * fx;
     });
-    const cols = [...Array(5).keys()].map(i => String(yr + i + 1));
+
+    const cols  = [...Array(5).keys()].map(i => String(fyY + i + 1));
     const total = cols.reduce((s, y) => s + (b[y] || 0), 0) + (b["thereafter"] || 0);
-    return { b, cols, total, yr };
-  }, [loans, yearEnd]);
+    return { b, cols, total, yr: fyY };
+  }, [loans, amortization, yearEnd]);
 
   const rows = useMemo(() => loans.filter(l => l.type !== "LOC" && l.type !== "Revolver").map(loan => {
     const closing = toCAD(loan.closingBalance ?? loan.currentBalance, loan.currency);
