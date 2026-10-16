@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bell, User, Sparkles, Moon, Sun, Zap, UserCircle, Building2, Settings, CreditCard, Monitor, Gift, LogOut, Check, Trash2, Search, MoreVertical, Type } from "lucide-react";
+import { Bell, User, Sparkles, Moon, Sun, Zap, UserCircle, Building2, Settings, CreditCard, Monitor, Gift, LogOut, Check, Trash2, Search, MoreVertical, Type, Headphones } from "lucide-react";
 import { Input } from "@/components/wp-ui/input";
 import { Button } from "@/components/wp-ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/wp-ui/tooltip";
@@ -185,6 +185,16 @@ export function WpGlobalHeader({ title }: { title?: string }) {
               </ScrollArea>
             </PopoverContent>
           </Popover>
+
+          {/* Support */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center justify-center w-9 h-9 rounded-xl cursor-pointer hover:bg-muted transition-colors">
+                <Headphones className="h-5 w-5 text-foreground icon-bounce" />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>Support</TooltipContent>
+          </Tooltip>
 
           {/* Profile */}
           <DropdownMenu>

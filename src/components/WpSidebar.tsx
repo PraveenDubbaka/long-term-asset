@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ChevronDown, ChevronRight, ChevronLeft, Search, Plus, Expand, Trash2, Folder, Headphones, Check, FileText, FileBarChart, StickyNote, Table, Copy, Pencil, FolderInput, MoreVertical, GripVertical, X, Save, Files, Settings, RefreshCw, ArrowUpDown, Hash, HandHelping, AlertCircle, MessageSquare, FilePlus, BookOpen } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronLeft, Search, Plus, Expand, Trash2, Folder, Check, FileText, FileBarChart, StickyNote, Table, Copy, Pencil, FolderInput, MoreVertical, GripVertical, X, Save, Files, Settings, RefreshCw, ArrowUpDown, Hash, HandHelping, AlertCircle, MessageSquare, FilePlus, BookOpen } from "lucide-react";
 import { Input } from "@/components/wp-ui/input";
 import { Button } from "@/components/wp-ui/button";
 import { Checkbox } from "@/components/wp-ui/checkbox";
@@ -791,16 +791,6 @@ export function Sidebar({ pageTitle, showBackButton, onBack }: SidebarProps) {
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Support */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className={`sidebar-item cursor-pointer ${isNavExpanded ? "w-full justify-start gap-3 px-3" : ""}`}>
-              <Headphones className="h-5 w-5 icon-bounce" />
-              {isNavExpanded && <span className="text-sm font-medium">Support</span>}
-            </div>
-          </TooltipTrigger>
-          {!isNavExpanded && <TooltipContent side="right">Support</TooltipContent>}
-        </Tooltip>
 
       </div>
 
