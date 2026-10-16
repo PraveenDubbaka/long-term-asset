@@ -7,7 +7,6 @@ import {
   UserCircle,
   Inbox,
   FileText,
-  Headphones,
 } from "lucide-react";
 import {
   Tooltip,
@@ -177,41 +176,6 @@ const DashboardSidebar = ({ onExpandChange }: DashboardSidebarProps) => {
 
         {/* Bottom: Support */}
         <div className="flex flex-col items-center gap-3 mb-2 w-full px-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                className={`sidebar-icon-btn ${expanded ? "w-full flex items-center gap-3" : ""}`}
-                style={expanded ? { justifyContent: "flex-start", paddingLeft: 12 } : undefined}
-                title="Support"
-              >
-                <Headphones size={20} className="shrink-0" />
-                <AnimatePresence>
-                  {expanded && (
-                    <motion.span
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.12 }}
-                      className="text-sm font-medium whitespace-nowrap"
-                    >
-                      Help & Support
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </motion.button>
-            </TooltipTrigger>
-            {!expanded && (
-              <TooltipContent
-                side="right"
-                sideOffset={12}
-                className="px-3 py-1.5 text-xs font-medium rounded-[8px] border-0 shadow-lg"
-                style={{ background: "hsl(209, 75%, 19%)", color: "#fff" }}
-              >
-                Help & Support
-              </TooltipContent>
-            )}
-          </Tooltip>
         </div>
       </motion.aside>
     </TooltipProvider>
