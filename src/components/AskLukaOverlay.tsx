@@ -501,6 +501,8 @@ interface LtDebtReviewRow {
   interestPaid: string;
   principalPaid: string;
   locked?: boolean;
+  sourceFileId?: string;
+  edited?: boolean;
 }
 
 interface TBAccount { code: string; description: string; final: number; py1: number; py2: number; }
@@ -599,12 +601,13 @@ function ltRowMissing(row: LtDebtReviewRow, field: keyof LtDebtReviewRow) {
 function mockLtRowsFromFile(file: LtDebtFile): LtDebtReviewRow[] {
   const kind = file.userKind ?? file.kind;
   const sf = file.name;
+  const fid = file.id;
   const uid = () => `ltr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-  const X = { firstPaymentDate: "", monthlyPayment: "", fxRate: "", paymentType: "P&I", dayCount: "ACT/365", compounding: "Monthly", ioPeriod: "", balloonAmt: "", openingBalance: "", interestPaid: "", principalPaid: "", tbLoanAccount: "", tbInterestAccount: "" };
+  const X = { firstPaymentDate: "", monthlyPayment: "", fxRate: "", paymentType: "P&I", dayCount: "ACT/365", compounding: "Monthly", ioPeriod: "", balloonAmt: "", openingBalance: "", interestPaid: "", principalPaid: "", tbLoanAccount: "", tbInterestAccount: "", sourceFileId: fid };
   // ── Real CaseWare extraction — The Fishin' Hole (1982) Ltd., YE Sep 30, 2025 ──
   if (kind === "debt-schedule") return [
     {
-      id: uid(), sourceFile: sf,
+      id: uid(), sourceFile: sf, sourceFileId: fid,
       name: "Promissory Note 1", lender: "BDC Capital Inc.", type: "", currency: "",
       originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000",
       interestType: "", startDate: "2024-10-31", maturityDate: "2032-09-30",
@@ -617,7 +620,7 @@ function mockLtRowsFromFile(file: LtDebtFile): LtDebtReviewRow[] {
       openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82",
     },
     {
-      id: uid(), sourceFile: sf,
+      id: uid(), sourceFile: sf, sourceFileId: fid,
       name: "Promissory Note 2", lender: "RBC Royal Bank", type: "", currency: "",
       originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000",
       interestType: "", startDate: "2024-10-31", maturityDate: "2032-09-30",
@@ -1324,6 +1327,12 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [addMoreLtRows,       setAddMoreLtRows]       = useState<LtDebtReviewRow[]>([]);
   const [addMoreProcessedIds, setAddMoreProcessedIds] = useState<Set<string>>(new Set());
   const [addMoreDone,         setAddMoreDone]         = useState(false);
+  // ── Gate 2 dialog / drawer state ──
+  const [ltDeleteFileConfirm, setLtDeleteFileConfirm] = useState<{ file: LtDebtFile; totalRows: number; editedRows: number } | null>(null);
+  const [ltReplaceFileConfirm, setLtReplaceFileConfirm] = useState<{ incoming: LtDebtFile; existingId: string; existingName: string; totalRows: number; editedRows: number } | null>(null);
+  const [ltAddLoanDrawer, setLtAddLoanDrawer] = useState(false);
+  const [ltAddLoanDraft, setLtAddLoanDraft] = useState<LtDebtReviewRow>(EMPTY_LT_ROW());
+  const [ltAddLoanShowMore, setLtAddLoanShowMore] = useState(false);
   // ── Investment Schedule (chat-based) ──
   const [invSchedPhase, setInvSchedPhase] = useState<"idle"|"thinking"|"engagement-check"|"source-check"|"tb-check"|"upload-prompt"|"review"|"done">("idle");
   const [invSourceConnected, setInvSourceConnected] = useState<string|null>(null); // "quickbooks" | "xero" | null
@@ -1757,9 +1766,29 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
   // ── LT Debt review row helpers ──
   const updateLtRow = useCallback((id: string, field: keyof LtDebtReviewRow, value: string) =>
-    setLtReviewRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r)), []);
+    setLtReviewRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value, ...(r.sourceFileId ? { edited: true } : {}) } : r)), []);
   const deleteLtRow = useCallback((id: string) =>
     setLtReviewRows(prev => prev.filter(r => r.id !== id)), []);
+
+  const requestDeleteFile = useCallback((fileId: string) => {
+    const file = ltDebtUploadFiles.find(f => f.id === fileId);
+    if (!file) return;
+    const fileRows = ltReviewRows.filter(r => r.sourceFileId === fileId);
+    if (fileRows.length === 0) {
+      setLtDebtUploadFiles(prev => prev.filter(f => f.id !== fileId));
+      setLtProcessedFileIds(s => { const n = new Set(s); n.delete(fileId); return n; });
+      return;
+    }
+    setLtDeleteFileConfirm({ file, totalRows: fileRows.length, editedRows: fileRows.filter(r => r.edited).length });
+  }, [ltDebtUploadFiles, ltReviewRows]);
+
+  const confirmDeleteFile = useCallback((fileId: string) => {
+    setLtDebtUploadFiles(prev => prev.filter(f => f.id !== fileId));
+    setLtReviewRows(prev => prev.filter(r => !r.sourceFileId || r.sourceFileId !== fileId));
+    setLtProcessedFileIds(s => { const n = new Set(s); n.delete(fileId); return n; });
+    setLtDeleteFileConfirm(null);
+  }, []);
+
   const updateAddMoreRow = useCallback((id: string, field: keyof LtDebtReviewRow, value: string) =>
     setAddMoreLtRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r)), []);
   const deleteAddMoreRow = useCallback((id: string) =>
@@ -3486,6 +3515,15 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                       const addLtFiles = (rawFiles: FileList | null) => {
                                         if (!rawFiles) return;
                                         const classified = Array.from(rawFiles).map(classifyLtDebtFile);
+                                        // Check for a name collision with the first incoming file that conflicts
+                                        const existingFileNames = new Map(ltDebtUploadFiles.map(f => [f.name, f.id]));
+                                        const firstConflict = classified.find(f => existingFileNames.has(f.name));
+                                        if (firstConflict) {
+                                          const existingId = existingFileNames.get(firstConflict.name)!;
+                                          const fileRows = ltReviewRows.filter(r => r.sourceFileId === existingId);
+                                          setLtReplaceFileConfirm({ incoming: firstConflict, existingId, existingName: firstConflict.name, totalRows: fileRows.length, editedRows: fileRows.filter(r => r.edited).length });
+                                          return;
+                                        }
                                         setLtDebtUploadFiles(prev => {
                                           const existing = new Set(prev.map(f => f.name));
                                           const toAdd = classified.filter(f => !existing.has(f.name));
@@ -3495,8 +3533,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             const newRows = newValid.flatMap(mockLtRowsFromFile);
                                             if (newRows.length > 0) {
                                               setLtReviewRows(rPrev => {
-                                                const existingKeys = new Set(rPrev.map(r => `${r.sourceFile}:${r.name}`));
-                                                return [...rPrev, ...newRows.filter(r => !existingKeys.has(`${r.sourceFile}:${r.name}`))];
+                                                const existingKeys = new Set(rPrev.map(r => `${r.sourceFileId}:${r.name}`));
+                                                return [...rPrev, ...newRows.filter(r => !existingKeys.has(`${r.sourceFileId}:${r.name}`))];
                                               });
                                             }
                                             setLtProcessedFileIds(s => { const n = new Set(s); newValid.forEach(f => n.add(f.id)); return n; });
@@ -3518,10 +3556,81 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             inp.click();
                                           };
 
+                                      // Counts for status text
+                                      const fromFileRows = ltReviewRows.filter(r => r.sourceFileId && !r.locked);
+                                      const manualRows = ltReviewRows.filter(r => !r.sourceFileId && !r.locked);
+                                      const fileCount = new Set(fromFileRows.map(r => r.sourceFileId)).size;
+                                      const statusParts = [
+                                        ltReviewRows.filter(r => !r.locked).length > 0 ? `${ltReviewRows.length} loan${ltReviewRows.length !== 1 ? "s" : ""}` : null,
+                                        fileCount > 0 ? `${fromFileRows.length} from ${fileCount} file${fileCount !== 1 ? "s" : ""}` : null,
+                                        manualRows.length > 0 ? `${manualRows.length} manual` : null,
+                                      ].filter(Boolean).join(" · ");
+
                                       return (
+                                        <>
                                         <div className="space-y-3">
-                                          {/* ── AI-style upload section ── */}
-                                          <div className="relative rounded-[14px] overflow-hidden border border-primary/20 bg-gradient-to-br from-primary/[0.04] via-background to-violet-50/30">
+                                          {ltReviewRows.length > 0 ? (
+                                            /* ── Toolbar: shown when rows exist ── */
+                                            <div className="flex flex-wrap items-center gap-2 py-2 border-b border-border">
+                                              {/* File chips in toolbar */}
+                                              {ltDebtUploadFiles.filter(f => f.kind !== "unsupported" && f.kind !== "oversized").map(f => {
+                                                const isAmbig = f.kind === "ambiguous" && !f.userKind;
+                                                const loanCount = ltReviewRows.filter(r => r.sourceFileId === f.id).length;
+                                                const displayName = f.name.length > 18 ? f.name.slice(0, 18) + "…" : f.name;
+                                                return (
+                                                  <div key={f.id} className={cn("inline-flex items-center gap-1.5 pl-2 pr-1.5 py-1 rounded-[8px] border bg-background text-base", isAmbig ? "border-amber-300" : "border-border")}>
+                                                    <span className="font-medium text-foreground truncate max-w-[140px]" title={f.name}>{displayName}</span>
+                                                    {!isAmbig && <span className="text-muted-foreground">· {loanCount} loan{loanCount !== 1 ? "s" : ""}</span>}
+                                                    {isAmbig && (
+                                                      <select onClick={e => e.stopPropagation()} defaultValue=""
+                                                        onChange={e => {
+                                                          const v = e.target.value as Exclude<LtDebtFileKind, "unsupported" | "oversized" | "ambiguous">;
+                                                          setLtDebtUploadFiles(prev => prev.map(x => x.id === f.id ? { ...x, userKind: v } : x));
+                                                          if (!ltProcessedFileIds.has(f.id)) {
+                                                            const newRows = mockLtRowsFromFile({ ...f, userKind: v });
+                                                            if (newRows.length > 0) {
+                                                              setLtReviewRows(rPrev => {
+                                                                const existingKeys = new Set(rPrev.map(r => `${r.sourceFileId}:${r.name}`));
+                                                                return [...rPrev, ...newRows.filter(r => !existingKeys.has(`${r.sourceFileId}:${r.name}`))];
+                                                              });
+                                                              setLtProcessedFileIds(s => { const n = new Set(s); n.add(f.id); return n; });
+                                                            }
+                                                          }
+                                                        }}
+                                                        className="text-base border border-amber-300 rounded-[6px] px-1 py-0.5 bg-background text-amber-700 focus:outline-none cursor-pointer shrink-0 max-w-[90px]"
+                                                      >
+                                                        <option value="" disabled>Classify…</option>
+                                                        <option value="loan-agreement">Loan Agreement</option>
+                                                        <option value="debt-schedule">Debt Schedule</option>
+                                                        <option value="continuity">Continuity</option>
+                                                        <option value="loan-register">Loan Register</option>
+                                                        <option value="workpaper">Prior Year WP</option>
+                                                      </select>
+                                                    )}
+                                                    <button onClick={e => { e.stopPropagation(); requestDeleteFile(f.id); }} className="shrink-0 text-muted-foreground/50 hover:text-red-500 transition-colors ml-0.5">
+                                                      <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                  </div>
+                                                );
+                                              })}
+                                              <button
+                                                onClick={() => { setLtAddLoanDraft(EMPTY_LT_ROW()); setLtAddLoanShowMore(false); setLtAddLoanDrawer(true); }}
+                                                className="inline-flex items-center gap-1 h-7 px-3 text-base font-medium rounded-[8px] border border-dashed border-violet-300/60 bg-violet-50/30 text-violet-700 hover:bg-violet-50/70 hover:border-violet-400/60 transition-colors"
+                                              >
+                                                <Plus className="w-3.5 h-3.5" /><span>Add loan</span>
+                                              </button>
+                                              <button
+                                                onClick={triggerUpload}
+                                                onDragOver={e => e.preventDefault()}
+                                                onDrop={e => { e.preventDefault(); addLtFiles(e.dataTransfer.files); }}
+                                                className="inline-flex items-center gap-1 h-7 px-3 text-base font-medium rounded-[8px] border border-dashed border-primary/30 bg-primary/[0.03] text-primary hover:bg-primary/[0.07] hover:border-primary/50 transition-colors"
+                                              >
+                                                <Upload className="w-3.5 h-3.5" /><span>Upload documents</span>
+                                              </button>
+                                            </div>
+                                          ) : (
+                                            /* ── AI-style upload section (shown when no rows yet) ── */
+                                            <div className="relative rounded-[14px] overflow-hidden border border-primary/20 bg-gradient-to-br from-primary/[0.04] via-background to-violet-50/30">
                                             {/* Ambient blobs */}
                                             <div className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full bg-primary/10 blur-3xl" />
                                             <div className="pointer-events-none absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-violet-400/10 blur-3xl" />
@@ -3546,7 +3655,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   </div>
                                                 </div>
                                                 <div>
-                                                  <p className="text-base font-semibold text-foreground">Import documents</p>
+                                                  <p className="text-base font-semibold text-foreground">Upload documents</p>
                                                   <p className="text-base text-muted-foreground mt-0.5">Loan agreements · Registers<br />Schedules · PDF · XLSX · ZIP</p>
                                                 </div>
                                                 <span className="inline-flex items-center gap-1 text-base font-medium text-primary group-hover:underline">
@@ -3564,7 +3673,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               {/* Manual card */}
                                               <div
                                                 className="flex-1 flex flex-col items-center gap-2.5 p-4 rounded-[10px] border border-dashed border-violet-300/40 bg-violet-50/20 cursor-pointer hover:bg-violet-50/50 hover:border-violet-400/50 transition-all group text-center"
-                                                onClick={() => setLtReviewRows(prev => [...prev, EMPTY_LT_ROW()])}
+                                                onClick={() => { setLtAddLoanDraft(EMPTY_LT_ROW()); setLtAddLoanShowMore(false); setLtAddLoanDrawer(true); }}
                                               >
                                                 <div className="relative">
                                                   <div className="absolute inset-0 rounded-full bg-violet-400/20 blur-md group-hover:bg-violet-400/30 transition-all" />
@@ -3573,65 +3682,32 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   </div>
                                                 </div>
                                                 <div>
-                                                  <p className="text-base font-semibold text-foreground">Enter manually</p>
-                                                  <p className="text-base text-muted-foreground mt-0.5">Add a blank row and type<br />loan details directly in the table</p>
+                                                  <p className="text-base font-semibold text-foreground">Add loan manually</p>
+                                                  <p className="text-base text-muted-foreground mt-0.5">Fill in a form with loan<br />details to add a new entry</p>
                                                 </div>
                                                 <span className="inline-flex items-center gap-1 text-base font-medium text-violet-600 group-hover:underline">
-                                                  Add a new entry row
+                                                  Open loan form
                                                 </span>
                                               </div>
                                             </div>
                                           </div>
+                                          )}
 
-                                          {/* File chips */}
-                                          {ltDebtUploadFiles.length > 0 && (
+                                          {/* Error file chips (always shown) */}
+                                          {ltDebtUploadFiles.some(f => f.kind === "unsupported" || f.kind === "oversized") && (
                                             <div className="flex flex-wrap gap-2">
-                                              {ltDebtUploadFiles.map(f => {
-                                                const isError = f.kind === "unsupported" || f.kind === "oversized";
-                                                const isAmbig = f.kind === "ambiguous" && !f.userKind;
-                                                return (
-                                                  <div key={f.id} className={cn(
-                                                    "inline-flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-[10px] border bg-background text-base max-w-[220px]",
-                                                    isError ? "border-red-200" : isAmbig ? "border-amber-300" : "border-border"
-                                                  )}>
-                                                    <div className={cn("w-7 h-7 rounded-[6px] flex items-center justify-center shrink-0", isError ? "bg-red-50" : "bg-primary/10")}>
-                                                      {f.ext === "pdf" ? <FileText className="h-5 w-5 text-primary shrink-0" /> : f.ext === "zip" ? <FolderOpen className="h-5 w-5 text-primary shrink-0" /> : <FileSpreadsheet className="h-5 w-5 text-primary shrink-0" />}
-                                                    </div>
-                                                    <span className="flex-1 min-w-0 truncate font-medium text-foreground">{f.name}</span>
-                                                    {isAmbig && (
-                                                      <select onClick={e => e.stopPropagation()} defaultValue=""
-                                                        onChange={e => {
-                                                          const v = e.target.value as Exclude<LtDebtFileKind, "unsupported" | "oversized" | "ambiguous">;
-                                                          setLtDebtUploadFiles(prev => prev.map(x => x.id === f.id ? { ...x, userKind: v } : x));
-                                                          // Generate rows when ambiguous file gets classified
-                                                          if (!ltProcessedFileIds.has(f.id)) {
-                                                            const newRows = mockLtRowsFromFile({ ...f, userKind: v });
-                                                            if (newRows.length > 0) {
-                                                              setLtReviewRows(rPrev => {
-                                                                const existingKeys = new Set(rPrev.map(r => `${r.sourceFile}:${r.name}`));
-                                                                return [...rPrev, ...newRows.filter(r => !existingKeys.has(`${r.sourceFile}:${r.name}`))];
-                                                              });
-                                                              setLtProcessedFileIds(s => { const n = new Set(s); n.add(f.id); return n; });
-                                                            }
-                                                          }
-                                                        }}
-                                                        className="text-base border border-amber-300 rounded-[6px] px-1 py-0.5 bg-background text-amber-700 focus:outline-none cursor-pointer shrink-0 max-w-[100px]"
-                                                      >
-                                                        <option value="" disabled>Classify…</option>
-                                                        <option value="loan-agreement">Loan Agreement</option>
-                                                        <option value="debt-schedule">Debt Schedule</option>
-                                                        <option value="continuity">Continuity</option>
-                                                        <option value="loan-register">Loan Register</option>
-                                                        <option value="workpaper">Prior Year WP</option>
-                                                      </select>
-                                                    )}
-                                                    {isError && <span className="text-base text-red-600 shrink-0">{f.kind === "unsupported" ? "Unsupported" : "Too large"}</span>}
-                                                    <button onClick={e => { e.stopPropagation(); setLtDebtUploadFiles(prev => prev.filter(x => x.id !== f.id)); }} className="shrink-0 text-red-400 hover:text-red-600 transition-colors">
-                                                      <Trash2 className="h-5 w-5" />
-                                                    </button>
+                                              {ltDebtUploadFiles.filter(f => f.kind === "unsupported" || f.kind === "oversized").map(f => (
+                                                <div key={f.id} className="inline-flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-[10px] border border-red-200 bg-background text-base max-w-[220px]">
+                                                  <div className="w-7 h-7 rounded-[6px] flex items-center justify-center shrink-0 bg-red-50">
+                                                    {f.ext === "pdf" ? <FileText className="h-5 w-5 text-red-400 shrink-0" /> : <FileSpreadsheet className="h-5 w-5 text-red-400 shrink-0" />}
                                                   </div>
-                                                );
-                                              })}
+                                                  <span className="flex-1 min-w-0 truncate font-medium text-foreground">{f.name}</span>
+                                                  <span className="text-base text-red-600 shrink-0">{f.kind === "unsupported" ? "Unsupported" : "Too large"}</span>
+                                                  <button onClick={() => setLtDebtUploadFiles(prev => prev.filter(x => x.id !== f.id))} className="shrink-0 text-red-400 hover:text-red-600 transition-colors">
+                                                    <Trash2 className="h-5 w-5" />
+                                                  </button>
+                                                </div>
+                                              ))}
                                             </div>
                                           )}
 
@@ -3640,7 +3716,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             <div className="space-y-2">
                                               <div className="flex items-center">
                                                 <span className="text-base font-semibold text-foreground">
-                                                  {ltReviewRows.length} loan{ltReviewRows.length !== 1 ? "s" : ""} extracted — review and complete before submitting
+                                                  {statusParts || `${ltReviewRows.length} loan${ltReviewRows.length !== 1 ? "s" : ""}`}
                                                 </span>
                                               </div>
 
@@ -3650,7 +3726,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   <table className="w-full text-base" style={{ minWidth: 2400 }}>
                                                     <thead>
                                                       <tr className="bg-muted/30 border-b border-border">
-                                                        {["Loan Name *","Lender *","Current Collateral","Loan Type","Rate Type","Int. Rate % *","Start *","Maturity *","First Payment","Currency","Mo. Payment","Orig. Loan Amt","FX Rate","Opening Bal. *","GL Principal *","Day Count","Payment Type","Freq.","Compounding","Interest-Only Period (Mo.)","Balloon Amt",""].map((h, i) => (
+                                                        {["Loan Name *","Source","Lender *","Current Collateral","Loan Type","Rate Type","Int. Rate % *","Start *","Maturity *","First Payment","Currency","Mo. Payment","Orig. Loan Amt","FX Rate","Opening Bal. *","GL Principal *","Day Count","Payment Type","Freq.","Compounding","Interest-Only Period (Mo.)","Balloon Amt",""].map((h, i) => (
                                                           <th key={i} className={`px-2 py-1.5 text-base font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${LT_RIGHT_COLS.has(h) ? "text-right" : "text-left"} ${h === "" ? "sticky right-0 bg-background shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] z-10" : ""}`}>
                                                             {h.endsWith(" *")
                                                               ? <>{h.slice(0, -2)} <span className="text-red-500">*</span></>
@@ -3664,6 +3740,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                         if (row.locked) return (
                                                           <tr key={row.id} className="border-b border-border/40 bg-muted/25">
                                                             <td className="px-1.5 py-2 min-w-[130px]"><div className="flex items-center gap-1.5"><Lock className="w-3 h-3 text-muted-foreground shrink-0" /><span className="text-base font-medium text-foreground">{row.name}</span></div></td>
+                                                            <td className="px-1.5 py-2 whitespace-nowrap"><span className="inline-flex items-center gap-1 text-base px-1.5 py-0.5 rounded-[6px] bg-muted/40 border border-border/40 text-muted-foreground">Prior year</span></td>
                                                             <td className="px-1.5 py-2 text-base text-muted-foreground">{row.lender || "—"}</td>
                                                             <td className="px-1.5 py-2 text-base text-muted-foreground">{row.collateral || "—"}</td>
                                                             <td className="px-1.5 py-2 text-base text-muted-foreground">{row.type}</td>
@@ -3697,6 +3774,19 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                             {/* Loan Name */}
                                                             <td className="px-1.5 py-1 min-w-[200px]">
                                                               <textarea rows={1} value={row.name} onChange={e => updateLtRow(row.id,"name",e.target.value)} onInput={e => { const t = e.currentTarget; t.style.height = "auto"; t.style.height = `${t.scrollHeight}px`; }} ref={el => { if (el) { el.style.height = "auto"; el.style.height = `${el.scrollHeight}px`; } }} className={cn(fc("name",true).replace("h-6",""),"w-48 resize-none overflow-hidden")} placeholder="Loan name" />
+                                                            </td>
+                                                            {/* Source */}
+                                                            <td className="px-1.5 py-1 whitespace-nowrap">
+                                                              {(() => {
+                                                                const srcFile = row.sourceFileId ? ltDebtUploadFiles.find(f => f.id === row.sourceFileId) : null;
+                                                                const label = srcFile ? (srcFile.name.length > 18 ? srcFile.name.slice(0, 18) + "…" : srcFile.name) : "Manual";
+                                                                return (
+                                                                  <span className="inline-flex items-center gap-1 text-base px-1.5 py-0.5 rounded-[6px] bg-muted/40 border border-border/40 text-muted-foreground" title={srcFile?.name}>
+                                                                    {label}
+                                                                    {row.edited && <span className="text-[10px] font-medium text-amber-600 uppercase tracking-wide ml-0.5">Edited</span>}
+                                                                  </span>
+                                                                );
+                                                              })()}
                                                             </td>
                                                             {/* Lender */}
                                                             <td className="px-1.5 py-1 min-w-[170px]">
@@ -3830,7 +3920,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     validFiles.forEach(f => { const k = f.userKind ?? f.kind; counts[k] = (counts[k] ?? 0) + 1; });
                                                     const parts = Object.entries(counts).map(([k, n]) => `${n} ${LT_FILE_KIND_LABEL[k] ?? k}${n! > 1 ? "s" : ""}`);
                                                     const docPart = validFiles.length > 0 ? `${validFiles.length} uploaded document${validFiles.length !== 1 ? "s" : ""}${parts.length ? ` (${parts.join(", ")})` : ""}` : "";
-                                                    const manualCount = ltReviewRows.filter(r => !r.sourceFile).length;
+                                                    const manualCount = ltReviewRows.filter(r => !r.sourceFileId && !r.locked).length;
                                                     const manualPart = manualCount > 0 ? `${manualCount} manual entr${manualCount !== 1 ? "ies" : "y"}` : "";
                                                     setLtDebtSrcLabel([docPart, manualPart].filter(Boolean).join(" + ") || `${ltReviewRows.length} manual entries`);
 
@@ -4026,6 +4116,158 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             </div>
                                           </div>
                                         </div>
+
+                                        {/* ── Add Loan Drawer ── */}
+                                        {ltAddLoanDrawer && ReactDOM.createPortal(
+                                          <div className="fixed inset-0 z-[200] flex justify-end">
+                                            <div className="absolute inset-0 bg-black/30" onClick={() => setLtAddLoanDrawer(false)} />
+                                            <div className="relative w-full max-w-md bg-background border-l border-border h-full flex flex-col shadow-2xl overflow-hidden">
+                                              <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+                                                <h3 className="text-base font-semibold text-foreground">Add loan</h3>
+                                                <button onClick={() => setLtAddLoanDrawer(false)} className="text-muted-foreground hover:text-foreground transition-colors"><X className="w-4 h-4" /></button>
+                                              </div>
+                                              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+                                                {([
+                                                  { key: "name" as const, label: "Loan Name", required: true, type: "text", placeholder: "e.g. Term Loan A" },
+                                                  { key: "lender" as const, label: "Lender", required: true, type: "text", placeholder: "e.g. RBC Royal Bank" },
+                                                  { key: "rate" as const, label: "Interest Rate (%)", required: true, type: "text", placeholder: "e.g. 5.25" },
+                                                  { key: "startDate" as const, label: "Start Date", required: true, type: "date", placeholder: "" },
+                                                  { key: "maturityDate" as const, label: "Maturity Date", required: true, type: "date", placeholder: "" },
+                                                  { key: "currentBalance" as const, label: "Opening Balance", required: true, type: "text", placeholder: "e.g. 1,000,000" },
+                                                ] as { key: keyof LtDebtReviewRow; label: string; required: boolean; type: string; placeholder: string }[]).map(({ key, label, required, type, placeholder }) => (
+                                                  <div key={key} className="space-y-1">
+                                                    <label className="text-base font-medium text-foreground">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>
+                                                    <input
+                                                      type={type}
+                                                      value={String(ltAddLoanDraft[key] ?? "")}
+                                                      onChange={e => setLtAddLoanDraft(prev => ({ ...prev, [key]: e.target.value }))}
+                                                      placeholder={placeholder}
+                                                      className="h-8 w-full text-base px-2 border border-border rounded bg-background focus:outline-none focus:border-primary/40"
+                                                    />
+                                                  </div>
+                                                ))}
+                                                <div className="space-y-1">
+                                                  <label className="text-base font-medium text-foreground">GL Account<span className="text-red-500 ml-0.5">*</span></label>
+                                                  <GLComboboxMini value={ltAddLoanDraft.glPrincipal} onChange={v => setLtAddLoanDraft(prev => ({ ...prev, glPrincipal: v }))} required={!ltAddLoanDraft.glPrincipal} />
+                                                </div>
+                                                <button onClick={() => setLtAddLoanShowMore(p => !p)} className="text-base font-medium text-primary hover:underline flex items-center gap-1">
+                                                  <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", ltAddLoanShowMore && "rotate-180")} />
+                                                  More details
+                                                </button>
+                                                {ltAddLoanShowMore && (
+                                                  <div className="space-y-3 pt-1">
+                                                    {([
+                                                      { key: "collateral" as const, label: "Collateral", type: "text", placeholder: "e.g. Real property" },
+                                                      { key: "originalPrincipal" as const, label: "Original Principal", type: "text", placeholder: "0" },
+                                                      { key: "firstPaymentDate" as const, label: "First Payment Date", type: "date", placeholder: "" },
+                                                      { key: "monthlyPayment" as const, label: "Monthly Payment", type: "text", placeholder: "auto" },
+                                                      { key: "fxRate" as const, label: "FX Rate to CAD", type: "text", placeholder: "1.000" },
+                                                      { key: "ioPeriod" as const, label: "Interest-Only Period (mo.)", type: "text", placeholder: "0" },
+                                                      { key: "balloonAmt" as const, label: "Balloon Amount", type: "text", placeholder: "0" },
+                                                    ] as { key: keyof LtDebtReviewRow; label: string; type: string; placeholder: string }[]).map(({ key, label, type, placeholder }) => (
+                                                      <div key={key} className="space-y-1">
+                                                        <label className="text-base font-medium text-foreground">{label}</label>
+                                                        <input type={type} value={String(ltAddLoanDraft[key] ?? "")} onChange={e => setLtAddLoanDraft(prev => ({ ...prev, [key]: e.target.value }))} placeholder={placeholder} className="h-8 w-full text-base px-2 border border-border rounded bg-background focus:outline-none focus:border-primary/40" />
+                                                      </div>
+                                                    ))}
+                                                    {[
+                                                      { key: "type" as const, label: "Loan Type", opts: ["Term","LOC","Revolver","Mortgage","Bridge"] },
+                                                      { key: "currency" as const, label: "Currency", opts: ["CAD","USD","EUR","GBP"] },
+                                                      { key: "interestType" as const, label: "Rate Type", opts: ["Fixed","Variable","Floating","Hybrid","Step Rate"] },
+                                                      { key: "paymentType" as const, label: "Payment Type", opts: ["P&I","Interest-only","Balloon"] },
+                                                      { key: "paymentFrequency" as const, label: "Payment Frequency", opts: ["Monthly","Quarterly","Semi-annual","Annual"] },
+                                                      { key: "dayCount" as const, label: "Day Count", opts: ["ACT/365","ACT/360","30/360"] },
+                                                      { key: "compounding" as const, label: "Compounding", opts: ["Monthly","Quarterly","Semi-annual","Annual"] },
+                                                    ].map(({ key, label, opts }) => (
+                                                      <div key={key} className="space-y-1">
+                                                        <label className="text-base font-medium text-foreground">{label}</label>
+                                                        <select value={String(ltAddLoanDraft[key] ?? "")} onChange={e => setLtAddLoanDraft(prev => ({ ...prev, [key]: e.target.value }))} className="h-8 w-full text-base px-2 border border-border rounded bg-background focus:outline-none">
+                                                          {opts.map(o => <option key={o}>{o}</option>)}
+                                                        </select>
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                )}
+                                              </div>
+                                              <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
+                                                <button onClick={() => setLtAddLoanDrawer(false)} className="h-8 px-4 text-base font-medium rounded-[8px] border border-border text-muted-foreground hover:bg-muted/40 transition-colors">Cancel</button>
+                                                <button
+                                                  disabled={LT_REVIEW_REQUIRED.some(f => ltRowMissing(ltAddLoanDraft, f))}
+                                                  onClick={() => {
+                                                    if (LT_REVIEW_REQUIRED.some(f => ltRowMissing(ltAddLoanDraft, f))) return;
+                                                    setLtReviewRows(prev => [...prev, { ...ltAddLoanDraft, id: `ltr-${Date.now()}-${Math.random().toString(36).slice(2,6)}` }]);
+                                                    setLtAddLoanDrawer(false);
+                                                    setLtAddLoanDraft(EMPTY_LT_ROW());
+                                                    setLtAddLoanShowMore(false);
+                                                  }}
+                                                  className={cn("h-8 px-4 text-base font-medium rounded-[8px] transition-colors", LT_REVIEW_REQUIRED.some(f => ltRowMissing(ltAddLoanDraft, f)) ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60" : "bg-primary text-primary-foreground hover:bg-primary/90")}
+                                                >Save</button>
+                                              </div>
+                                            </div>
+                                          </div>,
+                                          document.body
+                                        )}
+
+                                        {/* ── Delete file confirm dialog ── */}
+                                        {ltDeleteFileConfirm && ReactDOM.createPortal(
+                                          <div className="fixed inset-0 z-[200] flex items-center justify-center">
+                                            <div className="absolute inset-0 bg-black/30" onClick={() => setLtDeleteFileConfirm(null)} />
+                                            <div className="relative bg-background rounded-[12px] border border-border shadow-xl p-6 max-w-sm w-full mx-4">
+                                              <h3 className="text-base font-semibold text-foreground mb-2">Delete {ltDeleteFileConfirm.file.name}?</h3>
+                                              <p className="text-base text-muted-foreground mb-4">
+                                                This removes the {ltDeleteFileConfirm.totalRows} loan{ltDeleteFileConfirm.totalRows !== 1 ? "s" : ""} extracted from this file{ltDeleteFileConfirm.editedRows > 0 ? `, including ${ltDeleteFileConfirm.editedRows} you edited` : ""}. Manual loans and loans from other files stay.
+                                              </p>
+                                              <div className="flex justify-end gap-2">
+                                                <button onClick={() => setLtDeleteFileConfirm(null)} className="h-8 px-4 text-base font-medium rounded-[8px] border border-border hover:bg-muted/40 transition-colors">Cancel</button>
+                                                <button onClick={() => confirmDeleteFile(ltDeleteFileConfirm.file.id)} className="h-8 px-4 text-base font-medium rounded-[8px] bg-red-600 text-white hover:bg-red-700 transition-colors">
+                                                  Delete file and {ltDeleteFileConfirm.totalRows} loan{ltDeleteFileConfirm.totalRows !== 1 ? "s" : ""}
+                                                </button>
+                                              </div>
+                                            </div>
+                                          </div>,
+                                          document.body
+                                        )}
+
+                                        {/* ── Replace file confirm dialog ── */}
+                                        {ltReplaceFileConfirm && ReactDOM.createPortal(
+                                          <div className="fixed inset-0 z-[200] flex items-center justify-center">
+                                            <div className="absolute inset-0 bg-black/30" onClick={() => setLtReplaceFileConfirm(null)} />
+                                            <div className="relative bg-background rounded-[12px] border border-border shadow-xl p-6 max-w-sm w-full mx-4">
+                                              <h3 className="text-base font-semibold text-foreground mb-2">{ltReplaceFileConfirm.existingName} is already uploaded.</h3>
+                                              {ltReplaceFileConfirm.totalRows > 0 ? (
+                                                <p className="text-base text-muted-foreground mb-4">
+                                                  Replacing it will remove the {ltReplaceFileConfirm.totalRows} loan{ltReplaceFileConfirm.totalRows !== 1 ? "s" : ""} extracted from this file{ltReplaceFileConfirm.editedRows > 0 ? `, including ${ltReplaceFileConfirm.editedRows} you edited` : ""}. Manual loans and loans from other files stay.
+                                                </p>
+                                              ) : (
+                                                <p className="text-base text-muted-foreground mb-4">The existing file will be replaced.</p>
+                                              )}
+                                              <div className="flex justify-end gap-2">
+                                                <button onClick={() => setLtReplaceFileConfirm(null)} className="h-8 px-4 text-base font-medium rounded-[8px] border border-border hover:bg-muted/40 transition-colors">Cancel</button>
+                                                <button
+                                                  onClick={() => {
+                                                    const { incoming, existingId } = ltReplaceFileConfirm;
+                                                    setLtReplaceFileConfirm(null);
+                                                    setLtDebtUploadFiles(prev => prev.filter(f => f.id !== existingId));
+                                                    setLtReviewRows(prev => prev.filter(r => !r.sourceFileId || r.sourceFileId !== existingId));
+                                                    setLtProcessedFileIds(s => { const n = new Set(s); n.delete(existingId); return n; });
+                                                    setLtDebtUploadFiles(prev => [...prev, incoming].slice(0, 15));
+                                                    const kind = incoming.userKind ?? incoming.kind;
+                                                    if (kind !== "unsupported" && kind !== "oversized" && kind !== "ambiguous") {
+                                                      const newRows = mockLtRowsFromFile(incoming);
+                                                      if (newRows.length > 0) {
+                                                        setLtReviewRows(rPrev => [...rPrev, ...newRows]);
+                                                        setLtProcessedFileIds(s => { const n = new Set(s); n.add(incoming.id); return n; });
+                                                      }
+                                                    }
+                                                  }}
+                                                  className="h-8 px-4 text-base font-medium rounded-[8px] bg-red-600 text-white hover:bg-red-700 transition-colors"
+                                                >Replace</button>
+                                              </div>
+                                            </div>
+                                          </div>,
+                                          document.body
+                                        )}
+                                        </>
                                       );
                                     })()}
                                     </>)}
