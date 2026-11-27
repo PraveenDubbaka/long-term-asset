@@ -1321,6 +1321,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [ltPriorDocYearEnd, setLtPriorDocYearEnd]= useState<string>("");
   const [ltPriorSubmitAttempted, setLtPriorSubmitAttempted] = useState(false);
   const [ltDeleteFileConfirm, setLtDeleteFileConfirm] = useState<{ fileId: string; fileName: string; rowCount: number } | null>(null);
+  const ltDeletedFileIds = useRef<Set<string>>(new Set());
   // ── Add-more-loans turn ──
   const [addMoreLoansActive,  setAddMoreLoansActive]  = useState(false);
   const [addMoreLtFiles,      setAddMoreLtFiles]      = useState<LtDebtFile[]>([]);
@@ -3168,16 +3169,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               { id: uid(), sourceFile: fileName, sourceFileId: fileId, locked: true, name: "Promissory Note 1", lender: "BDC Capital Inc.", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "General security agreement over all present and after-acquired personal property", status: "Active", glPrincipal: "", tbLoanAccount: "", tbInterestAccount: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
                                               { id: uid(), sourceFile: fileName, sourceFileId: fileId, locked: true, name: "Promissory Note 2", lender: "RBC Royal Bank", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "First charge over real property and improvements", status: "Active", glPrincipal: "", tbLoanAccount: "", tbInterestAccount: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
                                             ];
-                                            setLtPriorFiles(prev => {
-                                              const stillExists = prev.some(x => x.id === fileId);
-                                              if (!stillExists) return prev; // deleted during extraction — discard rows too
-                                              setLtPriorRows(rowsPrev => {
-                                                const withoutBlanks = rowsPrev.filter(r => !isBlankRow(r));
-                                                return [...withoutBlanks, ...extracted];
-                                              });
-                                              setLtPriorDocYearEnd("2025-09-30");
-                                              return prev.map(x => x.id === fileId ? { ...x, extracting: false } : x);
-                                            });
+                                            if (ltDeletedFileIds.current.has(fileId)) return;
+                                            setLtPriorFiles(prev => prev.map(x => x.id === fileId ? { ...x, extracting: false } : x));
+                                            setLtPriorRows(prev => [...prev.filter(r => !isBlankRow(r)), ...extracted]);
+                                            setLtPriorDocYearEnd("2025-09-30");
                                           }, 1400);
                                         });
                                       };
@@ -3195,6 +3190,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                       const handleDeleteFileBadge = (fileId: string) => {
                                         const rowsOfFile = ltPriorRows.filter(r => r.sourceFileId === fileId);
                                         if (rowsOfFile.length === 0) {
+                                          ltDeletedFileIds.current.add(fileId);
                                           setLtPriorFiles(prev => prev.filter(f => f.id !== fileId));
                                           return;
                                         }
@@ -3203,6 +3199,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                       const confirmDeleteFile = () => {
                                         if (!ltDeleteFileConfirm) return;
                                         const { fileId } = ltDeleteFileConfirm;
+                                        ltDeletedFileIds.current.add(fileId);
                                         setLtPriorFiles(prev => prev.filter(f => f.id !== fileId));
                                         setLtPriorRows(prev => {
                                           const next = prev.filter(r => r.sourceFileId !== fileId);
