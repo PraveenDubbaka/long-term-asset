@@ -3250,9 +3250,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                 ) : (
                                                   <button
                                                     onClick={e => { e.stopPropagation(); handleDeleteFileBadge(f.id); }}
+                                                    aria-label={`Delete ${f.name}`}
                                                     className="text-muted-foreground hover:text-red-500 transition-colors p-0.5 rounded"
                                                   >
-                                                    <X className="w-3.5 h-3.5" />
+                                                    <Trash2 className="w-3.5 h-3.5" />
                                                   </button>
                                                 )}
                                               </div>
@@ -3544,7 +3545,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   });
                                                   setLtDebtGenerated(true); setLtDebtPhase("done");
                                                 }}
-                                                className={`inline-flex items-center gap-2 h-9 px-5 text-base font-medium rounded-[8px] transition-colors ${ltPriorAllValid ? "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer" : "bg-muted text-muted-foreground cursor-not-allowed"}`}
+                                                className={`inline-flex items-center gap-2 h-9 px-5 text-base font-medium rounded-[8px] transition-colors bg-primary text-primary-foreground ${ltPriorAllValid ? "hover:bg-primary/90 cursor-pointer" : "opacity-50 cursor-not-allowed"}`}
                                               >
                                                 Generate Schedule
                                               </button>
