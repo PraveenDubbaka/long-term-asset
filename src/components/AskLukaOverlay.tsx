@@ -3154,6 +3154,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                   <>
                                     {/* ── Gate 1: prior-year schedule upload ── */}
                                     {ltDebtPhase === "prior-year-gate" && (() => {
+                                      const isBlankRow = (r: LtDebtReviewRow) =>
+                                        !r.sourceFileId && !r.name?.trim() && !r.lender?.trim() && !r.rate?.trim() && !r.startDate && !r.maturityDate && !r.originalPrincipal?.trim();
                                       const handlePriorFiles = (files: FileList | null) => {
                                         if (!files || files.length === 0) return;
                                         Array.from(files).forEach(f => {
@@ -3166,12 +3168,16 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               { id: uid(), sourceFile: fileName, sourceFileId: fileId, locked: true, name: "Promissory Note 1", lender: "BDC Capital Inc.", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "General security agreement over all present and after-acquired personal property", status: "Active", glPrincipal: "", tbLoanAccount: "", tbInterestAccount: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
                                               { id: uid(), sourceFile: fileName, sourceFileId: fileId, locked: true, name: "Promissory Note 2", lender: "RBC Royal Bank", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "First charge over real property and improvements", status: "Active", glPrincipal: "", tbLoanAccount: "", tbInterestAccount: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
                                             ];
-                                            setLtPriorFiles(prev => prev.map(x => x.id === fileId ? { ...x, extracting: false } : x));
-                                            setLtPriorRows(prev => {
-                                              const isUntouched = prev.length === 1 && !prev[0].sourceFileId && !prev[0].name?.trim() && !prev[0].lender?.trim() && !prev[0].rate?.trim() && !prev[0].startDate && !prev[0].maturityDate && !prev[0].originalPrincipal?.trim();
-                                              return isUntouched ? extracted : [...prev, ...extracted];
+                                            setLtPriorFiles(prev => {
+                                              const stillExists = prev.some(x => x.id === fileId);
+                                              if (!stillExists) return prev; // deleted during extraction — discard rows too
+                                              setLtPriorRows(rowsPrev => {
+                                                const withoutBlanks = rowsPrev.filter(r => !isBlankRow(r));
+                                                return [...withoutBlanks, ...extracted];
+                                              });
+                                              setLtPriorDocYearEnd("2025-09-30");
+                                              return prev.map(x => x.id === fileId ? { ...x, extracting: false } : x);
                                             });
-                                            setLtPriorDocYearEnd("2025-09-30");
                                           }, 1400);
                                         });
                                       };
@@ -3204,7 +3210,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                         });
                                         setLtDeleteFileConfirm(null);
                                       };
-                                      const ltPriorAllValid = ltPriorRows.every(r =>
+                                      const nonBlankRows = ltPriorRows.filter(r =>
+                                        !(!r.sourceFileId && !r.name?.trim() && !r.lender?.trim() && !r.rate?.trim() && !r.startDate && !r.maturityDate && !r.originalPrincipal?.trim())
+                                      );
+                                      const ltPriorAllValid = nonBlankRows.length > 0 && nonBlankRows.every(r =>
                                         r.name?.trim() && r.lender?.trim() && r.interestType &&
                                         r.rate?.trim() && r.startDate && r.maturityDate &&
                                         r.originalPrincipal?.trim() &&
@@ -3445,13 +3454,19 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             <button
                                               onClick={() => {
                                                 if (!ltPriorAllValid) { setLtPriorSubmitAttempted(true); return; }
-                                                const rows = ltPriorRows;
+                                                const rows = nonBlankRows;
                                                   const parseNum = (s: string) => parseFloat((s || "0").replace(/,/g, "")) || 0;
                                                   const rowById = Object.fromEntries(rows.map(r => [`loan-luka-${r.id}`, r]));
                                                   const fyDateStr = settings.fiscalYearEnd || "2026-09-30";
                                                   const [fyY, fyM, fyD] = fyDateStr.split("-").map(Number);
                                                   const fyEnd = new Date(fyY, fyM - 1, fyD);
-                                                  setLtDebtSrcLabel(`${rows.length} loan${rows.length !== 1 ? "s" : ""} from prior-year debt schedule`);
+                                                  const fCount = rows.filter(r => r.sourceFileId).length;
+                                                  const mCount = rows.filter(r => !r.sourceFileId).length;
+                                                  const srcParts = [
+                                                    fCount > 0 ? `${fCount} from uploaded documents` : "",
+                                                    mCount > 0 ? `${mCount} manual` : "",
+                                                  ].filter(Boolean);
+                                                  setLtDebtSrcLabel(srcParts.join(" + "));
                                                   setLtReviewRows(rows);
                                                   const newLoans: Loan[] = rows.map(row => ({
                                                     id: `loan-luka-${row.id}`,
@@ -3543,15 +3558,6 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               </button>
                                             </div>
 
-                                            {/* Skip link */}
-                                            <div className="text-center pt-1">
-                                              <button
-                                                onClick={() => { setLtDebtPhase("upload-prompt"); setLtReviewRows([]); }}
-                                                className="text-base text-muted-foreground hover:text-foreground underline transition-colors"
-                                              >
-                                                No prior-year schedule? Skip
-                                              </button>
-                                            </div>
                                           </div>
                                           {ltDeleteFileConfirm && ReactDOM.createPortal(
                                             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]" onClick={() => setLtDeleteFileConfirm(null)}>
