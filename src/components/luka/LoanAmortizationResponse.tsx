@@ -44,6 +44,9 @@ export function LoanAmortizationResponse({ data, yearEndMonth = 12, onEdit }: Pr
     summary.forEach(y => { const r = [...rows].reverse().find(x => x.date <= y.yearEnd); if (r) s.add(r.n); });
     return s;
   }, [summary, rows]);
+  const totals = useMemo(() => rows.reduce((t, r) => ({
+    payment: t.payment + r.payment, principal: t.principal + r.principal, interest: t.interest + r.interest,
+  }), { payment: 0, principal: 0, interest: 0 }), [rows]);
   const yearLabel = (iso: string) => {
     const y = parseISO(iso).getUTCFullYear();
     return yearEndMonth === 12 ? String(y) : `FY${y}`;
@@ -57,8 +60,9 @@ export function LoanAmortizationResponse({ data, yearEndMonth = 12, onEdit }: Pr
       {/* Loan Repayment Detail */}
       <div>
         <Title action={onEdit && (
-          <button onClick={onEdit} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-            <Pencil className="h-3 w-3" /> Edit inputs
+          <button onClick={onEdit}
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">
+            <Pencil className="h-3.5 w-3.5" /> Edit
           </button>
         )}>Loan Repayment Detail</Title>
         <div className="rounded-[8px] border border-border overflow-x-auto">
@@ -101,17 +105,24 @@ export function LoanAmortizationResponse({ data, yearEndMonth = 12, onEdit }: Pr
             </thead>
             <tbody>
               {rows.map(r => (
-                <tr key={r.n} className={cn("border-b border-border/50 last:border-0", boldRows.has(r.n) && "font-bold [&>td]:font-bold")}>
-                  <td className={TD}>{r.date}</td>
-                  <td className={cn(TD, "text-right")}>{r.n}</td>
-                  <td className={cn(TD, "text-right")}>{money(r.opening)}</td>
-                  <td className={cn(TD, "text-right")}>{money(r.payment)}</td>
-                  <td className={cn(TD, "text-right")}>{money(r.principal)}</td>
-                  <td className={cn(TD, "text-right")}>{money(r.interest)}</td>
-                  <td className={cn(TD, "text-right")}>{money(r.closing)}</td>
+                <tr key={r.n} className="border-b border-border/50">
+                  {[r.date, r.n, money(r.opening), money(r.payment), money(r.principal), money(r.interest), money(r.closing)].map((v, i) => (
+                    <td key={i} className={cn(TD, i && "text-right", boldRows.has(r.n) && "font-bold")}>{v}</td>
+                  ))}
                 </tr>
               ))}
             </tbody>
+            <tfoot className="bg-muted/50 border-t border-border">
+              <tr>
+                <td className={cn(TD, "font-bold")}>Total</td>
+                <td className={cn(TD, "text-right font-bold")}>{rows.length}</td>
+                <td className={TD} />
+                <td className={cn(TD, "text-right font-bold")}>{money(totals.payment)}</td>
+                <td className={cn(TD, "text-right font-bold")}>{money(totals.principal)}</td>
+                <td className={cn(TD, "text-right font-bold")}>{money(totals.interest)}</td>
+                <td className={TD} />
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>
@@ -139,13 +150,15 @@ export function LoanAmortizationResponse({ data, yearEndMonth = 12, onEdit }: Pr
                   <td className={cn(TD, "text-right")}>{money(y.accruedInterest)}</td>
                 </tr>
               ))}
-              <tr className="[&>td]:font-bold">
-                <td className={TD}>Total</td>
-                <td className={cn(TD, "text-right")}>{money(summary.reduce((a, y) => a + y.principal, 0))}</td>
-                <td className={cn(TD, "text-right")}>{money(summary.reduce((a, y) => a + y.interest, 0))}</td>
+            </tbody>
+            <tfoot className="bg-muted/50 border-t border-border">
+              <tr>
+                <td className={cn(TD, "font-bold")}>Total</td>
+                <td className={cn(TD, "text-right font-bold")}>{money(summary.reduce((a, y) => a + y.principal, 0))}</td>
+                <td className={cn(TD, "text-right font-bold")}>{money(summary.reduce((a, y) => a + y.interest, 0))}</td>
                 <td colSpan={3} />
               </tr>
-            </tbody>
+            </tfoot>
           </table>
         </div>
       </div>
