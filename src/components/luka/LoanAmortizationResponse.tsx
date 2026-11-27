@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Pencil, Eye, FileText } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { LoanAmortData } from "./LoanAmortizationPrompt";
 import { LukaResponseActions } from "./LukaResponseActions";
@@ -33,9 +33,9 @@ const Title = ({ children, action }: { children: React.ReactNode; action?: React
   </div>
 );
 
-interface Props { data: LoanAmortData; yearEndMonth?: number; onEdit?: () => void; fileName?: string; onPreviewFile?: () => void }
+interface Props { data: LoanAmortData; yearEndMonth?: number; onEdit?: () => void }
 
-export function LoanAmortizationResponse({ data, yearEndMonth = 12, onEdit, fileName, onPreviewFile }: Props) {
+export function LoanAmortizationResponse({ data, yearEndMonth = 12, onEdit }: Props) {
   const input = useMemo(() => toEngineInput(data), [data]);
   const { rows } = useMemo(() => buildAmortization(input), [input]);
   const summary = useMemo(() => fiscalSummary(rows, input, yearEndMonth), [rows, input, yearEndMonth]);
@@ -59,24 +59,12 @@ export function LoanAmortizationResponse({ data, yearEndMonth = 12, onEdit, file
 
       {/* Loan Repayment Detail */}
       <div>
-        <Title action={
-          <div className="flex items-center gap-2">
-            {fileName && onPreviewFile && (
-              <button onClick={onPreviewFile}
-                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors max-w-[180px]">
-                <FileText className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{fileName}</span>
-                <Eye className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              </button>
-            )}
-            {onEdit && (
-              <button onClick={onEdit}
-                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">
-                <Pencil className="h-3.5 w-3.5" /> Edit
-              </button>
-            )}
-          </div>
-        }>Loan Repayment Detail</Title>
+        <Title action={onEdit && (
+          <button onClick={onEdit}
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] border border-border bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors">
+            <Pencil className="h-3.5 w-3.5" /> Edit
+          </button>
+        )}>Loan Repayment Detail</Title>
         <div className="rounded-[8px] border border-border overflow-x-auto">
           <table className="w-full">
             <thead className="bg-muted/50 border-b border-border">

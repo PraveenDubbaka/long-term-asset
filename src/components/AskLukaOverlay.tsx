@@ -5795,8 +5795,23 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                       {/* ── Turn 2: user confirmation + Long-term Asset workpaper view ── */}
                       {loanAmortStep !== "idle" && loanAmortData && (
                         <>
-                          {/* User bubble — form summary */}
-                          <div className="flex justify-end">
+                          {/* User bubble — form summary, with the uploaded document attached above it */}
+                          <div className="flex flex-col items-end gap-2">
+                            {loanAmortData.uploadedFile && (
+                              <div className="inline-flex items-center gap-3 max-w-[80%] rounded-[12px] border border-border bg-background pl-2 pr-2 py-2">
+                                <span className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0">
+                                  <FileText className="h-4 w-4 text-foreground" />
+                                </span>
+                                <span className="text-base text-foreground truncate" title={loanAmortData.uploadedFile}>{loanAmortData.uploadedFile}</span>
+                                {amortFileUrl && (
+                                  <button onClick={() => setAmortPreviewOpen(o => !o)} aria-label="Preview document"
+                                    className={cn("p-1.5 rounded-[6px] border transition-colors shrink-0",
+                                      amortPreviewOpen ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-foreground hover:bg-muted")}>
+                                    <Eye className="h-4 w-4" />
+                                  </button>
+                                )}
+                              </div>
+                            )}
                             <div className="max-w-[80%] px-4 py-3 rounded-[12px] bg-primary text-primary-foreground text-base leading-relaxed">
                               {loanAmortData.uploadedFile
                                 ? <>Generate the amortization schedule for <strong>{loanAmortData.loanName || "this loan"}</strong> from <strong>{loanAmortData.uploadedFile}</strong></>
@@ -5824,7 +5839,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                   </span>
                                 </div>
                               ) : (
-                                <LoanAmortizationResponse key={JSON.stringify(loanAmortData)} data={loanAmortData} yearEndMonth={yearEndMonthFrom(selectedEngagementCtx?.yearEnd)} onEdit={() => reopenAmortForm(loanAmortData)} fileName={amortUploadFile ?? undefined} onPreviewFile={amortFileUrl ? () => setAmortPreviewOpen(o => !o) : undefined} />
+                                <LoanAmortizationResponse key={JSON.stringify(loanAmortData)} data={loanAmortData} yearEndMonth={yearEndMonthFrom(selectedEngagementCtx?.yearEnd)} onEdit={() => reopenAmortForm(loanAmortData)} />
                               )}
                             </div>
                           </div>
