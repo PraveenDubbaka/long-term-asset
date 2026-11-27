@@ -1320,6 +1320,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [amortFileUrl,    setAmortFileUrl]       = useState<string|null>(null);
   const [amortFileMime,   setAmortFileMime]      = useState<string>("application/pdf");
   const [amortPreviewOpen,setAmortPreviewOpen]   = useState(false);
+  // No preview on the source / upload steps; it's available from review onward
+  useEffect(() => { if (amortPhase === "wizard" && amortWizStep <= 2) setAmortPreviewOpen(false); }, [amortPhase, amortWizStep]);
   // ── Agentic Long-term Debt (chat-based upload) ──
   const [ltDebtPhase,       setLtDebtPhase]      = useState<"idle"|"prior-year-gate"|"upload-prompt"|"done">("idle");
   const [ltDebtUploadFiles, setLtDebtUploadFiles] = useState<LtDebtFile[]>([]);
@@ -7069,11 +7071,6 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                             <button onClick={e => { e.preventDefault(); removeFile(); }} className="ml-1 text-muted-foreground hover:text-destructive">
                               <Trash2 className="h-4 w-4" />
                             </button>
-                            {amortFileUrl && (
-                              <button onClick={e => { e.preventDefault(); setAmortPreviewOpen(o => !o); }} className="text-muted-foreground hover:text-foreground">
-                                <Eye className="h-4 w-4" />
-                              </button>
-                            )}
                           </span>
                         ) : (
                           <span className="flex items-center gap-2 text-base text-muted-foreground">
