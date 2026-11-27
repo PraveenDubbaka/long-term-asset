@@ -28,6 +28,7 @@ import { GrossMarginResponse } from "@/components/luka/GrossMarginResponse";
 import { LoanAmortizationPrompt } from "@/components/luka/LoanAmortizationPrompt";
 import { LoanAmortizationResponse } from "@/components/luka/LoanAmortizationResponse";
 import type { LoanAmortData } from "@/components/luka/LoanAmortizationPrompt";
+import { mockExtract, EMPTY_LOAN, type ExtractionResult, type FieldMetaMap } from "@/components/luka/loanAmortExtraction";
 import { LongTermAssetResponse, LukaNoteSidePanel } from "@/components/luka/LongTermAssetResponse";
 import { InvestmentScheduleResponse } from "@/components/luka/InvestmentScheduleResponse";
 import { priorYearLots as mockPriorYearLots } from "@/lib/luka/mockData";
@@ -251,17 +252,14 @@ interface AskLukaOverlayProps {
   onClose?: () => void;
 }
 
-// ── Agentic Loan Amort — mock discovery data ───────────────────────────────
-const AMORT_ENG_DOCS = [
-  { id: "adoc-1", name: "Loan Amortization — Term Loan A.pdf",  path: "Workpapers / Long-term Debt / FY2025", date: "Dec 31, 2025", size: "284 KB", ext: "pdf"  },
-  { id: "adoc-2", name: "Loan Register 2025.xlsx",               path: "Supporting Documents / Loans",        date: "Jan 12, 2026", size: "156 KB", ext: "xlsx" },
+// ── Loan Amortization — sample files for the prototype (each demos one extraction state) ──
+const AMORT_SAMPLE_FILES = [
+  { name: "Promissory Note - Fishin Hole.pdf", hint: "Some fields missing" },
+  { name: "Debt schedule R1.1.pdf",            hint: "Two loans found" },
+  { name: "RBC Term Loan A Agreement.pdf",     hint: "All fields found" },
+  { name: "Bank Statement Sep 2025.pdf",       hint: "Not a loan document" },
 ];
-const AMORT_DRIVE_FILES = [
-  { id: "gd-1", name: "FY2025 Debt Schedule.xlsx",         folder: "Audit Support / FY2025",          size: "241 KB", ext: "xlsx" },
-  { id: "gd-2", name: "Term Loan Agreement — RBC.pdf",     folder: "Client Documents / Contracts",    size: "892 KB", ext: "pdf"  },
-  { id: "gd-3", name: "HSBC Equipment Loan.pdf",           folder: "Client Documents / Contracts",    size: "445 KB", ext: "pdf"  },
-];
-type AmortSource = "existing" | "upload" | "drive" | "manual";
+type AmortSource = "upload" | "manual";
 
 // ── LT Debt multi-file upload — types & classifier ─────────────────────────
 type LtDebtFileKind =
@@ -1301,12 +1299,18 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [loanAmortStep,   setLoanAmortStep]     = useState<"idle" | "thinking" | "done">("idle");
   const [revealStep, setRevealStep] = useState(-1);
   // ── Agentic loan amort wizard ──
-  const [amortPhase,      setAmortPhase]        = useState<"idle"|"search-wp"|"search-drives"|"found"|"wizard">("idle");
+  const [amortPhase,      setAmortPhase]        = useState<"idle"|"intro"|"wizard"|"closed">("idle");
   const [amortWizStep,    setAmortWizStep]       = useState(1);
-  const [amortSource,     setAmortSource]        = useState<AmortSource>("existing");
-  const [amortSelDocId,   setAmortSelDocId]      = useState("adoc-1");
-  const [amortDriveId,    setAmortDriveId]       = useState("gd-1");
+  const [amortSource,     setAmortSource]        = useState<AmortSource>("upload");
   const [amortUploadFile, setAmortUploadFile]    = useState<string|null>(null);
+  const [amortUploadErr,  setAmortUploadErr]     = useState<string|null>(null);
+  const [amortExtracting, setAmortExtracting]    = useState(false);
+  const [amortExtract,    setAmortExtract]       = useState<ExtractionResult|null>(null);
+  const [amortPickedLoan, setAmortPickedLoan]    = useState<string|null>(null);
+  const [amortLoanChoice, setAmortLoanChoice]    = useState<string|null>(null);
+  const [amortFormInit,   setAmortFormInit]      = useState<LoanAmortData>(EMPTY_LOAN);
+  const [amortFormMeta,   setAmortFormMeta]      = useState<FieldMetaMap|undefined>(undefined);
+  const [amortFormKey,    setAmortFormKey]       = useState(0);
   const [amortWizRect,    setAmortWizRect]       = useState<{left:number;right:number;bottom:number}|null>(null);
   // ── Agentic Long-term Debt (chat-based upload) ──
   const [ltDebtPhase,       setLtDebtPhase]      = useState<"idle"|"prior-year-gate"|"upload-prompt"|"done">("idle");
@@ -1871,7 +1875,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
     setAiResponse(null); setDisplayedResponse(""); setIsStreaming(false);
     setRichResponseType(null); setRevealStep(-1);
     setLoanAmortData(null); setLoanAmortStep("idle");
-    setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("existing"); setAmortUploadFile(null);
+    setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("upload"); setAmortUploadFile(null); setAmortUploadErr(null); setAmortExtracting(false); setAmortExtract(null); setAmortPickedLoan(null); setAmortLoanChoice(null); setAmortFormInit(EMPTY_LOAN); setAmortFormMeta(undefined);
     setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
     setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvOcrProgress(null); setInvTableSort(null); setInvColumnFilters({}); setInvOpenFilterCol(null); setInvFilterDropdownPos(null); setInvFilterSearch(""); setInvSearchTerm(""); setInvPage(0); setInvSubmittedTxns([]); setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); setInvParsedPriorLots(null); setInvSelectedBankAccount(null); setInvValuationMethod(null); setInvRecordingLevel(null); setInvAssessmentDone(false); setInvActiveStatement(null); setParsedTBYears([]); setParsedTBAnalysis(null);
@@ -1893,11 +1897,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
         setTimeout(() => setInvSchedPhase("engagement-check"), 2200);
       } else if (isLoanAmort) {
         setRichResponseType("loan-amortization"); setAiResponse("__rich__");
-        // Kick off agentic search sequence
-        setAmortPhase("search-wp");
-        setTimeout(() => setAmortPhase("search-drives"), 2200);
-        setTimeout(() => setAmortPhase("found"),         4200);
-        setTimeout(() => setAmortPhase("wizard"),        5400);
+        setAmortPhase("intro");
+        setTimeout(() => setAmortPhase(p => (p === "intro" ? "wizard" : p)), 700);
       } else if (isGrossMargin) {
         setRichResponseType("gross-margin"); setAiResponse("__rich__");
         let s = 0;
@@ -1917,10 +1918,31 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   }, []);
 
   const handleLoanAmortSubmit = useCallback((data: LoanAmortData) => {
+    setAmortPhase("closed");
     setLoanAmortData(data);
     setLoanAmortStep("thinking");
     setTimeout(() => setLoanAmortStep("done"), 2200);
   }, []);
+
+  // Runs (mock) extraction on the chosen file and moves to the review step
+  const runAmortExtraction = useCallback((fileName: string) => {
+    setAmortWizStep(3); setAmortExtracting(true); setAmortExtract(null); setAmortPickedLoan(null); setAmortLoanChoice(null);
+    setTimeout(() => {
+      const res = mockExtract(fileName);
+      setAmortExtract(res); setAmortExtracting(false);
+      if (res.kind === "loans" && res.loans.length === 1) {
+        setAmortPickedLoan(res.loans[0].id);
+        setAmortFormInit(res.loans[0].data); setAmortFormMeta(res.loans[0].meta); setAmortFormKey(k => k + 1);
+      }
+    }, 1800);
+  }, []);
+
+  // "Edit & re-run" from the result: reopen the wizard on the form, prefilled with what was used
+  const reopenAmortForm = useCallback((data: LoanAmortData) => {
+    setAmortFormInit(data); setAmortFormMeta(undefined); setAmortFormKey(k => k + 1);
+    setAmortWizStep(amortSource === "manual" ? 2 : 3);
+    setAmortPhase("wizard");
+  }, [amortSource]);
 
   const handleClarifyChoice = useCallback((turnId: string, choice: string) => {
     setFollowUpTurns(prev => prev.map(t => t.id === turnId
@@ -1955,6 +1977,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const handleSend = useCallback(() => {
     if (!message.trim()) return;
     const msg = message.trim(); setMessage(""); setShowPromptPicker(false);
+    // Typed "/Loan Amortization" (prod syntax) or "#Loan Amortization" runs the prompt
+    if (msg.replace(/^[\/#]\s*/, "").toLowerCase() === "loan amortization") { handlePromptSelect("Loan Amortization"); return; }
 
     // ── Context-aware follow-up when any loan/debt summary is visible ──
     if (isFollowUpContext) {
@@ -1976,7 +2000,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
       };
       stream();
     }, 2500);
-  }, [message, isFollowUpContext, triggerFollowUp]);
+  }, [message, isFollowUpContext, triggerFollowUp, handlePromptSelect]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !showPromptPicker && message.trim()) { e.preventDefault(); handleSend(); }
@@ -5722,46 +5746,14 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                 })()}
                               </div>
                             ) : richResponseType === "loan-amortization" ? (
-                              <div className="space-y-2.5 py-0.5">
-                                {/* Step 1: Searching workpapers */}
-                                <div className="flex items-center gap-2">
-                                  {amortPhase === "search-wp" ? (
-                                    <span className="flex gap-0.5 shrink-0">
-                                      <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-1" />
-                                      <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-2" />
-                                      <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-3" />
-                                    </span>
-                                  ) : (
-                                    <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
-                                  )}
-                                  <span className={cn("text-base text-foreground", amortPhase === "search-wp" && "luka-thinking-text")}>
-                                    Searching engagement for existing Loan Amortization workpapers
-                                  </span>
-                                </div>
-                                {/* Step 2: Checking drives */}
-                                {(amortPhase === "search-drives" || amortPhase === "found" || amortPhase === "wizard") && (
-                                  <div className="flex items-center gap-2">
-                                    {amortPhase === "search-drives" ? (
-                                      <span className="flex gap-0.5 shrink-0">
-                                        <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-1" />
-                                        <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-2" />
-                                        <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-3" />
-                                      </span>
-                                    ) : (
-                                      <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
-                                    )}
-                                    <span className={cn("text-base text-foreground", amortPhase === "search-drives" && "luka-thinking-text")}>
-                                      Checking connected drives (Google Drive)
-                                    </span>
-                                  </div>
-                                )}
-                                {/* Found result */}
-                                {(amortPhase === "found" || amortPhase === "wizard") && (
-                                  <div className="flex items-center gap-2 mt-0.5 pl-5">
-                                    <span className="text-base text-foreground">
-                                      Found <strong>2 matching documents</strong> — select how to proceed below ↓
-                                    </span>
-                                  </div>
+                              <div className="space-y-2 py-0.5">
+                                <p className="text-base text-foreground leading-relaxed">
+                                  Let's set up the loan. Upload the loan agreement and I'll fill in the terms for you to review, or enter them yourself.
+                                </p>
+                                {amortPhase === "closed" && !loanAmortData && (
+                                  <button onClick={() => setAmortPhase("wizard")} className="text-base text-primary hover:underline">
+                                    Continue loan setup
+                                  </button>
                                 )}
                               </div>
                             ) : richResponseType === "gross-margin" ? (
@@ -5786,8 +5778,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                           <div className="flex justify-end">
                             <div className="max-w-[80%] px-4 py-3 rounded-[12px] bg-primary text-primary-foreground text-base leading-relaxed">
                               {loanAmortData.uploadedFile
-                                ? <>Analyse loan agreement <strong>{loanAmortData.uploadedFile}</strong> and show the Long-term Asset workpaper</>
-                                : <>Show Long-term Asset workpaper
+                                ? <>Generate the amortization schedule for <strong>{loanAmortData.loanName || "this loan"}</strong> from <strong>{loanAmortData.uploadedFile}</strong></>
+                                : <>Generate the amortization schedule
                                   {loanAmortData.principalAmount && <> for <strong>${loanAmortData.principalAmount}</strong></>}
                                   {loanAmortData.annualInterestRate && ` at ${loanAmortData.annualInterestRate}% ${loanAmortData.interestRateType}`}
                                   {loanAmortData.loanTenure && `, ${loanAmortData.loanTenure} months`}
@@ -5805,13 +5797,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                             <div className="flex-1 pt-1 min-h-[28px] min-w-0">
                               {loanAmortStep === "thinking" ? (
                                 <div className="flex items-center gap-2 mt-1">
-                                  <span className="text-[14px] font-semibold italic" style={{ color: "hsl(222 30% 22%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Analysing Long-term Asset workpaper</span>
+                                  <span className="text-[14px] font-semibold italic" style={{ color: "hsl(222 30% 22%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Building amortization schedule</span>
                                   <span className="flex items-center gap-1">
                                     {[0,1,2].map(i => <motion.span key={i} className="w-1.5 h-1.5 rounded-full" style={{ background: "hsl(265 75% 60%)" }} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.25 }} />)}
                                   </span>
                                 </div>
                               ) : (
-                                <LongTermAssetResponse onEditLoans={() => { setLtDebtGenerated(false); setLtDebtPhase("upload-prompt"); }} />
+                                <LoanAmortizationResponse key={JSON.stringify(loanAmortData)} data={loanAmortData} onEdit={() => reopenAmortForm(loanAmortData)} />
                               )}
                             </div>
                           </div>
@@ -6887,10 +6879,36 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
             </div>
           </motion.div>
 
-          {/* ── Agentic Loan Amort Wizard ── */}
-          {amortPhase === "wizard" && (
+          {/* ── Loan Amortization Wizard (Upload or Manual) ── */}
+          {amortPhase === "wizard" && (() => {
+            const isUpload = amortSource === "upload";
+            const totalSteps = isUpload ? 3 : 2;
+            const loans = amortExtract?.kind === "loans" ? amortExtract.loans : [];
+            const needsPick = isUpload && amortWizStep === 3 && !amortExtracting && loans.length > 1 && !amortPickedLoan;
+            const showForm = (!isUpload && amortWizStep === 2) || (isUpload && amortWizStep === 3 && !!amortPickedLoan);
+            const title =
+              amortWizStep === 1 ? "How should I get the loan details?" :
+              amortWizStep === 2 && isUpload ? "Upload the loan agreement" :
+              amortWizStep === 2 ? "Enter loan details" :
+              amortExtracting ? "Reading your document" :
+              amortExtract?.kind === "wrong-type" ? "This doesn't look like a loan document" :
+              needsPick ? "Which loan should I amortize?" :
+              amortFormMeta ? "Review the details I found" : "Review loan details";
+            const pickFile = (file: File | null) => {
+              if (!file) return;
+              if (file.type !== "application/pdf") { setAmortUploadErr("Only PDF files are supported."); return; }
+              if (file.size > 2 * 1024 * 1024) { setAmortUploadErr("This file is over 2 MB. Please upload a smaller PDF."); return; }
+              setAmortUploadErr(null); setAmortUploadFile(file.name);
+            };
+            const back = () => {
+              if (isUpload && amortWizStep === 3) {
+                if (amortPickedLoan && loans.length > 1) { setAmortPickedLoan(null); return; }   // form → loan picker
+                setAmortWizStep(2); setAmortExtract(null); setAmortPickedLoan(null); setAmortExtracting(false);
+              } else setAmortWizStep(s => Math.max(1, s - 1));
+            };
+            return (
           <>
-            <div className="fixed inset-0 z-[59]" onClick={() => setAmortPhase("found")} />
+            <div className="fixed inset-0 z-[59]" onClick={() => setAmortPhase("closed")} />
             <div
               className="fixed z-[60] pointer-events-none"
               style={amortWizRect
@@ -6903,18 +6921,11 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                 <div className="flex items-start justify-between px-4 py-3 border-b border-border shrink-0">
                   <div>
                     <p className="text-base text-muted-foreground uppercase tracking-wide font-medium mb-0.5">
-                      A few quick questions · Step {amortWizStep} of {amortSource === "manual" ? 2 : 3}
+                      A few quick questions · Step {amortWizStep} of {totalSteps}
                     </p>
-                    <p className="text-base font-semibold text-foreground">
-                      {amortWizStep === 1 && "How should I source the loan data?"}
-                      {amortWizStep === 2 && amortSource === "existing" && "Select an existing document"}
-                      {amortWizStep === 2 && amortSource === "upload"   && "Upload your loan document"}
-                      {amortWizStep === 2 && amortSource === "drive"    && "Select a file from Google Drive"}
-                      {amortWizStep === 2 && amortSource === "manual"   && "Enter loan details"}
-                      {amortWizStep === 3 && "Review & approve"}
-                    </p>
+                    <p className="text-base font-semibold text-foreground">{title}</p>
                   </div>
-                  <button onClick={() => setAmortPhase("found")} className="p-1 rounded-[6px] hover:bg-muted transition-colors text-muted-foreground mt-0.5 shrink-0">
+                  <button onClick={() => setAmortPhase("closed")} className="p-1 rounded-[6px] hover:bg-muted transition-colors text-muted-foreground mt-0.5 shrink-0">
                     <X className="h-4 w-4" />
                   </button>
                 </div>
@@ -6922,15 +6933,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                 {/* Body */}
                 <div className="overflow-y-auto flex-1 px-4 py-4">
 
-                  {/* ── Step 1: Source selection ── */}
+                  {/* ── Step 1: Source ── */}
                   {amortWizStep === 1 && (
                     <div className="space-y-2">
                       {([
-                        { id: "existing" as AmortSource, label: "Use an existing document",   sub: "Found 2 matching workpapers in your engagement", Icon: BookOpen   },
-                        { id: "upload"   as AmortSource, label: "Upload a new document",       sub: "PDF loan agreement, max 2 MB",                   Icon: Upload     },
-                        { id: "drive"    as AmortSource, label: "Import from Google Drive",    sub: "Browse your connected drive",                    Icon: HardDrive  },
-                        { id: "manual"   as AmortSource, label: "Enter loan details manually", sub: "Fill in the loan parameters directly",           Icon: FileText   },
-                      ] as const).map(({ id, label, sub, Icon }) => (
+                        { id: "upload" as AmortSource, label: "Upload a loan agreement",      sub: "I'll read the terms and you review them. PDF, max 2 MB", Icon: Upload   },
+                        { id: "manual" as AmortSource, label: "Enter loan details manually", sub: "Fill in the loan parameters directly",                 Icon: FileText },
+                      ]).map(({ id, label, sub, Icon }) => (
                         <button key={id} onClick={() => setAmortSource(id)}
                           className={`w-full flex items-center gap-3 px-4 py-3 rounded-[10px] border text-left transition-colors ${
                             amortSource === id ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40"
@@ -6939,8 +6948,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                           <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${amortSource === id ? "border-primary" : "border-muted-foreground/40"}`}>
                             {amortSource === id && <div className="w-2 h-2 rounded-full bg-primary" />}
                           </div>
-                          <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <div className="flex-1 min-w-0">
+                          <Icon className="h-4 w-4 text-foreground shrink-0" />
+                          <div>
                             <p className="text-base font-medium text-foreground">{label}</p>
                             <p className="text-base text-muted-foreground">{sub}</p>
                           </div>
@@ -6949,197 +6958,153 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                     </div>
                   )}
 
-                  {/* ── Step 2a: Existing document selection ── */}
-                  {amortWizStep === 2 && amortSource === "existing" && (
-                    <div className="space-y-2">
-                      <p className="text-base text-muted-foreground mb-3">Select a document from your engagement workpapers:</p>
-                      {AMORT_ENG_DOCS.map(doc => (
-                        <button key={doc.id} onClick={() => setAmortSelDocId(doc.id)}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-[8px] border text-left transition-colors ${
-                            amortSelDocId === doc.id ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40"
-                          }`}
-                        >
-                          {doc.ext === "pdf"
-                            ? <FileText        className="h-4 w-4 text-red-500 shrink-0" />
-                            : <FileSpreadsheet className="h-4 w-4 text-green-600 shrink-0" />}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-base font-medium text-foreground truncate">{doc.name}</p>
-                            <p className="text-base text-muted-foreground">{doc.path} · {doc.date} · {doc.size}</p>
-                          </div>
-                          {amortSelDocId === doc.id && <Check className="h-5 w-5 text-primary shrink-0" />}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* ── Step 2b: Upload ── */}
-                  {amortWizStep === 2 && amortSource === "upload" && (
-                    <div
-                      className={cn(
-                        "relative flex flex-col items-center justify-center gap-2 rounded-[10px] border-2 border-dashed cursor-pointer transition-colors py-10",
-                        amortUploadFile ? "border-primary/40 bg-primary/5" : "border-border/60 hover:border-primary/40 hover:bg-muted/30",
-                      )}
-                      onClick={() => {
-                        const inp = document.createElement("input");
-                        inp.type = "file"; inp.accept = ".pdf";
-                        inp.onchange = e => {
-                          const f = (e.target as HTMLInputElement).files?.[0];
-                          if (f && f.size <= 2 * 1024 * 1024) setAmortUploadFile(f.name);
-                        };
-                        inp.click();
-                      }}
-                    >
-                      {amortUploadFile ? (
-                        <div className="flex items-center gap-2 text-base text-foreground">
-                          <FileText className="h-4 w-4 text-primary" />
-                          <span className="font-medium">{amortUploadFile}</span>
-                          <button onClick={e => { e.stopPropagation(); setAmortUploadFile(null); }} className="ml-1 hover:text-destructive transition-colors">
-                            <X className="h-5 w-5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          <Upload className="h-5 w-5 text-muted-foreground" />
-                          <p className="text-base text-muted-foreground text-center">
-                            <span className="text-primary font-medium">Click to upload</span> or drag and drop
-                          </p>
-                          <p className="text-base text-muted-foreground">PDF only · max 2 MB</p>
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                  {/* ── Step 2c: Drive file picker ── */}
-                  {amortWizStep === 2 && amortSource === "drive" && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 mb-3 px-1">
-                        <HardDrive className="h-5 w-5 text-primary shrink-0" />
-                        <span className="text-base font-medium text-foreground">Google Drive</span>
-                      </div>
-                      {AMORT_DRIVE_FILES.map(f => (
-                        <button key={f.id} onClick={() => setAmortDriveId(f.id)}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-[8px] border text-left transition-colors ${
-                            amortDriveId === f.id ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40"
-                          }`}
-                        >
-                          {f.ext === "pdf"
-                            ? <FileText        className="h-4 w-4 text-red-500 shrink-0" />
-                            : <FileSpreadsheet className="h-4 w-4 text-green-600 shrink-0" />}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-base font-medium text-foreground truncate">{f.name}</p>
-                            <p className="text-base text-muted-foreground">{f.folder} · {f.size}</p>
-                          </div>
-                          {amortDriveId === f.id && <Check className="h-5 w-5 text-primary shrink-0" />}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* ── Step 2d: Manual entry (reuse prompt form) ── */}
-                  {amortWizStep === 2 && amortSource === "manual" && (
-                    <LoanAmortizationPrompt hideUpload onSubmit={(data) => {
-                      handleLoanAmortSubmit(data);
-                      setAmortPhase("found");
-                    }} />
-                  )}
-
-                  {/* ── Step 3: Summary + approve ── */}
-                  {amortWizStep === 3 && (
+                  {/* ── Step 2 (upload): drop zone ── */}
+                  {amortWizStep === 2 && isUpload && (
                     <div className="space-y-3">
-                      <p className="text-base text-foreground leading-relaxed">Here's what I'll do — review and approve to continue.</p>
-                      <div className="rounded-[10px] border border-border p-3 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <p className="text-base font-semibold text-muted-foreground uppercase tracking-wide">Question 1</p>
-                          <button onClick={() => setAmortWizStep(1)} className="text-base text-primary hover:underline">Edit</button>
-                        </div>
-                        <p className="text-base text-foreground">How should I source the loan data?</p>
-                        <span className="inline-flex items-center text-base bg-muted text-foreground rounded-full px-2.5 py-0.5 font-medium">
-                          {amortSource === "existing" && "Use an existing document"}
-                          {amortSource === "upload"   && "Upload a new document"}
-                          {amortSource === "drive"    && "Import from Google Drive"}
-                        </span>
-                      </div>
-                      <div className="rounded-[10px] border border-border p-3 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <p className="text-base font-semibold text-muted-foreground uppercase tracking-wide">Question 2</p>
-                          <button onClick={() => setAmortWizStep(2)} className="text-base text-primary hover:underline">Edit</button>
-                        </div>
-                        <p className="text-base text-foreground">
-                          {amortSource === "existing" && "Selected document"}
-                          {amortSource === "upload"   && "Uploaded document"}
-                          {amortSource === "drive"    && "Selected from Google Drive"}
-                        </p>
-                        <span className="inline-flex items-center gap-2 text-base bg-muted text-foreground rounded-full px-2.5 py-0.5 font-medium max-w-full">
-                          {amortSource === "existing" && <><FileText className="h-4 w-4 shrink-0" /><span className="truncate">{AMORT_ENG_DOCS.find(d => d.id === amortSelDocId)?.name}</span></>}
-                          {amortSource === "upload"   && <><FileText className="h-4 w-4 shrink-0" /><span className="truncate">{amortUploadFile ?? "No file"}</span></>}
-                          {amortSource === "drive"    && <><HardDrive className="h-4 w-4 shrink-0" /><span className="truncate">{AMORT_DRIVE_FILES.find(f => f.id === amortDriveId)?.name}</span></>}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                </div>
-
-                {/* Footer — hidden for manual step 2 (form has its own submit) */}
-                {!(amortWizStep === 2 && amortSource === "manual") && (
-                  <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20 shrink-0">
-                    {/* Back + dots */}
-                    <div className="flex items-center gap-3">
-                      {amortWizStep > 1 ? (
-                        <button onClick={() => setAmortWizStep(s => s - 1)}
-                          className="h-8 px-3 text-base font-medium text-muted-foreground hover:text-foreground border border-border rounded-[8px] bg-background hover:bg-muted transition-colors">
-                          Back
-                        </button>
-                      ) : <div className="w-12" />}
-                      <div className="flex items-center gap-2">
-                        {Array.from({ length: 3 }).map((_, i) => (
-                          <div key={i} className={`rounded-full transition-all duration-200 ${
-                            i + 1 === amortWizStep ? "w-4 h-2 bg-primary" : i + 1 < amortWizStep ? "w-2 h-2 bg-primary/50" : "w-2 h-2 bg-muted-foreground/25"
-                          }`} />
+                      <label
+                        onDragOver={e => e.preventDefault()}
+                        onDrop={e => { e.preventDefault(); pickFile(e.dataTransfer.files?.[0] ?? null); }}
+                        className={cn("flex items-center justify-center gap-2 rounded-[10px] border-2 border-dashed cursor-pointer transition-colors py-6",
+                          amortUploadErr ? "border-red-400 bg-red-50/40" : amortUploadFile ? "border-primary/40 bg-primary/5" : "border-border/60 hover:border-primary/40 hover:bg-muted/30")}
+                      >
+                        <input type="file" accept=".pdf,application/pdf" className="hidden" onChange={e => { pickFile(e.target.files?.[0] ?? null); e.target.value = ""; }} />
+                        {amortUploadFile ? (
+                          <span className="flex items-center gap-2 text-base text-foreground">
+                            <FileText className="h-4 w-4 text-primary" />
+                            <span className="font-medium">{amortUploadFile}</span>
+                            <button onClick={e => { e.preventDefault(); setAmortUploadFile(null); }} className="ml-1 text-muted-foreground hover:text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-2 text-base text-muted-foreground">
+                            <Upload className="h-4 w-4" />
+                            <span><span className="text-primary font-medium">Click to upload</span> or drag and drop · PDF, max 2 MB</span>
+                          </span>
+                        )}
+                      </label>
+                      {amortUploadErr && (
+                        <p className="text-sm text-red-600 flex items-center gap-1.5"><AlertCircle className="h-4 w-4" />{amortUploadErr}</p>
+                      )}
+                      {/* Prototype only: sample files that demo each extraction state */}
+                      <div className="text-sm text-muted-foreground">
+                        <span className="mr-1">Prototype samples:</span>
+                        {AMORT_SAMPLE_FILES.map(f => (
+                          <button key={f.name} onClick={() => { setAmortUploadErr(null); setAmortUploadFile(f.name); }}
+                            title={f.hint} className="mr-2 text-primary hover:underline">{f.name}</button>
                         ))}
                       </div>
                     </div>
-                    {/* Next / Approve */}
-                    {amortWizStep < 3 ? (
-                      <button
-                        onClick={() => setAmortWizStep(s => s + 1)}
-                        disabled={amortWizStep === 2 && amortSource === "upload" && !amortUploadFile}
-                        className="inline-flex items-center gap-2 h-8 px-4 text-base font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        Next <ChevronRight className="h-5 w-5" />
+                  )}
+
+                  {/* ── Step 3 (upload): extracting ── */}
+                  {amortWizStep === 3 && isUpload && amortExtracting && (
+                    <div className="space-y-2 py-1">
+                      {["Reading " + (amortUploadFile ?? "document"), "Finding loan terms", "Checking for missing details"].map((t, i) => (
+                        <div key={t} className="flex items-center gap-2">
+                          <span className="flex gap-0.5 shrink-0">
+                            <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-1" />
+                            <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-2" />
+                            <span className="w-1 h-1 rounded-full bg-primary/60 luka-dot luka-dot-3" />
+                          </span>
+                          <span className={cn("text-base text-foreground", i === 0 && "luka-thinking-text")}>{t}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* ── Step 3 (upload): wrong document ── */}
+                  {amortWizStep === 3 && isUpload && !amortExtracting && amortExtract?.kind === "wrong-type" && (
+                    <div className="rounded-[10px] border border-red-200 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900 p-4 space-y-3">
+                      <p className="text-base text-foreground leading-relaxed">
+                        <strong>{amortUploadFile}</strong> looks like {amortExtract.detectedAs}. I couldn't find a principal amount, interest rate or repayment terms in it.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <button onClick={() => { setAmortUploadFile(null); setAmortExtract(null); setAmortWizStep(2); }}
+                          className="inline-flex items-center gap-1.5 h-8 px-4 text-base font-medium rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90">
+                          <Upload className="h-4 w-4" /> Upload a different file
+                        </button>
+                        <button onClick={() => { setAmortSource("manual"); setAmortExtract(null); setAmortFormInit(EMPTY_LOAN); setAmortFormMeta(undefined); setAmortFormKey(k => k + 1); setAmortWizStep(2); }}
+                          className="inline-flex items-center gap-1.5 h-8 px-4 text-base font-medium rounded-[8px] border border-border hover:bg-muted/40 text-foreground">
+                          <FileText className="h-4 w-4" /> Enter details manually
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Step 3 (upload): several loans in one file ── */}
+                  {needsPick && (
+                    <div className="space-y-2">
+                      <p className="text-base text-foreground">I found <strong>{loans.length} loans</strong> in {amortUploadFile}. Pick one; you can run the others after.</p>
+                      {loans.map(l => (
+                        <button key={l.id} onClick={() => setAmortLoanChoice(l.id)}
+                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-[10px] border text-left transition-colors ${
+                            amortLoanChoice === l.id ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40"}`}>
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${amortLoanChoice === l.id ? "border-primary" : "border-muted-foreground/40"}`}>
+                            {amortLoanChoice === l.id && <div className="w-2 h-2 rounded-full bg-primary" />}
+                          </div>
+                          <div>
+                            <p className="text-base font-medium text-foreground">{l.label}</p>
+                            {l.sub && <p className="text-base text-muted-foreground">{l.sub}</p>}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* ── Form: manual entry, or review of extracted values ── */}
+                  {showForm && (
+                    <LoanAmortizationPrompt
+                      key={amortFormKey}
+                      initial={amortFormInit}
+                      meta={amortFormMeta}
+                      onSubmit={handleLoanAmortSubmit}
+                    />
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between px-4 py-3 border-t border-border shrink-0">
+                  <div className="flex items-center gap-3">
+                    {amortWizStep > 1 ? (
+                      <button onClick={back} className="inline-flex items-center gap-1 text-base text-muted-foreground hover:text-foreground">
+                        <ChevronLeft className="h-4 w-4" /> Back
                       </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          const fileName =
-                            amortSource === "existing" ? AMORT_ENG_DOCS.find(d => d.id === amortSelDocId)?.name :
-                            amortSource === "upload"   ? amortUploadFile :
-                            AMORT_DRIVE_FILES.find(f => f.id === amortDriveId)?.name;
-                          handleLoanAmortSubmit({
-                            loanName: "", lender: "", loanType: "Term",
-                            interestRateType: "Fixed", paymentType: "Blended (Amortizing)",
-                            loanTenure: "60", currency: "CAD",
-                            principalAmount: "3750000", annualInterestRate: "5.25",
-                            dayCountBasis: "ACT/365", loanStartDate: "", maturityDate: "",
-                            paymentFrequency: "Monthly", firstPaymentDate: "",
-                            compoundingFrequency: "", interestOnlyPeriod: "",
-                            fixedPaymentAmount: "", balloonAmount: "",
-                            uploadedFile: fileName ?? null,
-                          });
-                          setAmortPhase("found");
-                        }}
-                        className="inline-flex items-center gap-2 h-8 px-4 text-base font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 transition-colors"
-                      >
-                        Approve &amp; continue <ChevronRight className="h-5 w-5" />
-                      </button>
-                    )}
+                    ) : <span />}
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalSteps }).map((_, i) => (
+                        <span key={i} className={cn("rounded-full transition-all",
+                          i + 1 === amortWizStep ? "w-4 h-2 bg-primary" : i + 1 < amortWizStep ? "w-2 h-2 bg-primary/50" : "w-2 h-2 bg-muted-foreground/25")} />
+                      ))}
+                    </div>
                   </div>
-                )}
+                  {amortWizStep === 1 && (
+                    <button onClick={() => { if (amortSource === "manual") { setAmortFormInit(EMPTY_LOAN); setAmortFormMeta(undefined); setAmortFormKey(k => k + 1); } setAmortWizStep(2); }}
+                      className="inline-flex items-center gap-2 h-8 px-4 text-base font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90">
+                      Next <ChevronRight className="h-5 w-5" />
+                    </button>
+                  )}
+                  {amortWizStep === 2 && isUpload && (
+                    <button onClick={() => amortUploadFile && runAmortExtraction(amortUploadFile)} disabled={!amortUploadFile}
+                      className="inline-flex items-center gap-2 h-8 px-4 text-base font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed">
+                      Read document <ChevronRight className="h-5 w-5" />
+                    </button>
+                  )}
+                  {needsPick && (
+                    <button disabled={!amortLoanChoice}
+                      onClick={() => { const l = loans.find(x => x.id === amortLoanChoice); if (!l) return;
+                        setAmortPickedLoan(l.id); setAmortFormInit(l.data); setAmortFormMeta(l.meta); setAmortFormKey(k => k + 1); }}
+                      className="inline-flex items-center gap-2 h-8 px-4 text-base font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed">
+                      Continue <ChevronRight className="h-5 w-5" />
+                    </button>
+                  )}
+                </div>
 
               </div>
             </div>
           </>
-        )}
+            );
+          })()}
 
 
         {/* ── Add New Workspace Modal ── */}
