@@ -45,6 +45,10 @@ import lukaLogo from "@/assets/luka-logo.png";
 import lukaIdle from "@/assets/luka-idle.gif";
 import lukaResponding from "@/assets/luka-responding.gif";
 import quickbooksLogo from "@/assets/quickbooks-intuit-logo.png";
+import samplePromissoryUrl from "@/assets/loan-samples/promissory-note-2024.pdf?url";
+import sampleDebtScheduleUrl from "@/assets/loan-samples/debt-schedule.pdf?url";
+import sampleRbcUrl from "@/assets/loan-samples/rbc-term-loan-a-agreement.pdf?url";
+import sampleBankStatementUrl from "@/assets/loan-samples/bank-statement-sep-2025.pdf?url";
 import { useStore } from "@/store/useStore";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import type { Loan, LoanType, Currency, InterestType, DayCountBasis, PaymentFrequency, PaymentType, LoanStatus, CompoundingFrequency } from "@/types";
@@ -254,10 +258,10 @@ interface AskLukaOverlayProps {
 
 // ── Loan Amortization — sample files for the prototype (each demos one extraction state) ──
 const AMORT_SAMPLE_FILES = [
-  { name: "Promissory Note - Fishin Hole.pdf", hint: "Some fields missing" },
-  { name: "Debt schedule R1.1.pdf",            hint: "Two loans found" },
-  { name: "RBC Term Loan A Agreement.pdf",     hint: "All fields found" },
-  { name: "Bank Statement Sep 2025.pdf",       hint: "Not a loan document" },
+  { name: "Promissory Note - Fishin Hole.pdf", hint: "Some fields missing",    url: samplePromissoryUrl,    mime: "application/pdf" },
+  { name: "Debt schedule R1.1.pdf",            hint: "Two loans found",        url: sampleDebtScheduleUrl,  mime: "application/pdf" },
+  { name: "RBC Term Loan A Agreement.pdf",     hint: "All fields found",       url: sampleRbcUrl,           mime: "application/pdf" },
+  { name: "Bank Statement Sep 2025.pdf",       hint: "Not a loan document",    url: sampleBankStatementUrl, mime: "application/pdf" },
 ];
 type AmortSource = "upload" | "manual";
 
@@ -1313,6 +1317,9 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [amortFormKey,    setAmortFormKey]       = useState(0);
   const amortFormRef = useRef<LoanAmortFormHandle>(null);
   const [amortWizRect,    setAmortWizRect]       = useState<{left:number;right:number;bottom:number}|null>(null);
+  const [amortFileUrl,    setAmortFileUrl]       = useState<string|null>(null);
+  const [amortFileMime,   setAmortFileMime]      = useState<string>("application/pdf");
+  const [amortPreviewOpen,setAmortPreviewOpen]   = useState(false);
   // ── Agentic Long-term Debt (chat-based upload) ──
   const [ltDebtPhase,       setLtDebtPhase]      = useState<"idle"|"prior-year-gate"|"upload-prompt"|"done">("idle");
   const [ltDebtUploadFiles, setLtDebtUploadFiles] = useState<LtDebtFile[]>([]);
@@ -1559,13 +1566,26 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
     if (invDetectedRecordingLevel) setInvRecordingLevel(r => r ?? invDetectedRecordingLevel);
   }, [invDetectedValuation, invDetectedRecordingLevel]);
 
-  // Position agentic loan amort wizard above the input bar
+  // Position agentic loan amort wizard above the input bar (follows resize + scroll via rAF)
   useLayoutEffect(() => {
     if (amortPhase !== "wizard") { setAmortWizRect(null); return; }
-    const el = document.querySelector(".luka-gradient-border") as HTMLElement | null;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    setAmortWizRect({ left: r.left, right: window.innerWidth - r.right, bottom: window.innerHeight - r.top + 8 });
+    const getEl = () =>
+      (document.querySelector(".luka-gradient-border") as HTMLElement | null) ??
+      (document.querySelector(".luka-input-wrapper") as HTMLElement | null);
+    const measure = () => {
+      const el = getEl();
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setAmortWizRect({ left: r.left, right: window.innerWidth - r.right, bottom: window.innerHeight - r.top + 8 });
+    };
+    measure();
+    let rafId: number;
+    const loop = () => { measure(); rafId = requestAnimationFrame(loop); };
+    rafId = requestAnimationFrame(loop);
+    const ro = new ResizeObserver(measure);
+    const el = getEl();
+    if (el) ro.observe(el);
+    return () => { cancelAnimationFrame(rafId); ro.disconnect(); };
   }, [amortPhase]);
 
 
@@ -1876,7 +1896,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
     setAiResponse(null); setDisplayedResponse(""); setIsStreaming(false);
     setRichResponseType(null); setRevealStep(-1);
     setLoanAmortData(null); setLoanAmortStep("idle");
-    setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("upload"); setAmortUploadFile(null); setAmortUploadErr(null); setAmortExtracting(false); setAmortExtract(null); setAmortPickedLoan(null); setAmortLoanChoice(null); setAmortFormInit(EMPTY_LOAN); setAmortFormMeta(undefined);
+    setAmortPhase("idle"); setAmortWizStep(1); setAmortSource("upload"); setAmortUploadFile(null); setAmortUploadErr(null); setAmortExtracting(false); setAmortExtract(null); setAmortPickedLoan(null); setAmortLoanChoice(null); setAmortFormInit(EMPTY_LOAN); setAmortFormMeta(undefined); setAmortFileUrl(null); setAmortPreviewOpen(false);
     setLtDebtPhase("idle");
     setLtDebtUploadFiles([]); setLtDebtGenerated(false); setLtDebtSrcLabel(null);
     setInvSchedPhase("idle"); setInvSchedGenerated(false); setInvSchedSrcLabel(null); setInvReviewRows([]); setInvMissingMonthsPrompt(null); setInvEngagementConnected(false); setInvSelectedEngId(null); setInvEngSearch(""); setInvTBChecking(false); setInvTBFound(null); setInvBrokerError(null); setInvSourceConnected(null); setInvTBAnalyzing(false); setInvTBAnalysisStep(0); setInvTBAnalysis(null); setInvContinuityOk(false); setInvExtracting(false); setInvOcrProgress(null); setInvTableSort(null); setInvColumnFilters({}); setInvOpenFilterCol(null); setInvFilterDropdownPos(null); setInvFilterSearch(""); setInvSearchTerm(""); setInvPage(0); setInvSubmittedTxns([]); setInvOpeningBalMode(null); setInvFirstYearAnswer(null); setInvPriorScheduleFile(null); setInvParsedPriorLots(null); setInvSelectedBankAccount(null); setInvValuationMethod(null); setInvRecordingLevel(null); setInvAssessmentDone(false); setInvActiveStatement(null); setParsedTBYears([]); setParsedTBAnalysis(null);
@@ -3129,7 +3149,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                       <><TaxPayableFlow onActivity={handleActivityUpdate} activityMinimized={activityMinimized} />{!activityMinimized && <LukaActivityPanel entries={activityEntries} isProcessing={isActivityProcessing} minimized={false} onToggleMinimize={() => setActivityMinimized(true)} />}</>
                     ) : (
                     /* ── Existing threads content (sentMessage, rich responses, etc.) ── */
-                    <div className={`flex-1 flex min-w-0 min-h-0 ${lukaNotePanelOpen ? "flex-row" : "flex-col"}`}>
+                    <div className={`flex-1 flex min-w-0 min-h-0 ${lukaNotePanelOpen || amortPreviewOpen ? "flex-row" : "flex-col"}`}>
                 <div className="flex-1 min-w-0 overflow-y-auto">
                   {!sentMessage ? (
                     <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-[60vh]">
@@ -5804,7 +5824,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                   </span>
                                 </div>
                               ) : (
-                                <LoanAmortizationResponse key={JSON.stringify(loanAmortData)} data={loanAmortData} yearEndMonth={yearEndMonthFrom(selectedEngagementCtx?.yearEnd)} onEdit={() => reopenAmortForm(loanAmortData)} />
+                                <LoanAmortizationResponse key={JSON.stringify(loanAmortData)} data={loanAmortData} yearEndMonth={yearEndMonthFrom(selectedEngagementCtx?.yearEnd)} onEdit={() => reopenAmortForm(loanAmortData)} fileName={amortUploadFile ?? undefined} onPreviewFile={amortFileUrl ? () => setAmortPreviewOpen(o => !o) : undefined} />
                               )}
                             </div>
                           </div>
@@ -6490,6 +6510,40 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                   )}
                 </div>
                       <LukaNoteSidePanel />
+                      {/* Amort document preview panel */}
+                      {amortPreviewOpen && amortFileUrl && (
+                        <div className="w-[45%] max-w-[760px] min-w-[320px] border-l border-border flex flex-col min-h-0 bg-muted/20">
+                          <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
+                            <span className="text-sm font-medium text-foreground truncate max-w-[70%]">{amortUploadFile ?? "Document"}</span>
+                            <div className="flex items-center gap-1">
+                              <a href={amortFileUrl} download={amortUploadFile ?? "document.pdf"}
+                                className="p-1.5 rounded-[6px] hover:bg-muted transition-colors text-muted-foreground" title="Download">
+                                <Download className="h-4 w-4" />
+                              </a>
+                              <button onClick={() => setAmortPreviewOpen(false)}
+                                className="p-1.5 rounded-[6px] hover:bg-muted transition-colors text-muted-foreground">
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex-1 min-h-0">
+                            {amortFileMime === "application/pdf" ? (
+                              <iframe src={amortFileUrl} className="w-full h-full border-0" title={amortUploadFile ?? "Document"} />
+                            ) : amortFileMime.startsWith("image/") ? (
+                              <img src={amortFileUrl} alt={amortUploadFile ?? "Document"} className="w-full h-full object-contain p-4" />
+                            ) : (
+                              <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
+                                <FileText className="h-10 w-10" />
+                                <p className="text-sm">Preview not available</p>
+                                <a href={amortFileUrl} download={amortUploadFile ?? "document"}
+                                  className="text-primary text-sm hover:underline flex items-center gap-1">
+                                  <Download className="h-3.5 w-3.5" /> Download
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     )}
                   </div>
@@ -6895,12 +6949,36 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
               amortExtract?.kind === "wrong-type" ? "This doesn't look like a loan document" :
               needsPick ? "Which loan should I amortize?" :
               amortFormMeta ? "Review the details I found" : "Review loan details";
-            const pickFile = (file: File | null) => {
+            const pickFile = (file: File | null, overrideMime?: string) => {
               if (!file) return;
-              if (file.type !== "application/pdf") { setAmortUploadErr("Only PDF files are supported."); return; }
+              const mime = overrideMime ?? file.type;
+              if (mime !== "application/pdf") { setAmortUploadErr("Only PDF files are supported."); return; }
               if (file.size > 2 * 1024 * 1024) { setAmortUploadErr("This file is over 2 MB. Please upload a smaller PDF."); return; }
+              const url = URL.createObjectURL(file);
+              setAmortFileUrl(prev => { if (prev) URL.revokeObjectURL(prev); return url; });
+              setAmortFileMime(mime);
               setAmortUploadErr(null); setAmortUploadFile(file.name);
             };
+            const removeFile = () => {
+              setAmortFileUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null; });
+              setAmortUploadFile(null); setAmortPreviewOpen(false);
+            };
+            const fileBadge = (removable: boolean) => amortUploadFile ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] border border-border bg-muted/40 text-xs text-foreground max-w-[220px]">
+                <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <span className="truncate">{amortUploadFile}</span>
+                {removable && (
+                  <button onClick={e => { e.preventDefault(); removeFile(); }} className="text-muted-foreground hover:text-destructive shrink-0 ml-0.5">
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+                {amortFileUrl && (
+                  <button onClick={e => { e.preventDefault(); setAmortPreviewOpen(o => !o); }} className="text-muted-foreground hover:text-foreground shrink-0">
+                    <Eye className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </span>
+            ) : null;
             const back = () => {
               if (isUpload && amortWizStep === 3) {
                 if (amortPickedLoan && loans.length > 1) { setAmortPickedLoan(null); return; }   // form → loan picker
@@ -6973,9 +7051,14 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                           <span className="flex items-center gap-2 text-base text-foreground">
                             <FileText className="h-4 w-4 text-primary" />
                             <span className="font-medium">{amortUploadFile}</span>
-                            <button onClick={e => { e.preventDefault(); setAmortUploadFile(null); }} className="ml-1 text-muted-foreground hover:text-destructive">
+                            <button onClick={e => { e.preventDefault(); removeFile(); }} className="ml-1 text-muted-foreground hover:text-destructive">
                               <Trash2 className="h-4 w-4" />
                             </button>
+                            {amortFileUrl && (
+                              <button onClick={e => { e.preventDefault(); setAmortPreviewOpen(o => !o); }} className="text-muted-foreground hover:text-foreground">
+                                <Eye className="h-4 w-4" />
+                              </button>
+                            )}
                           </span>
                         ) : (
                           <span className="flex items-center gap-2 text-base text-muted-foreground">
@@ -6991,8 +7074,11 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                       <div className="text-sm text-muted-foreground">
                         <span className="mr-1">Prototype samples:</span>
                         {AMORT_SAMPLE_FILES.map(f => (
-                          <button key={f.name} onClick={() => { setAmortUploadErr(null); setAmortUploadFile(f.name); }}
-                            title={f.hint} className="mr-2 text-primary hover:underline">{f.name}</button>
+                          <button key={f.name} onClick={() => {
+                            fetch(f.url).then(r => r.blob()).then(blob => {
+                              pickFile(new File([blob], f.name, { type: f.mime }), f.mime);
+                            }).catch(() => { setAmortUploadErr(null); setAmortUploadFile(f.name); });
+                          }} title={f.hint} className="mr-2 text-primary hover:underline">{f.name}</button>
                         ))}
                       </div>
                     </div>
@@ -7054,6 +7140,9 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                   )}
 
                   {/* ── Form: manual entry, or review of extracted values ── */}
+                  {showForm && isUpload && fileBadge(false) && (
+                    <div className="mb-3">{fileBadge(false)}</div>
+                  )}
                   {showForm && (
                     <LoanAmortizationPrompt
                       key={amortFormKey}
