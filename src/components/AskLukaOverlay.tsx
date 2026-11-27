@@ -485,7 +485,7 @@ function GLComboboxMini({ value, onChange, required }: { value: string; onChange
 
 // ── LT Debt review row — extracted / manual loan entries ─────────────────
 interface LtDebtReviewRow {
-  id: string; sourceFile?: string;
+  id: string; sourceFile?: string; sourceFileId?: string;
   name: string; lender: string; type: string; currency: string;
   originalPrincipal: string; currentBalance: string; rate: string;
   interestType: string; startDate: string; maturityDate: string;
@@ -501,6 +501,7 @@ interface LtDebtReviewRow {
   interestPaid: string;
   principalPaid: string;
   locked?: boolean;
+  touched?: boolean;
 }
 
 interface TBAccount { code: string; description: string; final: number; py1: number; py2: number; }
@@ -1314,10 +1315,12 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [ltDebtSrcLabel,    setLtDebtSrcLabel]   = useState<string|null>(null);
   const [ltReviewRows,      setLtReviewRows]     = useState<LtDebtReviewRow[]>([]);
   const [ltProcessedFileIds,setLtProcessedFileIds]= useState<Set<string>>(new Set());
-  const [ltPriorFile,       setLtPriorFile]      = useState<{id: string; name: string}|null>(null);
+  const [ltPriorFiles,      setLtPriorFiles]     = useState<{ id: string; name: string; extracting: boolean }[]>([]);
   const [ltPriorExtracting, setLtPriorExtracting]= useState(false);
-  const [ltPriorRows,       setLtPriorRows]      = useState<LtDebtReviewRow[]>([]);
+  const [ltPriorRows,       setLtPriorRows]      = useState<LtDebtReviewRow[]>(() => [{ ...EMPTY_LT_ROW(), openingBalance: "0.00" }]);
   const [ltPriorDocYearEnd, setLtPriorDocYearEnd]= useState<string>("");
+  const [ltPriorSubmitAttempted, setLtPriorSubmitAttempted] = useState(false);
+  const [ltDeleteFileConfirm, setLtDeleteFileConfirm] = useState<{ fileId: string; fileName: string; rowCount: number } | null>(null);
   // ── Add-more-loans turn ──
   const [addMoreLoansActive,  setAddMoreLoansActive]  = useState(false);
   const [addMoreLtFiles,      setAddMoreLtFiles]      = useState<LtDebtFile[]>([]);
@@ -3151,35 +3154,74 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                   <>
                                     {/* ── Gate 1: prior-year schedule upload ── */}
                                     {ltDebtPhase === "prior-year-gate" && (() => {
-                                      const handlePriorFile = (f: File) => {
-                                        setLtPriorFile({ id: `py-${Date.now()}`, name: f.name });
-                                        setLtPriorExtracting(true);
-                                        setTimeout(() => {
-                                          const uid = () => `ltr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-                                          const rows: LtDebtReviewRow[] = [
-                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 1", lender: "BDC Capital Inc.", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "General security agreement over all present and after-acquired personal property", status: "Active", glPrincipal: "", tbLoanAccount: "", tbInterestAccount: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
-                                            { id: uid(), sourceFile: f.name, locked: true, name: "Promissory Note 2", lender: "RBC Royal Bank", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "First charge over real property and improvements", status: "Active", glPrincipal: "", tbLoanAccount: "", tbInterestAccount: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
-                                          ];
-                                          setLtPriorRows(rows);
-                                          setLtPriorDocYearEnd("2025-09-30");
-                                          setLtPriorExtracting(false);
-                                        }, 1400);
+                                      const handlePriorFiles = (files: FileList | null) => {
+                                        if (!files || files.length === 0) return;
+                                        Array.from(files).forEach(f => {
+                                          const fileId = `py-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+                                          const fileName = f.name;
+                                          setLtPriorFiles(prev => [...prev, { id: fileId, name: fileName, extracting: true }]);
+                                          setTimeout(() => {
+                                            const uid = () => `ltr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+                                            const extracted: LtDebtReviewRow[] = [
+                                              { id: uid(), sourceFile: fileName, sourceFileId: fileId, locked: true, name: "Promissory Note 1", lender: "BDC Capital Inc.", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "General security agreement over all present and after-acquired personal property", status: "Active", glPrincipal: "", tbLoanAccount: "", tbInterestAccount: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
+                                              { id: uid(), sourceFile: fileName, sourceFileId: fileId, locked: true, name: "Promissory Note 2", lender: "RBC Royal Bank", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "First charge over real property and improvements", status: "Active", glPrincipal: "", tbLoanAccount: "", tbInterestAccount: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
+                                            ];
+                                            setLtPriorFiles(prev => prev.map(x => x.id === fileId ? { ...x, extracting: false } : x));
+                                            setLtPriorRows(prev => {
+                                              const isUntouched = prev.length === 1 && !prev[0].sourceFileId && !prev[0].name?.trim() && !prev[0].lender?.trim() && !prev[0].rate?.trim() && !prev[0].startDate && !prev[0].maturityDate && !prev[0].originalPrincipal?.trim();
+                                              return isUntouched ? extracted : [...prev, ...extracted];
+                                            });
+                                            setLtPriorDocYearEnd("2025-09-30");
+                                          }, 1400);
+                                        });
                                       };
+                                      const triggerUpload = () => {
+                                        const inp = document.createElement("input");
+                                        inp.type = "file"; inp.accept = ".pdf,.xlsx,.xls"; inp.multiple = true;
+                                        inp.onchange = e => handlePriorFiles((e.target as HTMLInputElement).files);
+                                        inp.click();
+                                      };
+                                      const addEmptyRow = () => setLtPriorRows(prev => [...prev, { ...EMPTY_LT_ROW(), openingBalance: "0.00" }]);
+                                      const deleteRow = (id: string) => setLtPriorRows(prev => {
+                                        const next = prev.filter(r => r.id !== id);
+                                        return next.length === 0 ? [{ ...EMPTY_LT_ROW(), openingBalance: "0.00" }] : next;
+                                      });
+                                      const handleDeleteFileBadge = (fileId: string) => {
+                                        const rowsOfFile = ltPriorRows.filter(r => r.sourceFileId === fileId);
+                                        if (rowsOfFile.length === 0) {
+                                          setLtPriorFiles(prev => prev.filter(f => f.id !== fileId));
+                                          return;
+                                        }
+                                        setLtDeleteFileConfirm({ fileId, fileName: ltPriorFiles.find(f => f.id === fileId)?.name ?? "", rowCount: rowsOfFile.length });
+                                      };
+                                      const confirmDeleteFile = () => {
+                                        if (!ltDeleteFileConfirm) return;
+                                        const { fileId } = ltDeleteFileConfirm;
+                                        setLtPriorFiles(prev => prev.filter(f => f.id !== fileId));
+                                        setLtPriorRows(prev => {
+                                          const next = prev.filter(r => r.sourceFileId !== fileId);
+                                          return next.length === 0 ? [{ ...EMPTY_LT_ROW(), openingBalance: "0.00" }] : next;
+                                        });
+                                        setLtDeleteFileConfirm(null);
+                                      };
+                                      const ltPriorAllValid = ltPriorRows.every(r =>
+                                        r.name?.trim() && r.lender?.trim() && r.interestType &&
+                                        r.rate?.trim() && r.startDate && r.maturityDate &&
+                                        r.originalPrincipal?.trim() &&
+                                        (r.tbLoanAccount || defaultGLPrincipal(r.type || "Term", r.currency || "CAD")) &&
+                                        r.tbInterestAccount
+                                      );
                                       return (
+                                        <>
                                         <div className="space-y-3">
                                           <p className="text-base text-foreground leading-relaxed">
                                             Upload your prior-year long-term debt schedule so Luka can pre-fill opening balances.
                                           </p>
                                           <div
                                             className="flex flex-col items-center gap-2.5 p-5 rounded-[10px] border border-dashed border-primary/25 bg-primary/[0.03] cursor-pointer hover:bg-primary/[0.07] hover:border-primary/45 transition-all group text-center"
-                                            onClick={() => {
-                                              const inp = document.createElement("input");
-                                              inp.type = "file"; inp.accept = ".pdf,.xlsx,.xls"; inp.multiple = false;
-                                              inp.onchange = e => { const f = (e.target as HTMLInputElement).files?.[0]; if (f) handlePriorFile(f); };
-                                              inp.click();
-                                            }}
+                                            onClick={triggerUpload}
                                             onDragOver={e => e.preventDefault()}
-                                            onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) handlePriorFile(f); }}
+                                            onDrop={e => { e.preventDefault(); handlePriorFiles(e.dataTransfer.files); }}
                                           >
                                             <div className="relative">
                                               <div className="absolute inset-0 rounded-full bg-primary/20 blur-md group-hover:bg-primary/30 transition-all" />
@@ -3187,191 +3229,223 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                 <Upload className="w-4 h-4 text-white" />
                                               </div>
                                             </div>
-                                            {ltPriorExtracting ? (
-                                              <div className="flex items-center gap-2 mt-1">
-                                                <div className="w-3 h-3 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                                                <p className="text-base text-muted-foreground">Extracting opening balances…</p>
-                                              </div>
-                                            ) : ltPriorFile ? (
-                                              <p className="text-base font-medium text-foreground mt-1">{ltPriorFile.name}</p>
-                                            ) : (
-                                              <div className="mt-1">
-                                                <p className="text-base font-semibold text-foreground">Prior-year long-term debt schedule</p>
-                                                <p className="text-base text-muted-foreground mt-0.5">PDF · XLSX — opening balances auto-extracted</p>
-                                              </div>
-                                            )}
+                                            <div className="mt-1">
+                                              <p className="text-base font-semibold text-foreground">Prior-year long-term debt schedule</p>
+                                              <p className="text-base text-muted-foreground mt-0.5">PDF · XLSX — opening balances auto-extracted</p>
+                                            </div>
                                           </div>
-                                          {ltPriorRows.length > 0 && (
-                                            <div className="rounded-[8px] border border-border overflow-x-auto">
-                                              <table className="text-base" style={{ minWidth: "2400px" }}>
-                                                <thead>
-                                                  <tr className="bg-muted/30 border-b border-border">
-                                                    {[
-                                                      { label: "Loan Name *", right: false },
-                                                      { label: "Lender *", right: false },
-                                                      { label: "Current Collateral", right: false },
-                                                      { label: "Loan Type", right: false },
-                                                      { label: "Rate Type *", right: false },
-                                                      { label: "Int. Rate % *", right: true },
-                                                      { label: "Start Date *", right: false },
-                                                      { label: "Maturity Date *", right: false },
-                                                      { label: "First Payment", right: false },
-                                                      { label: "Currency", right: false },
-                                                      { label: "Mo. Payment", right: true },
-                                                      { label: "Orig. Loan Amt *", right: true },
-                                                      { label: "FX Rate", right: true },
-                                                      { label: "Opening Balance", right: true },
-                                                      { label: "Trial Balance Acct *", right: false },
-                                                      { label: "Interest Account *", right: false },
-                                                      { label: "Day Count", right: false },
-                                                      { label: "Payment Type", right: false },
-                                                      { label: "Freq.", right: false },
-                                                      { label: "Compounding", right: false },
-                                                      { label: "IO Period (Mo.)", right: true },
-                                                      { label: "Balloon Amt", right: true },
-                                                      { label: "Closing Balance", right: true },
-                                                    ].map(h => {
-                                                      const parts = h.label.split("*");
-                                                      return (
-                                                        <th key={h.label} className={`px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h.right ? "text-right" : "text-left"}`}>
-                                                          {parts.map((p, i) => <React.Fragment key={i}>{p}{i < parts.length - 1 && <span className="text-red-500">*</span>}</React.Fragment>)}
-                                                        </th>
-                                                      );
-                                                    })}
-                                                  </tr>
-                                                </thead>
-                                                <tbody>
-                                                  {ltPriorRows.map((r, ri) => {
-                                                    const upd = (field: keyof LtDebtReviewRow, val: string) =>
-                                                      setLtPriorRows(prev => prev.map((row, i) => i === ri ? { ...row, [field]: val } : row));
-                                                    const autoH = (el: HTMLTextAreaElement | null) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } };
-                                                    const cell = (field: keyof LtDebtReviewRow, right = false, minW?: string, req = false) => {
-                                                      const val = (r[field] as string) ?? "";
-                                                      const empty = req && !val.trim();
-                                                      return (
-                                                        <td className={`px-1.5 py-1 align-top ${right ? "text-right" : ""}`} style={minW ? { minWidth: minW } : undefined}>
-                                                          <textarea
-                                                            value={val}
-                                                            onChange={e => upd(field, e.target.value)}
-                                                            rows={1}
-                                                            ref={autoH}
-                                                            className={cn(`w-full bg-transparent border rounded px-1.5 py-0.5 text-base transition-colors resize-none leading-snug overflow-hidden focus:outline-none ${right ? "text-right" : ""}`, empty ? "border-red-500 ring-1 ring-red-400 bg-red-50 hover:border-red-500" : "border-transparent hover:border-border focus:border-primary")}
-                                                            placeholder="—"
-                                                            onInput={e => autoH(e.currentTarget)}
-                                                          />
-                                                        </td>
-                                                      );
-                                                    };
-                                                    const inp = (field: keyof LtDebtReviewRow, right = false, w = "w-24", ph = "—", req = false) => {
-                                                      const val = (r[field] as string) ?? "";
-                                                      const empty = req && !val.trim();
-                                                      return (
-                                                        <td className={`px-1.5 py-1 align-top ${right ? "text-right" : ""}`}>
-                                                          <input value={val} onChange={e => upd(field, e.target.value)} className={cn(`h-6 text-base px-1.5 border rounded bg-background focus:outline-none ${w} ${right ? "text-right" : ""}`, empty ? "border-red-500 ring-1 ring-red-400 bg-red-50" : "border-border")} placeholder={ph} />
-                                                        </td>
-                                                      );
-                                                    };
-                                                    const sel = (field: keyof LtDebtReviewRow, opts: string[], w = "w-24", onChg?: (v: string) => void, req = false) => {
-                                                      const val = (r[field] as string) ?? "";
-                                                      const empty = req && !val;
-                                                      return (
-                                                        <td className="px-1.5 py-1 align-top">
-                                                          <select value={val} onChange={e => { upd(field, e.target.value); onChg?.(e.target.value); }} className={cn(SCR, w, empty && "border-red-500 ring-1 ring-red-400 bg-red-50")}>
-                                                            <option value="">—</option>
-                                                            {opts.map(o => <option key={o}>{o}</option>)}
-                                                          </select>
-                                                        </td>
-                                                      );
-                                                    };
-                                                    const dateCell = (field: keyof LtDebtReviewRow, req = false) => {
-                                                      const val = (r[field] as string) ?? "";
-                                                      const empty = req && !val;
-                                                      return (
-                                                        <td className="px-1.5 py-1 align-top whitespace-nowrap" style={{ minWidth: "130px" }}>
-                                                          <input type="date" value={val} onChange={e => upd(field, e.target.value)} className={cn("h-6 text-base px-1.5 border rounded bg-background focus:outline-none w-28", empty ? "border-red-500 ring-1 ring-red-400 bg-red-50" : "border-border")} />
-                                                        </td>
-                                                      );
-                                                    };
-                                                    const autoGl = r.glPrincipal || defaultGLPrincipal(r.type || "Term", r.currency || "CAD");
+
+                                          {/* Badges + Add row bar */}
+                                          <div className="flex items-center gap-2 flex-wrap min-h-[28px]">
+                                            {ltPriorFiles.map(f => {
+                                              const rowCount = ltPriorRows.filter(r => r.sourceFileId === f.id).length;
+                                              return (
+                                                <div key={f.id} className="inline-flex items-center gap-1.5 pl-2 pr-1 py-1 rounded-[8px] border border-border bg-background text-base">
+                                                  {f.extracting ? (
+                                                    <div className="w-3 h-3 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
+                                                  ) : (
+                                                    <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
+                                                  )}
+                                                  <span className="font-medium text-foreground max-w-[160px] truncate">{f.name}</span>
+                                                  {!f.extracting && <span className="text-muted-foreground text-sm">{rowCount} loan{rowCount !== 1 ? "s" : ""}</span>}
+                                                  <button
+                                                    onClick={e => { e.stopPropagation(); handleDeleteFileBadge(f.id); }}
+                                                    className="text-muted-foreground hover:text-red-500 transition-colors p-0.5 rounded"
+                                                  >
+                                                    <X className="w-3.5 h-3.5" />
+                                                  </button>
+                                                </div>
+                                              );
+                                            })}
+                                            <div className="ml-auto">
+                                              <button
+                                                onClick={addEmptyRow}
+                                                className="inline-flex items-center gap-1.5 h-7 px-3 text-base font-medium rounded-[8px] border border-border bg-background text-foreground hover:bg-muted/60 transition-colors"
+                                              >
+                                                <Plus className="w-3.5 h-3.5" />
+                                                Add row
+                                              </button>
+                                            </div>
+                                          </div>
+
+                                          {/* Table — always shown */}
+                                          <div className="rounded-[8px] border border-border overflow-x-auto">
+                                            <table className="text-base" style={{ minWidth: "2600px" }}>
+                                              <thead>
+                                                <tr className="bg-muted/30 border-b border-border">
+                                                  {[
+                                                    { label: "Loan Name *", right: false },
+                                                    { label: "Source", right: false },
+                                                    { label: "Lender *", right: false },
+                                                    { label: "Current Collateral", right: false },
+                                                    { label: "Loan Type", right: false },
+                                                    { label: "Rate Type *", right: false },
+                                                    { label: "Int. Rate % *", right: true },
+                                                    { label: "Start Date *", right: false },
+                                                    { label: "Maturity Date *", right: false },
+                                                    { label: "First Payment", right: false },
+                                                    { label: "Currency", right: false },
+                                                    { label: "Mo. Payment", right: true },
+                                                    { label: "Orig. Loan Amt *", right: true },
+                                                    { label: "FX Rate", right: true },
+                                                    { label: "Opening Balance", right: true },
+                                                    { label: "Trial Balance Acct *", right: false },
+                                                    { label: "Interest Account *", right: false },
+                                                    { label: "Day Count", right: false },
+                                                    { label: "Payment Type", right: false },
+                                                    { label: "Freq.", right: false },
+                                                    { label: "Compounding", right: false },
+                                                    { label: "IO Period (Mo.)", right: true },
+                                                    { label: "Balloon Amt", right: true },
+                                                    { label: "Closing Balance", right: true },
+                                                    { label: "", right: false },
+                                                  ].map(h => {
+                                                    const parts = h.label.split("*");
                                                     return (
-                                                      <tr key={r.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
-                                                        {cell("name", false, "160px", true)}
-                                                        {cell("lender", false, "140px", true)}
-                                                        <td className="px-1.5 py-1 align-top" style={{ minWidth: "200px" }}>
-                                                          <textarea value={r.collateral ?? ""} onChange={e => upd("collateral", e.target.value)} rows={1} ref={autoH} onInput={e => autoH(e.currentTarget)} className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none rounded px-1.5 py-0.5 text-base transition-colors resize-none leading-snug overflow-hidden" placeholder="—" />
-                                                        </td>
-                                                        {sel("type", ["Term","LOC","Revolver","Mortgage","Bridge"], "w-20", v => { const gl = defaultGLPrincipal(v, r.currency || "CAD"); upd("glPrincipal", gl); if (!r.tbLoanAccount) upd("tbLoanAccount", gl); })}
-                                                        {sel("interestType", ["Fixed","Variable","Floating","Hybrid","Step Rate"], "w-24", undefined, true)}
-                                                        {inp("rate", true, "w-16", "%", true)}
-                                                        {dateCell("startDate", true)}
-                                                        {dateCell("maturityDate", true)}
-                                                        {dateCell("firstPaymentDate")}
-                                                        <td className="px-1.5 py-1 align-top">
-                                                          <select value={r.currency || "CAD"} onChange={e => { const gl = defaultGLPrincipal(r.type || "Term", e.target.value); upd("currency", e.target.value); upd("glPrincipal", gl); if (!r.tbLoanAccount) upd("tbLoanAccount", gl); }} className={cn(SCR, "w-14")}>
-                                                            {["CAD","USD","EUR","GBP"].map(o => <option key={o}>{o}</option>)}
-                                                          </select>
-                                                        </td>
-                                                        {inp("monthlyPayment", true, "w-24")}
-                                                        {inp("originalPrincipal", true, "w-24", "0", true)}
-                                                        {inp("fxRate", true, "w-16", "1.000")}
-                                                        {inp("openingBalance", true, "w-24", "0")}
-                                                        <td className="px-1.5 py-1 align-top">
-                                                          <TBAccountSelect value={r.tbLoanAccount || autoGl} onChange={v => upd("tbLoanAccount", v)} required />
-                                                        </td>
-                                                        <td className="px-1.5 py-1 align-top">
-                                                          <TBAccountSelect value={r.tbInterestAccount ?? ""} onChange={v => upd("tbInterestAccount", v)} required />
-                                                        </td>
-                                                        {sel("dayCount", ["ACT/365","ACT/360","30/360"], "w-20")}
-                                                        {sel("paymentType", ["P&I","Interest-only","Balloon"], "w-24")}
-                                                        {sel("paymentFrequency", ["Monthly","Quarterly","Semi-annual","Annual"], "w-24")}
-                                                        {sel("compounding", ["Monthly","Quarterly","Semi-annual","Annual"], "w-24")}
-                                                        {inp("ioPeriod", true, "w-14", "0")}
-                                                        {inp("balloonAmt", true, "w-24", "0")}
-                                                        {inp("currentBalance", true, "w-24", "0")}
-                                                      </tr>
+                                                      <th key={h.label} className={`px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap ${h.right ? "text-right" : "text-left"}`}>
+                                                        {parts.map((p, i) => <React.Fragment key={i}>{p}{i < parts.length - 1 && <span className="text-red-500">*</span>}</React.Fragment>)}
+                                                      </th>
                                                     );
                                                   })}
-                                                </tbody>
-                                                <tfoot>
-                                                  {(() => {
-                                                    const parse = (v: string) => parseFloat(v.replace(/[,$\s]/g, "")) || 0;
-                                                    const fmt = (n: number) => n === 0 ? "—" : n.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                                                    const sum = (f: keyof LtDebtReviewRow) => ltPriorRows.reduce((s, r) => s + parse(r[f] as string ?? ""), 0);
+                                                </tr>
+                                              </thead>
+                                              <tbody>
+                                                {ltPriorRows.map((r, ri) => {
+                                                  const upd = (field: keyof LtDebtReviewRow, val: string) =>
+                                                    setLtPriorRows(prev => prev.map((row, i) => i === ri ? { ...row, [field]: val, touched: true } : row));
+                                                  const autoH = (el: HTMLTextAreaElement | null) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } };
+                                                  const showErr = (req: boolean, val: string) => req && !val.trim() && (!!r.touched || ltPriorSubmitAttempted);
+                                                  const cell = (field: keyof LtDebtReviewRow, right = false, minW?: string, req = false) => {
+                                                    const val = (r[field] as string) ?? "";
+                                                    const empty = showErr(req, val);
                                                     return (
-                                                      <tr className="border-t-2 border-border bg-muted/20 font-semibold">
-                                                        <td className="px-2.5 py-1.5 text-base text-muted-foreground" colSpan={11}>Total</td>
-                                                        <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("originalPrincipal"))}</td>
-                                                        <td />
-                                                        <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("openingBalance"))}</td>
-                                                        <td colSpan={8} />
-                                                        <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("currentBalance"))}</td>
-                                                      </tr>
+                                                      <td className={`px-1.5 py-1 align-top ${right ? "text-right" : ""}`} style={minW ? { minWidth: minW } : undefined}>
+                                                        <textarea
+                                                          value={val}
+                                                          onChange={e => upd(field, e.target.value)}
+                                                          rows={1}
+                                                          ref={autoH}
+                                                          className={cn(`w-full bg-transparent border rounded px-1.5 py-0.5 text-base transition-colors resize-none leading-snug overflow-hidden focus:outline-none ${right ? "text-right" : ""}`, empty ? "border-red-500 ring-1 ring-red-400 bg-red-50 hover:border-red-500" : "border-transparent hover:border-border focus:border-primary")}
+                                                          placeholder="—"
+                                                          onInput={e => autoH(e.currentTarget)}
+                                                        />
+                                                      </td>
                                                     );
-                                                  })()}
-                                                </tfoot>
-                                              </table>
-                                            </div>
-                                          )}
-                                          {ltPriorRows.length > 0 && (() => {
-                                            const ltPriorAllValid = ltPriorRows.every(r =>
-                                              r.name?.trim() && r.lender?.trim() && r.interestType &&
-                                              r.rate?.trim() && r.startDate && r.maturityDate &&
-                                              r.originalPrincipal?.trim() &&
-                                              (r.tbLoanAccount || defaultGLPrincipal(r.type || "Term", r.currency || "CAD")) &&
-                                              r.tbInterestAccount
-                                            );
-                                            return (
-                                            <div className="flex items-center justify-end gap-3 pt-1">
-                                              {!ltPriorAllValid && (
-                                                <span className="text-sm text-red-500 flex items-center gap-1">
-                                                  <AlertCircle className="w-3.5 h-3.5" />
-                                                  Fill in all required fields <span className="text-red-500 font-semibold">*</span> to continue
-                                                </span>
-                                              )}
-                                              <button
-                                                disabled={!ltPriorAllValid}
-                                                onClick={() => {
-                                                  const rows = ltPriorRows;
+                                                  };
+                                                  const inp = (field: keyof LtDebtReviewRow, right = false, w = "w-24", ph = "—", req = false) => {
+                                                    const val = (r[field] as string) ?? "";
+                                                    const empty = showErr(req, val);
+                                                    return (
+                                                      <td className={`px-1.5 py-1 align-top ${right ? "text-right" : ""}`}>
+                                                        <input value={val} onChange={e => upd(field, e.target.value)} className={cn(`h-6 text-base px-1.5 border rounded bg-background focus:outline-none ${w} ${right ? "text-right" : ""}`, empty ? "border-red-500 ring-1 ring-red-400 bg-red-50" : "border-border")} placeholder={ph} />
+                                                      </td>
+                                                    );
+                                                  };
+                                                  const sel = (field: keyof LtDebtReviewRow, opts: string[], w = "w-24", onChg?: (v: string) => void, req = false) => {
+                                                    const val = (r[field] as string) ?? "";
+                                                    const empty = req && !val && (!!r.touched || ltPriorSubmitAttempted);
+                                                    return (
+                                                      <td className="px-1.5 py-1 align-top">
+                                                        <select value={val} onChange={e => { upd(field, e.target.value); onChg?.(e.target.value); }} className={cn(SCR, w, empty && "border-red-500 ring-1 ring-red-400 bg-red-50")}>
+                                                          <option value="">—</option>
+                                                          {opts.map(o => <option key={o}>{o}</option>)}
+                                                        </select>
+                                                      </td>
+                                                    );
+                                                  };
+                                                  const dateCell = (field: keyof LtDebtReviewRow, req = false) => {
+                                                    const val = (r[field] as string) ?? "";
+                                                    const empty = req && !val && (!!r.touched || ltPriorSubmitAttempted);
+                                                    return (
+                                                      <td className="px-1.5 py-1 align-top whitespace-nowrap" style={{ minWidth: "130px" }}>
+                                                        <input type="date" value={val} onChange={e => upd(field, e.target.value)} className={cn("h-6 text-base px-1.5 border rounded bg-background focus:outline-none w-28", empty ? "border-red-500 ring-1 ring-red-400 bg-red-50" : "border-border")} />
+                                                      </td>
+                                                    );
+                                                  };
+                                                  const autoGl = r.glPrincipal || defaultGLPrincipal(r.type || "Term", r.currency || "CAD");
+                                                  const srcLabel = r.sourceFileId
+                                                    ? ((r.sourceFile ?? "").length > 18 ? (r.sourceFile ?? "").slice(0, 18) + "…" : (r.sourceFile ?? ""))
+                                                    : "Manual";
+                                                  return (
+                                                    <tr key={r.id} className={`border-b border-border/40 ${ri % 2 === 1 ? "bg-muted/10" : ""}`}>
+                                                      {cell("name", false, "160px", true)}
+                                                      <td className="px-1.5 py-1 align-top whitespace-nowrap" style={{ minWidth: "90px" }}>
+                                                        <span className="text-sm text-muted-foreground" title={r.sourceFile ?? ""}>{srcLabel}</span>
+                                                      </td>
+                                                      {cell("lender", false, "140px", true)}
+                                                      <td className="px-1.5 py-1 align-top" style={{ minWidth: "200px" }}>
+                                                        <textarea value={r.collateral ?? ""} onChange={e => upd("collateral", e.target.value)} rows={1} ref={autoH} onInput={e => autoH(e.currentTarget)} className="w-full bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none rounded px-1.5 py-0.5 text-base transition-colors resize-none leading-snug overflow-hidden" placeholder="—" />
+                                                      </td>
+                                                      {sel("type", ["Term","LOC","Revolver","Mortgage","Bridge"], "w-20", v => { const gl = defaultGLPrincipal(v, r.currency || "CAD"); upd("glPrincipal", gl); if (!r.tbLoanAccount) upd("tbLoanAccount", gl); })}
+                                                      {sel("interestType", ["Fixed","Variable","Floating","Hybrid","Step Rate"], "w-24", undefined, true)}
+                                                      {inp("rate", true, "w-16", "%", true)}
+                                                      {dateCell("startDate", true)}
+                                                      {dateCell("maturityDate", true)}
+                                                      {dateCell("firstPaymentDate")}
+                                                      <td className="px-1.5 py-1 align-top">
+                                                        <select value={r.currency || "CAD"} onChange={e => { const gl = defaultGLPrincipal(r.type || "Term", e.target.value); upd("currency", e.target.value); upd("glPrincipal", gl); if (!r.tbLoanAccount) upd("tbLoanAccount", gl); }} className={cn(SCR, "w-14")}>
+                                                          {["CAD","USD","EUR","GBP"].map(o => <option key={o}>{o}</option>)}
+                                                        </select>
+                                                      </td>
+                                                      {inp("monthlyPayment", true, "w-24")}
+                                                      {inp("originalPrincipal", true, "w-24", "0", true)}
+                                                      {inp("fxRate", true, "w-16", "1.000")}
+                                                      {inp("openingBalance", true, "w-24", "0")}
+                                                      <td className="px-1.5 py-1 align-top">
+                                                        <TBAccountSelect value={r.tbLoanAccount || autoGl} onChange={v => upd("tbLoanAccount", v)} required={!!(r.touched || ltPriorSubmitAttempted)} />
+                                                      </td>
+                                                      <td className="px-1.5 py-1 align-top">
+                                                        <TBAccountSelect value={r.tbInterestAccount ?? ""} onChange={v => upd("tbInterestAccount", v)} required={!!(r.touched || ltPriorSubmitAttempted)} />
+                                                      </td>
+                                                      {sel("dayCount", ["ACT/365","ACT/360","30/360"], "w-20")}
+                                                      {sel("paymentType", ["P&I","Interest-only","Balloon"], "w-24")}
+                                                      {sel("paymentFrequency", ["Monthly","Quarterly","Semi-annual","Annual"], "w-24")}
+                                                      {sel("compounding", ["Monthly","Quarterly","Semi-annual","Annual"], "w-24")}
+                                                      {inp("ioPeriod", true, "w-14", "0")}
+                                                      {inp("balloonAmt", true, "w-24", "0")}
+                                                      {inp("currentBalance", true, "w-24", "0")}
+                                                      <td className="px-1.5 py-1 align-top">
+                                                        <button onClick={() => deleteRow(r.id)} className="text-muted-foreground hover:text-red-500 transition-colors p-0.5 rounded">
+                                                          <Trash2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                      </td>
+                                                    </tr>
+                                                  );
+                                                })}
+                                              </tbody>
+                                              <tfoot>
+                                                {(() => {
+                                                  const parse = (v: string) => parseFloat(v.replace(/[,$\s]/g, "")) || 0;
+                                                  const fmt = (n: number) => n === 0 ? "—" : n.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                                  const sum = (f: keyof LtDebtReviewRow) => ltPriorRows.reduce((s, r) => s + parse(r[f] as string ?? ""), 0);
+                                                  return (
+                                                    <tr className="border-t-2 border-border bg-muted/20 font-semibold">
+                                                      <td className="px-2.5 py-1.5 text-base text-muted-foreground" colSpan={12}>Total</td>
+                                                      <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("originalPrincipal"))}</td>
+                                                      <td />
+                                                      <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("openingBalance"))}</td>
+                                                      <td colSpan={8} />
+                                                      <td className="px-2.5 py-1.5 text-base text-right">{fmt(sum("currentBalance"))}</td>
+                                                      <td />
+                                                    </tr>
+                                                  );
+                                                })()}
+                                              </tfoot>
+                                            </table>
+                                          </div>
+
+                                          {/* Validation + Generate Schedule */}
+                                          <div className="flex items-center justify-end gap-3 pt-1">
+                                            {!ltPriorAllValid && ltPriorSubmitAttempted && (
+                                              <span className="text-sm text-red-500 flex items-center gap-1">
+                                                <AlertCircle className="w-3.5 h-3.5" />
+                                                Fill in all required fields <span className="text-red-500 font-semibold">*</span> to continue
+                                              </span>
+                                            )}
+                                            <button
+                                              onClick={() => {
+                                                if (!ltPriorAllValid) { setLtPriorSubmitAttempted(true); return; }
+                                                const rows = ltPriorRows;
                                                   const parseNum = (s: string) => parseFloat((s || "0").replace(/,/g, "")) || 0;
                                                   const rowById = Object.fromEntries(rows.map(r => [`loan-luka-${r.id}`, r]));
                                                   const fyDateStr = settings.fiscalYearEnd || "2026-09-30";
@@ -3402,7 +3476,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     glAccruedInterestAccount: "", glInterestExpenseAccount: row.tbInterestAccount || "",
                                                     covenantIds: [], currentPortion: 0,
                                                     longTermPortion: parseNum(row.currentBalance),
-                                                    accruedInterest: 0, attachments: [], locked: row.locked,
+                                                    accruedInterest: 0, attachments: [], locked: !!row.sourceFileId,
                                                   }));
                                                   const computedLoans = newLoans.map(loan => {
                                                     const monthlyRate = loan.rate / 100 / 12;
@@ -3463,15 +3537,42 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   });
                                                   setLtDebtGenerated(true); setLtDebtPhase("done");
                                                 }}
-                                                className={cn("inline-flex items-center gap-2 h-9 px-5 text-base font-medium rounded-[8px] transition-colors", ltPriorAllValid ? "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer" : "bg-muted text-muted-foreground cursor-not-allowed opacity-60")}
+                                                className="inline-flex items-center gap-2 h-9 px-5 text-base font-medium rounded-[8px] transition-colors bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
                                               >
                                                 Generate Schedule
                                               </button>
                                             </div>
-                                            );
-                                          })()}
-                                        </div>
-                                      );
+
+                                            {/* Skip link */}
+                                            <div className="text-center pt-1">
+                                              <button
+                                                onClick={() => { setLtDebtPhase("upload-prompt"); setLtReviewRows([]); }}
+                                                className="text-base text-muted-foreground hover:text-foreground underline transition-colors"
+                                              >
+                                                No prior-year schedule? Skip
+                                              </button>
+                                            </div>
+                                          </div>
+                                          {ltDeleteFileConfirm && ReactDOM.createPortal(
+                                            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]" onClick={() => setLtDeleteFileConfirm(null)}>
+                                              <div className="bg-background rounded-[12px] border border-border shadow-xl p-5 max-w-[380px] w-full mx-4" onClick={e => e.stopPropagation()}>
+                                                <p className="text-base font-semibold text-foreground">
+                                                  Deleting <span className="font-bold">{ltDeleteFileConfirm.fileName}</span> will remove its {ltDeleteFileConfirm.rowCount} loan{ltDeleteFileConfirm.rowCount !== 1 ? "s" : ""}.
+                                                </p>
+                                                <div className="flex items-center justify-end gap-2 mt-4">
+                                                  <button onClick={() => setLtDeleteFileConfirm(null)} className="inline-flex items-center h-8 px-4 text-base font-medium rounded-[8px] border border-border bg-background text-foreground hover:bg-muted/60 transition-colors">
+                                                    Cancel
+                                                  </button>
+                                                  <button onClick={confirmDeleteFile} className="inline-flex items-center h-8 px-4 text-base font-medium rounded-[8px] bg-red-600 text-white hover:bg-red-700 transition-colors">
+                                                    Delete
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            </div>,
+                                            document.body
+                                          )}
+                                          </>
+                                        );
                                     })()}
 
                                     {/* ── Gate 2: current-year loan upload ── */}
