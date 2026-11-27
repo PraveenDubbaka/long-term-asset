@@ -6980,22 +6980,6 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
               setAmortFileUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null; });
               setAmortUploadFile(null); setAmortPreviewOpen(false);
             };
-            const fileBadge = (removable: boolean) => amortUploadFile ? (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] border border-border bg-muted/40 text-xs text-foreground max-w-[220px]">
-                <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                <span className="truncate">{amortUploadFile}</span>
-                {removable && (
-                  <button onClick={e => { e.preventDefault(); removeFile(); }} className="text-muted-foreground hover:text-destructive shrink-0 ml-0.5">
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
-                {amortFileUrl && (
-                  <button onClick={e => { e.preventDefault(); setAmortPreviewOpen(o => !o); }} className="text-muted-foreground hover:text-foreground shrink-0">
-                    <Eye className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </span>
-            ) : null;
             const back = () => {
               if (isUpload && amortWizStep === 3) {
                 if (amortPickedLoan && loans.length > 1) { setAmortPickedLoan(null); return; }   // form → loan picker
@@ -7152,8 +7136,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                   )}
 
                   {/* ── Form: manual entry, or review of extracted values ── */}
-                  {showForm && isUpload && fileBadge(false) && (
-                    <div className="mb-3">{fileBadge(false)}</div>
+                  {showForm && isUpload && amortUploadFile && (
+                    <p className="mb-3 text-sm font-medium text-foreground truncate" title={amortUploadFile}>{amortUploadFile}</p>
                   )}
                   {showForm && (
                     <LoanAmortizationPrompt
