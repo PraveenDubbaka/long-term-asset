@@ -1319,7 +1319,6 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [ltPriorExtracting, setLtPriorExtracting]= useState(false);
   const [ltPriorRows,       setLtPriorRows]      = useState<LtDebtReviewRow[]>(() => [{ ...EMPTY_LT_ROW(), openingBalance: "0.00" }]);
   const [ltPriorDocYearEnd, setLtPriorDocYearEnd]= useState<string>("");
-  const [ltPriorSubmitAttempted, setLtPriorSubmitAttempted] = useState(false);
   const [ltDeleteFileConfirm, setLtDeleteFileConfirm] = useState<{ fileId: string; fileName: string; rowCount: number } | null>(null);
   const ltDeletedFileIds = useRef<Set<string>>(new Set());
   // ── Add-more-loans turn ──
@@ -3166,8 +3165,8 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                           setTimeout(() => {
                                             const uid = () => `ltr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
                                             const extracted: LtDebtReviewRow[] = [
-                                              { id: uid(), sourceFile: fileName, sourceFileId: fileId, locked: true, name: "Promissory Note 1", lender: "BDC Capital Inc.", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "General security agreement over all present and after-acquired personal property", status: "Active", glPrincipal: "", tbLoanAccount: "", tbInterestAccount: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
-                                              { id: uid(), sourceFile: fileName, sourceFileId: fileId, locked: true, name: "Promissory Note 2", lender: "RBC Royal Bank", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "First charge over real property and improvements", status: "Active", glPrincipal: "", tbLoanAccount: "", tbInterestAccount: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
+                                              { id: uid(), sourceFile: fileName, sourceFileId: fileId, locked: true, touched: true, name: "Promissory Note 1", lender: "BDC Capital Inc.", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "General security agreement over all present and after-acquired personal property", status: "Active", glPrincipal: "", tbLoanAccount: "", tbInterestAccount: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
+                                              { id: uid(), sourceFile: fileName, sourceFileId: fileId, locked: true, touched: true, name: "Promissory Note 2", lender: "RBC Royal Bank", type: "", currency: "", originalPrincipal: "400,000.00", currentBalance: "356,687.18", rate: "4.000", interestType: "", startDate: "2024-10-01", maturityDate: "2032-09-30", firstPaymentDate: "2024-10-31", monthlyPayment: "4,875.49", fxRate: "", paymentFrequency: "Monthly", paymentType: "", dayCount: "", compounding: "", ioPeriod: "", balloonAmt: "", collateral: "First charge over real property and improvements", status: "Active", glPrincipal: "", tbLoanAccount: "", tbInterestAccount: "", openingBalance: "0.00", interestPaid: "15,193.06", principalPaid: "43,312.82" },
                                             ];
                                             if (ltDeletedFileIds.current.has(fileId)) return;
                                             setLtPriorFiles(prev => prev.map(x => x.id === fileId ? { ...x, extracting: false } : x));
@@ -3243,26 +3242,21 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
 
                                           {/* Badges + Add row bar */}
                                           <div className="flex items-center gap-2 flex-wrap min-h-[28px]">
-                                            {ltPriorFiles.map(f => {
-                                              const rowCount = ltPriorRows.filter(r => r.sourceFileId === f.id).length;
-                                              return (
-                                                <div key={f.id} className="inline-flex items-center gap-1.5 pl-2 pr-1 py-1 rounded-[8px] border border-border bg-background text-base">
-                                                  {f.extracting ? (
-                                                    <div className="w-3 h-3 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
-                                                  ) : (
-                                                    <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
-                                                  )}
-                                                  <span className="font-medium text-foreground max-w-[160px] truncate">{f.name}</span>
-                                                  {!f.extracting && <span className="text-muted-foreground text-sm">{rowCount} loan{rowCount !== 1 ? "s" : ""}</span>}
+                                            {ltPriorFiles.map(f => (
+                                              <div key={f.id} className="inline-flex items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-[8px] border border-border bg-background text-base">
+                                                <span className="font-medium text-foreground max-w-[160px] truncate">{f.name}</span>
+                                                {f.extracting ? (
+                                                  <div className="w-3 h-3 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0 ml-0.5" />
+                                                ) : (
                                                   <button
                                                     onClick={e => { e.stopPropagation(); handleDeleteFileBadge(f.id); }}
                                                     className="text-muted-foreground hover:text-red-500 transition-colors p-0.5 rounded"
                                                   >
                                                     <X className="w-3.5 h-3.5" />
                                                   </button>
-                                                </div>
-                                              );
-                                            })}
+                                                )}
+                                              </div>
+                                            ))}
                                             <div className="ml-auto">
                                               <button
                                                 onClick={addEmptyRow}
@@ -3320,7 +3314,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   const upd = (field: keyof LtDebtReviewRow, val: string) =>
                                                     setLtPriorRows(prev => prev.map((row, i) => i === ri ? { ...row, [field]: val, touched: true } : row));
                                                   const autoH = (el: HTMLTextAreaElement | null) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } };
-                                                  const showErr = (req: boolean, val: string) => req && !val.trim() && (!!r.touched || ltPriorSubmitAttempted);
+                                                  const showErr = (req: boolean, val: string) => req && !val.trim() && !!r.touched;
                                                   const cell = (field: keyof LtDebtReviewRow, right = false, minW?: string, req = false) => {
                                                     const val = (r[field] as string) ?? "";
                                                     const empty = showErr(req, val);
@@ -3349,7 +3343,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   };
                                                   const sel = (field: keyof LtDebtReviewRow, opts: string[], w = "w-24", onChg?: (v: string) => void, req = false) => {
                                                     const val = (r[field] as string) ?? "";
-                                                    const empty = req && !val && (!!r.touched || ltPriorSubmitAttempted);
+                                                    const empty = req && !val && !!r.touched;
                                                     return (
                                                       <td className="px-1.5 py-1 align-top">
                                                         <select value={val} onChange={e => { upd(field, e.target.value); onChg?.(e.target.value); }} className={cn(SCR, w, empty && "border-red-500 ring-1 ring-red-400 bg-red-50")}>
@@ -3361,7 +3355,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   };
                                                   const dateCell = (field: keyof LtDebtReviewRow, req = false) => {
                                                     const val = (r[field] as string) ?? "";
-                                                    const empty = req && !val && (!!r.touched || ltPriorSubmitAttempted);
+                                                    const empty = req && !val && !!r.touched;
                                                     return (
                                                       <td className="px-1.5 py-1 align-top whitespace-nowrap" style={{ minWidth: "130px" }}>
                                                         <input type="date" value={val} onChange={e => upd(field, e.target.value)} className={cn("h-6 text-base px-1.5 border rounded bg-background focus:outline-none w-28", empty ? "border-red-500 ring-1 ring-red-400 bg-red-50" : "border-border")} />
@@ -3398,10 +3392,10 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       {inp("fxRate", true, "w-16", "1.000")}
                                                       {inp("openingBalance", true, "w-24", "0")}
                                                       <td className="px-1.5 py-1 align-top">
-                                                        <TBAccountSelect value={r.tbLoanAccount || autoGl} onChange={v => upd("tbLoanAccount", v)} required={!!(r.touched || ltPriorSubmitAttempted)} />
+                                                        <TBAccountSelect value={r.tbLoanAccount || autoGl} onChange={v => upd("tbLoanAccount", v)} required={!!r.touched} />
                                                       </td>
                                                       <td className="px-1.5 py-1 align-top">
-                                                        <TBAccountSelect value={r.tbInterestAccount ?? ""} onChange={v => upd("tbInterestAccount", v)} required={!!(r.touched || ltPriorSubmitAttempted)} />
+                                                        <TBAccountSelect value={r.tbInterestAccount ?? ""} onChange={v => upd("tbInterestAccount", v)} required={!!r.touched} />
                                                       </td>
                                                       {sel("dayCount", ["ACT/365","ACT/360","30/360"], "w-20")}
                                                       {sel("paymentType", ["P&I","Interest-only","Balloon"], "w-24")}
@@ -3440,17 +3434,18 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                             </table>
                                           </div>
 
-                                          {/* Validation + Generate Schedule */}
+                                          {/* Generate Schedule */}
                                           <div className="flex items-center justify-end gap-3 pt-1">
-                                            {!ltPriorAllValid && ltPriorSubmitAttempted && (
-                                              <span className="text-sm text-red-500 flex items-center gap-1">
-                                                <AlertCircle className="w-3.5 h-3.5" />
-                                                Fill in all required fields <span className="text-red-500 font-semibold">*</span> to continue
+                                            {!ltPriorAllValid && (
+                                              <span className="text-sm text-muted-foreground">
+                                                {nonBlankRows.length === 0
+                                                  ? "Upload a document or add a loan to continue"
+                                                  : <>Fill in all required fields <span className="font-semibold">*</span> to continue</>}
                                               </span>
                                             )}
                                             <button
+                                              disabled={!ltPriorAllValid}
                                               onClick={() => {
-                                                if (!ltPriorAllValid) { setLtPriorSubmitAttempted(true); return; }
                                                 const rows = nonBlankRows;
                                                   const parseNum = (s: string) => parseFloat((s || "0").replace(/,/g, "")) || 0;
                                                   const rowById = Object.fromEntries(rows.map(r => [`loan-luka-${r.id}`, r]));
@@ -3549,7 +3544,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   });
                                                   setLtDebtGenerated(true); setLtDebtPhase("done");
                                                 }}
-                                                className="inline-flex items-center gap-2 h-9 px-5 text-base font-medium rounded-[8px] transition-colors bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                                                className={`inline-flex items-center gap-2 h-9 px-5 text-base font-medium rounded-[8px] transition-colors ${ltPriorAllValid ? "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer" : "bg-muted text-muted-foreground cursor-not-allowed"}`}
                                               >
                                                 Generate Schedule
                                               </button>
