@@ -3230,12 +3230,6 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               </div>
                                             )}
                                           </div>
-                                          <p className="text-center">
-                                            <button
-                                              onClick={() => { setLtReviewRows([]); setLtDebtPhase("upload-prompt"); }}
-                                              className="text-base text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
-                                            >No prior-year schedule? Skip</button>
-                                          </p>
                                           {ltPriorRows.length > 0 && (
                                             <div className="rounded-[8px] border border-border overflow-x-auto">
                                               <table className="text-base" style={{ minWidth: "2400px" }}>
@@ -3406,12 +3400,101 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                               <button
                                                 disabled={!ltPriorAllValid}
                                                 onClick={() => {
-                                                  setLtReviewRows(ltPriorRows);
-                                                  setLtDebtPhase("upload-prompt");
+                                                  const rows = ltPriorRows;
+                                                  const parseNum = (s: string) => parseFloat((s || "0").replace(/,/g, "")) || 0;
+                                                  const rowById = Object.fromEntries(rows.map(r => [`loan-luka-${r.id}`, r]));
+                                                  const fyDateStr = settings.fiscalYearEnd || "2026-09-30";
+                                                  const [fyY, fyM, fyD] = fyDateStr.split("-").map(Number);
+                                                  const fyEnd = new Date(fyY, fyM - 1, fyD);
+                                                  setLtDebtSrcLabel(`${rows.length} loan${rows.length !== 1 ? "s" : ""} from prior-year debt schedule`);
+                                                  setLtReviewRows(rows);
+                                                  const newLoans: Loan[] = rows.map(row => ({
+                                                    id: `loan-luka-${row.id}`,
+                                                    refNumber: `LTD-${Date.now()}-${Math.random().toString(36).slice(2,5).toUpperCase()}`,
+                                                    name: row.name, lender: row.lender,
+                                                    type: row.type as LoanType, currency: row.currency as Currency,
+                                                    originalPrincipal: parseNum(row.originalPrincipal),
+                                                    currentBalance: parseNum(row.currentBalance),
+                                                    rate: parseNum(row.rate),
+                                                    interestType: row.interestType as InterestType,
+                                                    dayCountBasis: (row.dayCount || "") as DayCountBasis,
+                                                    startDate: row.startDate, maturityDate: row.maturityDate,
+                                                    firstPaymentDate: row.firstPaymentDate || undefined,
+                                                    monthlyPayment: parseNum(row.monthlyPayment) || undefined,
+                                                    paymentFrequency: row.paymentFrequency as PaymentFrequency,
+                                                    paymentType: row.paymentType as PaymentType,
+                                                    status: "Active" as LoanStatus,
+                                                    compoundingFrequency: row.compounding ? row.compounding as CompoundingFrequency : undefined,
+                                                    fxRateToCAD: parseNum(row.fxRate) || undefined,
+                                                    securityDescription: row.collateral || undefined,
+                                                    glPrincipalAccount: row.tbLoanAccount || row.glPrincipal || defaultGLPrincipal(row.type || "Term", row.currency || "CAD"),
+                                                    glAccruedInterestAccount: "", glInterestExpenseAccount: row.tbInterestAccount || "",
+                                                    covenantIds: [], currentPortion: 0,
+                                                    longTermPortion: parseNum(row.currentBalance),
+                                                    accruedInterest: 0, attachments: [], locked: row.locked,
+                                                  }));
+                                                  const computedLoans = newLoans.map(loan => {
+                                                    const monthlyRate = loan.rate / 100 / 12;
+                                                    const payment = loan.monthlyPayment ?? 0;
+                                                    const firstPmt = loan.firstPaymentDate ? new Date(loan.firstPaymentDate) : new Date(loan.startDate);
+                                                    const _srcRow = rowById[loan.id];
+                                                    const _openBal = parseNum(_srcRow?.openingBalance ?? "0");
+                                                    let bal = _openBal + loan.originalPrincipal;
+                                                    let totalInterest = 0, totalPrincipal = 0;
+                                                    let d = new Date(firstPmt); const amortRows: {d: Date; int: number; prin: number; end: number}[] = [];
+                                                    const _startMs = loan.startDate ? new Date(loan.startDate).getTime() : firstPmt.getTime();
+                                                    const _actualDays1 = Math.round((firstPmt.getTime() - _startMs) / 86400000);
+                                                    let _isFirst = true;
+                                                    while (d <= fyEnd && bal > 0.01) {
+                                                      const int = (_isFirst && _actualDays1 > 0) ? bal * (loan.rate / 100) * _actualDays1 / 365 : bal * monthlyRate;
+                                                      _isFirst = false;
+                                                      const prin = Math.min(payment - int, bal); const end = bal - prin;
+                                                      amortRows.push({ d: new Date(d), int, prin, end });
+                                                      totalInterest += int; totalPrincipal += prin; bal = end;
+                                                      d = new Date(d.getFullYear(), d.getMonth() + 2, 0);
+                                                    }
+                                                    const finalClosingBal  = bal;
+                                                    const finalInterest    = totalInterest;
+                                                    const finalPrincipal   = totalPrincipal;
+                                                    let curPortion = 0;
+                                                    const fyNext = new Date(fyEnd.getFullYear() + 1, fyEnd.getMonth(), fyEnd.getDate());
+                                                    let bal2 = finalClosingBal, d2 = new Date(d);
+                                                    while (d2 <= fyNext && bal2 > 0.01) {
+                                                      const int2 = bal2 * monthlyRate; const prin2 = Math.min(payment - int2, bal2);
+                                                      curPortion += prin2; bal2 -= prin2;
+                                                      d2 = new Date(d2.getFullYear(), d2.getMonth() + 2, 0);
+                                                    }
+                                                    const ltPortion = finalClosingBal - curPortion;
+                                                    const lastRow2 = amortRows[amortRows.length - 1];
+                                                    const toLS = (dt: Date) => dt.getFullYear() + "-" + String(dt.getMonth()+1).padStart(2,"0") + "-" + String(dt.getDate()).padStart(2,"0");
+                                                    const accruedInt = toLS(lastRow2?.d ?? new Date(0)) === toLS(fyEnd) ? 0 : finalClosingBal * monthlyRate;
+                                                    return { ...loan, rows: amortRows, totalInterest: finalInterest, totalPrincipal: finalPrincipal, closingBal: finalClosingBal, curPortion, ltPortion, accruedInt };
+                                                  });
+                                                  setLoansInStore(computedLoans.map(l => ({ ...l, closingBalance: l.closingBal, currentPortion: Math.round(l.curPortion*100)/100, longTermPortion: Math.round(l.ltPortion*100)/100, accruedInterest: Math.round(l.accruedInt*100)/100 })));
+                                                  updateSettingsInStore({ fiscalYearEnd: fyDateStr });
+                                                  computedLoans.forEach(loan => { loan.rows.forEach(r => { addAmortRowToStore({ id: `ar-${loan.id}-${r.d.toISOString().slice(0,7)}`, loanId: loan.id, periodDate: r.d.toISOString().slice(0,10), openingBalance: r.end+r.prin, interest: r.int, payment: loan.monthlyPayment??0, principal: r.prin, endingBalance: r.end }); }); });
+                                                  const fyLabel = `FY${fyEnd.getFullYear()}`; const fyPeriod = `${fyEnd.getFullYear()}-${String(fyEnd.getMonth()+1).padStart(2,"0")}`;
+                                                  computedLoans.forEach(loan => { addContinuityRowToStore({ id: `cr-${loan.id}-${fyLabel}`, loanId: loan.id, period: fyPeriod, openingBalance: parseNum(rowById[loan.id]?.currentBalance ?? "0"), newBorrowings: 0, repayments: Math.round((loan.totalPrincipal+loan.totalInterest)*100)/100, principalRepayments: Math.round(loan.totalPrincipal*100)/100, interestRepayments: Math.round(loan.totalInterest*100)/100, fxTranslation: 0, closingBalance: Math.round(loan.closingBal*100)/100, currentPortion: Math.round(loan.curPortion*100)/100, longTermPortion: Math.round(loan.ltPortion*100)/100, accruedInterest: Math.round(loan.accruedInt*100)/100 }); });
+                                                  const now = new Date().toISOString();
+                                                  const CUR_PORTION_ACCT_G1 = "2110 – Current Portion LT Debt";
+                                                  let jeSeq1 = jesInStore.filter(j => !j.deleted).length + 1;
+                                                  computedLoans.forEach(loan => {
+                                                    const cpAmt = Math.round(loan.curPortion * 100) / 100;
+                                                    if (cpAmt > 0) {
+                                                      const n = jeSeq1++;
+                                                      addJEToStore({ id: `je-${n}`, type: "CurrentPortionReclass", loanId: loan.id, description: `Reclassify current portion – ${loan.name}`, lines: [{ id: `jel-r1-${n}`, account: loan.glPrincipalAccount || "2100 – Long-Term Debt", description: "Long-term debt – reclassify to current portion", debit: cpAmt, credit: 0 }, { id: `jel-r2-${n}`, account: CUR_PORTION_ACCT_G1, description: "Current portion reclass", debit: 0, credit: cpAmt }], status: "Draft", fiscalYear: fyLabel, preparedBy: "Luka", createdAt: now });
+                                                    }
+                                                    const accrAmt = Math.round(loan.accruedInt * 100) / 100;
+                                                    if (accrAmt > 0.01) {
+                                                      const n = jeSeq1++;
+                                                      addJEToStore({ id: `je-${n}`, type: "AccruedInterest", loanId: loan.id, description: `Accrue interest – ${loan.name}`, lines: [{ id: `jel-a1-${n}`, account: loan.glInterestExpenseAccount || "7100 – Interest Expense (CAD)", description: "Accrued interest – year end", debit: accrAmt, credit: 0 }, { id: `jel-a2-${n}`, account: loan.glAccruedInterestAccount || "2300 – Accrued Interest Payable", description: "Accrued interest payable – year end", debit: 0, credit: accrAmt }], status: "Draft", fiscalYear: fyLabel, preparedBy: "Luka", createdAt: now });
+                                                    }
+                                                  });
+                                                  setLtDebtGenerated(true); setLtDebtPhase("done");
                                                 }}
                                                 className={cn("inline-flex items-center gap-2 h-9 px-5 text-base font-medium rounded-[8px] transition-colors", ltPriorAllValid ? "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer" : "bg-muted text-muted-foreground cursor-not-allowed opacity-60")}
                                               >
-                                                Continue
+                                                Generate Schedule
                                               </button>
                                             </div>
                                             );
