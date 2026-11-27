@@ -27,7 +27,7 @@ import { PromptPicker } from "@/components/luka/PromptPicker";
 import { GrossMarginResponse } from "@/components/luka/GrossMarginResponse";
 import { LoanAmortizationPrompt } from "@/components/luka/LoanAmortizationPrompt";
 import { LoanAmortizationResponse, yearEndMonthFrom } from "@/components/luka/LoanAmortizationResponse";
-import type { LoanAmortData } from "@/components/luka/LoanAmortizationPrompt";
+import type { LoanAmortData, LoanAmortFormHandle } from "@/components/luka/LoanAmortizationPrompt";
 import { mockExtract, EMPTY_LOAN, type ExtractionResult, type FieldMetaMap } from "@/components/luka/loanAmortExtraction";
 import { LongTermAssetResponse, LukaNoteSidePanel } from "@/components/luka/LongTermAssetResponse";
 import { InvestmentScheduleResponse } from "@/components/luka/InvestmentScheduleResponse";
@@ -1311,6 +1311,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
   const [amortFormInit,   setAmortFormInit]      = useState<LoanAmortData>(EMPTY_LOAN);
   const [amortFormMeta,   setAmortFormMeta]      = useState<FieldMetaMap|undefined>(undefined);
   const [amortFormKey,    setAmortFormKey]       = useState(0);
+  const amortFormRef = useRef<LoanAmortFormHandle>(null);
   const [amortWizRect,    setAmortWizRect]       = useState<{left:number;right:number;bottom:number}|null>(null);
   // ── Agentic Long-term Debt (chat-based upload) ──
   const [ltDebtPhase,       setLtDebtPhase]      = useState<"idle"|"prior-year-gate"|"upload-prompt"|"done">("idle");
@@ -7056,6 +7057,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                   {showForm && (
                     <LoanAmortizationPrompt
                       key={amortFormKey}
+                      ref={amortFormRef}
                       initial={amortFormInit}
                       meta={amortFormMeta}
                       tbAccounts={selectedEngagementCtx ? MOCK_TB_ACCOUNTS : undefined}
@@ -7090,6 +7092,18 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                       className="inline-flex items-center gap-2 h-8 px-4 text-base font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed">
                       Read document <ChevronRight className="h-5 w-5" />
                     </button>
+                  )}
+                  {showForm && (
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => amortFormRef.current?.clear()}
+                        className="inline-flex items-center h-8 px-4 text-base font-medium rounded-[8px] border border-border text-foreground hover:bg-muted/40">
+                        Clear All
+                      </button>
+                      <button onClick={() => amortFormRef.current?.submit()}
+                        className="inline-flex items-center gap-2 h-8 px-4 text-base font-medium bg-primary text-primary-foreground rounded-[8px] hover:bg-primary/90">
+                        Submit <ChevronRight className="h-5 w-5" />
+                      </button>
+                    </div>
                   )}
                   {needsPick && (
                     <button disabled={!amortLoanChoice}

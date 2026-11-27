@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { ChevronDown, CheckCircle2, AlertTriangle, AlertCircle, FileText } from "lucide-react";
+import { forwardRef, useImperativeHandle, useMemo, useState } from "react";
+import { ChevronDown, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FREQ, type Frequency } from "@/lib/loanAmortEngine";
 import type { FieldMetaMap } from "./loanAmortExtraction";
@@ -67,14 +67,16 @@ interface Props {
   onSubmit: (data: LoanAmortData) => void;
 }
 
-export function LoanAmortizationPrompt({ initial, meta, tbAccounts, onSubmit }: Props) {
+/** Lets the wizard footer own the Clear All / Submit buttons (bottom right, like Next). */
+export interface LoanAmortFormHandle { submit: () => void; clear: () => void }
+
+export const LoanAmortizationPrompt = forwardRef<LoanAmortFormHandle, Props>(function LoanAmortizationPrompt({ initial, meta, tbAccounts, onSubmit }, ref) {
   const [form, setForm] = useState<LoanAmortData>(initial);
   const [edited, setEdited] = useState<Set<Key>>(new Set());
   const [touched, setTouched] = useState<Set<Key>>(new Set());
   const [attempted, setAttempted] = useState(false);
 
-  const { errors, warnings } = useMemo(() => validateLoan(form), [form]);
-  const missingRequired = (Object.keys(errors) as Key[]).filter(k => errors[k]?.startsWith("Required"));
+  const { errors } = useMemo(() => validateLoan(form), [form]);
   const blocking = Object.keys(errors).length > 0;
 
   const set = (k: Key) => (v: string) => {
@@ -90,33 +92,21 @@ export function LoanAmortizationPrompt({ initial, meta, tbAccounts, onSubmit }: 
   };
   const blur = (k: Key) => () => setTouched(s => new Set(s).add(k));
 
-  const stateOf = (k: Key) => {
-    const m = meta?.[k];
-    const showErr = errors[k] && (attempted || touched.has(k) || (m?.status === "missing" && !edited.has(k)));
-    if (showErr) return { tone: "error" as const, text: m?.status === "missing" && errors[k] === "Required" ? "Not found in document. Please enter" : errors[k]! };
-    if (warnings[k]) return { tone: "warn" as const, text: warnings[k]! };
-    if (m && !edited.has(k)) {
-      if (m.status === "inferred") return { tone: "warn" as const, text: `Inferred: ${m.note}` };
-      if (m.status === "found") return { tone: "found" as const, text: m.note ? `From document · ${m.note}` : "From document" };
-    }
-    return null;
+  // Errors only: no "from document" / inferred helper text.
+  // Required fields: red when empty — immediately if the document didn't have them, otherwise after Submit.
+  const errorOf = (k: Key) => {
+    const e = errors[k];
+    if (!e) return null;
+    const missingFromDoc = meta?.[k]?.status === "missing" && !edited.has(k);
+    if (e.startsWith("Required")) return attempted || missingFromDoc ? { text: null } : null;
+    return attempted || touched.has(k) ? { text: e } : null;   // rule violations keep a short message
   };
-  const border = (k: Key) => {
-    const s = stateOf(k);
-    return s?.tone === "error" ? "border-red-500 bg-red-50/40 dark:bg-red-950/20"
-      : s?.tone === "warn" ? "border-amber-400"
-      : "border-[#dcdfe4] dark:border-[hsl(220_15%_30%)] hover:border-[hsl(210_25%_75%)]";
-  };
+  const border = (k: Key) => errorOf(k)
+    ? "border-red-500 bg-red-50/40 dark:bg-red-950/20"
+    : "border-[#dcdfe4] dark:border-[hsl(220_15%_30%)] hover:border-[hsl(210_25%_75%)]";
   const hint = (k: Key) => {
-    const s = stateOf(k);
-    if (!s) return null;
-    const Icon = s.tone === "error" ? AlertCircle : s.tone === "warn" ? AlertTriangle : CheckCircle2;
-    return (
-      <p className={cn("mt-1 text-[11px] leading-snug flex items-start gap-1",
-        s.tone === "error" && "text-red-600", s.tone === "warn" && "text-amber-700 dark:text-amber-400", s.tone === "found" && "text-green-700 dark:text-green-400")}>
-        <Icon className="h-3 w-3 mt-[1px] shrink-0" /><span>{s.text}</span>
-      </p>
-    );
+    const t = errorOf(k)?.text;
+    return t ? <p className="mt-1 text-[11px] leading-snug text-red-600 flex items-start gap-1"><AlertCircle className="h-3 w-3 mt-[1px] shrink-0" />{t}</p> : null;
   };
   const label = (k: Key, text: string) => (
     <label className="block text-xs font-medium text-foreground mb-1">
@@ -162,11 +152,6 @@ export function LoanAmortizationPrompt({ initial, meta, tbAccounts, onSubmit }: 
     </div>
   );
 
-  const visibleMeta = meta ? VISIBLE.filter(k => meta[k]) : [];
-  const foundCount = visibleMeta.filter(k => meta![k]!.status !== "missing").length;
-  const inferredCount = visibleMeta.filter(k => meta![k]!.status === "inferred" && !edited.has(k)).length;
-  const needInput = missingRequired.length;
-
   const clearAll = () => {
     setForm(f => ({ ...f, interestRateType: "Fixed", paymentType: "Blended (Amortizing)", loanTenure: "", principalAmount: "",
       annualInterestRate: "", loanStartDate: "", paymentFrequency: "", firstPaymentDate: "", compoundingFrequency: "",
@@ -174,21 +159,10 @@ export function LoanAmortizationPrompt({ initial, meta, tbAccounts, onSubmit }: 
     setEdited(new Set(VISIBLE)); setTouched(new Set()); setAttempted(false);
   };
   const handleSubmit = () => { setAttempted(true); if (!blocking) onSubmit(form); };
+  useImperativeHandle(ref, () => ({ submit: handleSubmit, clear: clearAll }));
 
   return (
     <div className="text-sm space-y-5">
-      {meta && form.uploadedFile && (
-        <div className={cn("rounded-[10px] border px-3 py-2.5 flex items-start gap-2.5",
-          needInput ? "border-red-200 bg-red-50/60 dark:bg-red-950/20 dark:border-red-900" : "border-green-200 bg-green-50/60 dark:bg-green-950/20 dark:border-green-900")}>
-          <FileText className={cn("h-4 w-4 mt-0.5 shrink-0", needInput ? "text-red-600" : "text-green-700")} />
-          <div className="text-[13px] leading-relaxed text-foreground">
-            I read <strong>{form.uploadedFile}</strong> and filled {foundCount} field{foundCount === 1 ? "" : "s"}.{" "}
-            {needInput > 0 ? <>I couldn't find <strong>{needInput} required field{needInput === 1 ? "" : "s"}</strong>, highlighted in red.</> : <>All required fields are filled.</>}
-            {inferredCount > 0 && <> {inferredCount} value{inferredCount === 1 ? " is" : "s are"} inferred (amber). Please confirm.</>}
-          </div>
-        </div>
-      )}
-
       <p className="text-sm font-semibold text-foreground">Provide Inputs</p>
 
       <div>
@@ -223,20 +197,6 @@ export function LoanAmortizationPrompt({ initial, meta, tbAccounts, onSubmit }: 
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 pt-1">
-        <button onClick={clearAll}
-          className="h-10 w-[180px] rounded-[8px] border border-border bg-muted/40 text-sm font-semibold text-foreground hover:bg-muted transition-colors">
-          Clear All
-        </button>
-        <button onClick={handleSubmit} disabled={attempted && blocking}
-          className={cn("h-10 w-[180px] rounded-[8px] text-sm font-semibold transition-colors",
-            blocking ? "bg-muted text-muted-foreground cursor-not-allowed" : "bg-primary text-primary-foreground hover:bg-primary/90")}>
-          Submit
-        </button>
-        {needInput > 0
-          ? <span className="text-[12px] text-muted-foreground">Fill {needInput} required field{needInput === 1 ? "" : "s"}: {missingRequired.map(k => LABELS[k]).join(", ")}</span>
-          : blocking ? <span className="text-[12px] text-muted-foreground">Fix the highlighted fields to continue</span> : null}
-      </div>
     </div>
   );
-}
+});
