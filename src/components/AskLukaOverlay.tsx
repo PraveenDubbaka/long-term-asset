@@ -3474,13 +3474,11 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                           };
 
                                       // Counts for status text
-                                      const lockedRows = ltReviewRows.filter(r => r.locked);
                                       const fromFileRows = ltReviewRows.filter(r => r.sourceFileId && !r.locked);
                                       const manualRows = ltReviewRows.filter(r => !r.sourceFileId && !r.locked);
                                       const fileCount = new Set(fromFileRows.map(r => r.sourceFileId)).size;
                                       const statusParts = [
-                                        ltReviewRows.length > 0 ? `${ltReviewRows.length} loan${ltReviewRows.length !== 1 ? "s" : ""}` : null,
-                                        lockedRows.length > 0 ? `${lockedRows.length} prior year` : null,
+                                        ltReviewRows.filter(r => !r.locked).length > 0 ? `${ltReviewRows.length} loan${ltReviewRows.length !== 1 ? "s" : ""}` : null,
                                         fileCount > 0 ? `${fromFileRows.length} from ${fileCount} file${fileCount !== 1 ? "s" : ""}` : null,
                                         manualRows.length > 0 ? `${manualRows.length} manual` : null,
                                       ].filter(Boolean).join(" · ");
@@ -3835,13 +3833,13 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                   disabled={!canSubmit}
                                                   onClick={() => {
                                                     if (!canSubmit) return;
-                                                    const _priorCount = ltReviewRows.filter(r => r.locked).length;
-                                                    const _fileCount = ltReviewRows.filter(r => r.sourceFileId && !r.locked).length;
-                                                    const _manualCount = ltReviewRows.filter(r => !r.sourceFileId && !r.locked).length;
-                                                    const _priorPart = _priorCount > 0 ? `${_priorCount} from prior-year schedule` : "";
-                                                    const _filePart = _fileCount > 0 ? `${_fileCount} from documents` : "";
-                                                    const _manualPart = _manualCount > 0 ? `${_manualCount} manual` : "";
-                                                    setLtDebtSrcLabel([_priorPart, _filePart, _manualPart].filter(Boolean).join(" + ") || `${ltReviewRows.length} entries`);
+                                                    const counts: Partial<Record<string, number>> = {};
+                                                    validFiles.forEach(f => { const k = f.userKind ?? f.kind; counts[k] = (counts[k] ?? 0) + 1; });
+                                                    const parts = Object.entries(counts).map(([k, n]) => `${n} ${LT_FILE_KIND_LABEL[k] ?? k}${n! > 1 ? "s" : ""}`);
+                                                    const docPart = validFiles.length > 0 ? `${validFiles.length} uploaded document${validFiles.length !== 1 ? "s" : ""}${parts.length ? ` (${parts.join(", ")})` : ""}` : "";
+                                                    const manualCount = ltReviewRows.filter(r => !r.sourceFileId && !r.locked).length;
+                                                    const manualPart = manualCount > 0 ? `${manualCount} manual entr${manualCount !== 1 ? "ies" : "y"}` : "";
+                                                    setLtDebtSrcLabel([docPart, manualPart].filter(Boolean).join(" + ") || `${ltReviewRows.length} manual entries`);
 
                                                     // Convert review rows to Loan objects and save to store
                                                     const parseNum = (s: string) => parseFloat((s || "0").replace(/,/g, "")) || 0;
@@ -3870,9 +3868,9 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                       compoundingFrequency: row.compounding ? row.compounding as CompoundingFrequency : undefined,
                                                       fxRateToCAD: parseNum(row.fxRate) || undefined,
                                                       securityDescription: row.collateral || undefined,
-                                                      glPrincipalAccount: row.tbLoanAccount || row.glPrincipal || defaultGLPrincipal(row.type || "Term", row.currency || "CAD"),
+                                                      glPrincipalAccount: row.glPrincipal,
                                                       glAccruedInterestAccount: "",
-                                                      glInterestExpenseAccount: row.tbInterestAccount || "",
+                                                      glInterestExpenseAccount: "",
                                                       covenantIds: [],
                                                       currentPortion: 0,
                                                       longTermPortion: parseNum(row.currentBalance),
@@ -3882,15 +3880,11 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                                     }));
 
                                                     // Auto-run amortization (Gate 2)
-                                                    const _rowById = Object.fromEntries(ltReviewRows.map(r => [`loan-luka-${r.id}`, r]));
                                                     const computedLoans = newLoans.map(loan => {
                                                       const monthlyRate = loan.rate / 100 / 12;
                                                       const payment = loan.monthlyPayment ?? 0;
                                                       const firstPmt = loan.firstPaymentDate ? new Date(loan.firstPaymentDate) : new Date(loan.startDate);
-                                                      // locked (prior-year) rows start at opening + original principal; unlocked at current balance
-                                                      const _srcRow2 = _rowById[loan.id];
-                                                      const _openBal2 = _srcRow2 ? (parseFloat((_srcRow2.openingBalance || "0").replace(/,/g, "")) || 0) : 0;
-                                                      let bal = loan.locked ? _openBal2 + loan.originalPrincipal : loan.currentBalance;
+                                                      let bal = loan.currentBalance;
                                                       let totalInterest = 0, totalPrincipal = 0;
                                                       let d = new Date(firstPmt);
                                                       const rows = [];
