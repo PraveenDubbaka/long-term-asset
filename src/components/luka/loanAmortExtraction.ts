@@ -16,6 +16,7 @@ export const EMPTY_LOAN: LoanAmortData = {
   loanTenure: "", currency: "CAD", principalAmount: "", annualInterestRate: "", dayCountBasis: "ACT/365",
   loanStartDate: "", maturityDate: "", paymentFrequency: "", firstPaymentDate: "", compoundingFrequency: "",
   interestOnlyPeriod: "", fixedPaymentAmount: "", balloonAmount: "", uploadedFile: null,
+  tbLoanAccount: "", tbInterestAccount: "",
 };
 
 const found = (note: string): FieldMeta => ({ status: "found", note });
@@ -36,7 +37,7 @@ function promissoryNote(file: string): ExtractionResult {
       loanStartDate: found("p.1"), maturityDate: found("p.2, s.4"), paymentFrequency: found("p.1, s.3"),
       compoundingFrequency: inferred("Not stated; assumed same as payment frequency"),
       dayCountBasis: inferred("Not stated; Canadian default"),
-      loanTenure: missing, firstPaymentDate: missing, lender: missing,
+      loanTenure: missing, firstPaymentDate: missing,
     },
   }]};
 }
@@ -48,13 +49,13 @@ function debtSchedule(file: string): ExtractionResult {
     data: {
       ...EMPTY_LOAN, loanName: `Promissory note ${n}`, principalAmount: "400,000", annualInterestRate: "4",
       firstPaymentDate: "2024-10-31", maturityDate: "2032-09-30", paymentFrequency: "Monthly",
-      fixedPaymentAmount: "4,875.49", loanTenure: "96", uploadedFile: file,
+      loanTenure: "96", uploadedFile: file,
     },
     meta: {
       loanName: found("Row " + n), principalAmount: found("Additions during year"), annualInterestRate: found("Interest rate"),
-      firstPaymentDate: found("Start date"), maturityDate: found("Maturity date"), fixedPaymentAmount: found("Payment"),
+      firstPaymentDate: found("Start date"), maturityDate: found("Maturity date"), paymentType: found("Blended payment of $4,875.49"),
       paymentFrequency: inferred("Derived from payment amount and term"),
-      loanTenure: inferred("Counted from first payment to maturity"),
+      loanTenure: inferred("Counted from first payment (Oct 31, 2024) to maturity (Sep 30, 2032)"),
       loanStartDate: missing, lender: missing,
     },
   });

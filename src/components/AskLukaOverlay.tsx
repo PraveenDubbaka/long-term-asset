@@ -26,7 +26,7 @@ import { extractInvTransactions, validateSingleBroker, mapActivityToType, defaul
 import { PromptPicker } from "@/components/luka/PromptPicker";
 import { GrossMarginResponse } from "@/components/luka/GrossMarginResponse";
 import { LoanAmortizationPrompt } from "@/components/luka/LoanAmortizationPrompt";
-import { LoanAmortizationResponse } from "@/components/luka/LoanAmortizationResponse";
+import { LoanAmortizationResponse, yearEndMonthFrom } from "@/components/luka/LoanAmortizationResponse";
 import type { LoanAmortData } from "@/components/luka/LoanAmortizationPrompt";
 import { mockExtract, EMPTY_LOAN, type ExtractionResult, type FieldMetaMap } from "@/components/luka/loanAmortExtraction";
 import { LongTermAssetResponse, LukaNoteSidePanel } from "@/components/luka/LongTermAssetResponse";
@@ -5803,7 +5803,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                                   </span>
                                 </div>
                               ) : (
-                                <LoanAmortizationResponse key={JSON.stringify(loanAmortData)} data={loanAmortData} onEdit={() => reopenAmortForm(loanAmortData)} />
+                                <LoanAmortizationResponse key={JSON.stringify(loanAmortData)} data={loanAmortData} yearEndMonth={yearEndMonthFrom(selectedEngagementCtx?.yearEnd)} onEdit={() => reopenAmortForm(loanAmortData)} />
                               )}
                             </div>
                           </div>
@@ -7058,6 +7058,7 @@ export function AskLukaOverlay({ open, onOpenChange, onClose: onCloseProp }: Ask
                       key={amortFormKey}
                       initial={amortFormInit}
                       meta={amortFormMeta}
+                      tbAccounts={selectedEngagementCtx ? MOCK_TB_ACCOUNTS : undefined}
                       onSubmit={handleLoanAmortSubmit}
                     />
                   )}
